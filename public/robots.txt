@@ -39,4 +39,4 @@ Allow: /
 User-agent: Google-Extended
 Allow: /
 
-Sitemap: https://flixotools.com/sitemap.xml
+Sitemap: https://flixoai.vercel.app/sitemap.xml

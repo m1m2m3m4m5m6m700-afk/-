@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 const root = process.cwd();
-const SITE_URL = "https://flixotools.com";
+const SITE_URL = "https://flixoai.vercel.app";
 
 function read(relativePath) {
   return fs.readFileSync(path.join(root, relativePath), "utf8");
@@ -197,7 +197,7 @@ if (!rootRouteSource.includes("buildRootWebApplicationSchema()"))
   issues.push("Root route is missing WebApplication structured data.");
 if (!structuredDataSource.includes("SearchAction"))
   issues.push("Root structured data is missing SearchAction.");
-if (!publicRobots.includes("Sitemap: https://flixotools.com/sitemap.xml"))
+if (!publicRobots.includes("Sitemap: https://flixoai.vercel.app/sitemap.xml"))
   issues.push("public/robots.txt must reference the canonical sitemap.xml URL.");
 
 const expectedUrls = [
