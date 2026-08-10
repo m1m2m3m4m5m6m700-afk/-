@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title>Flixo</title>
+  <rect width="64" height="64" rx="18" fill="#08c9c4"/>
+  <path d="M19 35.5c7.3 0 12.8-4.4 14.9-11.8 2.2 7.4 7.7 11.8 15.1 11.8-7.4 0-12.9 4.4-15.1 11.8C31.8 39.9 26.3 35.5 19 35.5Z" fill="#06151d"/>
+  <circle cx="29" cy="21" r="3" fill="#06151d"/>
+  <circle cx="43" cy="21" r="3" fill="#06151d"/>
+</svg>

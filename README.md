@@ -1,11 +1,41 @@
-<div align="center">
+# Flixo
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+Flixo is a TanStack Start workspace for browser-based AI and utility tools. The
+landing page maps user requests to the canonical tool registry, and the
+translator is the first working tool.
 
-  <h1>Built with AI Studio</h2>
+## Stack
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+- TanStack Start and TanStack Router
+- React and TypeScript
+- Vite, Tailwind CSS, and shadcn-style UI components
+- Node.js server output with SSR error handling and security headers
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
+## Development
 
-</div>
+Use Node.js 20.19 or newer.
+
+```sh
+npm install
+npm run dev
+```
+
+The development server listens on port 5000.
+
+## Verification
+
+```sh
+npm run verify
+```
+
+This runs the strict TypeScript check, project lint, production build, and the
+production dependency audit. The translator currently uses a local mock engine;
+the public function signature is kept stable for a future provider integration.
+
+## Project structure
+
+- `src/data` — canonical categories, tools, and SEO data
+- `src/components` — reusable layout, landing, tool, and UI components
+- `src/routes` — TanStack file-based routes
+- `src/lib` — typed utilities, analytics, localization, and tool logic
+- `public` — static metadata, service-worker, and pre-paint initialization assets
