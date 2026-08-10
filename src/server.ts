@@ -52,9 +52,23 @@ function createCspNonce(): string {
   return globalThis.crypto.randomUUID().replaceAll("-", "");
 }
 
+// Google Search Console ownership verification. The matching file also lives in
+// public/ (served as a static asset when the host's filesystem handler matches),
+// but the .html extension can fall through to the SPA catch-all on some hosts.
+// Short-circuit the exact verification path here so the raw file body is always
+// returned with HTTP 200, regardless of static-file routing.
+const GOOGLE_VERIFICATION_PATH = "/googlea627784b48ceca91.html";
+const GOOGLE_VERIFICATION_BODY = "google-site-verification: googlea627784b48ceca91.html";
+
 export default {
   async fetch(request: Request) {
     return runWithErrorCapture(async () => {
+      if (new URL(request.url).pathname === GOOGLE_VERIFICATION_PATH) {
+        return new Response(GOOGLE_VERIFICATION_BODY, {
+          status: 200,
+          headers: { "content-type": "text/html; charset=utf-8" },
+        });
+      }
       const nonce = createCspNonce();
       try {
         const handler = await getServerEntry();
