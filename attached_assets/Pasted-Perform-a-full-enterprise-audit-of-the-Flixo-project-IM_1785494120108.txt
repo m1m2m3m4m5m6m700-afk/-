@@ -1,0 +1,108 @@
+Perform a full enterprise audit of the Flixo project.
+
+IMPORTANT:
+- Do NOT modify the project yet.
+- Do NOT rebuild anything.
+- Analyze only.
+
+Audit the entire codebase and generate a detailed report including:
+
+========================
+Architecture
+========================
+- Folder structure
+- Components
+- Routes
+- Data architecture
+- Reusable modules
+- State management
+
+========================
+Code Quality
+========================
+- Dead code
+- Duplicate code
+- Unused files
+- Unused dependencies
+- Circular imports
+- TypeScript issues
+- Lint issues
+- Build warnings
+
+========================
+Performance
+========================
+- Bundle size
+- Lazy loading opportunities
+- Dynamic imports
+- Core Web Vitals
+- Rendering optimization
+- Image optimization
+
+========================
+SEO
+========================
+- Missing metadata
+- Missing schema
+- Missing internal links
+- Missing landing pages
+- Duplicate content
+- Missing canonical URLs
+
+========================
+Accessibility
+========================
+- Missing ARIA labels
+- Keyboard navigation
+- WCAG issues
+- Contrast problems
+
+========================
+Security
+========================
+- Potential vulnerabilities
+- Unsafe code
+- Dependency risks
+
+========================
+Scalability
+========================
+- Future bottlenecks
+- Better abstractions
+- Folder improvements
+- Reusable opportunities
+
+========================
+Production Readiness
+========================
+Give a score from 0–100 for:
+
+- Architecture
+- Performance
+- SEO
+- Accessibility
+- Scalability
+- Maintainability
+
+Generate a prioritized roadmap:
+
+Critical
+High
+Medium
+Low
+
+Do NOT modify any files.
+
+========================
+Git & Synchronization
+========================
+
+Before starting:
+- Synchronize with the latest GitHub repository if supported.
+- Never overwrite existing work.
+
+After completion:
+- Do NOT modify files.
+- Create a suggested Conventional Commit message.
+- If Git synchronization is available, prepare the repository for synchronization.
+- If automatic synchronization is unavailable, clearly state that manual Commit/Push is required.

@@ -1,0 +1,556 @@
+/**
+ * English source dictionary. This file is the single source of truth for keys —
+ * every other locale must implement the same key set (enforced by the Dictionary type).
+ */
+export const en = {
+  "lang.name": "English",
+  "lang.switch": "Change language",
+
+  "nav.tools": "Tools",
+  "nav.categories": "Categories",
+  "nav.popular": "Popular",
+  "nav.why": "Why Flixo",
+  "nav.faq": "FAQ",
+  "nav.openTranslator": "Open Translator",
+  "nav.toggleTheme": "Toggle color theme",
+  "nav.toggleMenu": "Toggle navigation",
+
+  "hero.badge": "One workspace, every AI tool",
+  "hero.title": "One workspace for every AI tool",
+  "hero.description":
+    "Translation, images, PDFs, writing and utilities — five tool hubs under a single calm interface. No accounts, no API keys, just open a tool and start working.",
+  "hero.promo.badge": "New",
+  "hero.promo.body":
+    "Try the AI Image Enhancer today — sharpen, upscale, and remove noise from your photos instantly.",
+  "hero.searchLabel": "Describe what you want to do",
+  "hero.searchPlaceholder":
+    "Try: “translate this to Arabic”, “summarize a PDF”, “generate an image”…",
+  "hero.browse": "Browse tools",
+  "hero.cta": "Try the AI Translator",
+  "hero.note": "Free · No sign-up required",
+
+  "assistant.eyebrow": "AI Assistant",
+  "assistant.title": "Tell me what you need — I'll find the right tool",
+  "assistant.placeholder": "Describe your task… e.g. “translate a paragraph to French”",
+  "assistant.button": "Find a tool",
+  "assistant.thinking": "Thinking…",
+  "assistant.reset": "Ask something else",
+  "assistant.result.category": "Category",
+  "assistant.result.matched": "Matched",
+  "assistant.result.open": "Open tool",
+  "assistant.result.soon": "Coming soon",
+  "assistant.suggestion.translation":
+    "It looks like you want to translate text. The AI Translator is ready for you.",
+  "assistant.suggestion.images":
+    "You're looking to work with images. No image tool is live yet — request one and we'll prioritize it.",
+  "assistant.suggestion.pdf":
+    "You mentioned a PDF. No PDF tool is live yet — request one and we'll prioritize it.",
+  "assistant.suggestion.writing":
+    "You want help with writing. No writing tool is live yet — request one and we'll prioritize it.",
+  "assistant.suggestion.utilities":
+    "You need a utility tool. No utility tool is live yet — request one and we'll prioritize it.",
+  "assistant.suggestion.unknown":
+    "I'm not sure which category fits that yet. Describe a bit more, or request a new tool and we'll build it.",
+  "assistant.empty.title": "Your suggestion appears here",
+  "assistant.empty.body":
+    "Type a task above and the assistant will match you to the right Flixo tool — or help you request a new one.",
+
+  "request.trigger": "Request a Tool",
+  "request.title": "Request a new tool",
+  "request.description": "Tell us what you need and we'll prioritize it for the next release.",
+  "request.label": "What do you need the tool to do?",
+  "request.placeholder": "e.g. A tool that converts PDF to Word while keeping formatting…",
+  "request.submit": "Submit request",
+  "request.cancel": "Cancel",
+  "request.success":
+    "Thanks! Your request has been noted — we'll prioritize it for the next release.",
+  "request.ok": "Done",
+
+  "categories.eyebrow": "Tool hubs",
+  "categories.title": "Five hubs, one workspace",
+  "categories.description":
+    "Every Flixo tool lives in one of these hubs. Each is a placeholder for now — the foundation is ready to scale.",
+  "categories.status.coming": "Coming soon",
+  "categories.status.live": "{count} live",
+  "categories.toolsLabel": "Planned tools",
+  "status.live": "Live",
+  "status.soon": "Soon",
+
+  "category.translation.name": "Translation Hub",
+  "category.translation.blurb":
+    "Translate, localize and subtitle across 20+ languages with auto detection.",
+  "category.translation.tools": "Translator · Localizer · Subtitle Translator",
+  "category.images.name": "Image Tools",
+  "category.images.blurb": "Generate, upscale and remove backgrounds from images.",
+  "category.images.tools": "Image Generator · Upscaler · Background Remover",
+  "category.pdf.name": "PDF Tools",
+  "category.pdf.blurb": "Merge, split, compress and convert PDF documents.",
+  "category.pdf.tools": "Merge · Split · Compress · PDF to Word",
+  "category.writing.name": "AI Writing",
+  "category.writing.blurb": "Summarize, rewrite and draft content with the right tone.",
+  "category.writing.tools": "Summarizer · Tone Rewriter · Email Drafter",
+  "category.utilities.name": "Utilities",
+  "category.utilities.blurb": "Format, convert and generate everyday technical snippets.",
+  "category.utilities.tools": "JSON Formatter · QR Generator · Base64 Converter",
+  "category.developer.name": "Developer Tools",
+  "category.developer.blurb": "Formatters, validators and generators for day-to-day coding.",
+  "category.developer.tools": "JSON Formatter · XML Validator · Cron Parser",
+
+  "tool.translator.name": "AI Translator",
+  "tool.translator.tagline":
+    "Translate between 20+ languages with auto detection and instant swapping.",
+  "tool.background-remover.name": "Background Remover",
+  "tool.background-remover.tagline": "Cut out image backgrounds and export transparent PNGs.",
+  "tool.image-enhancer.name": "AI Image Enhancer",
+  "tool.image-enhancer.tagline":
+    "Upscale resolution up to 8x, restore faces, remove noise and sharpen photos.",
+  "tool.image-compressor.name": "Image Compressor",
+  "tool.image-compressor.tagline": "Shrink image file size directly in your browser.",
+  "tool.qr-generator.name": "QR Generator",
+  "tool.qr-generator.tagline": "Create custom QR codes for links, text, Wi-Fi and contact details.",
+  "tool.password-generator.name": "Password Generator",
+  "tool.password-generator.tagline": "Generate strong, secure passwords with entropy meter.",
+  "tool.slug-generator.name": "Slug Generator",
+  "tool.slug-generator.tagline":
+    "Turn titles into clean, URL-friendly slugs with custom separators, case, and length.",
+  "tool.html-entity-encoder.name": "HTML Entity Encoder",
+  "tool.html-entity-encoder.tagline":
+    "Escape special characters into HTML entities and decode them back to readable text.",
+  "tool.timestamp-converter.name": "Timestamp Converter",
+  "tool.timestamp-converter.tagline":
+    "Convert Unix timestamps to human-readable dates and back, with timezone support.",
+  "tool.ai-chat.name": "AI Chat",
+  "tool.ai-chat.tagline":
+    "Ask questions, brainstorm ideas, or get instant answers from a general AI assistant.",
+  "tool.ai-chat.pageDescription":
+    "Chat with a general AI assistant for ideas, questions, and quick problem solving.",
+  "tool.prompt-improver.name": "Prompt Improver",
+  "tool.prompt-improver.tagline": "Rewrite your prompts to get clearer, more useful AI results.",
+  "tool.prompt-improver.pageDescription":
+    "Improve prompts for better performance across all AI tools and workflows.",
+  "tool.code-explainer.name": "Code Explainer",
+  "tool.code-explainer.tagline":
+    "Explain code snippets in plain language and discover what they do.",
+  "tool.code-explainer.pageDescription":
+    "Paste a code snippet and get an easy-to-understand explanation of its behavior.",
+  "tool.data-insights.name": "Data Insights",
+  "tool.data-insights.tagline": "Upload tables or CSVs and surface AI-driven insights quickly.",
+  "tool.data-insights.pageDescription":
+    "Analyze tables, CSVs, and data sets with instant AI insights and summaries.",
+
+  "why.eyebrow": "Why Flixo",
+  "why.title": "Built to remove friction, not add features",
+  "why.speed.title": "Instant by default",
+  "why.speed.body":
+    "Tools open in under a second and run in the browser — no queues, no cold starts.",
+  "why.consistency.title": "One consistent surface",
+  "why.consistency.body":
+    "Every tool shares the same layout, shortcuts and result actions, so nothing needs relearning.",
+  "why.privacy.title": "Privacy-first",
+  "why.privacy.body":
+    "Nothing is stored between sessions. Your input stays in the tab you typed it in.",
+  "why.access.title": "No accounts, no keys",
+  "why.access.body":
+    "Skip API keys, dashboards and seat management. Open a tool and start working.",
+
+  "stats.tasks": "Tasks processed",
+  "stats.languages": "Languages supported",
+  "stats.latency": "Median response time",
+  "stats.uptime": "Uptime last 12 months",
+
+  "faq.eyebrow": "FAQ",
+  "faq.title": "Questions, answered",
+  "faq.description": "Everything worth knowing before you open your first tool.",
+  "faq.q1": "Is Flixo free to use?",
+  "faq.a1":
+    "Yes. Every tool currently available on Flixo is free and requires no account or credit card.",
+  "faq.q2": "How does the AI Translator work?",
+  "faq.a2":
+    "You paste text, pick a source and target language (or let auto detect do it), and Flixo returns the translation. The current build uses a local demo engine so you can explore the full flow offline.",
+  "faq.q3": "Do you store what I type?",
+  "faq.a3":
+    "No. Input and output live only in your browser tab and disappear when you close or clear the tool.",
+  "faq.q4": "Which languages are supported?",
+  "faq.a4":
+    "Twenty languages across Latin, Cyrillic, Arabic, Hebrew, Indic and CJK scripts, plus automatic source detection.",
+  "faq.q5": "When will the other tools launch?",
+  "faq.a5":
+    "The five hubs — Translation, Images, PDF, Writing and Utilities — are the roadmap. New tools plug into the same registry and inherit the shared layout as they're built.",
+
+  "footer.tagline": "One calm workspace for every AI tool your team reaches for during the day.",
+  "footer.product": "Product",
+  "footer.featured": "Featured tools",
+  "footer.popular": "Popular tools",
+  "footer.numbers": "Numbers",
+  "footer.categories": "Categories",
+  "footer.tools": "Tools",
+  "footer.more": "More coming soon",
+  "footer.rights": "© {year} Flixo. All rights reserved.",
+  "footer.built": "Built for teams that ship fast.",
+
+  "tool.back": "All tools",
+  "translator.pageDescription": "Auto-detect the source language and translate in seconds.",
+  "translator.from": "From",
+  "translator.to": "To",
+  "translator.auto": "Auto detect",
+  "translator.swap": "Swap languages",
+  "translator.inputPlaceholder": "Type or paste text to translate…",
+  "translator.inputLabel": "Text to translate",
+  "translator.detected": "detected {language}",
+  "translator.copy": "Copy",
+  "translator.copied": "Copied",
+  "translator.copyError": "Couldn't copy to your clipboard.",
+  "translator.genericError": "Something went wrong. Please try again.",
+  "translator.clear": "Clear",
+  "translator.translate": "Translate",
+  "translator.translating": "Translating…",
+  "translator.emptyTitle": "Your translation appears here",
+  "translator.emptyBody":
+    "Pick a target language, drop in some text, and hit Translate. Auto detect figures out the source for you.",
+  "tool.large-text-translator.name": "Large Text Translator",
+  "tool.large-text-translator.tagline":
+    "Translate long-form content, web pages, and large blocks of text quickly.",
+  "tool.large-text-translator.pageDescription":
+    "Translate long-form content, web pages, and large blocks of text quickly.",
+  "tool.pdf-translator.name": "PDF Translator",
+  "tool.pdf-translator.tagline": "Translate PDF files while keeping formatting intact.",
+  "tool.pdf-translator.pageDescription": "Translate PDF files while keeping formatting intact.",
+  "tool.docx-translator.name": "DOCX Translator",
+  "tool.docx-translator.tagline": "Translate Word documents and preserve layout and styles.",
+  "tool.docx-translator.pageDescription":
+    "Translate Word documents and preserve layout and styles.",
+  "tool.image-translator.name": "Image Translator",
+  "tool.image-translator.tagline": "Translate text inside images using OCR and AI translation.",
+  "tool.image-translator.pageDescription":
+    "Translate text inside images using OCR and AI translation.",
+  "tool.ocr-translator.name": "OCR Translator",
+  "tool.ocr-translator.tagline": "Scan text from photos and translate it instantly.",
+  "tool.ocr-translator.pageDescription": "Scan text from photos and translate it instantly.",
+  "tool.subtitle-translator.name": "Subtitle Translator",
+  "tool.subtitle-translator.tagline": "Translate SRT and VTT subtitle files line by line.",
+  "tool.subtitle-translator.pageDescription": "Translate SRT and VTT subtitle files line by line.",
+  "tool.website-translator.name": "Website Translator",
+  "tool.website-translator.tagline": "Translate entire websites and web content in one click.",
+  "tool.website-translator.pageDescription":
+    "Translate entire websites and web content in one click.",
+  "tool.voice-translator.name": "Voice Translator",
+  "tool.voice-translator.tagline":
+    "Translate spoken words in real time from one language to another.",
+  "tool.voice-translator.pageDescription":
+    "Translate spoken words in real time from one language to another.",
+  "tool.language-detection.name": "Language Detector",
+  "tool.language-detection.tagline":
+    "Detect language automatically before translating text or speech.",
+  "tool.language-detection.pageDescription":
+    "Detect language automatically before translating text or speech.",
+  "tool.document-translator.name": "Document Translator",
+  "tool.document-translator.tagline": "Translate whole documents while keeping their layout.",
+  "tool.document-translator.pageDescription":
+    "Translate whole documents while keeping their layout.",
+  "tool.image-generator.name": "AI Image Generator",
+  "tool.image-generator.tagline": "Turn a text prompt into original images.",
+  "tool.image-generator.pageDescription": "Turn a text prompt into original images.",
+  "tool.image-upscaler.name": "AI Image Upscaler",
+  "tool.image-upscaler.tagline": "Increase image resolution without losing detail.",
+  "tool.image-upscaler.pageDescription": "Increase image resolution without losing detail.",
+  "tool.background-changer.name": "Background Changer",
+  "tool.background-changer.tagline": "Replace image backgrounds with one click.",
+  "tool.background-changer.pageDescription": "Replace image backgrounds with one click.",
+  "tool.image-resizer.name": "Image Resizer",
+  "tool.image-resizer.tagline": "Resize images for social media, web, or print.",
+  "tool.image-resizer.pageDescription": "Resize images for social media, web, or print.",
+  "tool.crop-image.name": "Crop Image",
+  "tool.crop-image.tagline": "Crop and frame images precisely in the browser.",
+  "tool.crop-image.pageDescription": "Crop and frame images precisely in the browser.",
+  "tool.rotate-image.name": "Rotate Image",
+  "tool.rotate-image.tagline": "Rotate images and correct orientation instantly.",
+  "tool.rotate-image.pageDescription": "Rotate images and correct orientation instantly.",
+  "tool.watermark-remover.name": "Watermark Remover",
+  "tool.watermark-remover.tagline": "Remove watermarks and unwanted overlays from images.",
+  "tool.watermark-remover.pageDescription": "Remove watermarks and unwanted overlays from images.",
+  "tool.blur-image.name": "Blur Image",
+  "tool.blur-image.tagline": "Apply soft blur effects to photos and backgrounds.",
+  "tool.blur-image.pageDescription": "Apply soft blur effects to photos and backgrounds.",
+  "tool.sharpen-image.name": "Sharpen Image",
+  "tool.sharpen-image.tagline": "Enhance photo sharpness and clear up blurry edges.",
+  "tool.sharpen-image.pageDescription": "Enhance photo sharpness and clear up blurry edges.",
+  "tool.image-converter.name": "Image Converter",
+  "tool.image-converter.tagline": "Convert images between JPG, PNG, WEBP, and AVIF formats.",
+  "tool.image-converter.pageDescription":
+    "Convert images between JPG, PNG, WEBP, and AVIF formats.",
+  "tool.image-editor.name": "AI Image Editor",
+  "tool.image-editor.tagline": "Edit image brightness, contrast, filters, and styles online.",
+  "tool.image-editor.pageDescription":
+    "Edit image brightness, contrast, filters, and styles online.",
+  "tool.color-picker.name": "Color Picker",
+  "tool.color-picker.tagline": "Pick exact HEX and RGB color codes from any uploaded photo.",
+  "tool.color-picker.pageDescription":
+    "Pick exact HEX and RGB color codes from any uploaded photo.",
+  "tool.color-palette-generator.name": "Color Palette Generator",
+  "tool.color-palette-generator.tagline": "Generate beautiful matching color palettes from images.",
+  "tool.color-palette-generator.pageDescription":
+    "Generate beautiful matching color palettes from images.",
+  "tool.image-to-pdf.name": "Image to PDF",
+  "tool.image-to-pdf.tagline": "Convert JPG and PNG photos into a single PDF document.",
+  "tool.image-to-pdf.pageDescription": "Convert JPG and PNG photos into a single PDF document.",
+  "tool.image-ocr.name": "Image to Text (OCR)",
+  "tool.image-ocr.tagline": "Extract editable text from images, screenshots, and scans.",
+  "tool.image-ocr.pageDescription": "Extract editable text from images, screenshots, and scans.",
+  "tool.face-blur.name": "Face Blur",
+  "tool.face-blur.tagline": "Automatically detect and blur faces in photos for privacy.",
+  "tool.face-blur.pageDescription": "Automatically detect and blur faces in photos for privacy.",
+  "tool.screenshot-editor.name": "Screenshot Editor",
+  "tool.screenshot-editor.tagline": "Annotate, crop, and beautify screenshots with gradients.",
+  "tool.screenshot-editor.pageDescription":
+    "Annotate, crop, and beautify screenshots with gradients.",
+  "tool.pdf-merge.name": "Merge PDF",
+  "tool.pdf-merge.tagline": "Combine multiple PDF files into one structured document.",
+  "tool.pdf-merge.pageDescription": "Combine multiple PDF files into one structured document.",
+  "tool.pdf-split.name": "Split PDF",
+  "tool.pdf-split.tagline": "Extract individual pages or split PDF documents easily.",
+  "tool.pdf-split.pageDescription": "Extract individual pages or split PDF documents easily.",
+  "tool.pdf-compress.name": "Compress PDF",
+  "tool.pdf-compress.tagline": "Reduce PDF file size without sacrificing document quality.",
+  "tool.pdf-compress.pageDescription": "Reduce PDF file size without sacrificing document quality.",
+  "tool.jpg-to-pdf.name": "JPG to PDF",
+  "tool.jpg-to-pdf.tagline": "Convert JPG image files into clean PDF documents.",
+  "tool.jpg-to-pdf.pageDescription": "Convert JPG image files into clean PDF documents.",
+  "tool.word-to-pdf.name": "Word to PDF",
+  "tool.word-to-pdf.tagline": "Convert DOC and DOCX Word files into PDF format.",
+  "tool.word-to-pdf.pageDescription": "Convert DOC and DOCX Word files into PDF format.",
+  "tool.excel-to-pdf.name": "Excel to PDF",
+  "tool.excel-to-pdf.tagline": "Convert XLS and XLSX spreadsheets into printable PDFs.",
+  "tool.excel-to-pdf.pageDescription": "Convert XLS and XLSX spreadsheets into printable PDFs.",
+  "tool.powerpoint-to-pdf.name": "PowerPoint to PDF",
+  "tool.powerpoint-to-pdf.tagline": "Convert PPT and PPTX presentations into PDF slides.",
+  "tool.powerpoint-to-pdf.pageDescription": "Convert PPT and PPTX presentations into PDF slides.",
+  "tool.pdf-to-word.name": "PDF to Word",
+  "tool.pdf-to-word.tagline": "Convert PDF documents into editable Word files.",
+  "tool.pdf-to-word.pageDescription": "Convert PDF documents into editable Word files.",
+  "tool.pdf-to-jpg.name": "PDF to JPG",
+  "tool.pdf-to-jpg.tagline": "Extract PDF pages as high quality JPG images.",
+  "tool.pdf-to-jpg.pageDescription": "Extract PDF pages as high quality JPG images.",
+  "tool.pdf-ocr.name": "PDF OCR",
+  "tool.pdf-ocr.tagline": "Convert scanned PDF documents into searchable text.",
+  "tool.pdf-ocr.pageDescription": "Convert scanned PDF documents into searchable text.",
+  "tool.pdf-unlock.name": "PDF Unlock",
+  "tool.pdf-unlock.tagline": "Remove passwords and restrictions from PDF files.",
+  "tool.pdf-unlock.pageDescription": "Remove passwords and restrictions from PDF files.",
+  "tool.pdf-protect.name": "PDF Protect",
+  "tool.pdf-protect.tagline": "Encrypt and password protect sensitive PDF documents.",
+  "tool.pdf-protect.pageDescription": "Encrypt and password protect sensitive PDF documents.",
+  "tool.pdf-rotate.name": "Rotate PDF",
+  "tool.pdf-rotate.tagline": "Rotate PDF pages clockwise or counterclockwise.",
+  "tool.pdf-rotate.pageDescription": "Rotate PDF pages clockwise or counterclockwise.",
+  "tool.pdf-sign.name": "PDF Sign",
+  "tool.pdf-sign.tagline": "Add electronic signatures to PDF contracts and forms.",
+  "tool.pdf-sign.pageDescription": "Add electronic signatures to PDF contracts and forms.",
+  "tool.pdf-edit.name": "Edit PDF",
+  "tool.pdf-edit.tagline": "Add text, annotations, and shapes to PDF files.",
+  "tool.pdf-edit.pageDescription": "Add text, annotations, and shapes to PDF files.",
+  "tool.pdf-extract-pages.name": "Extract Pages",
+  "tool.pdf-extract-pages.tagline": "Save selected pages from a PDF as a new document.",
+  "tool.pdf-extract-pages.pageDescription": "Save selected pages from a PDF as a new document.",
+  "tool.pdf-watermark.name": "Add Watermark",
+  "tool.pdf-watermark.tagline": "Add custom text or image watermarks to PDF documents.",
+  "tool.pdf-watermark.pageDescription": "Add custom text or image watermarks to PDF documents.",
+  "tool.ai-writer.name": "AI Writer",
+  "tool.ai-writer.tagline": "Draft essays, articles, and marketing copy with AI.",
+  "tool.ai-writer.pageDescription": "Draft essays, articles, and marketing copy with AI.",
+  "tool.article-generator.name": "Article Generator",
+  "tool.article-generator.tagline": "Generate long-form articles with structured headings.",
+  "tool.article-generator.pageDescription": "Generate long-form articles with structured headings.",
+  "tool.blog-generator.name": "Blog Generator",
+  "tool.blog-generator.tagline": "Create SEO-optimized blog posts on any topic.",
+  "tool.blog-generator.pageDescription": "Create SEO-optimized blog posts on any topic.",
+  "tool.rewrite-text.name": "Rewrite Text",
+  "tool.rewrite-text.tagline": "Paraphrase and improve sentences for clarity and style.",
+  "tool.rewrite-text.pageDescription": "Paraphrase and improve sentences for clarity and style.",
+  "tool.summarizer.name": "Summarizer",
+  "tool.summarizer.tagline": "Condense long articles and documents into key bullet points.",
+  "tool.summarizer.pageDescription": "Condense long articles and documents into key bullet points.",
+  "tool.grammar-checker.name": "Grammar Checker",
+  "tool.grammar-checker.tagline": "Fix spelling, punctuation, and grammatical errors instantly.",
+  "tool.grammar-checker.pageDescription":
+    "Fix spelling, punctuation, and grammatical errors instantly.",
+  "tool.audio-converter.name": "Audio Converter",
+  "tool.audio-converter.tagline":
+    "Convert audio files (MP3, OGG, FLAC and more) to WAV in your browser.",
+  "tool.audio-converter.pageDescription":
+    "Convert audio files (MP3, OGG, FLAC and more) to WAV in your browser.",
+  "tool.audio-compressor.name": "Audio Compressor",
+  "tool.audio-compressor.tagline":
+    "Compress audio files while controlling output quality and bitrate.",
+  "tool.audio-compressor.pageDescription":
+    "Compress audio files while controlling output quality and bitrate.",
+  "tool.video-converter.name": "Video Converter",
+  "tool.video-converter.tagline": "Convert video to MP4 (H.264) or AVI (MPEG-4) in your browser.",
+  "tool.video-converter.pageDescription":
+    "Convert video to MP4 (H.264) or AVI (MPEG-4) in your browser.",
+  "tool.video-compressor.name": "Video Compressor",
+  "tool.video-compressor.tagline":
+    "Reduce video file size with configurable quality and output settings.",
+  "tool.video-compressor.pageDescription":
+    "Reduce video file size with configurable quality and output settings.",
+  "tool.video-trimmer.name": "Video Trimmer",
+  "tool.video-trimmer.tagline": "Trim a selected portion of a video using start and end controls.",
+  "tool.video-trimmer.pageDescription":
+    "Trim a selected portion of a video using start and end controls.",
+  "tool.gif-maker.name": "GIF Maker",
+  "tool.gif-maker.tagline": "Create an animated GIF from uploaded images or supported video.",
+  "tool.gif-maker.pageDescription":
+    "Create an animated GIF from uploaded images or supported video.",
+  "tool.gif-compressor.name": "GIF Compressor",
+  "tool.gif-compressor.tagline": "Reduce GIF file size while preserving acceptable visual quality.",
+  "tool.gif-compressor.pageDescription":
+    "Reduce GIF file size while preserving acceptable visual quality.",
+  "tool.audio-cutter.name": "Audio Cutter",
+  "tool.audio-cutter.tagline":
+    "Cut a selected portion from an audio file using start and end controls.",
+  "tool.audio-cutter.pageDescription":
+    "Cut a selected portion from an audio file using start and end controls.",
+  "tool.video-to-gif.name": "Video to GIF",
+  "tool.video-to-gif.tagline": "Convert a supported video segment into an animated GIF.",
+  "tool.video-to-gif.pageDescription": "Convert a supported video segment into an animated GIF.",
+  "tool.image-to-gif.name": "Image to GIF",
+  "tool.image-to-gif.tagline": "Create an animated GIF from multiple uploaded images.",
+  "tool.image-to-gif.pageDescription": "Create an animated GIF from multiple uploaded images.",
+  "tool.pdf-to-excel.name": "PDF to Excel",
+  "tool.pdf-to-excel.tagline":
+    "Convert suitable PDF tables and content into an Excel-compatible file.",
+  "tool.pdf-to-excel.pageDescription":
+    "Convert suitable PDF tables and content into an Excel-compatible file.",
+  "tool.pdf-to-powerpoint.name": "PDF to PowerPoint",
+  "tool.pdf-to-powerpoint.tagline":
+    "Convert suitable PDF pages and content into a PowerPoint-compatible file.",
+  "tool.pdf-to-powerpoint.pageDescription":
+    "Convert suitable PDF pages and content into a PowerPoint-compatible file.",
+  "tool.pdf-to-text.name": "PDF to Text",
+  "tool.pdf-to-text.tagline": "Extract selectable text from PDF documents.",
+  "tool.pdf-to-text.pageDescription": "Extract selectable text from PDF documents.",
+  "tool.pdf-crop.name": "PDF Crop",
+  "tool.pdf-crop.tagline": "Crop PDF pages with configurable crop boundaries.",
+  "tool.pdf-crop.pageDescription": "Crop PDF pages with configurable crop boundaries.",
+  "tool.pdf-page-numbers.name": "PDF Page Numbers",
+  "tool.pdf-page-numbers.tagline": "Add configurable page numbers to PDF pages.",
+  "tool.pdf-page-numbers.pageDescription": "Add configurable page numbers to PDF pages.",
+  "tool.pdf-header-footer.name": "PDF Header Footer",
+  "tool.pdf-header-footer.tagline": "Add customizable headers and footers to PDF pages.",
+  "tool.pdf-header-footer.pageDescription": "Add customizable headers and footers to PDF pages.",
+  "tool.text-to-pdf.name": "Text to PDF",
+  "tool.text-to-pdf.tagline": "Convert entered or pasted text into a downloadable PDF.",
+  "tool.text-to-pdf.pageDescription": "Convert entered or pasted text into a downloadable PDF.",
+  "tool.text-to-word.name": "Text to Word",
+  "tool.text-to-word.tagline": "Convert entered or pasted text into a downloadable DOCX document.",
+  "tool.text-to-word.pageDescription":
+    "Convert entered or pasted text into a downloadable DOCX document.",
+  "tool.markdown-to-pdf.name": "Markdown to PDF",
+  "tool.markdown-to-pdf.tagline": "Convert Markdown content into a formatted PDF.",
+  "tool.markdown-to-pdf.pageDescription": "Convert Markdown content into a formatted PDF.",
+  "tool.markdown-to-word.name": "Markdown to Word",
+  "tool.markdown-to-word.tagline": "Convert Markdown content into a formatted DOCX document.",
+  "tool.markdown-to-word.pageDescription":
+    "Convert Markdown content into a formatted DOCX document.",
+  "tool.remove-duplicate-lines.name": "Remove Duplicate Lines",
+  "tool.remove-duplicate-lines.tagline":
+    "Remove duplicate lines from any text with case-insensitive and whitespace-aware matching.",
+  "tool.remove-duplicate-lines.pageDescription":
+    "Remove duplicate lines from any text with case-insensitive and whitespace-aware matching.",
+  "tool.remove-empty-lines.name": "Remove Empty Lines",
+  "tool.remove-empty-lines.tagline":
+    "Strip blank and whitespace-only lines from any text instantly.",
+  "tool.remove-empty-lines.pageDescription":
+    "Strip blank and whitespace-only lines from any text instantly.",
+  "tool.sort-lines.name": "Sort Lines",
+  "tool.sort-lines.tagline":
+    "Sort text lines alphabetically, by length, or shuffle them with case and blank options.",
+  "tool.sort-lines.pageDescription":
+    "Sort text lines alphabetically, by length, or shuffle them with case and blank options.",
+  "tool.reverse-text.name": "Reverse Text",
+  "tool.reverse-text.tagline": "Reverse text by characters, words, or entire lines instantly.",
+  "tool.reverse-text.pageDescription":
+    "Reverse text by characters, words, or entire lines instantly.",
+  "tool.add-line-numbers.name": "Add Line Numbers",
+  "tool.add-line-numbers.tagline":
+    "Add sequential line numbers to any text with custom separators, padding, and start offset.",
+  "tool.add-line-numbers.pageDescription":
+    "Add sequential line numbers to any text with custom separators, padding, and start offset.",
+  "tool.word-frequency.name": "Word Frequency Analyzer",
+  "tool.word-frequency.tagline":
+    "Analyze word frequency in any text with sorting, case sensitivity, and length filters.",
+  "tool.word-frequency.pageDescription":
+    "Analyze word frequency in any text with sorting, case sensitivity, and length filters.",
+  "tool.text-compare.name": "Text Compare",
+  "tool.text-compare.tagline":
+    "Compare two texts line by line and highlight additions, removals, and matches.",
+  "tool.text-compare.pageDescription":
+    "Compare two texts line by line and highlight additions, removals, and matches.",
+  "tool.find-and-replace.name": "Find and Replace",
+  "tool.find-and-replace.tagline":
+    "Find and replace text across long documents with optional regex and case-sensitive matching.",
+  "tool.find-and-replace.pageDescription":
+    "Find and replace text across long documents with optional regex and case-sensitive matching.",
+  "tool.xml-formatter.name": "XML Formatter",
+  "tool.xml-formatter.tagline":
+    "Beautify, minify, and validate XML with custom indentation options.",
+  "tool.xml-formatter.pageDescription":
+    "Beautify, minify, and validate XML with custom indentation options.",
+  "tool.xml-validator.name": "XML Validator",
+  "tool.xml-validator.tagline":
+    "Validate XML well-formedness, tag balance, and structure with instant error reporting.",
+  "tool.xml-validator.pageDescription":
+    "Validate XML well-formedness, tag balance, and structure with instant error reporting.",
+  "tool.html-formatter.name": "HTML Formatter",
+  "tool.html-formatter.tagline":
+    "Beautify and minify HTML with proper nesting and configurable indentation.",
+  "tool.html-formatter.pageDescription":
+    "Beautify and minify HTML with proper nesting and configurable indentation.",
+  "tool.sql-formatter.name": "SQL Formatter",
+  "tool.sql-formatter.tagline":
+    "Beautify and minify SQL queries with keyword uppercasing and configurable indentation.",
+  "tool.sql-formatter.pageDescription":
+    "Beautify and minify SQL queries with keyword uppercasing and configurable indentation.",
+  "tool.yaml-formatter.name": "YAML Formatter",
+  "tool.yaml-formatter.tagline":
+    "Beautify and normalize YAML with configurable indentation and validation.",
+  "tool.yaml-formatter.pageDescription":
+    "Beautify and normalize YAML with configurable indentation and validation.",
+  "tool.markdown-table-generator.name": "Markdown Table Generator",
+  "tool.markdown-table-generator.tagline":
+    "Build Markdown tables visually and export ready-to-paste pipe-formatted output.",
+  "tool.markdown-table-generator.pageDescription":
+    "Build Markdown tables visually and export ready-to-paste pipe-formatted output.",
+  "tool.cron-parser.name": "Cron Parser",
+  "tool.cron-parser.tagline":
+    "Translate cron expressions into plain language with field breakdowns and upcoming runs.",
+  "tool.cron-parser.pageDescription":
+    "Translate cron expressions into plain language with field breakdowns and upcoming runs.",
+  "tool.css-gradient-generator.name": "CSS Gradient Generator",
+  "tool.css-gradient-generator.tagline":
+    "Design linear, radial, and conic CSS gradients visually with color stops and angle controls.",
+  "tool.css-gradient-generator.pageDescription":
+    "Design linear, radial, and conic CSS gradients visually with color stops and angle controls.",
+  "tool.random-name.name": "Random Name Picker",
+  "tool.random-name.tagline":
+    "Pick one or more random names from a custom list with optional duplicate-free selection.",
+  "tool.random-name.pageDescription":
+    "Pick one or more random names from a custom list with optional duplicate-free selection.",
+  "tool.qr-reader.name": "QR Reader",
+  "tool.qr-reader.tagline":
+    "Scan and decode QR codes from uploaded images or your camera into text or links.",
+  "tool.qr-reader.pageDescription":
+    "Scan and decode QR codes from uploaded images or your camera into text or links.",
+  "tool.password-checker.name": "Password Checker",
+  "tool.password-checker.tagline":
+    "Check password strength, entropy, and estimated crack time with actionable tips.",
+  "tool.password-checker.pageDescription":
+    "Check password strength, entropy, and estimated crack time with actionable tips.",
+  "tool.csv-viewer.name": "CSV Viewer",
+  "tool.csv-viewer.tagline":
+    "Preview CSV data as a table with delimiter selection and header detection.",
+  "tool.csv-viewer.pageDescription":
+    "Preview CSV data as a table with delimiter selection and header detection.",
+} as const;
+
+export type TranslationKey = keyof typeof en;
+export type Dictionary = Record<TranslationKey, string>;

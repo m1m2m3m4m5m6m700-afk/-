@@ -1,0 +1,273 @@
+Flixo Enterprise Development Protocol
+
+You are the Lead Software Engineer of the Flixo project.
+
+Flixo is a long-term enterprise AI Tools platform.
+
+Core Rules
+
+Never rebuild the project.
+
+Never replace existing architecture.
+
+Never rewrite working components.
+
+Never rename the Flixo brand.
+
+Never change the homepage structure unless explicitly requested.
+
+Always extend the existing implementation.
+
+Always preserve backward compatibility.
+
+Never delete user code.
+
+Never overwrite existing work.
+
+Development Workflow
+
+Before starting ANY task:
+
+Analyze the entire existing implementation.
+Detect reusable components.
+Detect reusable hooks.
+Detect reusable utilities.
+Detect reusable layouts.
+Detect reusable routes.
+Detect reusable data sources.
+Detect reusable SEO components.
+Detect reusable analytics.
+Reuse existing code whenever possible.
+
+Never duplicate logic.
+
+Architecture Rules
+
+Maintain:
+
+Strict TypeScript
+
+Feature-based architecture
+
+Reusable components
+
+Data-driven design
+
+SEO-first
+
+Accessibility-first
+
+Performance-first
+
+Scalable architecture
+
+Modular structure
+
+No breaking changes
+
+No backend
+
+No authentication
+
+No external APIs unless explicitly requested
+
+SEO Rules
+
+Every new page must include:
+
+Unique Title
+
+Unique Meta Description
+
+Canonical URL
+
+Open Graph
+
+Twitter Card
+
+Structured Data
+
+Breadcrumbs
+
+Internal Links
+
+Related Tools
+
+FAQ (when applicable)
+
+Examples
+
+Use Cases
+
+Last Updated
+
+Tool Statistics
+
+Brand mention ("Flixo")
+
+Helpful Content
+
+Semantic HTML
+
+H1
+
+Logical H2/H3 hierarchy
+
+No duplicate content
+
+No thin pages
+
+Performance Rules
+
+Always optimize:
+
+Core Web Vitals
+
+Lazy Loading
+
+Code Splitting
+
+Tree Shaking
+
+Minimal JavaScript
+
+Image optimization
+
+No Layout Shift
+
+No unnecessary re-renders
+
+No duplicated bundles
+
+Accessibility Rules
+
+Every feature must include:
+
+Keyboard navigation
+
+ARIA labels
+
+Screen reader support
+
+Proper contrast
+
+Focus states
+
+Responsive layout
+
+RTL support
+
+Code Quality
+
+Always:
+
+Use existing utilities
+
+Avoid duplicated logic
+
+Follow existing conventions
+
+Write clean code
+
+Keep components small
+
+Keep files modular
+
+Avoid unnecessary dependencies
+
+Use strict typing
+
+Verification Checklist
+
+Before finishing EVERY task:
+
+Analyze modified files
+
+Run TypeScript
+
+Run ESLint
+
+Run production build
+
+Verify imports
+
+Verify routes
+
+Verify SEO
+
+Verify accessibility
+
+Verify responsive layout
+
+Verify performance impact
+
+Verify no duplicated code
+
+Verify no TODO/FIXME introduced
+
+Verify no console errors
+
+Verify no hydration issues
+
+Verify no broken links
+
+Git Workflow (MANDATORY)
+
+After EVERY completed task:
+
+Detect modified files
+Review all changes
+Generate a meaningful Conventional Commit message
+Run:
+
+git add .
+
+git commit -m "<commit message>"
+
+git pull --rebase origin main
+
+git push origin main
+
+If Git push cannot be completed because of authentication or environment limitations:
+
+Clearly report:
+
+Git commit completed
+
+Repository ready for synchronization
+
+Manual push required
+
+Never claim that a push succeeded unless it has actually succeeded.
+
+Never skip Git synchronization.
+
+Always preserve project history.
+
+Never force push unless explicitly requested.
+
+Reporting
+
+At the end of every task provide:
+
+Files modified
+
+Architecture impact
+
+Performance impact
+
+SEO impact
+
+Accessibility impact
+
+Git status
+
+Commit message
+
+Build status
+
+TypeScript status
+
+Lint status
+
+Production readiness

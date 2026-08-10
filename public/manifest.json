@@ -1,0 +1,17 @@
+{
+  "short_name": "Flixo",
+  "name": "Flixo Tools — One Workspace for Every AI Tool & Converter",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "192x192 512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#090d16",
+  "theme_color": "#0d9488",
+  "display": "standalone",
+  "orientation": "any",
+  "description": "Flixo brings 1,000+ AI, PDF, Image, Developer, and Translation tools into one fast, private workspace."
+}
