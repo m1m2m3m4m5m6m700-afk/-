@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 const root = process.cwd();
-const SITE_URL = "https://flixotools.com";
+const SITE_URL = "https://flixoai.vercel.app";
 const today = new Date().toISOString().split("T")[0];
 
 function read(relativePath) {
