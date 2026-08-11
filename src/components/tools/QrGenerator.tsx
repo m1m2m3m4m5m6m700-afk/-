@@ -17,10 +17,12 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useI18n } from "@/lib/i18n";
 
 type PresetMode = "url" | "text" | "wifi" | "email" | "phone";
 
 export function QrGenerator() {
+  const { t } = useI18n();
   const [mode, setMode] = useState<PresetMode>("url");
   const [input, setInput] = useState("https://flixotools.com");
 
@@ -81,7 +83,7 @@ export function QrGenerator() {
       .then((url) => setQrDataUrl(url))
       .catch((err) => {
         console.error(err);
-        setError("Invalid QR input text or format.");
+        setError(t("qr.error.invalid"));
       });
 
     QRCode.toString(payload, {
@@ -96,7 +98,7 @@ export function QrGenerator() {
     })
       .then((svg) => setQrSvgString(svg))
       .catch(() => {});
-  }, [payload, size, darkColor, lightColor, ecLevel]);
+  }, [payload, size, darkColor, lightColor, ecLevel, t]);
 
   const handleCopyText = async () => {
     if (!payload) return;
@@ -105,7 +107,7 @@ export function QrGenerator() {
       setCopied(true);
       setTimeout(() => setCopied(false), 1600);
     } catch {
-      setError("Failed to copy content.");
+      setError(t("qr.error.copy"));
     }
   };
 
@@ -146,11 +148,11 @@ export function QrGenerator() {
     <div className="rounded-3xl border border-border bg-card/80 p-4 shadow-soft backdrop-blur md:p-6">
       <div className="flex flex-wrap items-center gap-2 border-b border-border/60 pb-4">
         {[
-          { id: "url", label: "Website URL", icon: Link2 },
-          { id: "text", label: "Plain Text", icon: Type },
-          { id: "wifi", label: "Wi-Fi Network", icon: Wifi },
-          { id: "email", label: "Email", icon: Mail },
-          { id: "phone", label: "Phone", icon: Phone },
+          { id: "url", label: t("qr.mode.url"), icon: Link2 },
+          { id: "text", label: t("qr.mode.text"), icon: Type },
+          { id: "wifi", label: t("qr.mode.wifi"), icon: Wifi },
+          { id: "email", label: t("qr.mode.email"), icon: Mail },
+          { id: "phone", label: t("qr.mode.phone"), icon: Phone },
         ].map((item) => {
           const Icon = item.icon;
           const isActive = mode === item.id;
@@ -159,7 +161,7 @@ export function QrGenerator() {
               key={item.id}
               type="button"
               aria-pressed={isActive}
-              aria-label={`Switch QR mode to ${item.label}`}
+              aria-label={t("qr.switchMode", { mode: item.label })}
               onClick={() => {
                 setMode(item.id as PresetMode);
                 setError(null);
@@ -181,11 +183,11 @@ export function QrGenerator() {
         <div className="space-y-5">
           {mode === "url" && (
             <div>
-              <Label className="text-xs font-semibold">Website Address (URL)</Label>
+              <Label className="text-xs font-semibold">{t("qr.url.label")}</Label>
               <Input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="https://example.com"
+                placeholder={t("qr.url.placeholder")}
                 className="mt-1.5 text-sm rounded-xl"
               />
             </div>
@@ -193,11 +195,11 @@ export function QrGenerator() {
 
           {mode === "text" && (
             <div>
-              <Label className="text-xs font-semibold">Content / Text Message</Label>
+              <Label className="text-xs font-semibold">{t("qr.text.label")}</Label>
               <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Type or paste any text..."
+                placeholder={t("qr.text.placeholder")}
                 className="mt-1.5 min-h-32 w-full rounded-xl border border-input bg-background/60 p-3 text-sm outline-none placeholder:text-muted-foreground"
               />
             </div>
@@ -206,34 +208,34 @@ export function QrGenerator() {
           {mode === "wifi" && (
             <div className="space-y-4">
               <div>
-                <Label className="text-xs font-semibold">Network Name (SSID)</Label>
+                <Label className="text-xs font-semibold">{t("qr.wifi.ssid")}</Label>
                 <Input
                   value={wifiSsid}
                   onChange={(e) => setWifiSsid(e.target.value)}
-                  placeholder="MyHomeWiFi"
+                  placeholder={t("qr.wifi.ssidPlaceholder")}
                   className="mt-1.5 text-sm rounded-xl"
                 />
               </div>
               <div>
-                <Label className="text-xs font-semibold">Password</Label>
+                <Label className="text-xs font-semibold">{t("qr.wifi.password")}</Label>
                 <Input
                   type="password"
                   value={wifiPass}
                   onChange={(e) => setWifiPass(e.target.value)}
-                  placeholder="Wi-Fi Password"
+                  placeholder={t("qr.wifi.passwordPlaceholder")}
                   className="mt-1.5 text-sm rounded-xl"
                 />
               </div>
               <div>
-                <Label className="text-xs font-semibold">Encryption Type</Label>
+                <Label className="text-xs font-semibold">{t("qr.wifi.encryption")}</Label>
                 <select
                   value={wifiEncryption}
                   onChange={(e) => setWifiEncryption(e.target.value as "WPA" | "WEP" | "nopass")}
                   className="mt-1.5 w-full rounded-xl border border-input bg-background/60 p-2 text-sm"
                 >
-                  <option value="WPA">WPA / WPA2 / WPA3</option>
-                  <option value="WEP">WEP</option>
-                  <option value="nopass">None (Open Network)</option>
+                  <option value="WPA">{t("qr.wifi.wpa")}</option>
+                  <option value="WEP">{t("qr.wifi.wep")}</option>
+                  <option value="nopass">{t("qr.wifi.open")}</option>
                 </select>
               </div>
             </div>
@@ -242,21 +244,21 @@ export function QrGenerator() {
           {mode === "email" && (
             <div className="space-y-4">
               <div>
-                <Label className="text-xs font-semibold">Recipient Email Address</Label>
+                <Label className="text-xs font-semibold">{t("qr.email.to")}</Label>
                 <Input
                   type="email"
                   value={emailTo}
                   onChange={(e) => setEmailTo(e.target.value)}
-                  placeholder="name@example.com"
+                  placeholder={t("qr.email.toPlaceholder")}
                   className="mt-1.5 text-sm rounded-xl"
                 />
               </div>
               <div>
-                <Label className="text-xs font-semibold">Subject Line (Optional)</Label>
+                <Label className="text-xs font-semibold">{t("qr.email.subject")}</Label>
                 <Input
                   value={emailSubject}
                   onChange={(e) => setEmailSubject(e.target.value)}
-                  placeholder="Inquiry about project"
+                  placeholder={t("qr.email.subjectPlaceholder")}
                   className="mt-1.5 text-sm rounded-xl"
                 />
               </div>
@@ -265,12 +267,12 @@ export function QrGenerator() {
 
           {mode === "phone" && (
             <div>
-              <Label className="text-xs font-semibold">Phone Number</Label>
+              <Label className="text-xs font-semibold">{t("qr.phone.label")}</Label>
               <Input
                 type="tel"
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
-                placeholder="+1 (555) 000-0000"
+                placeholder={t("qr.phone.placeholder")}
                 className="mt-1.5 text-sm rounded-xl"
               />
             </div>
@@ -279,12 +281,12 @@ export function QrGenerator() {
           <div className="rounded-2xl border border-border/60 bg-surface/40 p-4 space-y-3">
             <span className="text-xs font-semibold uppercase tracking-wider text-foreground flex items-center gap-1.5">
               <Sliders className="size-3.5 text-primary" />
-              Customization Options
+              {t("qr.customization")}
             </span>
 
             <div className="grid grid-cols-2 gap-3 pt-1">
               <div>
-                <Label className="text-[11px] text-muted-foreground">Foreground Color</Label>
+                <Label className="text-[11px] text-muted-foreground">{t("qr.fgColor")}</Label>
                 <div className="flex items-center gap-2 mt-1">
                   <input
                     type="color"
@@ -297,7 +299,7 @@ export function QrGenerator() {
               </div>
 
               <div>
-                <Label className="text-[11px] text-muted-foreground">Background Color</Label>
+                <Label className="text-[11px] text-muted-foreground">{t("qr.bgColor")}</Label>
                 <div className="flex items-center gap-2 mt-1">
                   <input
                     type="color"
@@ -319,7 +321,7 @@ export function QrGenerator() {
               className="rounded-xl text-xs text-muted-foreground"
             >
               <Trash2 className="me-1.5 size-3.5" />
-              Clear Fields
+              {t("qr.clear")}
             </Button>
             <Button
               variant="outline"
@@ -333,7 +335,7 @@ export function QrGenerator() {
               ) : (
                 <Copy className="me-1.5 size-3.5" />
               )}
-              {copied ? "Copied Content" : "Copy Payload"}
+              {copied ? t("qr.copiedContent") : t("qr.copyPayload")}
             </Button>
           </div>
         </div>
@@ -341,20 +343,20 @@ export function QrGenerator() {
         <div className="flex flex-col items-center justify-between rounded-2xl border border-border/70 bg-surface/60 p-6 text-center">
           <div className="w-full">
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Live QR Preview
+              {t("qr.preview")}
             </span>
 
             <div className="my-6 grid min-h-64 place-items-center rounded-2xl border border-border bg-white p-4 shadow-sm">
               {qrDataUrl ? (
                 <img
                   src={qrDataUrl}
-                  alt="Generated QR Code"
+                  alt={t("qr.previewAlt")}
                   className="max-h-56 object-contain animate-rise"
                 />
               ) : (
                 <div className="flex flex-col items-center justify-center text-muted-foreground">
                   <QrCode className="size-10 text-muted-foreground/40 mb-2" />
-                  <p className="text-xs">Enter content to preview QR code</p>
+                  <p className="text-xs">{t("qr.previewEmpty")}</p>
                 </div>
               )}
             </div>

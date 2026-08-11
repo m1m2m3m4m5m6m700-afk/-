@@ -1,5 +1,6 @@
 import { History, Trash2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/lib/i18n";
 
 interface RecentTasksProps {
   tasks: string[];
@@ -8,6 +9,7 @@ interface RecentTasksProps {
 }
 
 export function RecentTasks({ tasks, onSelectTask, onClearTasks }: RecentTasksProps) {
+  const { t } = useI18n();
   if (tasks.length === 0) return null;
 
   return (
@@ -15,7 +17,7 @@ export function RecentTasks({ tasks, onSelectTask, onClearTasks }: RecentTasksPr
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5">
           <History className="size-4 text-primary" />
-          <span>Recent Tasks</span>
+          <span>{t("brain.section.recentTasks")}</span>
         </h3>
 
         <button
@@ -23,7 +25,7 @@ export function RecentTasks({ tasks, onSelectTask, onClearTasks }: RecentTasksPr
           className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-1 font-medium transition-colors"
         >
           <Trash2 className="size-3" />
-          <span>Clear history</span>
+          <span>{t("brain.section.clearHistory")}</span>
         </button>
       </div>
 

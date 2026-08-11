@@ -1,5 +1,6 @@
 import { Flame, ArrowUpRight, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useI18n } from "@/lib/i18n";
 
 interface TrendingTasksProps {
   onSelectTask: (taskPrompt: string) => void;
@@ -45,15 +46,16 @@ const TRENDING_TASKS = [
 ];
 
 export function TrendingTasks({ onSelectTask }: TrendingTasksProps) {
+  const { t } = useI18n();
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5">
           <Flame className="size-4 text-amber-500" />
-          <span>Trending Tasks</span>
+          <span>{t("brain.section.trendingTasks")}</span>
         </h3>
         <span className="text-[11px] text-muted-foreground font-medium">
-          Popular community workflows
+          {t("brain.section.trendingHint")}
         </span>
       </div>
 

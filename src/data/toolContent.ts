@@ -1,6 +1,7 @@
 import { categoryById } from "./categories";
 import { getToolBySlug, tools } from "./tools";
 import { getToolSeo, type ToolFaqItem } from "./toolSeo";
+import { toolContentLocales, type ToolContentOverride } from "./toolContentLocales";
 
 export type ProcessingType = "Local" | "Cloud" | "Hybrid";
 
@@ -3265,36 +3266,69 @@ export function getAllToolContentEntries() {
   return Object.entries(toolContentRegistry).map(([slug, entry]) => ({ slug, ...entry }));
 }
 
-export function getToolContent(slug: string): ToolContentData {
+/**
+ * Deep-merge an English `ToolContentData` base with a locale override. Only
+ * non-empty override values replace the base — empty arrays / undefined fields
+ * fall back to English so we never produce placeholder or fake content.
+ */
+function applyContentOverride(
+  base: ToolContentData,
+  override: ToolContentOverride | undefined,
+): ToolContentData {
+  if (!override) return base;
+  const has = <T>(value: T | undefined): value is T =>
+    value !== undefined && value !== null && !(Array.isArray(value) && value.length === 0);
+
+  return {
+    slug: base.slug,
+    overview: has(override.overview) ? override.overview! : base.overview,
+    howItWorks: has(override.howItWorks) ? override.howItWorks! : base.howItWorks,
+    features: has(override.features) ? override.features! : base.features,
+    useCases: has(override.useCases) ? override.useCases! : base.useCases,
+    examples: has(override.examples) ? override.examples! : base.examples,
+    faqs: has(override.faqs) ? override.faqs! : base.faqs,
+    eeat: {
+      author: override.eeat?.author ?? base.eeat.author,
+      lastUpdated: override.eeat?.lastUpdated ?? base.eeat.lastUpdated,
+      version: override.eeat?.version ?? base.eeat.version,
+      supportedPlatforms: override.eeat?.supportedPlatforms ?? base.eeat.supportedPlatforms,
+      privacyStatement: override.eeat?.privacyStatement ?? base.eeat.privacyStatement,
+      processingType: override.eeat?.processingType ?? base.eeat.processingType,
+    },
+  };
+}
+
+export function getToolContent(slug: string, locale?: string): ToolContentData {
   const seo = getToolSeo(slug);
   const tool = getToolBySlug(slug) || tools.find((entry) => entry.id === slug);
   const category = tool ? categoryById?.get(tool.categoryId) : undefined;
   const entry = toolContentRegistry[slug];
-
-  if (entry) {
-    return { slug, ...entry };
-  }
-
   const toolName = tool?.name || seo.title;
   const categoryName = category?.name || "Utilities";
 
-  return {
-    slug,
-    overview: seo.overview,
-    howItWorks: seo.howToUse,
-    features: seo.features,
-    useCases: [
-      `Use ${toolName} for fast ${categoryName.toLowerCase()} workflows in the browser.`,
-      `Handle everyday ${toolName.toLowerCase()} tasks without extra software.`,
-    ],
-    faqs: seo.faqs,
-    eeat: {
-      author: defaultAuthor,
-      lastUpdated: "2026-07-31",
-      version: "v1.0.0",
-      supportedPlatforms: defaultPlatforms,
-      privacyStatement: `Flixo keeps ${toolName.toLowerCase()} workflows privacy-conscious and browser-first.`,
-      processingType: "Local",
-    },
-  };
+  const english: ToolContentData = entry
+    ? { slug, ...entry }
+    : {
+        slug,
+        overview: seo.overview,
+        howItWorks: seo.howToUse,
+        features: seo.features,
+        useCases: [
+          `Use ${toolName} for fast ${categoryName.toLowerCase()} workflows in the browser.`,
+          `Handle everyday ${toolName.toLowerCase()} tasks without extra software.`,
+        ],
+        faqs: seo.faqs,
+        eeat: {
+          author: defaultAuthor,
+          lastUpdated: "2026-07-31",
+          version: "v1.0.0",
+          supportedPlatforms: defaultPlatforms,
+          privacyStatement: `Flixo keeps ${toolName.toLowerCase()} workflows privacy-conscious and browser-first.`,
+          processingType: "Local",
+        },
+      };
+
+  if (!locale || locale === "en") return english;
+  const override = toolContentLocales[locale]?.[slug];
+  return applyContentOverride(english, override);
 }

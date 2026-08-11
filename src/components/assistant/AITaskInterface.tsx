@@ -7,6 +7,8 @@ import { AIPromptBox } from "./AIPromptBox";
 import { UnknownTaskDialog } from "./UnknownTaskDialog";
 import { HeroStats, QuickAccessBar, TrustBar } from "./HomeSignals";
 import { FlixoBrain, type BrainStatus, type BrainProcessResult } from "@/lib/brain";
+import { useI18n } from "@/lib/i18n";
+import type { TranslationKey } from "@/lib/i18n/locales/en";
 import type { CategoryId } from "@/data/categories";
 
 interface AITaskInterfaceProps {
@@ -18,6 +20,7 @@ const brain = new FlixoBrain();
 
 export function AITaskInterface({ onRequestTool, onSelectCategory }: AITaskInterfaceProps) {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [prompt, setPrompt] = useState("");
   const [status, setStatus] = useState<BrainStatus>("idle");
   const [statusText, setStatusText] = useState("Ready");
@@ -26,6 +29,20 @@ export function AITaskInterface({ onRequestTool, onSelectCategory }: AITaskInter
 
   const [unknownDialogOpen, setUnknownDialogOpen] = useState(false);
   const [unmatchedPrompt, setUnmatchedPrompt] = useState("");
+
+  const BRAIN_STATUS_KEY: Record<BrainStatus, TranslationKey> = {
+    idle: "brain.status.idle",
+    thinking: "brain.notify.thinking",
+    analyzing: "brain.notify.analyzing",
+    matching: "brain.notify.matching",
+    ready: "brain.notify.ready",
+    unknown: "brain.notify.unknownLong",
+  };
+  const localizedStatusText = result?.statusText
+    ? result.matched
+      ? t("brain.notify.ready")
+      : t("brain.notify.unknownLong")
+    : t(BRAIN_STATUS_KEY[status]);
 
   const handleExecuteTask = async (
     inputPrompt: string,
@@ -80,7 +97,7 @@ export function AITaskInterface({ onRequestTool, onSelectCategory }: AITaskInter
         onPromptChange={setPrompt}
         onSubmit={handleExecuteTask}
         status={status}
-        statusText={statusText}
+        statusText={localizedStatusText}
         loading={loading}
       />
 

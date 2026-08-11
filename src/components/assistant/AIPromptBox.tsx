@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
+import { useI18n } from "@/lib/i18n";
 import type { BrainStatus } from "@/lib/brain";
 
 const EXAMPLE_PROMPTS = [
@@ -54,6 +55,7 @@ export function AIPromptBox({
   statusText,
   loading,
 }: AIPromptBoxProps) {
+  const { t } = useI18n();
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const [pastedLink, setPastedLink] = useState<string>("");
   const [linkPopoverOpen, setLinkPopoverOpen] = useState<boolean>(false);
@@ -192,14 +194,14 @@ export function AIPromptBox({
         {/* Textarea Input */}
         <div className="px-2 pt-2">
           <label htmlFor="ai-task-input" className="sr-only">
-            Describe your task
+            {t("brain.input.label")}
           </label>
           <textarea
             id="ai-task-input"
             value={prompt}
             onChange={(e) => onPromptChange(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Describe what you need — Flixo picks the right tool for your files, text, images, videos or documents."
+            placeholder={t("brain.input.placeholder")}
             rows={3}
             className="w-full resize-none bg-transparent px-2 py-1 text-base md:text-lg outline-none placeholder:text-muted-foreground/60 font-sans"
           />
@@ -239,10 +241,10 @@ export function AIPromptBox({
                     className="rounded-xl px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-surface hover:text-foreground"
                   >
                     <Paperclip className="me-1.5 size-4 text-primary" />
-                    <span>Upload File</span>
+                    <span>{t("brain.input.upload")}</span>
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Attach PDF, image, video, audio or document</TooltipContent>
+                <TooltipContent>{t("brain.input.uploadHint")}</TooltipContent>
               </Tooltip>
             </TooltipProvider>
 
@@ -257,10 +259,10 @@ export function AIPromptBox({
                     className="rounded-xl px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-surface hover:text-foreground"
                   >
                     <FileText className="me-1.5 size-4 text-primary" />
-                    <span>Drag & Drop</span>
+                    <span>{t("brain.input.dragDrop")}</span>
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Drop a file anywhere on the card to attach it</TooltipContent>
+                <TooltipContent>{t("brain.input.dragDropHint")}</TooltipContent>
               </Tooltip>
             </TooltipProvider>
 
@@ -274,12 +276,14 @@ export function AIPromptBox({
                   className="rounded-xl px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-surface hover:text-foreground"
                 >
                   <LinkIcon className="me-1.5 size-4 text-purple-500" />
-                  <span>Paste Link</span>
+                  <span>{t("brain.input.pasteLink")}</span>
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-80 rounded-2xl p-3 shadow-lg" align="start">
                 <div className="space-y-2">
-                  <h4 className="text-xs font-bold text-foreground">Paste Web URL / Asset Link</h4>
+                  <h4 className="text-xs font-bold text-foreground">
+                    {t("brain.input.linkTitle")}
+                  </h4>
                   <div className="flex gap-1.5">
                     <Input
                       placeholder="https://example.com/file"
@@ -292,7 +296,7 @@ export function AIPromptBox({
                       onClick={handleAddLink}
                       className="rounded-xl h-8 text-xs font-bold"
                     >
-                      Add
+                      {t("brain.input.linkAdd")}
                     </Button>
                   </div>
                 </div>
@@ -311,10 +315,10 @@ export function AIPromptBox({
                     className="rounded-xl px-2.5 py-1.5 text-xs font-medium text-muted-foreground/50 opacity-60 cursor-not-allowed"
                   >
                     <Mic className="me-1.5 size-4" />
-                    <span>Voice</span>
+                    <span>{t("brain.input.voice")}</span>
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Voice input coming soon</TooltipContent>
+                <TooltipContent>{t("brain.input.voiceHint")}</TooltipContent>
               </Tooltip>
             </TooltipProvider>
           </div>
@@ -329,12 +333,12 @@ export function AIPromptBox({
             {loading ? (
               <span className="flex items-center gap-1.5">
                 <Loader2 className="size-4 animate-spin" />
-                <span>Processing</span>
+                <span>{t("brain.input.processing")}</span>
               </span>
             ) : (
               <span className="flex items-center gap-1.5">
                 <Sparkles className="size-4" />
-                <span>Execute Task</span>
+                <span>{t("brain.input.execute")}</span>
                 <CornerDownLeft className="size-3 opacity-70 ms-1 hidden sm:inline" />
               </span>
             )}

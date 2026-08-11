@@ -9,7 +9,7 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, useMemo, type ReactNode } from "react";
-import { localeMeta, type LocaleCode } from "../lib/i18n";
+import { localeFromPathname, localeMeta, type LocaleCode } from "../lib/i18n";
 
 import appCss from "../styles.css?url";
 import { JsonLd } from "../components/seo/JsonLd";
@@ -152,17 +152,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 /**
  * Derive the active locale from the current location pathname so SSR renders the
- * correct `<html lang/dir>` for localized routes (e.g. `/ar`). Falls back to
- * `en` for non-localized routes. Client scripts (init-locale.js / I18nProvider)
- * may still refine the attribute after hydration; `suppressHydrationWarning`
- * on `<html>` keeps that safe.
+ * correct `<html lang/dir>` for localized routes (e.g. `/ar`, `/es`, `/zh-CN`).
+ * Falls back to `en` for non-localized routes (no prefix). Client scripts
+ * (init-locale.js / I18nProvider) may still refine the attribute after
+ * hydration; `suppressHydrationWarning` on `<html>` keeps that safe.
  */
 function useRouteLocale(): LocaleCode {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  return useMemo(() => {
-    if (pathname === "/ar" || pathname.startsWith("/ar/")) return "ar";
-    return "en";
-  }, [pathname]);
+  return useMemo(() => localeFromPathname(pathname), [pathname]);
 }
 
 function RootShell({ children }: { children: ReactNode }) {

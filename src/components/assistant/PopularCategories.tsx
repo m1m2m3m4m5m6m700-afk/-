@@ -1,12 +1,15 @@
 import { categories, type CategoryId } from "@/data/categories";
 import { toolsByCategory } from "@/data/tools";
 import { Grid, ArrowRight } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
+import { resolveCategoryName } from "@/lib/i18n/keys";
 
 interface PopularCategoriesProps {
   onSelectCategory: (categoryId: CategoryId) => void;
 }
 
 export function PopularCategories({ onSelectCategory }: PopularCategoriesProps) {
+  const { t } = useI18n();
   // Show top categories
   const topCategories = categories.slice(0, 8);
 
@@ -15,9 +18,11 @@ export function PopularCategories({ onSelectCategory }: PopularCategoriesProps) 
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5">
           <Grid className="size-4 text-purple-500" />
-          <span>Popular Categories</span>
+          <span>{t("brain.section.popularCategories")}</span>
         </h3>
-        <span className="text-[11px] text-muted-foreground font-medium">Explore by capability</span>
+        <span className="text-[11px] text-muted-foreground font-medium">
+          {t("brain.section.popularHint")}
+        </span>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -36,13 +41,13 @@ export function PopularCategories({ onSelectCategory }: PopularCategoriesProps) 
                   <Icon className="size-4" />
                 </span>
                 <span className="rounded-full bg-surface px-2 py-0.5 text-[10px] font-bold text-muted-foreground border border-border/50">
-                  {count} tools
+                  {t("brain.section.tools", { count })}
                 </span>
               </div>
 
               <div className="mt-3">
                 <h4 className="text-xs font-bold text-foreground group-hover:text-primary transition-colors">
-                  {cat.name}
+                  {resolveCategoryName(cat.id, t)}
                 </h4>
                 <p className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5">
                   {(cat as { tagline?: string }).tagline}

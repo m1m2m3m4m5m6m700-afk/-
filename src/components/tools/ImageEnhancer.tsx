@@ -27,6 +27,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
+import type { TranslationKey } from "@/lib/i18n/locales/en";
 
 type ScaleFactor = 2 | 4 | 8;
 type OutputFormat = "image/png" | "image/jpeg" | "image/webp";
@@ -73,11 +75,11 @@ const DEFAULT_OPTIONS: EnhanceOptions = {
 // Preset configurations
 const PRESETS: Record<
   PresetType,
-  { label: string; description: string; options: Partial<EnhanceOptions> }
+  { labelKey: TranslationKey; descKey: TranslationKey; options: Partial<EnhanceOptions> }
 > = {
   auto: {
-    label: "Auto AI",
-    description: "Balanced upscale with smart noise reduction and color restoration",
+    labelKey: "imageEnhancer.preset.auto",
+    descKey: "imageEnhancer.preset.autoDesc",
     options: {
       scale: 4,
       sharpness: 50,
@@ -91,8 +93,8 @@ const PRESETS: Record<
     },
   },
   portrait: {
-    label: "Portrait & Face",
-    description: "Fix facial features, smooth skin tones, and enhance eyes",
+    labelKey: "imageEnhancer.preset.portrait",
+    descKey: "imageEnhancer.preset.portraitDesc",
     options: {
       scale: 4,
       sharpness: 40,
@@ -106,8 +108,8 @@ const PRESETS: Record<
     },
   },
   "old-photo": {
-    label: "Old Photo Restore",
-    description: "Restore faded colors, fix cracks, and boost antique contrast",
+    labelKey: "imageEnhancer.preset.restore",
+    descKey: "imageEnhancer.preset.restoreDesc",
     options: {
       scale: 4,
       sharpness: 70,
@@ -121,8 +123,8 @@ const PRESETS: Record<
     },
   },
   deblur: {
-    label: "De-blur & Sharpen",
-    description: "Recover out-of-focus details and crisp image edges",
+    labelKey: "imageEnhancer.preset.deblur",
+    descKey: "imageEnhancer.preset.deblurDesc",
     options: {
       scale: 4,
       sharpness: 85,
@@ -136,8 +138,8 @@ const PRESETS: Record<
     },
   },
   ultra: {
-    label: "Ultra 8x Super-Res",
-    description: "Maximum 8x resolution scaling for high-detail graphics & prints",
+    labelKey: "imageEnhancer.preset.ultra",
+    descKey: "imageEnhancer.preset.ultraDesc",
     options: {
       scale: 8,
       sharpness: 75,
@@ -155,20 +157,21 @@ const PRESETS: Record<
 // Built-in sample images for quick testing
 const SAMPLE_IMAGES = [
   {
-    name: "Portrait",
+    key: "portrait" as const,
     url: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&auto=format&fit=crop&q=80",
   },
   {
-    name: "Landscape",
+    key: "landscape" as const,
     url: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=600&auto=format&fit=crop&q=80",
   },
   {
-    name: "Architecture",
+    key: "architecture" as const,
     url: "https://images.unsplash.com/photo-1513694203232-719a280e022f?w=600&auto=format&fit=crop&q=80",
   },
 ];
 
 export function ImageEnhancer() {
+  const { t } = useI18n();
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [originalUrl, setOriginalUrl] = useState<string | null>(null);
   const [enhancedUrl, setEnhancedUrl] = useState<string | null>(null);
@@ -198,16 +201,20 @@ export function ImageEnhancer() {
     };
   }, [originalUrl, enhancedUrl]);
 
-  const handleSampleLoad = async (sampleUrl: string, sampleName: string) => {
+  const handleSampleLoad = async (sample: {
+    key: "portrait" | "landscape" | "architecture";
+    url: string;
+  }) => {
+    const sampleName = t(`imageEnhancer.sample.${sample.key}` as never);
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch(sampleUrl);
+      const res = await fetch(sample.url);
       const blob = await res.blob();
       const file = new File([blob], `${sampleName.toLowerCase()}.jpg`, { type: "image/jpeg" });
       handleFileSelect(file);
     } catch (err) {
-      setError("Failed to load sample image. Please try uploading a local file.");
+      setError(t("imageEnhancer.error.sample"));
       setLoading(false);
     }
   };
@@ -246,7 +253,7 @@ export function ImageEnhancer() {
     async (srcUrl: string, currentOptions: EnhanceOptions, originalSizeBytes: number) => {
       setLoading(true);
       setProgress(5);
-      setProgressStep("Loading image source...");
+      setProgressStep(t("imageEnhancer.step.loading"));
       setError(null);
 
       try {
@@ -254,7 +261,7 @@ export function ImageEnhancer() {
         img.crossOrigin = "anonymous";
         await new Promise((resolve, reject) => {
           img.onload = resolve;
-          img.onerror = () => reject(new Error("Failed to render image file."));
+          img.onerror = () => reject(new Error(t("imageEnhancer.error.render")));
           img.src = srcUrl;
         });
 
@@ -276,7 +283,7 @@ export function ImageEnhancer() {
         canvas.height = targetH;
         const ctx = canvas.getContext("2d", { willReadFrequently: true });
 
-        if (!ctx) throw new Error("Could not initialize 2D canvas context.");
+        if (!ctx) throw new Error(t("imageEnhancer.error.canvas"));
 
         // Bi-cubic / high quality image smoothing
         ctx.imageSmoothingEnabled = true;
@@ -285,7 +292,7 @@ export function ImageEnhancer() {
 
         // Step 2: Pixel Processing (Sharpness, Vibrance, Noise, Face Fix)
         setProgress(45);
-        setProgressStep("Applying AI detail, sharpness & noise filters...");
+        setProgressStep(t("imageEnhancer.progressDetail"));
         await new Promise((r) => setTimeout(r, 60)); // Yield to UI thread
 
         const imageData = ctx.getImageData(0, 0, targetW, targetH);
@@ -303,7 +310,7 @@ export function ImageEnhancer() {
 
         // Step 3: Face & Detail Tone Pass
         setProgress(70);
-        setProgressStep("Restoring contrast, facial tones & dynamic range...");
+        setProgressStep(t("imageEnhancer.step.restoring"));
         await new Promise((r) => setTimeout(r, 60));
 
         // Pixel manipulation loop
@@ -364,7 +371,7 @@ export function ImageEnhancer() {
         // Step 4: Sharpening Kernel Pass (Unsharp Masking for De-blur)
         if (currentOptions.sharpness > 0 || currentOptions.blurReduction) {
           setProgress(85);
-          setProgressStep("Executing unsharp mask convolution pass...");
+          setProgressStep(t("imageEnhancer.step.unsharp"));
           await new Promise((r) => setTimeout(r, 60));
 
           const srcData = ctx.getImageData(0, 0, targetW, targetH);
@@ -398,7 +405,7 @@ export function ImageEnhancer() {
 
         // Step 5: Export Blob & Generate Stats
         setProgress(95);
-        setProgressStep("Generating enhanced image export...");
+        setProgressStep(t("imageEnhancer.step.exporting"));
 
         const mime = currentOptions.format;
         const quality = currentOptions.jpegQuality;
@@ -421,20 +428,18 @@ export function ImageEnhancer() {
         setProgress(100);
       } catch (err: unknown) {
         console.error("Enhancement error:", err);
-        setError(
-          err instanceof Error ? err.message : "An error occurred while enhancing the image.",
-        );
+        setError(err instanceof Error ? err.message : t("imageEnhancer.error.enhance"));
       } finally {
         setLoading(false);
       }
     },
-    [],
+    [t],
   );
 
   const handleFileSelect = useCallback(
     (file: File) => {
       if (!file.type.startsWith("image/")) {
-        setError("Please select a valid image file (PNG, JPG, WebP).");
+        setError(t("imageEnhancer.error.invalid"));
         return;
       }
       setError(null);
@@ -445,7 +450,7 @@ export function ImageEnhancer() {
       setStats(null);
       processEnhancement(url, options, file.size);
     },
-    [options, processEnhancement],
+    [options, processEnhancement, t],
   );
 
   // Handle Clipboard Paste listener
@@ -521,10 +526,10 @@ export function ImageEnhancer() {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       } else {
-        setError("Clipboard API not supported in this browser mode.");
+        setError(t("imageEnhancer.clipboardError"));
       }
     } catch (err) {
-      setError("Failed to copy image to clipboard.");
+      setError(t("imageEnhancer.error.clipboard"));
     }
   };
 
@@ -547,9 +552,9 @@ export function ImageEnhancer() {
   };
 
   const formatBytes = (bytes: number) => {
-    if (bytes === 0) return "0 Bytes";
+    if (bytes === 0) return `0 ${t("imageEnhancer.bytesUnit")}`;
     const k = 1024;
-    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const sizes = [t("imageEnhancer.bytesUnit"), "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
@@ -625,18 +630,18 @@ export function ImageEnhancer() {
               <Upload className="size-8" />
             </div>
 
-            <h3 className="mt-4 text-base font-bold sm:text-lg">Drag & Drop your photo here</h3>
+            <h3 className="mt-4 text-base font-bold sm:text-lg">{t("imageEnhancer.drop.title")}</h3>
             <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
-              Supports PNG, JPG, or WebP. Or press{" "}
+              {t("imageEnhancer.drop.hint")}{" "}
               <kbd className="rounded-md border border-border bg-muted px-1.5 py-0.5 text-[10px] font-mono">
                 Ctrl+V
               </kbd>{" "}
-              to paste.
+              {t("imageEnhancer.drop.paste")}
             </p>
 
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
               <Button type="button" className="rounded-xl shadow-xs">
-                Browse Image File
+                {t("imageEnhancer.browse")}
               </Button>
             </div>
           </div>
@@ -644,26 +649,29 @@ export function ImageEnhancer() {
           {/* Quick Sample Images */}
           <div className="rounded-2xl border border-border/60 bg-surface/30 p-4 space-y-3">
             <span className="text-xs font-semibold text-muted-foreground">
-              Or try a sample photo:
+              {t("imageEnhancer.sample")}
             </span>
             <div className="grid grid-cols-3 gap-3">
-              {SAMPLE_IMAGES.map((sample, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => handleSampleLoad(sample.url, sample.name)}
-                  className="group relative h-20 overflow-hidden rounded-xl border border-border/80 text-left transition-all hover:border-primary focus:outline-none"
-                >
-                  <img
-                    src={sample.url}
-                    alt={sample.name}
-                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent p-2 flex items-end">
-                    <span className="text-[11px] font-medium text-white">{sample.name}</span>
-                  </div>
-                </button>
-              ))}
+              {SAMPLE_IMAGES.map((sample, idx) => {
+                const sampleName = t(`imageEnhancer.sample.${sample.key}` as never);
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleSampleLoad(sample)}
+                    className="group relative h-20 overflow-hidden rounded-xl border border-border/80 text-left transition-all hover:border-primary focus:outline-none"
+                  >
+                    <img
+                      src={sample.url}
+                      alt={sampleName}
+                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent p-2 flex items-end">
+                      <span className="text-[11px] font-medium text-white">{sampleName}</span>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -689,7 +697,7 @@ export function ImageEnhancer() {
                   )}
                 >
                   <Columns className="size-3.5" />
-                  Split Slider
+                  {t("imageEnhancer.view.split")}
                 </button>
                 <button
                   type="button"
@@ -702,7 +710,7 @@ export function ImageEnhancer() {
                   )}
                 >
                   <Eye className="size-3.5" />
-                  Side-by-Side
+                  {t("imageEnhancer.view.side")}
                 </button>
                 <button
                   type="button"
@@ -714,7 +722,7 @@ export function ImageEnhancer() {
                       : "text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  Enhanced
+                  {t("imageEnhancer.view.enhanced")}
                 </button>
                 <button
                   type="button"
@@ -726,14 +734,16 @@ export function ImageEnhancer() {
                       : "text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  Original
+                  {t("imageEnhancer.view.original")}
                 </button>
               </div>
 
               {/* Zoom & Fullscreen controls */}
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1 bg-surface px-2 py-1 rounded-xl border border-border/60">
-                  <span className="text-[11px] text-muted-foreground font-medium me-1">Zoom:</span>
+                  <span className="text-[11px] text-muted-foreground font-medium me-1">
+                    {t("imageEnhancer.zoom")}
+                  </span>
                   {[100, 150, 200].map((z) => (
                     <button
                       key={z}
@@ -756,7 +766,7 @@ export function ImageEnhancer() {
                   size="icon"
                   onClick={() => setIsFullscreen(true)}
                   className="size-8 rounded-xl"
-                  title="Fullscreen Preview"
+                  title={t("imageEnhancer.fullscreen")}
                 >
                   <Maximize2 className="size-3.5" />
                 </Button>
@@ -776,7 +786,7 @@ export function ImageEnhancer() {
                     <Sparkles className="size-6 text-primary animate-pulse" />
                   </div>
                   <h4 className="mt-4 text-sm font-semibold tracking-wide">
-                    {progressStep || "Enhancing Image..."}
+                    {progressStep || t("imageEnhancer.enhancing")}
                   </h4>
                   <div className="mt-3 w-64 max-w-full rounded-full bg-white/10 p-0.5">
                     <div
@@ -800,7 +810,7 @@ export function ImageEnhancer() {
                   {/* Enhanced Image (Base) */}
                   <img
                     src={enhancedUrl || originalUrl}
-                    alt="Enhanced"
+                    alt={t("imageEnhancer.view.enhanced")}
                     className="absolute inset-0 h-full w-full object-contain"
                     style={{
                       transform: zoomLevel > 100 ? `scale(${zoomLevel / 100})` : "none",
@@ -815,7 +825,7 @@ export function ImageEnhancer() {
                   >
                     <img
                       src={originalUrl}
-                      alt="Original"
+                      alt={t("imageEnhancer.view.original")}
                       className="h-full w-full object-contain"
                       style={{
                         width: sliderContainerRef.current?.clientWidth || "100%",
@@ -838,10 +848,10 @@ export function ImageEnhancer() {
 
                   {/* Corner Badges */}
                   <div className="pointer-events-none absolute left-3 top-3 rounded-md bg-black/60 px-2 py-1 text-[10px] font-bold text-white backdrop-blur-xs">
-                    Original
+                    {t("imageEnhancer.badge.original")}
                   </div>
                   <div className="pointer-events-none absolute right-3 top-3 rounded-md bg-primary/90 px-2 py-1 text-[10px] font-bold text-primary-foreground backdrop-blur-xs">
-                    {options.scale}x Enhanced
+                    {t("imageEnhancer.badge.enhancedScaled", { scale: options.scale })}
                   </div>
                 </div>
               )}
@@ -852,21 +862,21 @@ export function ImageEnhancer() {
                   <div className="relative overflow-hidden rounded-xl border border-white/10 bg-black/40">
                     <img
                       src={originalUrl}
-                      alt="Original"
+                      alt={t("imageEnhancer.view.original")}
                       className="h-full w-full object-contain"
                     />
                     <span className="absolute left-2 top-2 rounded-md bg-black/70 px-2 py-0.5 text-[10px] text-white">
-                      Original
+                      {t("imageEnhancer.badge.original")}
                     </span>
                   </div>
                   <div className="relative overflow-hidden rounded-xl border border-primary/30 bg-black/40">
                     <img
                       src={enhancedUrl || originalUrl}
-                      alt="Enhanced"
+                      alt={t("imageEnhancer.view.enhanced")}
                       className="h-full w-full object-contain"
                     />
                     <span className="absolute right-2 top-2 rounded-md bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">
-                      {options.scale}x Enhanced
+                      {t("imageEnhancer.badge.enhancedScaled", { scale: options.scale })}
                     </span>
                   </div>
                 </div>
@@ -877,11 +887,11 @@ export function ImageEnhancer() {
                 <div className="relative h-[420px] w-full overflow-hidden">
                   <img
                     src={enhancedUrl || originalUrl}
-                    alt="Enhanced"
+                    alt={t("imageEnhancer.view.enhanced")}
                     className="h-full w-full object-contain"
                   />
                   <span className="absolute right-3 top-3 rounded-md bg-primary px-2 py-1 text-[10px] font-bold text-primary-foreground">
-                    Enhanced ({options.scale}x)
+                    {t("imageEnhancer.badge.enhancedOnly", { scale: options.scale })}
                   </span>
                 </div>
               )}
@@ -889,9 +899,13 @@ export function ImageEnhancer() {
               {/* View Mode 4: Original Only */}
               {viewMode === "original" && (
                 <div className="relative h-[420px] w-full overflow-hidden">
-                  <img src={originalUrl} alt="Original" className="h-full w-full object-contain" />
+                  <img
+                    src={originalUrl}
+                    alt={t("imageEnhancer.view.original")}
+                    className="h-full w-full object-contain"
+                  />
                   <span className="absolute left-3 top-3 rounded-md bg-black/70 px-2 py-1 text-[10px] text-white">
-                    Original Image
+                    {t("imageEnhancer.badge.originalImage")}
                   </span>
                 </div>
               )}
@@ -902,7 +916,7 @@ export function ImageEnhancer() {
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <div className="rounded-2xl border border-border/80 bg-card p-3 text-center">
                   <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-                    Original Size
+                    {t("imageEnhancer.stats.originalSize")}
                   </span>
                   <p className="mt-1 text-xs font-bold font-mono">
                     {stats.origWidth} × {stats.origHeight} px
@@ -914,7 +928,7 @@ export function ImageEnhancer() {
 
                 <div className="rounded-2xl border border-primary/40 bg-primary/5 p-3 text-center">
                   <span className="text-[10px] font-bold text-primary uppercase tracking-wider">
-                    Enhanced Size
+                    {t("imageEnhancer.stats.enhancedSize")}
                   </span>
                   <p className="mt-1 text-xs font-bold font-mono text-primary">
                     {stats.enhWidth} × {stats.enhHeight} px
@@ -926,24 +940,26 @@ export function ImageEnhancer() {
 
                 <div className="rounded-2xl border border-border/80 bg-card p-3 text-center">
                   <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-                    Upscale Factor
+                    {t("imageEnhancer.stats.upscaleFactor")}
                   </span>
                   <p className="mt-1 text-xs font-bold text-foreground">
-                    {options.scale}x Super-Res
+                    {t("imageEnhancer.stats.superRes", { scale: options.scale })}
                   </p>
                   <span className="text-[10px] text-emerald-500 font-semibold">
-                    +{options.scale * 100 - 100}% Pixels
+                    {t("imageEnhancer.stats.morePixels", { count: options.scale * 100 - 100 })}
                   </span>
                 </div>
 
                 <div className="rounded-2xl border border-border/80 bg-card p-3 text-center">
                   <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-                    Export Format
+                    {t("imageEnhancer.stats.exportFormat")}
                   </span>
                   <p className="mt-1 text-xs font-bold uppercase">
                     {options.format.replace("image/", "")}
                   </p>
-                  <span className="text-[10px] text-muted-foreground">High Fidelity</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {t("imageEnhancer.stats.highFidelity")}
+                  </span>
                 </div>
               </div>
             )}
@@ -951,7 +967,7 @@ export function ImageEnhancer() {
             {/* Primary Action Buttons Bar */}
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/80 bg-card p-4">
               <div className="flex items-center gap-2">
-                <label className="text-xs font-semibold me-1">Format:</label>
+                <label className="text-xs font-semibold me-1">{t("imageEnhancer.format")}</label>
                 {(["image/png", "image/jpeg", "image/webp"] as OutputFormat[]).map((fmt) => (
                   <button
                     key={fmt}
@@ -982,7 +998,7 @@ export function ImageEnhancer() {
                   ) : (
                     <Copy className="me-1.5 size-3.5" />
                   )}
-                  {copied ? "Copied!" : "Copy Image"}
+                  {copied ? t("imageEnhancer.copied") : t("imageEnhancer.copy")}
                 </Button>
 
                 <Button
@@ -992,7 +1008,7 @@ export function ImageEnhancer() {
                   className="rounded-xl shadow-xs text-xs font-semibold"
                 >
                   <Download className="me-1.5 size-4" />
-                  Download Enhanced
+                  {t("imageEnhancer.download")}
                 </Button>
               </div>
             </div>
@@ -1004,7 +1020,7 @@ export function ImageEnhancer() {
             <div className="rounded-2xl border border-border/80 bg-card p-4 space-y-3 shadow-xs">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  AI Presets
+                  {t("imageEnhancer.presets")}
                 </span>
                 <Wand2 className="size-4 text-primary" />
               </div>
@@ -1026,11 +1042,11 @@ export function ImageEnhancer() {
                       )}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-bold text-foreground">{preset.label}</span>
+                        <span className="font-bold text-foreground">{t(preset.labelKey)}</span>
                         {isActive && <Check className="size-3.5 text-primary" />}
                       </div>
                       <span className="mt-0.5 text-[11px] text-muted-foreground line-clamp-1">
-                        {preset.description}
+                        {t(preset.descKey)}
                       </span>
                     </button>
                   );
@@ -1041,7 +1057,7 @@ export function ImageEnhancer() {
             {/* Upscale Resolution Options */}
             <div className="rounded-2xl border border-border/80 bg-card p-4 space-y-3 shadow-xs">
               <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                AI Super-Resolution Scale
+                {t("imageEnhancer.scale")}
               </span>
 
               <div className="grid grid-cols-3 gap-2">
@@ -1059,7 +1075,11 @@ export function ImageEnhancer() {
                   >
                     <span className="text-base font-extrabold">{scaleVal}x</span>
                     <span className="text-[10px] opacity-80">
-                      {scaleVal === 2 ? "HD" : scaleVal === 4 ? "4K Ultra" : "8K Max"}
+                      {scaleVal === 2
+                        ? t("imageEnhancer.scaleHD")
+                        : scaleVal === 4
+                          ? t("imageEnhancer.scale4K")
+                          : t("imageEnhancer.scale8K")}
                     </span>
                   </button>
                 ))}
@@ -1070,7 +1090,7 @@ export function ImageEnhancer() {
             <div className="rounded-2xl border border-border/80 bg-card p-4 space-y-5 shadow-xs">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Enhancement Controls
+                  {t("imageEnhancer.controls")}
                 </span>
                 <SlidersHorizontal className="size-4 text-muted-foreground" />
               </div>
@@ -1078,7 +1098,9 @@ export function ImageEnhancer() {
               {/* Sharpness Slider */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-foreground">Sharpness</span>
+                  <span className="font-semibold text-foreground">
+                    {t("imageEnhancer.sharpness")}
+                  </span>
                   <span className="font-mono text-muted-foreground">{options.sharpness}%</span>
                 </div>
                 <Slider
@@ -1093,7 +1115,7 @@ export function ImageEnhancer() {
               {/* Noise Reduction Slider */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-foreground">Noise Reduction</span>
+                  <span className="font-semibold text-foreground">{t("imageEnhancer.noise")}</span>
                   <span className="font-mono text-muted-foreground">{options.noiseReduction}%</span>
                 </div>
                 <Slider
@@ -1108,7 +1130,9 @@ export function ImageEnhancer() {
               {/* Color Vibrance Slider */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-foreground">Color Vibrance</span>
+                  <span className="font-semibold text-foreground">
+                    {t("imageEnhancer.vibrance")}
+                  </span>
                   <span className="font-mono text-muted-foreground">
                     {options.colorVibrance > 0
                       ? `+${options.colorVibrance}`
@@ -1128,7 +1152,9 @@ export function ImageEnhancer() {
               {/* Contrast Slider */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-foreground">Contrast</span>
+                  <span className="font-semibold text-foreground">
+                    {t("imageEnhancer.contrast")}
+                  </span>
                   <span className="font-mono text-muted-foreground">
                     {options.contrast > 0 ? `+${options.contrast}` : options.contrast}%
                   </span>
@@ -1149,9 +1175,11 @@ export function ImageEnhancer() {
                   <div className="flex items-center gap-2">
                     <Smile className="size-4 text-primary" />
                     <div>
-                      <span className="font-semibold text-foreground">Face Enhancement</span>
+                      <span className="font-semibold text-foreground">
+                        {t("imageEnhancer.face")}
+                      </span>
                       <p className="text-[10px] text-muted-foreground">
-                        Restore facial details & skin tones
+                        {t("imageEnhancer.face.hint")}
                       </p>
                     </div>
                   </div>
@@ -1168,9 +1196,11 @@ export function ImageEnhancer() {
                   <div className="flex items-center gap-2">
                     <History className="size-4 text-amber-500" />
                     <div>
-                      <span className="font-semibold text-foreground">Old Photo Restore</span>
+                      <span className="font-semibold text-foreground">
+                        {t("imageEnhancer.restore")}
+                      </span>
                       <p className="text-[10px] text-muted-foreground">
-                        Fix faded antique colors & damage
+                        {t("imageEnhancer.restore.hint")}
                       </p>
                     </div>
                   </div>
@@ -1187,9 +1217,11 @@ export function ImageEnhancer() {
                   <div className="flex items-center gap-2">
                     <Sparkles className="size-4 text-emerald-500" />
                     <div>
-                      <span className="font-semibold text-foreground">Blur Reduction</span>
+                      <span className="font-semibold text-foreground">
+                        {t("imageEnhancer.blur")}
+                      </span>
                       <p className="text-[10px] text-muted-foreground">
-                        Unsharp masking edge correction
+                        {t("imageEnhancer.blur.hint")}
                       </p>
                     </div>
                   </div>
@@ -1209,7 +1241,7 @@ export function ImageEnhancer() {
                 className="w-full rounded-xl shadow-xs"
               >
                 <Sparkles className="me-2 size-4" />
-                Apply AI Enhancement
+                {t("imageEnhancer.apply")}
               </Button>
             </div>
           </div>
@@ -1230,7 +1262,7 @@ export function ImageEnhancer() {
           <div className="flex items-center justify-between pb-3 border-b border-white/10">
             <div className="flex items-center gap-2">
               <Sparkles className="size-5 text-primary" />
-              <h3 className="text-sm font-bold">Fullscreen AI Comparison</h3>
+              <h3 className="text-sm font-bold">{t("imageEnhancer.fullscreen.title")}</h3>
             </div>
             <div className="flex items-center gap-2">
               <Button
@@ -1240,7 +1272,7 @@ export function ImageEnhancer() {
                 className="rounded-xl text-white hover:bg-white/10"
               >
                 <X className="me-1.5 size-4" />
-                Close Preview
+                {t("imageEnhancer.fullscreen.close")}
               </Button>
             </div>
           </div>
@@ -1248,7 +1280,7 @@ export function ImageEnhancer() {
           <div className="relative flex-1 overflow-hidden p-2 flex items-center justify-center">
             <img
               src={enhancedUrl}
-              alt="Fullscreen Enhanced"
+              alt={t("imageEnhancer.fullscreen.title")}
               className="max-h-full max-w-full object-contain rounded-xl shadow-2xl"
             />
           </div>

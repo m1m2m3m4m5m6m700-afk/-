@@ -26,11 +26,15 @@ export function ToolLayout({
 }: ToolLayoutProps) {
   const { t } = useI18n();
 
-  // Extract slug from pathname if not explicitly passed
+  // Extract slug from pathname if not explicitly passed. Handles both
+  // /tools/<slug> (English) and /<locale>/tools/<slug> (localized) shapes.
   const pathSlug =
     slug ||
     (typeof window !== "undefined"
-      ? window.location.pathname.replace(/^\/tools\//, "").split("/")[0]
+      ? window.location.pathname
+          .replace(/^\/[^/]+\/tools\//, "")
+          .replace(/^\/tools\//, "")
+          .split("/")[0]
       : "");
 
   usePageSeo(pathSlug);
@@ -42,7 +46,7 @@ export function ToolLayout({
           <ol className="flex items-center flex-wrap gap-1.5">
             <li>
               <Link to="/" className="hover:text-foreground transition-colors">
-                Home
+                {t("toolPage.breadcrumb.home")}
               </Link>
             </li>
             <li>
@@ -54,7 +58,7 @@ export function ToolLayout({
                 params={{ slug: "utilities" }}
                 className="hover:text-foreground transition-colors"
               >
-                Tools
+                {t("toolPage.breadcrumb.tools")}
               </Link>
             </li>
             <li>

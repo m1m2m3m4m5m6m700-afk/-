@@ -26,6 +26,8 @@ import { ToolStatsWidget } from "@/components/seo/ToolStatsWidget";
 import { trackPageView, trackToolOpen } from "@/lib/analytics";
 import { buildToolStructuredData } from "@/lib/seo/structuredData";
 import { getSuggestedRelatedTools } from "@/lib/seo/relatedTools";
+import { useI18n } from "@/lib/i18n";
+import { resolveToolName } from "@/lib/i18n/keys";
 
 interface ToolSeoSectionProps {
   slug: string;
@@ -35,8 +37,9 @@ interface ToolSeoSectionProps {
 }
 
 export function ToolSeoSection({ slug, toolName, categoryName, categoryId }: ToolSeoSectionProps) {
+  const { t, locale } = useI18n();
   const seo: ToolSeoData = getToolSeo(slug);
-  const content = getToolContent(slug);
+  const content = getToolContent(slug, locale);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
 
   useEffect(() => {
@@ -67,7 +70,7 @@ export function ToolSeoSection({ slug, toolName, categoryName, categoryId }: Too
           <ol className="flex items-center flex-wrap gap-1.5">
             <li>
               <Link to="/" className="hover:text-foreground transition-colors">
-                Home
+                {t("toolPage.breadcrumb.home")}
               </Link>
             </li>
             <li>
@@ -98,19 +101,31 @@ export function ToolSeoSection({ slug, toolName, categoryName, categoryId }: Too
       <section className="rounded-2xl border border-border/60 bg-card/60 p-6 space-y-4">
         <div className="flex items-center gap-2">
           <ShieldCheck className="size-5 text-primary" />
-          <h2 className="text-lg font-bold tracking-tight">Trust, privacy, and platform details</h2>
+          <h2 className="text-lg font-bold tracking-tight">{t("toolPage.section.trust")}</h2>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 text-sm">
-          <InfoPill icon={Sparkles} label="Author" value={content.eeat.author} />
-          <InfoPill icon={Tag} label="Category" value={categoryName} />
-          <InfoPill icon={Calendar} label="Last updated" value={content.eeat.lastUpdated} />
-          <InfoPill icon={Zap} label="Tool version" value={content.eeat.version} />
+          <InfoPill icon={Sparkles} label={t("toolPage.eeat.author")} value={content.eeat.author} />
+          <InfoPill icon={Tag} label={t("toolPage.eeat.category")} value={categoryName} />
+          <InfoPill
+            icon={Calendar}
+            label={t("toolPage.eeat.lastUpdated")}
+            value={content.eeat.lastUpdated}
+          />
+          <InfoPill
+            icon={Zap}
+            label={t("toolPage.eeat.toolVersion")}
+            value={content.eeat.version}
+          />
           <InfoPill
             icon={Laptop2}
-            label="Supported platforms"
+            label={t("toolPage.eeat.platforms")}
             value={content.eeat.supportedPlatforms.join(", ")}
           />
-          <InfoPill icon={Cpu} label="Processing type" value={content.eeat.processingType} />
+          <InfoPill
+            icon={Cpu}
+            label={t("toolPage.eeat.processingType")}
+            value={content.eeat.processingType}
+          />
         </div>
         <p className="text-sm leading-relaxed text-muted-foreground">
           {content.eeat.privacyStatement}
@@ -118,7 +133,9 @@ export function ToolSeoSection({ slug, toolName, categoryName, categoryId }: Too
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-xl font-bold tracking-tight md:text-2xl">Overview</h2>
+        <h2 className="text-xl font-bold tracking-tight md:text-2xl">
+          {t("toolPage.section.overview")}
+        </h2>
         <p className="text-sm leading-relaxed text-muted-foreground md:text-base">
           {content.overview}
         </p>
@@ -128,7 +145,7 @@ export function ToolSeoSection({ slug, toolName, categoryName, categoryId }: Too
         <section className="rounded-2xl border border-border/80 bg-surface/40 p-5 space-y-4">
           <div className="flex items-center gap-2">
             <Zap className="size-4 text-primary" />
-            <h2 className="text-base font-semibold">How it works</h2>
+            <h2 className="text-base font-semibold">{t("toolPage.section.howItWorks")}</h2>
           </div>
           <ol className="space-y-3 text-xs sm:text-sm">
             {content.howItWorks.map((step, i) => (
@@ -145,7 +162,7 @@ export function ToolSeoSection({ slug, toolName, categoryName, categoryId }: Too
         <section className="rounded-2xl border border-border/80 bg-surface/40 p-5 space-y-4">
           <div className="flex items-center gap-2">
             <Sparkles className="size-4 text-primary" />
-            <h2 className="text-base font-semibold">Features</h2>
+            <h2 className="text-base font-semibold">{t("toolPage.section.features")}</h2>
           </div>
           <ul className="space-y-2.5 text-xs sm:text-sm">
             {content.features.map((feature, i) => (
@@ -161,7 +178,7 @@ export function ToolSeoSection({ slug, toolName, categoryName, categoryId }: Too
       <section className="rounded-2xl border border-border/60 bg-card/60 p-6 space-y-4">
         <div className="flex items-center gap-2">
           <Briefcase className="size-5 text-primary" />
-          <h2 className="text-lg font-semibold">Use cases</h2>
+          <h2 className="text-lg font-semibold">{t("toolPage.section.useCases")}</h2>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {content.useCases.map((useCase, i) => (
@@ -179,7 +196,7 @@ export function ToolSeoSection({ slug, toolName, categoryName, categoryId }: Too
         <section className="rounded-2xl border border-border/60 bg-card/60 p-6 space-y-4">
           <div className="flex items-center gap-2">
             <Sparkles className="size-5 text-primary" />
-            <h2 className="text-lg font-semibold">Examples and real-world use</h2>
+            <h2 className="text-lg font-semibold">{t("toolPage.section.examples")}</h2>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {content.examples.map((example, index) => (
@@ -198,7 +215,7 @@ export function ToolSeoSection({ slug, toolName, categoryName, categoryId }: Too
         <div className="flex items-center gap-2">
           <HelpCircle className="size-5 text-primary" />
           <h2 className="text-lg font-bold tracking-tight md:text-xl">
-            Frequently Asked Questions
+            {t("toolPage.section.faq")}
           </h2>
         </div>
         <div className="space-y-3">
@@ -213,7 +230,7 @@ export function ToolSeoSection({ slug, toolName, categoryName, categoryId }: Too
                   type="button"
                   onClick={() => setOpenFaqIndex(isOpen ? null : index)}
                   aria-expanded={isOpen}
-                  aria-label={`Toggle FAQ: ${faq.question}`}
+                  aria-label={t("toolPage.faq.toggle", { question: faq.question })}
                   className="flex w-full items-center justify-between p-4 text-left text-sm font-semibold text-foreground focus:outline-none"
                 >
                   <span>{faq.question}</span>
@@ -237,7 +254,7 @@ export function ToolSeoSection({ slug, toolName, categoryName, categoryId }: Too
       <section className="border-t border-border/60 pt-8 space-y-4">
         <div className="flex items-center gap-2">
           <Layers className="size-4 text-primary" />
-          <h2 className="text-lg font-bold tracking-tight">Related tools</h2>
+          <h2 className="text-lg font-bold tracking-tight">{t("toolPage.section.related")}</h2>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {relatedTools.map((item) => (
@@ -270,6 +287,7 @@ function InfoPill({
 }
 
 function ToolLinkCard({ tool }: { tool: Tool }) {
+  const { t } = useI18n();
   const isReady = tool.status === "ready" && tool.slug;
   const destination = isReady ? `/tools/${tool.slug}` : `/#categories`;
 
@@ -281,7 +299,7 @@ function ToolLinkCard({ tool }: { tool: Tool }) {
       <div>
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors truncate">
-            {tool.name}
+            {resolveToolName(tool.slug || tool.id, t)}
           </span>
           <ArrowRight className="size-3.5 shrink-0 text-muted-foreground group-hover:translate-x-0.5 group-hover:text-primary transition-transform" />
         </div>
@@ -293,11 +311,11 @@ function ToolLinkCard({ tool }: { tool: Tool }) {
         </span>
         {isReady ? (
           <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-500">
-            Ready
+            {t("toolPage.badge.ready")}
           </span>
         ) : (
           <span className="rounded-full bg-surface px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-            Roadmap
+            {t("toolPage.badge.roadmap")}
           </span>
         )}
       </div>

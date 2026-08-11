@@ -11,19 +11,18 @@ export const createReadyToolHead = (definition: ReadyToolRuntimeDefinition) => (
   buildToolHeadMetadata(definition.slug, definition.seoOverride);
 
 function HiddenToolNotice() {
+  const { t } = useI18n();
   return (
     <SiteLayout>
       <div className="mx-auto max-w-4xl px-5 py-20 text-center">
-        <h1 className="text-3xl font-bold text-foreground">Tool not available</h1>
-        <p className="mt-4 text-muted-foreground">
-          This tool is not currently available. It may be under development or has been retired.
-        </p>
+        <h1 className="text-3xl font-bold text-foreground">{t("toolPage.notFound.title")}</h1>
+        <p className="mt-4 text-muted-foreground">{t("toolPage.notFound.description")}</p>
         <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
           <Link
             to="/"
             className="rounded-xl border border-border px-4 py-3 text-sm font-semibold text-primary hover:bg-primary/10"
           >
-            Back to Home
+            {t("toolPage.notFound.backHome")}
           </Link>
         </div>
       </div>

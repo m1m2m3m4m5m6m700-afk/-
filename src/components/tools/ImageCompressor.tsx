@@ -20,18 +20,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 import { trackDownloadAction } from "@/lib/analytics";
 
-function formatBytes(bytes: number, decimals = 2) {
-  if (bytes === 0) return "0 Bytes";
+function formatBytes(bytes: number, bytesUnit: string, decimals = 2) {
+  if (bytes === 0) return `0 ${bytesUnit}`;
   const k = 1024;
   const dm = decimals < 0 ? 0 : decimals;
-  const sizes = ["Bytes", "KB", "MB", "GB"];
+  const sizes = [bytesUnit, "KB", "MB", "GB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
 }
 
 export function ImageCompressor() {
+  const { t } = useI18n();
   const [file, setFile] = useState<File | null>(null);
   const [originalUrl, setOriginalUrl] = useState<string | null>(null);
   const [compressedBlob, setCompressedBlob] = useState<Blob | null>(null);
@@ -86,18 +88,18 @@ export function ImageCompressor() {
           );
         } catch (err) {
           console.error(err);
-          setError("Failed to compress image.");
+          setError(t("imageCompressor.error.compress"));
         }
       };
-      img.onerror = () => setError("Failed to render original image.");
+      img.onerror = () => setError(t("imageCompressor.error.render"));
       img.src = srcUrl;
     },
-    [],
+    [t],
   );
 
   const handleFileSelect = (selectedFile: File) => {
     if (!selectedFile.type.startsWith("image/")) {
-      setError("Please select a valid image file.");
+      setError(t("imageCompressor.error.invalid"));
       return;
     }
     setError(null);
@@ -201,11 +203,10 @@ export function ImageCompressor() {
             <Upload className="size-6" />
           </span>
           <h3 className="mt-4 text-base font-semibold text-foreground">
-            Drop your image to compress, or <span className="text-primary underline">browse</span>
+            {t("imageCompressor.drop.title")}{" "}
+            <span className="text-primary underline">{t("imageCompressor.drop.browse")}</span>
           </h3>
-          <p className="mt-1.5 text-xs text-muted-foreground">
-            JPG, PNG, WebP supported. 100% private in-browser compression.
-          </p>
+          <p className="mt-1.5 text-xs text-muted-foreground">{t("imageCompressor.drop.hint")}</p>
         </div>
       ) : (
         <div className="space-y-6">
@@ -213,25 +214,27 @@ export function ImageCompressor() {
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="rounded-2xl border border-border/70 bg-surface/60 p-3.5 text-center">
               <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                Original Size
+                {t("imageCompressor.originalSize")}
               </span>
               <p className="mt-1 font-mono text-lg font-bold text-foreground">
-                {formatBytes(file.size)}
+                {formatBytes(file.size, t("imageCompressor.bytesUnit"))}
               </p>
             </div>
 
             <div className="rounded-2xl border border-primary/30 bg-primary/10 p-3.5 text-center">
               <span className="text-[11px] font-medium uppercase tracking-wider text-primary">
-                Compressed Size
+                {t("imageCompressor.compressedSize")}
               </span>
               <p className="mt-1 font-mono text-lg font-bold text-primary">
-                {compressedBlob ? formatBytes(compressedBlob.size) : "Calculating..."}
+                {compressedBlob
+                  ? formatBytes(compressedBlob.size, t("imageCompressor.bytesUnit"))
+                  : t("imageCompressor.calculating")}
               </p>
             </div>
 
             <div className="rounded-2xl border border-border/70 bg-surface/60 p-3.5 text-center">
               <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                Saved Ratio
+                {t("imageCompressor.savedRatio")}
               </span>
               <p className="mt-1 font-mono text-lg font-bold text-emerald-500">
                 {savedPercentage > 0 ? `-${savedPercentage}%` : "0%"}
@@ -246,10 +249,14 @@ export function ImageCompressor() {
                 <div className="flex items-center justify-between text-xs mb-1.5">
                   <span className="font-semibold text-foreground flex items-center gap-1.5">
                     <Sliders className="size-3.5 text-primary" />
-                    Quality: {quality}%
+                    {t("imageCompressor.quality", { count: quality })}
                   </span>
                   <span className="text-muted-foreground text-[11px]">
-                    {quality > 85 ? "High Quality" : quality > 50 ? "Balanced" : "Max Compression"}
+                    {quality > 85
+                      ? t("imageCompressor.qualityHigh")
+                      : quality > 50
+                        ? t("imageCompressor.qualityBalanced")
+                        : t("imageCompressor.qualityMax")}
                   </span>
                 </div>
                 <Slider
@@ -263,7 +270,7 @@ export function ImageCompressor() {
 
               <div className="w-full sm:w-44">
                 <span className="text-xs font-semibold text-foreground block mb-1.5">
-                  Output Format
+                  {t("imageCompressor.format")}
                 </span>
                 <Select
                   value={format}
@@ -287,7 +294,7 @@ export function ImageCompressor() {
             {compressedUrl && (
               <img
                 src={compressedUrl}
-                alt="Compressed Preview"
+                alt={t("imageCompressor.compressedPreview")}
                 className="max-h-80 object-contain rounded-xl shadow-md animate-rise"
               />
             )}
@@ -302,7 +309,7 @@ export function ImageCompressor() {
               className="rounded-xl text-xs"
             >
               <RotateCcw className="me-1.5 size-3.5" />
-              Compress Another
+              {t("imageCompressor.compressAnother")}
             </Button>
             <Button
               onClick={handleDownload}
@@ -311,7 +318,7 @@ export function ImageCompressor() {
               className="rounded-xl shadow-xs text-xs"
             >
               <Download className="me-1.5 size-3.5" />
-              Download Compressed Image
+              {t("imageCompressor.download")}
             </Button>
           </div>
         </div>

@@ -14,8 +14,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 
 export function BackgroundRemover() {
+  const { t } = useI18n();
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [originalUrl, setOriginalUrl] = useState<string | null>(null);
   const [processedUrl, setProcessedUrl] = useState<string | null>(null);
@@ -37,7 +39,7 @@ export function BackgroundRemover() {
 
   const handleFileSelect = (file: File) => {
     if (!file.type.startsWith("image/")) {
-      setError("Please select a valid image file (PNG, JPG, WebP).");
+      setError(t("bgRemover.error.invalidImage"));
       return;
     }
     setError(null);
@@ -80,7 +82,7 @@ export function BackgroundRemover() {
           canvas.height = img.height;
           const ctx = canvas.getContext("2d", { willReadFrequently: true });
           if (!ctx) {
-            setError("Unable to initialize canvas renderer.");
+            setError(t("bgRemover.error.canvas"));
             setLoading(false);
             return;
           }
@@ -143,25 +145,25 @@ export function BackgroundRemover() {
                 return resultUrl;
               });
             } else {
-              setError("Failed to export processed PNG.");
+              setError(t("bgRemover.error.export"));
             }
             setLoading(false);
           }, "image/png");
         } catch (err) {
           console.error(err);
-          setError("An unexpected error occurred during processing.");
+          setError(t("bgRemover.error.unexpected"));
           setLoading(false);
         }
       };
 
       img.onerror = () => {
-        setError("Failed to load image for processing.");
+        setError(t("bgRemover.error.load"));
         setLoading(false);
       };
 
       img.src = srcUrl;
     },
-    [],
+    [t],
   );
 
   const handleReProcess = () => {
@@ -220,24 +222,23 @@ export function BackgroundRemover() {
             <Upload className="size-6" />
           </span>
           <h3 className="mt-4 text-base font-semibold text-foreground">
-            Drop your image here, or <span className="text-primary underline">browse</span>
+            {t("bgRemover.drop.title")}{" "}
+            <span className="text-primary underline">{t("bgRemover.drop.browse")}</span>
           </h3>
-          <p className="mt-1.5 text-xs text-muted-foreground">
-            Supports PNG, JPG, or WebP (up to 20MB). Client-side private processing.
-          </p>
+          <p className="mt-1.5 text-xs text-muted-foreground">{t("bgRemover.drop.hint")}</p>
         </div>
       ) : (
         <div className="space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-4">
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                View Mode:
+                {t("bgRemover.viewMode")}
               </span>
               <div className="flex rounded-xl border border-border bg-surface p-1">
                 <button
                   type="button"
                   aria-pressed={viewMode === "result"}
-                  aria-label="Show cutout result view"
+                  aria-label={t("bgRemover.view.cutout")}
                   onClick={() => setViewMode("result")}
                   className={cn(
                     "flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors",
@@ -247,12 +248,12 @@ export function BackgroundRemover() {
                   )}
                 >
                   <Sparkles className="size-3.5" />
-                  Cutout
+                  {t("bgRemover.cutout")}
                 </button>
                 <button
                   type="button"
                   aria-pressed={viewMode === "side"}
-                  aria-label="Show compare view"
+                  aria-label={t("bgRemover.view.compare")}
                   onClick={() => setViewMode("side")}
                   className={cn(
                     "flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors",
@@ -262,12 +263,12 @@ export function BackgroundRemover() {
                   )}
                 >
                   <Columns className="size-3.5" />
-                  Compare
+                  {t("bgRemover.compare")}
                 </button>
                 <button
                   type="button"
                   aria-pressed={viewMode === "original"}
-                  aria-label="Show original image view"
+                  aria-label={t("bgRemover.view.original")}
                   onClick={() => setViewMode("original")}
                   className={cn(
                     "flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors",
@@ -277,7 +278,7 @@ export function BackgroundRemover() {
                   )}
                 >
                   <Eye className="size-3.5" />
-                  Original
+                  {t("bgRemover.original")}
                 </button>
               </div>
             </div>
@@ -290,7 +291,7 @@ export function BackgroundRemover() {
                 className="rounded-xl text-xs"
               >
                 <RotateCcw className="me-1.5 size-3.5" />
-                Reset
+                {t("bgRemover.reset")}
               </Button>
               <Button
                 onClick={handleDownload}
@@ -299,7 +300,7 @@ export function BackgroundRemover() {
                 className="rounded-xl shadow-xs text-xs"
               >
                 <Download className="me-1.5 size-3.5" />
-                Download PNG
+                {t("bgRemover.download")}
               </Button>
             </div>
           </div>
@@ -309,7 +310,7 @@ export function BackgroundRemover() {
               <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-card/70 backdrop-blur-xs">
                 <Loader2 className="size-8 animate-spin text-primary" />
                 <p className="mt-2 text-xs font-medium text-foreground">
-                  Removing background pixels...
+                  {t("bgRemover.processing")}
                 </p>
               </div>
             )}
@@ -317,27 +318,31 @@ export function BackgroundRemover() {
             {viewMode === "side" ? (
               <div className="grid w-full gap-4 sm:grid-cols-2">
                 <div className="flex flex-col items-center gap-2">
-                  <span className="text-xs font-medium text-muted-foreground">Original</span>
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {t("bgRemover.original")}
+                  </span>
                   <div className="relative max-h-80 overflow-hidden rounded-xl border border-border bg-card p-1">
                     <img
                       src={originalUrl}
-                      alt="Original"
+                      alt={t("bgRemover.original")}
                       className="max-h-72 object-contain rounded-lg"
                     />
                   </div>
                 </div>
                 <div className="flex flex-col items-center gap-2">
-                  <span className="text-xs font-medium text-primary">Transparent Result</span>
+                  <span className="text-xs font-medium text-primary">
+                    {t("bgRemover.resultLabel")}
+                  </span>
                   <div className="relative max-h-80 overflow-hidden rounded-xl border border-border bg-card p-1">
                     {processedUrl ? (
                       <img
                         src={processedUrl}
-                        alt="Cutout"
+                        alt={t("bgRemover.resultLabel")}
                         className="max-h-72 object-contain rounded-lg"
                       />
                     ) : (
                       <div className="grid size-72 place-items-center text-xs text-muted-foreground">
-                        Processing...
+                        {t("bgRemover.processingFallback")}
                       </div>
                     )}
                   </div>
@@ -346,14 +351,14 @@ export function BackgroundRemover() {
             ) : viewMode === "original" ? (
               <img
                 src={originalUrl}
-                alt="Original"
+                alt={t("bgRemover.original")}
                 className="max-h-96 object-contain rounded-xl shadow-md"
               />
             ) : (
               processedUrl && (
                 <img
                   src={processedUrl}
-                  alt="Transparent Result"
+                  alt={t("bgRemover.resultLabel")}
                   className="max-h-96 object-contain rounded-xl shadow-md animate-rise"
                 />
               )
@@ -364,14 +369,16 @@ export function BackgroundRemover() {
             <div className="flex items-center gap-2">
               <Sliders className="size-4 text-primary" />
               <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground">
-                Refine Removal Sensitivity
+                {t("bgRemover.refine")}
               </h3>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <div className="flex items-center justify-between text-xs mb-1.5">
-                  <span className="text-muted-foreground font-medium">Color Tolerance</span>
+                  <span className="text-muted-foreground font-medium">
+                    {t("bgRemover.colorTolerance")}
+                  </span>
                   <span className="font-mono text-foreground">{tolerance}%</span>
                 </div>
                 <Slider
@@ -386,7 +393,9 @@ export function BackgroundRemover() {
 
               <div>
                 <div className="flex items-center justify-between text-xs mb-1.5">
-                  <span className="text-muted-foreground font-medium">Edge Softness (Feather)</span>
+                  <span className="text-muted-foreground font-medium">
+                    {t("bgRemover.edgeSoftness")}
+                  </span>
                   <span className="font-mono text-foreground">{feather}px</span>
                 </div>
                 <Slider

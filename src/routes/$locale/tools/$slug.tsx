@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { Sparkles } from "lucide-react";
 import { SiteLayout } from "@/components/layout/SiteLayout";
@@ -8,14 +8,24 @@ import { tools } from "@/data/tools";
 import { categoryById } from "@/data/categories";
 import { buildToolHeadMetadata } from "@/lib/seo/toolPageMetadata";
 import { usePageSeo } from "@/lib/usePageSeo";
-import { LocalI18nProvider, useI18n, type LocaleCode } from "@/lib/i18n";
+import { LocalI18nProvider, isSupportedLocale, useI18n, type LocaleCode } from "@/lib/i18n";
 import { resolveCategoryName, resolveToolName } from "@/lib/i18n/keys";
 import { trackPageView } from "@/lib/analytics";
 
 export const Route = createFileRoute("/$locale/tools/$slug")({
+  // Validate the `:locale` segment against the 25 supported locales. Unknown
+  // locales throw a 404 (no redirect, no English fallback). The tool slug is
+  // preserved across locales (e.g. /ar/tools/calculator → /es/tools/calculator
+  // keeps the same slug). English tool pages live at /tools/<slug>.
+  beforeLoad: ({ params }) => {
+    if (!isSupportedLocale(params.locale) || params.locale === "en") {
+      throw notFound();
+    }
+  },
   head: ({ params }) => {
-    const { locale, slug } = params;
-    const validLocale: LocaleCode = locale === "ar" ? "ar" : "en";
+    const { slug } = params;
+    // Guarded by beforeLoad: params.locale is a supported non-en LocaleCode.
+    const validLocale: LocaleCode = isSupportedLocale(params.locale) ? params.locale : "ar";
     const runtime = getReadyToolRuntime(slug);
     return buildToolHeadMetadata(slug, runtime?.seoOverride, validLocale);
   },
@@ -66,19 +76,15 @@ function LocalizedToolPageContent({ slug, locale }: { slug: string; locale: Loca
       <SiteLayout>
         <div className="mx-auto max-w-4xl px-5 py-20 text-center">
           <h1 className="text-3xl font-bold text-foreground">
-            {locale === "ar" ? "أداة غير موجودة" : "Tool Not Found"}
+            {t("toolPage.notFound.missingTitle")}
           </h1>
-          <p className="mt-4 text-muted-foreground">
-            {locale === "ar"
-              ? "لم يتم العثور على الأداة المطلوبة."
-              : "The requested tool could not be found."}
-          </p>
+          <p className="mt-4 text-muted-foreground">{t("toolPage.notFound.missingDescription")}</p>
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
             <Link
               to="/"
               className="rounded-xl border border-border px-4 py-3 text-sm font-semibold text-primary hover:bg-primary/10"
             >
-              {locale === "ar" ? "العودة إلى الصفحة الرئيسية" : "Back to Home"}
+              {t("toolPage.notFound.backHome")}
             </Link>
           </div>
         </div>
@@ -90,14 +96,14 @@ function LocalizedToolPageContent({ slug, locale }: { slug: string; locale: Loca
     <SiteLayout>
       <ToolLayout
         icon={icon}
-        name={tool.name}
+        name={resolveToolName(tool.slug || tool.id, t)}
         description={tool.description}
         category={categoryName}
         slug={tool.slug}
       >
         <div className="rounded-3xl border border-border bg-card p-8 space-y-6 text-sm text-muted-foreground">
           <p className="text-base text-foreground font-semibold">
-            {tool.name} ({locale.toUpperCase()})
+            {resolveToolName(tool.slug || tool.id, t)} ({locale.toUpperCase()})
           </p>
           <p>{tool.description}</p>
         </div>
@@ -108,7 +114,8 @@ function LocalizedToolPageContent({ slug, locale }: { slug: string; locale: Loca
 
 function LocalizedToolPageRoute() {
   const { locale, slug } = Route.useParams() as { locale?: string; slug: string };
-  const validLocale: LocaleCode = locale === "ar" ? "ar" : "en";
+  // beforeLoad guarantees a supported non-en locale here; guard keeps TS happy.
+  const validLocale: LocaleCode = isSupportedLocale(locale) ? locale : "ar";
 
   return (
     <LocalI18nProvider locale={validLocale}>

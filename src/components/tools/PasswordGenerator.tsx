@@ -17,6 +17,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { trackCopyAction } from "@/lib/analytics";
+import { useI18n } from "@/lib/i18n";
 
 const UPPERCASE = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const LOWERCASE = "abcdefghijklmnopqrstuvwxyz";
@@ -34,6 +35,7 @@ export function PasswordGenerator() {
 
   const [password, setPassword] = useState("");
   const [copied, setCopied] = useState(false);
+  const { t } = useI18n();
 
   const generatePassword = useCallback(() => {
     let charset = "";
@@ -72,7 +74,7 @@ export function PasswordGenerator() {
 
   // Entropy & strength score calculation
   const calculateStrength = () => {
-    if (!password) return { label: "None", score: 0, color: "bg-muted" };
+    if (!password) return { label: "" as const, score: 0, color: "bg-muted" };
 
     let poolSize = 0;
     if (useUpper) poolSize += 26;
@@ -83,14 +85,39 @@ export function PasswordGenerator() {
     const entropy = length * Math.log2(poolSize || 1);
 
     if (entropy < 28)
-      return { label: "Weak", score: 1, color: "bg-destructive", text: "text-destructive" };
+      return {
+        label: "passwordGen.strength.weak",
+        score: 1,
+        color: "bg-destructive",
+        text: "text-destructive",
+      };
     if (entropy < 45)
-      return { label: "Fair", score: 2, color: "bg-amber-500", text: "text-amber-500" };
+      return {
+        label: "passwordGen.strength.fair",
+        score: 2,
+        color: "bg-amber-500",
+        text: "text-amber-500",
+      };
     if (entropy < 65)
-      return { label: "Good", score: 3, color: "bg-blue-500", text: "text-blue-500" };
+      return {
+        label: "passwordGen.strength.good",
+        score: 3,
+        color: "bg-blue-500",
+        text: "text-blue-500",
+      };
     if (entropy < 90)
-      return { label: "Strong", score: 4, color: "bg-emerald-500", text: "text-emerald-500" };
-    return { label: "Very Strong", score: 5, color: "bg-emerald-600", text: "text-emerald-600" };
+      return {
+        label: "passwordGen.strength.strong",
+        score: 4,
+        color: "bg-emerald-500",
+        text: "text-emerald-500",
+      };
+    return {
+      label: "passwordGen.strength.veryStrong",
+      score: 5,
+      color: "bg-emerald-600",
+      text: "text-emerald-600",
+    };
   };
 
   const strength = calculateStrength();
@@ -115,7 +142,7 @@ export function PasswordGenerator() {
           <p className="font-mono text-xl sm:text-2xl font-bold tracking-wider text-foreground select-all break-all">
             {password || (
               <span className="text-muted-foreground italic text-base">
-                Select at least one character set
+                {t("passwordGen.empty")}
               </span>
             )}
           </p>
@@ -126,14 +153,14 @@ export function PasswordGenerator() {
             variant="outline"
             size="icon"
             onClick={generatePassword}
-            title="Regenerate password"
+            title={t("passwordGen.regenerate")}
             className="rounded-xl"
           >
             <RefreshCw className="size-4" />
           </Button>
           <Button onClick={handleCopy} disabled={!password} className="rounded-xl shadow-xs">
             {copied ? <Check className="me-1.5 size-4" /> : <Copy className="me-1.5 size-4" />}
-            {copied ? "Copied!" : "Copy Password"}
+            {copied ? t("passwordGen.copied") : t("passwordGen.copy")}
           </Button>
         </div>
       </div>
@@ -149,9 +176,9 @@ export function PasswordGenerator() {
             <ShieldAlert className="size-4 text-destructive" />
           )}
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Security Strength:{" "}
+            {t("passwordGen.strength")}{" "}
             <span className={cn("normal-case font-bold ms-1", strength.text)}>
-              {strength.label}
+              {strength.label ? t(strength.label as never) : ""}
             </span>
           </span>
         </div>
@@ -174,8 +201,10 @@ export function PasswordGenerator() {
         {/* Length Slider */}
         <div className="rounded-2xl border border-border/60 bg-surface/40 p-4">
           <div className="flex items-center justify-between text-xs mb-2">
-            <span className="font-semibold text-foreground">Password Length</span>
-            <span className="font-mono text-base font-bold text-primary">{length} characters</span>
+            <span className="font-semibold text-foreground">{t("passwordGen.length")}</span>
+            <span className="font-mono text-base font-bold text-primary">
+              {t("passwordGen.lengthChars", { count: length })}
+            </span>
           </div>
           <Slider
             value={[length]}
@@ -190,32 +219,32 @@ export function PasswordGenerator() {
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-surface/40 p-4">
             <div>
-              <Label className="text-xs font-semibold">Uppercase Letters (A-Z)</Label>
-              <p className="text-[11px] text-muted-foreground">e.g. ABCDEF</p>
+              <Label className="text-xs font-semibold">{t("passwordGen.uppercase")}</Label>
+              <p className="text-[11px] text-muted-foreground">{t("passwordGen.uppercaseHint")}</p>
             </div>
             <Switch checked={useUpper} onCheckedChange={setUseUpper} />
           </div>
 
           <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-surface/40 p-4">
             <div>
-              <Label className="text-xs font-semibold">Lowercase Letters (a-z)</Label>
-              <p className="text-[11px] text-muted-foreground">e.g. abcdef</p>
+              <Label className="text-xs font-semibold">{t("passwordGen.lowercase")}</Label>
+              <p className="text-[11px] text-muted-foreground">{t("passwordGen.lowercaseHint")}</p>
             </div>
             <Switch checked={useLower} onCheckedChange={setUseLower} />
           </div>
 
           <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-surface/40 p-4">
             <div>
-              <Label className="text-xs font-semibold">Numbers (0-9)</Label>
-              <p className="text-[11px] text-muted-foreground">e.g. 123456</p>
+              <Label className="text-xs font-semibold">{t("passwordGen.numbers")}</Label>
+              <p className="text-[11px] text-muted-foreground">{t("passwordGen.numbersHint")}</p>
             </div>
             <Switch checked={useNumbers} onCheckedChange={setUseNumbers} />
           </div>
 
           <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-surface/40 p-4">
             <div>
-              <Label className="text-xs font-semibold">Special Symbols (!@#$)</Label>
-              <p className="text-[11px] text-muted-foreground">e.g. !@#$%^&*</p>
+              <Label className="text-xs font-semibold">{t("passwordGen.symbols")}</Label>
+              <p className="text-[11px] text-muted-foreground">{t("passwordGen.symbolsHint")}</p>
             </div>
             <Switch checked={useSymbols} onCheckedChange={setUseSymbols} />
           </div>
@@ -224,9 +253,9 @@ export function PasswordGenerator() {
         {/* Exclude Ambiguous Option */}
         <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-surface/40 p-4">
           <div>
-            <Label className="text-xs font-semibold">Exclude Ambiguous Characters</Label>
+            <Label className="text-xs font-semibold">{t("passwordGen.excludeAmbiguous")}</Label>
             <p className="text-[11px] text-muted-foreground">
-              Avoid confusing characters like l, 1, I, O, 0
+              {t("passwordGen.excludeAmbiguousHint")}
             </p>
           </div>
           <Switch checked={excludeAmbiguous} onCheckedChange={setExcludeAmbiguous} />
