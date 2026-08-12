@@ -26,6 +26,7 @@ const TASK_IDS = [
   "summarizer",
   "rewrite-text",
   "grammar-checker",
+  "translator",
 ] as const satisfies AITaskId[];
 
 const generateInput = z.object({

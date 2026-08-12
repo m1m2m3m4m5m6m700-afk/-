@@ -76,6 +76,15 @@ export const TASK_PROMPTS: Record<AITaskId, AITaskPrompt> = {
       `Proofread the following text. Return the corrected version, then list the fixes.\n\n${input}`,
     defaultMaxOutputTokens: 1000,
   },
+  translator: {
+    system:
+      "You are Flixo's translator. Translate the user's text into the requested target language. " +
+      "Preserve the original meaning, tone, and formatting (including line breaks). " +
+      "Do not add explanations, notes, quotation marks, or any text other than the translation. " +
+      "Return only the translated text with no preamble.",
+    buildUserPrompt: (input) => input,
+    defaultMaxOutputTokens: 1000,
+  },
 };
 
 export function getTaskPrompt(taskId: AITaskId): AITaskPrompt {

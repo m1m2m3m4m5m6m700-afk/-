@@ -66,6 +66,7 @@ function parseTaskOverrides(): AIGlobalConfig["taskOverrides"] {
     { id: "summarizer", prefix: "FLIXO_AI_SUMMARIZER" },
     { id: "rewrite-text", prefix: "FLIXO_AI_REWRITE_TEXT" },
     { id: "grammar-checker", prefix: "FLIXO_AI_GRAMMAR_CHECKER" },
+    { id: "translator", prefix: "FLIXO_AI_TRANSLATOR" },
   ];
   for (const { id, prefix } of tasks) {
     const model = readEnv(`${prefix}${MODEL_SUFFIX}`);

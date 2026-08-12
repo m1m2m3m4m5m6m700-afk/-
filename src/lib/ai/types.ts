@@ -14,7 +14,8 @@ export type AITaskId =
   | "blog-generator"
   | "summarizer"
   | "rewrite-text"
-  | "grammar-checker";
+  | "grammar-checker"
+  | "translator";
 
 /** A single chat message sent to a provider. */
 export interface AIMessage {
