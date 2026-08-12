@@ -1,3 +1,5 @@
+import { generate } from "@/lib/ai/server/generate";
+
 export interface Language {
   code: string;
   name: string;
@@ -228,7 +230,7 @@ export function languageName(code: string) {
   return LANGUAGES.find((l) => l.code === code)?.name ?? code;
 }
 
-/** Very rough script-based detection, good enough for the mock engine. */
+/** Rough script-based detection, used as a reliable local source hint. */
 export function detectLanguage(text: string): string {
   const checks: Array<[RegExp, string]> = [
     [/[\u4e00-\u9fff]/, "zh"],
@@ -262,8 +264,18 @@ export interface TranslationResult {
 }
 
 /**
- * Mock translation engine. Swap this implementation for a real API call
- * later — the signature is all the UI depends on.
+ * Translate text via the existing Flixo AI layer (`translator` task).
+ *
+ * The signature stays compatible with the Translator UI. The server-side
+ * `generate` RPC runs the OpenAI-backed provider chain; on any failure
+ * (AI not configured, provider error, network error, empty/invalid output)
+ * this throws an Error — it never returns a fake or fallback translation.
+ *
+ * Note on cancellation: the `generate` server fn does not currently forward
+ * an AbortSignal, so `signal` is honored locally (rejects with AbortError as
+ * soon as it fires) rather than aborting the upstream request. Wiring the
+ * signal end-to-end would require extending the RPC/AI-service contract and
+ * is intentionally left out of this change.
  */
 export async function translateText(params: {
   text: string;
@@ -273,18 +285,8 @@ export async function translateText(params: {
 }): Promise<TranslationResult> {
   const { text, from, to, signal } = params;
 
-  await new Promise<void>((resolve, reject) => {
-    const id = setTimeout(resolve, 900 + Math.random() * 600);
-    signal?.addEventListener("abort", () => {
-      clearTimeout(id);
-      reject(new DOMException("Aborted", "AbortError"));
-    });
-  });
-
   if (!text.trim()) throw new Error("Enter some text to translate.");
   if (text.length > MAX_CHARS) throw new Error(`Text is limited to ${MAX_CHARS} characters.`);
-  if (/^\s*fail\s*$/i.test(text))
-    throw new Error("The translation service is unavailable. Please try again.");
 
   const detectedSource = from === AUTO_DETECT ? detectLanguage(text) : from;
 
@@ -292,68 +294,43 @@ export async function translateText(params: {
     return { text, detectedSource };
   }
 
-  const translated = text
-    .split(/(\s+)/)
-    .map((token) => (/^\s+$/.test(token) ? token : mockWord(token, to)))
-    .join("");
+  const input =
+    `Translate the following text into ${languageName(to)}. ` +
+    `Keep the original meaning, tone, and formatting (including line breaks). ` +
+    `Return only the translation with no explanations or quotation marks.\n\n` +
+    `Text:\n${text}`;
+
+  const res = await raceWithAbort(generate({ data: { taskId: "translator", input } }), signal);
+
+  if (!res.ok) {
+    throw new Error(res.message || "Translation failed. Please try again.");
+  }
+
+  const translated = res.content?.trim();
+  if (!translated) {
+    throw new Error("The translation service returned an empty response. Please try again.");
+  }
 
   return { text: translated, detectedSource };
 }
 
-const SUFFIX: Record<string, string> = {
-  es: "o",
-  fr: "e",
-  de: "en",
-  it: "i",
-  pt: "ão",
-  nl: "en",
-  sv: "et",
-  pl: "ski",
-  tr: "lar",
-  id: "kan",
-};
-
-function mockWord(word: string, to: string) {
-  const core = word.replace(/[^\p{L}\p{N}']/gu, "");
-  if (!core) return word;
-  const punct = word.slice(core.length ? word.indexOf(core) + core.length : 0);
-  const lead = word.slice(0, word.indexOf(core));
-
-  let out: string;
-  if (["ar", "he", "hi", "bn", "ru", "uk", "zh", "ja", "ko"].includes(to)) {
-    out = transliterate(core, to);
-  } else {
-    out = core + (SUFFIX[to] ?? "");
-  }
-  if (core[0] === core[0]?.toUpperCase()) out = out.charAt(0).toUpperCase() + out.slice(1);
-  return lead + out + punct;
-}
-
-const SCRIPTS: Record<string, string> = {
-  ru: "абвгдеж зийклмнопрстуфхцчшщэюя",
-  uk: "абвгдеєжзийклмнопрстуфхцчшщюя",
-  ar: "ابتثجحخدذرزسشصضطظعغفقكلمنهوي",
-  he: "אבגדהוזחטיכלמנסעפצקרשת",
-  hi: "अआइईउऊएऐओऔकखगघचछजझटठडढणतथदधनपफबभमयरलवशषसह",
-  bn: "অআইঈউঊএঐওঔকখগঘচছজঝটঠডঢণতথদধনপফবভমযরলশষসহ",
-  zh: "语言翻译文本快速智能工具内容世界数据",
-  ja: "翻訳言葉文章速いスマート道具内容世界",
-  ko: "번역언어문장빠른스마트도구내용세계",
-};
-
-function transliterate(word: string, to: string) {
-  const alphabet = SCRIPTS[to] ?? "";
-  if (!alphabet) return word;
-  const chars = [...alphabet];
-  let seed = 0;
-  for (const ch of word) seed = (seed * 31 + ch.charCodeAt(0)) % 100000;
-  const len = ["zh", "ja", "ko"].includes(to)
-    ? Math.max(1, Math.ceil(word.length / 3))
-    : word.length;
-  let out = "";
-  for (let i = 0; i < len; i++) {
-    seed = (seed * 1103515245 + 12345 + i) % 2147483648;
-    out += chars[seed % chars.length];
-  }
-  return out;
+function raceWithAbort<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return promise;
+  if (signal.aborted) return Promise.reject(new DOMException("Aborted", "AbortError"));
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => {
+      reject(new DOMException("Aborted", "AbortError"));
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+    promise.then(
+      (value) => {
+        signal.removeEventListener("abort", onAbort);
+        resolve(value);
+      },
+      (err) => {
+        signal.removeEventListener("abort", onAbort);
+        reject(err);
+      },
+    );
+  });
 }
