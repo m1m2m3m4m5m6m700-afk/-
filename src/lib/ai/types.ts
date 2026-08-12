@@ -4,7 +4,7 @@
  * These types are safe to import from both client and server code — they carry
  * no runtime logic and no secrets. The actual provider implementations, config,
  * and the unified AI service live in server-only modules reached transitively
- * through the `createServerFn` RPC in `src/lib/ai/server/generate.ts`.
+ * through the `createServerFn` RPC in `src/lib/ai/rpc/generate.ts`.
  */
 
 /** Identifiers for AI-powered tool tasks. Each maps to a prompt template. */

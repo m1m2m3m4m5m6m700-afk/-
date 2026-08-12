@@ -9,7 +9,7 @@
  */
 
 import { useCallback, useRef, useState } from "react";
-import { generate } from "./server/generate";
+import { generate } from "./rpc/generate";
 import type { AIGenerateFailure, AIGenerateResult, AITaskId } from "./types";
 
 export interface UseAIGenerationState {

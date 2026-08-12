@@ -3,7 +3,7 @@
  *
  * Reads everything from environment variables. Never imported by client code —
  * it is only reached transitively through the `createServerFn` handler in
- * `src/lib/ai/server/generate.ts`, whose body never ships to the client bundle.
+ * `src/lib/ai/rpc/generate.ts`, whose body never ships to the client bundle.
  *
  * Secrets (API keys) are read here and stay in the server process memory. They
  * are never serialized into responses, logs, or the client bundle.

@@ -1,4 +1,4 @@
-import { generate } from "@/lib/ai/server/generate";
+import { generate } from "@/lib/ai/rpc/generate";
 
 export interface Language {
   code: string;
