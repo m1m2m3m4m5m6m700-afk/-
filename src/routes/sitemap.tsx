@@ -4,6 +4,7 @@ import { Globe, FileCode2, ChevronRight, Sparkles, ExternalLink } from "lucide-r
 import { readyTools } from "@/data/tools";
 import { categories } from "@/data/categories";
 import { blogPosts } from "@/data/blogData";
+import { SITE_URL } from "@/lib/seo/site";
 import {
   comparisonRegistry,
   useCaseRegistry,
@@ -33,7 +34,7 @@ function SitemapRoute() {
     trackPageView("/sitemap");
   }, []);
 
-  const siteUrl = "https://flixotools.com";
+  const siteUrl = SITE_URL;
 
   const allPages = [
     { url: "/", title: "Homepage", type: "Core Page" },

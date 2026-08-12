@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { SITE_URL } from "@/lib/seo/site";
 
 export type ConversationCategory =
   | "Ask a Question"
@@ -157,7 +158,7 @@ class CommunicationStore {
         os: typeof navigator !== "undefined" ? navigator.platform : "Desktop",
         location: "Detected via Client IP",
         ip: "127.0.0.1",
-        pageUrl: typeof window !== "undefined" ? window.location.href : "https://flixotools.com",
+        pageUrl: typeof window !== "undefined" ? window.location.href : SITE_URL,
       },
       internalNotes: [],
       messages: [

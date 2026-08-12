@@ -16,6 +16,7 @@ import { JsonLd } from "@/components/seo/JsonLd";
 import { usePageSeo } from "@/lib/usePageSeo";
 import { trackPageView } from "@/lib/analytics";
 import { LastUpdatedBadge } from "@/components/seo/LastUpdatedBadge";
+import { SITE_URL } from "@/lib/seo/site";
 
 export const Route = createFileRoute("/compare/$slug")({
   component: ComparisonSlugRoute,
@@ -53,7 +54,7 @@ function ComparisonSlugRoute() {
   }
 
   const matchedTool = tools.find((t) => t.id === comp.toolId);
-  const siteUrl = "https://flixotools.com";
+  const siteUrl = SITE_URL;
   const pageUrl = `${siteUrl}/compare/${comp.slug}`;
 
   const breadcrumbSchema = {

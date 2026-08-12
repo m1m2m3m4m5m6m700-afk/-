@@ -7,6 +7,7 @@ import {
   NOINDEX_ROBOTS,
   SITE_NAME,
   SITE_TWITTER_HANDLE,
+  SITE_URL,
   getDefaultOgImageUrl,
   getToolCanonicalUrl,
   stripQueryAndHash,
@@ -62,14 +63,12 @@ export function resolvePageSeo(
   const keywords = customData?.keywords ||
     seoData?.keywords || ["flixo", "online tools", "free utilities", "browser tools"];
 
-  const fallbackPageUrl = slug ? getToolCanonicalUrl(slug, locale) : "https://flixotools.com";
+  const fallbackPageUrl = slug ? getToolCanonicalUrl(slug, locale) : SITE_URL;
   const pageUrl =
     typeof window !== "undefined" && window.location?.href ? window.location.href : fallbackPageUrl;
   const canonicalUrl = slug ? getToolCanonicalUrl(slug, locale) : stripQueryAndHash(pageUrl);
   const origin =
-    typeof window !== "undefined" && window.location?.origin
-      ? window.location.origin
-      : "https://flixotools.com";
+    typeof window !== "undefined" && window.location?.origin ? window.location.origin : SITE_URL;
 
   // Hidden / non-ready tools must never be indexed. Direct URLs still resolve
   // to a not-found page, but search engines are told to drop the URL.

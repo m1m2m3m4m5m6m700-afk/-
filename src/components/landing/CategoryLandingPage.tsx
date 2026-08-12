@@ -19,6 +19,7 @@ import { SiteLayout } from "@/components/layout/SiteLayout";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { usePageSeo } from "@/lib/usePageSeo";
 import { trackCategoryVisit, trackPageView } from "@/lib/analytics";
+import { SITE_URL } from "@/lib/seo/site";
 
 const TOOL_STATUS_ORDER: Record<Tool["status"], number> = {
   ready: 0,
@@ -267,7 +268,7 @@ export function CategoryLandingPage({ categoryId }: CategoryLandingPageProps) {
     relatedCategories.length > 0 ? relatedCategories : fallbackRelatedCategories;
 
   // JSON-LD Schema
-  const siteUrl = "https://flixotools.com";
+  const siteUrl = SITE_URL;
   const pageUrl = `${siteUrl}/categories/${categoryId}`;
 
   const breadcrumbSchema = {

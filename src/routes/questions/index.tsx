@@ -7,6 +7,7 @@ import { JsonLd } from "@/components/seo/JsonLd";
 import { usePageSeo } from "@/lib/usePageSeo";
 import { trackPageView } from "@/lib/analytics";
 import { LastUpdatedBadge } from "@/components/seo/LastUpdatedBadge";
+import { SITE_URL } from "@/lib/seo/site";
 
 export const Route = createFileRoute("/questions/")({
   component: QuestionsIndexRoute,
@@ -29,7 +30,7 @@ function QuestionsIndexRoute() {
     trackPageView("/questions");
   }, []);
 
-  const siteUrl = "https://flixotools.com";
+  const siteUrl = SITE_URL;
   const pageUrl = `${siteUrl}/questions`;
 
   const breadcrumbSchema = {

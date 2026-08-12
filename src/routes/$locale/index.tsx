@@ -11,6 +11,7 @@ import { SponsorSection } from "@/components/landing/SponsorSection";
 import { RequestToolDialog } from "@/components/landing/RequestToolDialog";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { LocalI18nProvider, isSupportedLocale, type LocaleCode } from "@/lib/i18n";
+import { SITE_URL } from "@/lib/seo/site";
 
 export const Route = createFileRoute("/$locale/")({
   // Validate the `:locale` segment against the 25 supported locales. Unknown
@@ -48,10 +49,10 @@ export const Route = createFileRoute("/$locale/")({
         { property: "og:locale", content: isAr ? "ar_AR" : "en_US" },
       ],
       links: [
-        { rel: "canonical", href: `https://flixotools.com/${locale}` },
-        { rel: "alternate", hrefLang: "en", href: "https://flixotools.com/en" },
-        { rel: "alternate", hrefLang: "ar", href: "https://flixotools.com/ar" },
-        { rel: "alternate", hrefLang: "x-default", href: "https://flixotools.com" },
+        { rel: "canonical", href: `${SITE_URL}/${locale}` },
+        { rel: "alternate", hrefLang: "en", href: SITE_URL },
+        { rel: "alternate", hrefLang: "ar", href: `${SITE_URL}/ar` },
+        { rel: "alternate", hrefLang: "x-default", href: SITE_URL },
       ],
     };
   },

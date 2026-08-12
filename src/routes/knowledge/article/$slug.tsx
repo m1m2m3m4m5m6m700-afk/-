@@ -7,6 +7,7 @@ import { usePageSeo } from "@/lib/usePageSeo";
 import { trackPageView } from "@/lib/analytics";
 import { getKnowledgeArticle } from "@/data/knowledgeHub";
 import { tools } from "@/data/tools";
+import { SITE_URL } from "@/lib/seo/site";
 
 export const Route = createFileRoute("/knowledge/article/$slug")({
   component: KnowledgeArticleRoute,
@@ -44,7 +45,7 @@ function KnowledgeArticleRoute() {
     );
   }
 
-  const siteUrl = "https://flixotools.com";
+  const siteUrl = SITE_URL;
   const pageUrl = `${siteUrl}/knowledge/article/${article.slug}`;
   const relatedTools = tools.filter(
     (tool) => article.toolIds.includes(tool.id) && tool.status === "ready",

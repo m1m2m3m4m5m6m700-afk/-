@@ -1,4 +1,4 @@
-export const SITE_URL = "https://flixotools.com";
+export const SITE_URL = "https://flixoai.vercel.app";
 export const SITE_NAME = "Flixo";
 export const SITE_DISPLAY_NAME = "Flixo Tools";
 export const SITE_TWITTER_HANDLE = "@FlixoTools";
@@ -10,8 +10,10 @@ export const NOINDEX_ROBOTS = "noindex, nofollow";
 export const getDefaultOgImageUrl = (origin: string = SITE_URL) =>
   `${origin}${DEFAULT_OG_IMAGE_PATH}`;
 export const stripQueryAndHash = (url: string) => url.split("?")[0].split("#")[0];
+// English is served at the site root (`/tools/<slug>`), so the "en" locale
+// maps to no path segment. Non-en locales use `/<locale>/tools/<slug>`.
 export const getToolCanonicalUrl = (slug: string, locale?: string) =>
-  locale ? `${SITE_URL}/${locale}/tools/${slug}` : `${SITE_URL}/tools/${slug}`;
+  locale && locale !== "en" ? `${SITE_URL}/${locale}/tools/${slug}` : `${SITE_URL}/tools/${slug}`;
 export const getCategoryCanonicalUrl = (slug: string) => `${SITE_URL}/categories/${slug}`;
 export const getAbsoluteUrl = (path: string) =>
   `${SITE_URL}${path.startsWith("/") ? path : `/${path}`}`;

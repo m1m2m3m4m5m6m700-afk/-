@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Code2, Terminal, Cpu, Zap, ArrowRight, ShieldCheck } from "lucide-react";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { usePageSeo } from "@/lib/usePageSeo";
+import { SITE_URL } from "@/lib/seo/site";
 
 export const Route = createFileRoute("/api-docs")({
   component: ApiDocsRoute,
@@ -53,7 +54,7 @@ function ApiDocsRoute() {
               <div className="rounded-2xl border border-border/80 bg-slate-950 p-4 font-mono text-xs text-slate-200 overflow-x-auto">
                 <div className="text-slate-400">// POST /api/translate</div>
                 <div className="mt-1 text-emerald-400">
-                  curl -X POST https://flixotools.com/api/translate \<br />
+                  curl -X POST {SITE_URL}/api/translate \<br />
                   &nbsp;&nbsp;-H "Content-Type: application/json" \<br />
                   &nbsp;&nbsp;-d '&#123;"text": "Hello world", "source": "en", "target": "es"&#125;'
                 </div>

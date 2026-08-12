@@ -202,7 +202,6 @@ if (!publicRobots.includes("Sitemap: https://flixoai.vercel.app/sitemap.xml"))
 
 const expectedUrls = [
   `${SITE_URL}/`,
-  `${SITE_URL}/en`,
   `${SITE_URL}/ar`,
   `${SITE_URL}/contact`,
   `${SITE_URL}/blog`,
@@ -215,11 +214,7 @@ const expectedUrls = [
   ...categories.map((category) => `${SITE_URL}/categories/${category.id}`),
   ...tools
     .filter((tool) => tool.status === "ready" && tool.slug)
-    .flatMap((tool) => [
-      `${SITE_URL}/tools/${tool.slug}`,
-      `${SITE_URL}/en/tools/${tool.slug}`,
-      `${SITE_URL}/ar/tools/${tool.slug}`,
-    ]),
+    .flatMap((tool) => [`${SITE_URL}/tools/${tool.slug}`, `${SITE_URL}/ar/tools/${tool.slug}`]),
   ...comparisonRegistry.map((entry) => `${SITE_URL}/compare/${entry.slug}`),
   ...useCaseRegistry.map((entry) => `${SITE_URL}/use-cases/${entry.slug}`),
   ...fileTypeRegistry.map((entry) => `${SITE_URL}/file-types/${entry.slug}`),

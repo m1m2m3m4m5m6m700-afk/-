@@ -66,7 +66,6 @@ const blogPosts = loadArrayFromExport(blogSource, "blogPosts");
 
 const allPages = [
   { url: "/", priority: "1.0", changefreq: "daily" },
-  { url: "/en", priority: "1.0", changefreq: "daily" },
   { url: "/ar", priority: "1.0", changefreq: "daily" },
   { url: "/contact", priority: "0.6", changefreq: "monthly" },
   { url: "/blog", priority: "0.8", changefreq: "weekly" },
@@ -85,7 +84,6 @@ const allPages = [
     .filter((tool) => tool.status === "ready" && tool.slug)
     .flatMap((tool) => [
       { url: `/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
-      { url: `/en/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
       { url: `/ar/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
     ]),
   ...comparisonRegistry.map((entry) => ({
