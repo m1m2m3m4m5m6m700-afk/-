@@ -619,7 +619,41 @@ after an intentional English change (does NOT touch any locale translation).
 
 `npm run verify` is green: registry → tool-runtime → seo → tool-content →
 localization → typecheck → lint (0 errors, 125 pre-existing warnings) → build.
-`npm audit --omit=dev --audit-level=high` = 0 vulnerabilities (requires a
-lockfile; generate transiently with `npm i --package-lock-only` if needed —
-the project does not track one).
+`npm audit --omit=dev --audit-level=high` = 0 vulnerabilities (the project
+now tracks `package-lock.json`, so `npm ci` is reproducible).
+
+---
+
+## Production deployment config (Vercel + CI/CD)
+
+### Vercel config (`vercel.json`, `.nvmrc`)
+
+The app is a TanStack Start + Nitro project. `vite.config.ts` sets the Nitro
+`preset: "vercel"`, so `npm run build` emits a Vercel Build Output API bundle
+to `.vercel/output/` (runtime `nodejs22.x`, framework `nitro`). Deployment
+config lives in `vercel.json`:
+
+- `framework: null` — the build produces the Build Output API itself; do NOT
+  let Vercel re-run a framework build.
+- Cache headers: content-hashed `/assets/*` and `*.wasm`/`*.gz` →
+  `public, max-age=31536000, immutable`; `sitemap.xml`/`robots.txt` →
+  `public, max-age=3600, must-revalidate`; `manifest.json` → 1 day.
+- `cleanUrls: true`.
+
+`.nvmrc` pins Node 22, matching `engines.node >=20.0.0` and the nitro
+`nodejs22.x` runtime. `.vercel/` is gitignored (build output, never committed).
+
+### CI/CD (`.github/workflows/`)
+
+- `ci.yml` — runs on push/PR to `main` (and `workflow_dispatch`). Uses
+  `.nvmrc` + `npm ci`, then runs the full `verify` chain:
+  registry → tool-runtime → seo → tool-content → localization → typecheck →
+  lint → build. Uploads the `.vercel/output` artifact on PRs only.
+- `deploy.yml` — triggers via `workflow_run` after CI succeeds on `main`
+  (or manual `workflow_dispatch`). Rebuilds and deploys to Vercel production
+  (`vercel deploy --prebuilt --prod`). Requires repo secrets:
+  `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`. Until those are set,
+  the deploy step fails at "Pull Vercel project config" — the CI/build steps
+  still pass. Add the secrets in GitHub → Settings → Secrets and variables →
+  Actions, then re-run the Deploy workflow.
 
