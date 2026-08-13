@@ -43,8 +43,10 @@ export interface InternalNote {
 export interface UserInfo {
   browser: string;
   os: string;
-  location: string;
-  ip: string;
+  /** Human-readable location string, or null when no real signal is available. */
+  location: string | null;
+  /** Visitor IP, or null when not available server-side. */
+  ip: string | null;
   pageUrl: string;
 }
 
@@ -156,8 +158,10 @@ class CommunicationStore {
       userInfo: {
         browser: typeof navigator !== "undefined" ? navigator.userAgent : "Browser Client",
         os: typeof navigator !== "undefined" ? navigator.platform : "Desktop",
-        location: "Detected via Client IP",
-        ip: "127.0.0.1",
+        // No real IP geolocation exists client-side (and faking one would be a
+        // lie). Leave these null until a server-side signal is available.
+        location: null,
+        ip: null,
         pageUrl: typeof window !== "undefined" ? window.location.href : SITE_URL,
       },
       internalNotes: [],
@@ -310,15 +314,26 @@ class CommunicationStore {
       categoryCounts[c.category] = (categoryCounts[c.category] || 0) + 1;
     });
 
+    // Top requested category is computed ONLY from real conversations. When
+    // there are none, it is null — the UI must show "Not enough data", never a
+    // hardcoded category name.
+    const sortedCategories = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1]);
+    const topRequestedCategory = sortedCategories.length > 0 ? sortedCategories[0][0] : null;
+
+    // Average response time and satisfaction score are NOT available: there
+    // is no real source for them (no server-side event log, no survey data).
+    // They are null so the UI shows "Not enough data" rather than fabricated
+    // numbers. Wire these to real sources (server event store / feedback) when
+    // the persistent backend lands.
     return {
       totalConversations: total,
       unreadAdmin,
       openConversations: open,
       resolvedConversations: resolved,
       categoryCounts,
-      avgResponseTime: "18 mins",
-      satisfactionScore: "4.9 / 5.0",
-      topRequestedCategory: "Request a Tool",
+      avgResponseTime: null as string | null,
+      satisfactionScore: null as string | null,
+      topRequestedCategory,
     };
   }
 }

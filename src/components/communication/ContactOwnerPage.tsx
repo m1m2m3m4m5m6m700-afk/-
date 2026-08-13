@@ -119,7 +119,7 @@ export function ContactOwnerPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const attachmentsRef = useRef<Attachment[]>([]);
 
-  const { conversations, createConversation, sendMessage } = useCommunicationStore();
+  const { conversations, createConversation } = useCommunicationStore();
 
   useEffect(() => {
     attachmentsRef.current = attachments;
@@ -177,15 +177,9 @@ export function ContactOwnerPage() {
     setSubject("");
     setAttachments([]);
 
-    // Auto simulated owner reply
-    setTimeout(() => {
-      sendMessage(
-        newConv.id,
-        "owner",
-        "Flixo Support",
-        "Hi there! Thanks for reaching out directly. We've received your ticket and will follow up shortly!",
-      );
-    }, 2500);
+    // No simulated owner reply: a real human owner responds from the admin
+    // inbox. Fabricating an automatic "Flixo Support" message would mislead the
+    // visitor into thinking their ticket was already being handled.
   };
 
   return (

@@ -1,8 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { AdminAnalyticsDashboard } from "@/components/admin/analytics/AdminAnalyticsDashboard";
-
-const ADMIN_ENABLED = import.meta.env.DEV;
+import { AdminGate } from "@/components/admin/AdminGate";
 
 export const Route = createFileRoute("/admin/analytics")({
   head: () => ({
@@ -21,18 +20,9 @@ export const Route = createFileRoute("/admin/analytics")({
 function AdminAnalyticsRoute() {
   return (
     <SiteLayout>
-      {ADMIN_ENABLED ? (
+      <AdminGate areaLabel="Admin analytics">
         <AdminAnalyticsDashboard />
-      ) : (
-        <div className="mx-auto flex min-h-[60vh] max-w-2xl items-center justify-center px-5 py-20 text-center lg:px-8">
-          <div className="space-y-3 rounded-3xl border border-border/60 bg-card/80 p-8 shadow-sm">
-            <h1 className="text-2xl font-semibold text-foreground">Admin analytics unavailable</h1>
-            <p className="text-sm text-muted-foreground">
-              This route is disabled outside local development builds.
-            </p>
-          </div>
-        </div>
-      )}
+      </AdminGate>
     </SiteLayout>
   );
 }

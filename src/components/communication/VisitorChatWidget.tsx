@@ -62,7 +62,6 @@ export function VisitorChatWidget() {
   const [replyText, setReplyText] = useState("");
   const [replyAttachments, setReplyAttachments] = useState<Attachment[]>([]);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [isOwnerTyping, setIsOwnerTyping] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const replyFileInputRef = useRef<HTMLInputElement>(null);
@@ -157,17 +156,9 @@ export function VisitorChatWidget() {
     setActiveConvId(newConv.id);
     setView("chat");
 
-    // Simulate auto-typing indicator & response from owner after 2.5s
-    setIsOwnerTyping(true);
-    setTimeout(() => {
-      setIsOwnerTyping(false);
-      sendMessage(
-        newConv.id,
-        "owner",
-        "Flixo Support",
-        `Hi ${dataName(visitorName)}! Thank you for contacting Flixo about your ${category.toLowerCase()}. We've received your message and our team will get back to you shortly!`,
-      );
-    }, 2800);
+    // No simulated owner reply: a real human owner responds from the admin
+    // inbox. Fabricating an automatic "Flixo Support" message would mislead the
+    // visitor into thinking their request was already handled.
   };
 
   const handleSendReply = (e: React.FormEvent) => {
@@ -187,20 +178,8 @@ export function VisitorChatWidget() {
     setReplyAttachments([]);
     setShowEmojiPicker(false);
 
-    // Occasional simulated owner response trigger for live feel
-    setIsOwnerTyping(true);
-    setTimeout(() => {
-      setIsOwnerTyping(false);
-      sendMessage(
-        activeConvId,
-        "owner",
-        "Flixo Support",
-        "Thanks for updating your message! We are actively reviewing this for you.",
-      );
-    }, 3000);
+    // No simulated owner reply (see handleCreateNew).
   };
-
-  const dataName = (name: string) => (name.trim() ? name.trim().split(" ")[0] : "there");
 
   return (
     <div className="fixed bottom-5 right-5 z-50">
@@ -583,14 +562,6 @@ export function VisitorChatWidget() {
                         </div>
                       );
                     })}
-
-                    {/* Typing Indicator */}
-                    {isOwnerTyping && (
-                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-card p-2 rounded-2xl w-fit border border-border/60 animate-pulse">
-                        <Sparkles className="size-3.5 text-primary" />
-                        <span className="text-[11px] font-medium">Flixo Owner is typing...</span>
-                      </div>
-                    )}
 
                     <div ref={messagesEndRef} />
                   </div>
