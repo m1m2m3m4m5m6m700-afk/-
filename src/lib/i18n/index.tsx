@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { en, type Dictionary, type TranslationKey } from "./locales/en";
+export type { Dictionary };
 import { ar } from "./locales/ar";
 import { es } from "./locales/es";
 import { fr } from "./locales/fr";
@@ -24,6 +25,8 @@ import { uk } from "./locales/uk";
 import { el } from "./locales/el";
 import { he } from "./locales/he";
 import { fa } from "./locales/fa";
+import { ru } from "./locales/ru";
+import { ms } from "./locales/ms";
 import { zhCN } from "./locales/zh-CN";
 import { ja } from "./locales/ja";
 import { ko } from "./locales/ko";
@@ -63,7 +66,9 @@ export type LocaleCode =
   | "cs"
   | "he"
   | "bn"
-  | "fa";
+  | "fa"
+  | "ru"
+  | "ms";
 
 export type Direction = "ltr" | "rtl";
 
@@ -105,6 +110,8 @@ export const LOCALES: LocaleMeta[] = [
   { code: "he", label: "עברית", dir: "rtl" },
   { code: "bn", label: "বাংলা", dir: "ltr" },
   { code: "fa", label: "فارسی", dir: "rtl" },
+  { code: "ru", label: "Русский", dir: "ltr" },
+  { code: "ms", label: "Bahasa Melayu", dir: "ltr" },
 ];
 
 const DICTIONARIES: Record<LocaleCode, Dictionary> = {
@@ -133,6 +140,8 @@ const DICTIONARIES: Record<LocaleCode, Dictionary> = {
   he,
   bn,
   fa,
+  ru,
+  ms,
 };
 
 export const DEFAULT_LOCALE: LocaleCode = "en";

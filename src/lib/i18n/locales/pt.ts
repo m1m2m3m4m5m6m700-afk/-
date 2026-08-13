@@ -378,10 +378,211 @@ export const pt: Dictionary = {
   "bgRemover.error.unexpected": "Ocorreu um erro inesperado durante o processamento.",
   "bgRemover.error.load": "Falha ao carregar a imagem para processamento.",
 
-  // Curated tool names (priority tools) — descriptive user-facing names.
-  "tool.qr-generator.name": "Gerador de QR Code",
-  "tool.password-generator.name": "Gerador de senhas",
+  // Tool names + taglines (76 ready tools) — termos técnicos nativos em português.
+  "tool.translator.name": "Tradutor IA",
+  "tool.translator.tagline":
+    "Traduza entre mais de 20 idiomas com detecção automática e troca instantânea.",
+  "tool.image-enhancer.name": "Melhorador de imagens IA",
+  "tool.image-enhancer.tagline":
+    "Aumente a resolução até 8x, restaure rostos, remova ruído e melhore a nitidez das fotos.",
   "tool.image-compressor.name": "Compressor de imagens",
+  "tool.image-compressor.tagline":
+    "Reduza o tamanho de arquivos de imagem diretamente no seu navegador.",
   "tool.background-remover.name": "Removedor de fundo",
-  "tool.image-enhancer.name": "Melhorador de imagens",
+  "tool.background-remover.tagline": "Recorte fundos de imagens e exporte PNGs transparentes.",
+  "tool.video-compressor.name": "Compressor de vídeo",
+  "tool.video-compressor.tagline":
+    "Reduza o tamanho do arquivo de vídeo com qualidade e configurações de saída ajustáveis.",
+  "tool.video-trimmer.name": "Cortador de vídeo",
+  "tool.video-trimmer.tagline":
+    "Corte uma parte selecionada de um vídeo com controles de início e fim.",
+  "tool.video-to-gif.name": "Vídeo para GIF",
+  "tool.video-to-gif.tagline": "Converta um segmento de vídeo suportado em um GIF animado.",
+  "tool.audio-compressor.name": "Compressor de áudio",
+  "tool.audio-compressor.tagline":
+    "Comprima arquivos de áudio controlando a qualidade e o bitrate de saída.",
+  "tool.audio-cutter.name": "Cortador de áudio",
+  "tool.audio-cutter.tagline":
+    "Corte uma parte selecionada de um arquivo de áudio com controles de início e fim.",
+  "tool.text-to-speech.name": "Texto para voz",
+  "tool.text-to-speech.tagline": "Converta texto escrito em voz natural com vozes configuráveis.",
+  "tool.file-hash-generator.name": "Gerador de hash de arquivos",
+  "tool.file-hash-generator.tagline":
+    "Calcule hashes MD5, SHA-1 e SHA-256 de qualquer arquivo no seu navegador.",
+  "tool.qr-generator.name": "Gerador de QR Code",
+  "tool.qr-generator.tagline": "Crie QR Codes personalizados para links, texto, Wi-Fi e contatos.",
+  "tool.barcode-generator.name": "Gerador de código de barras",
+  "tool.barcode-generator.tagline":
+    "Gere códigos de barras em vários formatos prontos para baixar ou imprimir.",
+  "tool.password-generator.name": "Gerador de senhas",
+  "tool.password-generator.tagline": "Gere senhas fortes e seguras com medidor de entropia.",
+  "tool.password-checker.name": "Verificador de senhas",
+  "tool.password-checker.tagline":
+    "Verifique a força, entropia e tempo estimado de quebra com dicas práticas.",
+  "tool.word-counter.name": "Contador de palavras",
+  "tool.word-counter.tagline": "Conte palavras, caracteres, frases e parágrafos instantaneamente.",
+  "tool.case-converter.name": "Conversor de maiúsculas e minúsculas",
+  "tool.case-converter.tagline":
+    "Alterne entre maiúsculas, minúsculas, título e outros formatos instantaneamente.",
+  "tool.slug-generator.name": "Gerador de slugs",
+  "tool.slug-generator.tagline":
+    "Transforme títulos em slugs limpos e compatíveis com URL com separadores e comprimento personalizados.",
+  "tool.lorem-ipsum.name": "Lorem Ipsum",
+  "tool.lorem-ipsum.tagline":
+    "Gere texto de preenchimento Lorem Ipsum com o número de parágrafos ou palavras escolhido.",
+  "tool.random-number.name": "Gerador de números aleatórios",
+  "tool.random-number.tagline":
+    "Gere números aleatórios em um intervalo com opções de quantidade e sem duplicatas.",
+  "tool.random-name.name": "Sorteador de nomes aleatórios",
+  "tool.random-name.tagline":
+    "Sorteie um ou mais nomes de uma lista com opção de seleção sem duplicatas.",
+  "tool.json-formatter.name": "Formatador JSON",
+  "tool.json-formatter.tagline":
+    "Formate, minifique e valide JSON com opções de indentação personalizadas.",
+  "tool.uuid-generator.name": "Gerador de UUID",
+  "tool.uuid-generator.tagline": "Crie identificadores UUID únicos (v4) de forma rápida e em lote.",
+  "tool.xml-formatter.name": "Formatador XML",
+  "tool.xml-formatter.tagline":
+    "Formate, minifique e valide XML com opções de indentação personalizadas.",
+  "tool.csv-viewer.name": "Visualizador de CSV",
+  "tool.csv-viewer.tagline":
+    "Visualize dados CSV como tabela com seleção de delimitador e detecção de cabeçalho.",
+  "tool.text-compare.name": "Comparador de textos",
+  "tool.text-compare.tagline":
+    "Compare dois textos linha por linha e destaque adições, remoções e correspondências.",
+  "tool.qr-reader.name": "Leitor de QR",
+  "tool.qr-reader.tagline":
+    "Escaneie e decodifique QR Codes de imagens ou sua câmera em texto ou links.",
+  "tool.find-and-replace.name": "Localizar e substituir",
+  "tool.find-and-replace.tagline":
+    "Localize e substitua texto em documentos longos com regex opcional e diferenciação de maiúsculas.",
+  "tool.remove-duplicate-lines.name": "Remover linhas duplicadas",
+  "tool.remove-duplicate-lines.tagline":
+    "Remova linhas duplicadas com correspondência sem diferenciação de maiúsculas e sensível a espaços.",
+  "tool.remove-empty-lines.name": "Remover linhas vazias",
+  "tool.remove-empty-lines.tagline":
+    "Remova instantaneamente linhas em branco ou apenas com espaços.",
+  "tool.text-cleaner.name": "Limpa-texto",
+  "tool.text-cleaner.tagline":
+    "Limpe texto removendo espaços extras, quebras de linha e caracteres indesejados.",
+  "tool.sort-lines.name": "Ordenar linhas",
+  "tool.sort-lines.tagline":
+    "Ordene linhas alfabeticamente, por comprimento ou embaralhe com opções de maiúsculas e linhas em branco.",
+  "tool.reverse-text.name": "Inverter texto",
+  "tool.reverse-text.tagline":
+    "Inverta o texto por caracteres, palavras ou linhas inteiras instantaneamente.",
+  "tool.add-line-numbers.name": "Adicionar números de linha",
+  "tool.add-line-numbers.tagline":
+    "Adicione números de linha sequenciais com separadores, preenchimento e deslocamento inicial personalizados.",
+  "tool.word-frequency.name": "Analisador de frequência de palavras",
+  "tool.word-frequency.tagline":
+    "Analise a frequência de palavras com ordenação, diferenciação de maiúsculas e filtros de comprimento.",
+  "tool.unit-converter.name": "Conversor de unidades",
+  "tool.unit-converter.tagline":
+    "Converta entre unidades de comprimento, peso, volume e mais instantaneamente.",
+  "tool.temperature-converter.name": "Conversor de temperatura",
+  "tool.temperature-converter.tagline": "Converta entre Celsius, Fahrenheit e Kelvin rapidamente.",
+  "tool.base64-converter.name": "Conversor Base64",
+  "tool.base64-converter.tagline":
+    "Codifique e decodifique texto em Base64 e vice-versa instantaneamente.",
+  "tool.timestamp-converter.name": "Conversor de carimbo de data/hora",
+  "tool.timestamp-converter.tagline":
+    "Converta carimbos de data/hora Unix em datas legíveis e vice-versa, com suporte a fuso horário.",
+  "tool.csv-to-json.name": "CSV para JSON",
+  "tool.csv-to-json.tagline":
+    "Converta dados CSV em JSON estruturado com detecção automática de cabeçalho.",
+  "tool.percentage-calculator.name": "Calculadora de porcentagem",
+  "tool.percentage-calculator.tagline":
+    "Calcule porcentagens, aumentos e descontos de forma rápida e precisa.",
+  "tool.bmi-calculator.name": "Calculadora de IMC",
+  "tool.bmi-calculator.tagline": "Calcule seu índice de massa corporal a partir do peso e altura.",
+  "tool.age-calculator.name": "Calculadora de idade",
+  "tool.age-calculator.tagline": "Calcule sua idade exata em anos, meses e dias.",
+  "tool.meta-tag-generator.name": "Gerador de meta tags",
+  "tool.meta-tag-generator.tagline":
+    "Crie meta tags HTML para SEO com título, descrição e Open Graph.",
+  "tool.url-encoder.name": "Codificador de URL",
+  "tool.url-encoder.tagline": "Codifique e decodifique URLs e componentes de URL instantaneamente.",
+  "tool.html-entity-encoder.name": "Codificador de entidades HTML",
+  "tool.html-entity-encoder.tagline":
+    "Converta caracteres especiais em entidades HTML e vice-versa em texto legível.",
+  "tool.html-minifier.name": "Minificador de HTML",
+  "tool.html-minifier.tagline":
+    "Reduza o tamanho do seu HTML removendo espaços e comentários desnecessários.",
+  "tool.css-minifier.name": "Minificador de CSS",
+  "tool.css-minifier.tagline":
+    "Comprima seu CSS removendo espaços, comentários e regras redundantes.",
+  "tool.js-minifier.name": "Minificador de JS",
+  "tool.js-minifier.tagline":
+    "Minifique JavaScript removendo espaços e comentários para um tamanho menor.",
+  "tool.json-validator.name": "Validador JSON",
+  "tool.json-validator.tagline": "Valide a sintaxe do seu JSON e localize erros instantaneamente.",
+  "tool.regex-tester.name": "Testador de regex",
+  "tool.regex-tester.tagline":
+    "Teste expressões regulares e destaque correspondências em tempo real.",
+  "tool.jwt-decoder.name": "Decodificador de JWT",
+  "tool.jwt-decoder.tagline": "Decodifique tokens JWT e exiba o conteúdo do header e do payload.",
+  "tool.sql-formatter.name": "Formatador SQL",
+  "tool.sql-formatter.tagline":
+    "Formate e minifique consultas SQL com palavras-chave em maiúsculas e indentação configurável.",
+  "tool.markdown-preview.name": "Pré-visualização de Markdown",
+  "tool.markdown-preview.tagline":
+    "Escreva em Markdown e veja a pré-visualização HTML renderizada instantaneamente.",
+  "tool.color-converter.name": "Conversor de cores",
+  "tool.color-converter.tagline": "Converta entre HEX, RGB e HSL e visualize a cor.",
+  "tool.cron-parser.name": "Analisador de Cron",
+  "tool.cron-parser.tagline":
+    "Traduza expressões cron em linguagem simples com detalhamento de campos e próximas execuções.",
+  "tool.xml-validator.name": "Validador XML",
+  "tool.xml-validator.tagline":
+    "Valide o formato, o equilíbrio de tags e a estrutura do XML com relatórios instantâneos de erros.",
+  "tool.html-formatter.name": "Formatador HTML",
+  "tool.html-formatter.tagline":
+    "Formate e minifique HTML com aninhamento correto e indentação configurável.",
+  "tool.yaml-formatter.name": "Formatador YAML",
+  "tool.yaml-formatter.tagline":
+    "Formate e normalize YAML com indentação e validação configuráveis.",
+  "tool.markdown-table-generator.name": "Gerador de tabelas Markdown",
+  "tool.markdown-table-generator.tagline":
+    "Crie tabelas Markdown visualmente e exporte prontas para colar.",
+  "tool.css-gradient-generator.name": "Gerador de gradiente CSS",
+  "tool.css-gradient-generator.tagline":
+    "Crie gradientes CSS lineares, radiais e cônidos com pontos de cor e controle de ângulo.",
+  "tool.audio-converter.name": "Conversor de áudio",
+  "tool.audio-converter.tagline":
+    "Converta arquivos de áudio (MP3, OGG, FLAC e mais) para WAV no seu navegador.",
+  "tool.video-converter.name": "Conversor de vídeo",
+  "tool.video-converter.tagline":
+    "Converta vídeo para MP4 (H.264) ou AVI (MPEG-4) no seu navegador.",
+  "tool.gif-maker.name": "Criador de GIF",
+  "tool.gif-maker.tagline": "Crie um GIF animado a partir de imagens enviadas ou vídeo suportado.",
+  "tool.gif-compressor.name": "Compressor de GIF",
+  "tool.gif-compressor.tagline":
+    "Reduza o tamanho do arquivo GIF mantendo qualidade visual aceitável.",
+  "tool.image-to-gif.name": "Imagem para GIF",
+  "tool.image-to-gif.tagline": "Crie um GIF animado a partir de várias imagens enviadas.",
+  "tool.pdf-to-excel.name": "PDF para Excel",
+  "tool.pdf-to-excel.tagline":
+    "Converta tabelas e conteúdos adequados de PDF em um arquivo compatível com Excel.",
+  "tool.pdf-to-powerpoint.name": "PDF para PowerPoint",
+  "tool.pdf-to-powerpoint.tagline":
+    "Converta páginas e conteúdos adequados de PDF em um arquivo compatível com PowerPoint.",
+  "tool.pdf-to-text.name": "PDF para texto",
+  "tool.pdf-to-text.tagline": "Extraia texto selecionável de documentos PDF.",
+  "tool.pdf-crop.name": "Recortar PDF",
+  "tool.pdf-crop.tagline": "Recorte páginas de PDF com limites de recorte configuráveis.",
+  "tool.pdf-page-numbers.name": "Números de página PDF",
+  "tool.pdf-page-numbers.tagline": "Adicione números de página configuráveis às páginas de um PDF.",
+  "tool.pdf-header-footer.name": "Cabeçalho e rodapé PDF",
+  "tool.pdf-header-footer.tagline":
+    "Adicione cabeçalhos e rodapés personalizáveis às páginas de um PDF.",
+  "tool.text-to-pdf.name": "Texto para PDF",
+  "tool.text-to-pdf.tagline": "Converta texto digitado ou colado em um PDF para download.",
+  "tool.text-to-word.name": "Texto para Word",
+  "tool.text-to-word.tagline":
+    "Converta texto digitado ou colado em um documento DOCX para download.",
+  "tool.markdown-to-pdf.name": "Markdown para PDF",
+  "tool.markdown-to-pdf.tagline": "Converta conteúdo Markdown em um PDF formatado.",
+  "tool.markdown-to-word.name": "Markdown para Word",
+  "tool.markdown-to-word.tagline": "Converta conteúdo Markdown em um documento DOCX formatado.",
 };

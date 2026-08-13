@@ -168,4 +168,210 @@ export const nl: Dictionary = {
   "translator.emptyTitle": "Je vertaling verschijnt hier",
   "translator.emptyBody":
     "Kies een doeltaal, typ tekst en druk op Vertalen. Automatische detectie vindt de bron.",
+
+  // Tool names + taglines (76 ready tools) — native Nederlandse technische termen.
+  "tool.translator.name": "IA-vertaler",
+  "tool.translator.tagline":
+    "Vertaal tussen 20+ talen met automatische detectie en direct wisselen.",
+  "tool.image-enhancer.name": "IA-beeldverbeteraar",
+  "tool.image-enhancer.tagline":
+    "Schaal de resolutie tot 8x op, herstel gezichten, verwijder ruis en verscherp foto's.",
+  "tool.image-compressor.name": "Afbeeldingscompressor",
+  "tool.image-compressor.tagline":
+    "Verklein de bestandsgrootte van afbeeldingen direct in je browser.",
+  "tool.background-remover.name": "Achtergrondverwijderaar",
+  "tool.background-remover.tagline":
+    "Knip achtergronden uit afbeeldingen en exporteer transparante PNG's.",
+  "tool.video-compressor.name": "Videocompressor",
+  "tool.video-compressor.tagline":
+    "Verklein de videobestandsgrootte met instelbare kwaliteit en uitvoeropties.",
+  "tool.video-trimmer.name": "Videosnijder",
+  "tool.video-trimmer.tagline":
+    "Snijd een geselecteerd deel van een video met begin- en eindregelaars.",
+  "tool.video-to-gif.name": "Video naar GIF",
+  "tool.video-to-gif.tagline": "Converteer een ondersteund videosegment naar een animatie-GIF.",
+  "tool.audio-compressor.name": "Audiocompressor",
+  "tool.audio-compressor.tagline":
+    "Comprimeer audiobestanden met controle over uitvoerkwaliteit en bitrate.",
+  "tool.audio-cutter.name": "Audiosnijder",
+  "tool.audio-cutter.tagline":
+    "Snijd een geselecteerd deel uit een audiobestand met begin- en eindregelaars.",
+  "tool.text-to-speech.name": "Tekst naar spraak",
+  "tool.text-to-speech.tagline":
+    "Zet geschreven tekst om in natuurlijke spraak met instelbare stemmen.",
+  "tool.file-hash-generator.name": "Bestands-hashgenerator",
+  "tool.file-hash-generator.tagline":
+    "Bereken MD5-, SHA-1- en SHA-256-hashes van elk bestand in je browser.",
+  "tool.qr-generator.name": "QR-codegenerator",
+  "tool.qr-generator.tagline":
+    "Maak aangepaste QR-codes voor links, tekst, wifi en contactgegevens.",
+  "tool.barcode-generator.name": "Barcodegenerator",
+  "tool.barcode-generator.tagline":
+    "Genereer barcodes in meerdere formaten, klaar om te downloaden of printen.",
+  "tool.password-generator.name": "Wachtwoordgenerator",
+  "tool.password-generator.tagline": "Genereer sterke, veilige wachtwoorden met entropie-meter.",
+  "tool.password-checker.name": "Wachtwoordcontrole",
+  "tool.password-checker.tagline":
+    "Controleer wachtwoordsterkte, entropie en geschatte kraaktijd met praktische tips.",
+  "tool.word-counter.name": "Woordteller",
+  "tool.word-counter.tagline": "Tel woorden, tekens, zinnen en alinea's direct tijdens het typen.",
+  "tool.case-converter.name": "Hoofdletterconverter",
+  "tool.case-converter.tagline":
+    "Wissel direct tussen hoofdletters, kleine letters, titel en andere formaten.",
+  "tool.slug-generator.name": "Slug-generator",
+  "tool.slug-generator.tagline":
+    "Zet titels om in schone, URL-vriendelijke slugs met scheidingstekens en lengte.",
+  "tool.lorem-ipsum.name": "Lorem Ipsum",
+  "tool.lorem-ipsum.tagline":
+    "Genereer Lorem Ipsum-plaatstekst met gekozen aantal alinea's of woorden.",
+  "tool.random-number.name": "Willekeurig getal",
+  "tool.random-number.tagline":
+    "Genereer willekeurige getallen in een bereik met aantalsopties en zonder duplicaten.",
+  "tool.random-name.name": "Willekeurige naamkiezer",
+  "tool.random-name.tagline":
+    "Kies een of meer willekeurige namen uit een lijst met optie zonder duplicaten.",
+  "tool.json-formatter.name": "JSON-formatter",
+  "tool.json-formatter.tagline": "Verfraai, verklein en valideer JSON met aangepaste inspringing.",
+  "tool.uuid-generator.name": "UUID-generator",
+  "tool.uuid-generator.tagline": "Maak unieke UUID (v4)-identificaties snel en in batch.",
+  "tool.xml-formatter.name": "XML-formatter",
+  "tool.xml-formatter.tagline": "Verfraai, verklein en valideer XML met aangepaste inspringing.",
+  "tool.csv-viewer.name": "CSV-viewer",
+  "tool.csv-viewer.tagline":
+    "Bekijk CSV-gegevens als tabel met keuze van scheidingsteken en koptekstdetectie.",
+  "tool.text-compare.name": "Tekstvergelijker",
+  "tool.text-compare.tagline":
+    "Vergelijk twee teksten regel voor regel en markeer toevoegingen, verwijderingen en overeenkomsten.",
+  "tool.qr-reader.name": "QR-reader",
+  "tool.qr-reader.tagline":
+    "Scan en decodeer QR-codes vanuit afbeeldingen of je camera naar tekst of links.",
+  "tool.find-and-replace.name": "Zoeken en vervangen",
+  "tool.find-and-replace.tagline":
+    "Zoek en vervang tekst in lange documenten met optionele regex en hoofdlettergevoeligheid.",
+  "tool.remove-duplicate-lines.name": "Dubbele regels verwijderen",
+  "tool.remove-duplicate-lines.tagline":
+    "Verwijder dubbele regels met niet-hoofdlettergevoelige en witruimte-bewuste matching.",
+  "tool.remove-empty-lines.name": "Lege regels verwijderen",
+  "tool.remove-empty-lines.tagline": "Verwijder direct lege of alleen-witruimte regels.",
+  "tool.text-cleaner.name": "Tekstschoonmaker",
+  "tool.text-cleaner.tagline":
+    "Maak tekst schoon door extra spaties, regeleindes en ongewenste tekens te verwijderen.",
+  "tool.sort-lines.name": "Regels sorteren",
+  "tool.sort-lines.tagline":
+    "Sorteer regels alfabetisch, op lengte of schud ze met hoofdletter- en lege-regelopties.",
+  "tool.reverse-text.name": "Tekst omkeren",
+  "tool.reverse-text.tagline": "Keer tekst om per teken, woord of hele regels direct.",
+  "tool.add-line-numbers.name": "Regelnummers toevoegen",
+  "tool.add-line-numbers.tagline":
+    "Voeg opeenvolgende regelnummers toe met scheidingstekens, opvulling en startverschuiving.",
+  "tool.word-frequency.name": "Woordfrequentie-analyse",
+  "tool.word-frequency.tagline":
+    "Analyseer woordfrequentie met sortering, hoofdlettergevoeligheid en lengtefilters.",
+  "tool.unit-converter.name": "Eenhedenconverter",
+  "tool.unit-converter.tagline":
+    "Converteer direct tussen lengte-, gewichts-, volumeeenheden en meer.",
+  "tool.temperature-converter.name": "Temperatuurconverter",
+  "tool.temperature-converter.tagline": "Converteer snel tussen Celsius, Fahrenheit en Kelvin.",
+  "tool.base64-converter.name": "Base64-converter",
+  "tool.base64-converter.tagline": "Codeer en decodeer tekst naar Base64 en terug direct.",
+  "tool.timestamp-converter.name": "Tijdstempelconverter",
+  "tool.timestamp-converter.tagline":
+    "Converteer Unix-tijdstempels naar leesbare data en terug, met tijdzoneondersteuning.",
+  "tool.csv-to-json.name": "CSV naar JSON",
+  "tool.csv-to-json.tagline":
+    "Converteer CSV-gegevens naar gestructureerde JSON met automatische koptekstdetectie.",
+  "tool.percentage-calculator.name": "Percentagecalculator",
+  "tool.percentage-calculator.tagline":
+    "Bereken percentages, stijgingen en kortingen snel en nauwkeurig.",
+  "tool.bmi-calculator.name": "BMI-calculator",
+  "tool.bmi-calculator.tagline": "Bereken je body mass index uit gewicht en lengte.",
+  "tool.age-calculator.name": "Leeftijdscalculator",
+  "tool.age-calculator.tagline": "Bereken je exacte leeftijd in jaren, maanden en dagen.",
+  "tool.meta-tag-generator.name": "Meta-tag-generator",
+  "tool.meta-tag-generator.tagline":
+    "Maak HTML-meta-tags voor SEO met titel, beschrijving en Open Graph.",
+  "tool.url-encoder.name": "URL-encoder",
+  "tool.url-encoder.tagline": "Codeer en decodeer URL's en URL-componenten direct.",
+  "tool.html-entity-encoder.name": "HTML-entiteit-encoder",
+  "tool.html-entity-encoder.tagline":
+    "Zet speciale tekens om in HTML-entiteiten en terug naar leesbare tekst.",
+  "tool.html-minifier.name": "HTML-minifier",
+  "tool.html-minifier.tagline":
+    "Verklein je HTML door onnodige spaties en commentaar te verwijderen.",
+  "tool.css-minifier.name": "CSS-minifier",
+  "tool.css-minifier.tagline":
+    "Comprimeer je CSS door spaties, commentaar en redundante regels te verwijderen.",
+  "tool.js-minifier.name": "JS-minifier",
+  "tool.js-minifier.tagline":
+    "Minificeer JavaScript door spaties en commentaar te verwijderen voor kleinere bestanden.",
+  "tool.json-validator.name": "JSON-validator",
+  "tool.json-validator.tagline": "Valideer de syntaxis van je JSON en vind direct fouten.",
+  "tool.regex-tester.name": "Regex-tester",
+  "tool.regex-tester.tagline": "Test reguliere expressies en markeer overeenkomsten in real time.",
+  "tool.jwt-decoder.name": "JWT-decoder",
+  "tool.jwt-decoder.tagline": "Decodeer JWT-tokens en bekijk de inhoud van header en payload.",
+  "tool.sql-formatter.name": "SQL-formatter",
+  "tool.sql-formatter.tagline":
+    "Verfraai en verklein SQL-query's met trefwoorden in hoofdletters en instelbare inspringing.",
+  "tool.markdown-preview.name": "Markdown-voorbeeld",
+  "tool.markdown-preview.tagline":
+    "Schrijf Markdown en zie direct de gerenderde HTML-voorbeeldweergave.",
+  "tool.color-converter.name": "Kleurconverter",
+  "tool.color-converter.tagline": "Converteer tussen HEX, RGB en HSL en bekijk een kleurvoorbeeld.",
+  "tool.cron-parser.name": "Cron-parser",
+  "tool.cron-parser.tagline":
+    "Vertaal cron-expressies naar duidelijke taal met velduitleg en komende uitvoeringen.",
+  "tool.xml-validator.name": "XML-validator",
+  "tool.xml-validator.tagline":
+    "Valideer vorm, tagbalans en structuur van XML met directe foutrapportage.",
+  "tool.html-formatter.name": "HTML-formatter",
+  "tool.html-formatter.tagline":
+    "Verfraai en verklein HTML met juiste nesting en instelbare inspringing.",
+  "tool.yaml-formatter.name": "YAML-formatter",
+  "tool.yaml-formatter.tagline":
+    "Verfraai en normaliseer YAML met instelbare inspringing en validatie.",
+  "tool.markdown-table-generator.name": "Markdown-tabelgenerator",
+  "tool.markdown-table-generator.tagline":
+    "Maak visueel Markdown-tabellen en exporteer ze klaar om te plakken.",
+  "tool.css-gradient-generator.name": "CSS-verloopgenerator",
+  "tool.css-gradient-generator.tagline":
+    "Ontwerp lineaire, radiale en conische CSS-verlopen met kleurstops en hoekregelaars.",
+  "tool.audio-converter.name": "Audioconverter",
+  "tool.audio-converter.tagline":
+    "Converteer audiobestanden (MP3, OGG, FLAC en meer) naar WAV in je browser.",
+  "tool.video-converter.name": "Videoconverter",
+  "tool.video-converter.tagline":
+    "Converteer video naar MP4 (H.264) of AVI (MPEG-4) in je browser.",
+  "tool.gif-maker.name": "GIF-maker",
+  "tool.gif-maker.tagline":
+    "Maak een animatie-GIF van geüploade afbeeldingen of ondersteunde video.",
+  "tool.gif-compressor.name": "GIF-compressor",
+  "tool.gif-compressor.tagline":
+    "Verklein de GIF-bestandsgrootte met behoud van acceptabele visuele kwaliteit.",
+  "tool.image-to-gif.name": "Afbeelding naar GIF",
+  "tool.image-to-gif.tagline": "Maak een animatie-GIF van meerdere geüploade afbeeldingen.",
+  "tool.pdf-to-excel.name": "PDF naar Excel",
+  "tool.pdf-to-excel.tagline":
+    "Converteer geschikte PDF-tabellen en -inhoud naar een Excel-compatibel bestand.",
+  "tool.pdf-to-powerpoint.name": "PDF naar PowerPoint",
+  "tool.pdf-to-powerpoint.tagline":
+    "Converteer geschikte PDF-pagina's en -inhoud naar een PowerPoint-compatibel bestand.",
+  "tool.pdf-to-text.name": "PDF naar tekst",
+  "tool.pdf-to-text.tagline": "Extraheer selecteerbare tekst uit PDF-documenten.",
+  "tool.pdf-crop.name": "PDF bijsnijden",
+  "tool.pdf-crop.tagline": "Snijd PDF-pagina's bij met instelbare bijsnijdgrenzen.",
+  "tool.pdf-page-numbers.name": "PDF-paginanummers",
+  "tool.pdf-page-numbers.tagline": "Voeg instelbare paginanummers toe aan PDF-pagina's.",
+  "tool.pdf-header-footer.name": "PDF-koptekst en -voettekst",
+  "tool.pdf-header-footer.tagline":
+    "Voeg aanpasbare kopteksten en voetteksten toe aan PDF-pagina's.",
+  "tool.text-to-pdf.name": "Tekst naar PDF",
+  "tool.text-to-pdf.tagline": "Converteer getypte of geplakte tekst naar een downloadbare PDF.",
+  "tool.text-to-word.name": "Tekst naar Word",
+  "tool.text-to-word.tagline":
+    "Converteer getypte of geplakte tekst naar een downloadbaar DOCX-document.",
+  "tool.markdown-to-pdf.name": "Markdown naar PDF",
+  "tool.markdown-to-pdf.tagline": "Converteer Markdown-inhoud naar een opgemaakte PDF.",
+  "tool.markdown-to-word.name": "Markdown naar Word",
+  "tool.markdown-to-word.tagline": "Converteer Markdown-inhoud naar een opgemaakt DOCX-document.",
 };
