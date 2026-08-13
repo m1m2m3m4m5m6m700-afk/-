@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { ShieldCheck, Copy, Check, ChevronRight } from "lucide-react";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { usePageSeo } from "@/lib/usePageSeo";
+import { SITE_URL } from "@/lib/seo/site";
 
 export const Route = createFileRoute("/robots/txt")({
   component: RobotsTxtRoute,
@@ -44,7 +45,7 @@ Allow: /
 User-agent: Google-Extended
 Allow: /
 
-Sitemap: https://flixotools.com/sitemap.xml
+Sitemap: ${SITE_URL}/sitemap.xml
 `;
 
   const handleCopy = () => {

@@ -6,6 +6,7 @@ import { JsonLd } from "@/components/seo/JsonLd";
 import { usePageSeo } from "@/lib/usePageSeo";
 import { trackPageView } from "@/lib/analytics";
 import { knowledgeHubArticles, bestToolsPages } from "@/data/knowledgeHub";
+import { SITE_URL } from "@/lib/seo/site";
 
 export const Route = createFileRoute("/knowledge/")({
   component: KnowledgeHubRoute,
@@ -23,7 +24,7 @@ function KnowledgeHubRoute() {
     trackPageView("/knowledge");
   }, []);
 
-  const siteUrl = "https://flixotools.com";
+  const siteUrl = SITE_URL;
   const pageUrl = `${siteUrl}/knowledge`;
 
   const breadcrumbSchema = {

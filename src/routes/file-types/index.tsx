@@ -7,6 +7,7 @@ import { JsonLd } from "@/components/seo/JsonLd";
 import { usePageSeo } from "@/lib/usePageSeo";
 import { trackPageView } from "@/lib/analytics";
 import { LastUpdatedBadge } from "@/components/seo/LastUpdatedBadge";
+import { SITE_URL } from "@/lib/seo/site";
 
 export const Route = createFileRoute("/file-types/")({
   component: FileTypesIndexRoute,
@@ -24,7 +25,7 @@ function FileTypesIndexRoute() {
     trackPageView("/file-types");
   }, []);
 
-  const siteUrl = "https://flixotools.com";
+  const siteUrl = SITE_URL;
   const pageUrl = `${siteUrl}/file-types`;
 
   const breadcrumbSchema = {

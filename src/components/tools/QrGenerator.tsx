@@ -18,13 +18,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useI18n } from "@/lib/i18n";
+import { SITE_URL } from "@/lib/seo/site";
 
 type PresetMode = "url" | "text" | "wifi" | "email" | "phone";
 
 export function QrGenerator() {
   const { t } = useI18n();
   const [mode, setMode] = useState<PresetMode>("url");
-  const [input, setInput] = useState("https://flixotools.com");
+  const [input, setInput] = useState(SITE_URL);
 
   const [wifiSsid, setWifiSsid] = useState("");
   const [wifiPass, setWifiPass] = useState("");

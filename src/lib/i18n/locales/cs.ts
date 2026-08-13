@@ -163,4 +163,204 @@ export const cs: Dictionary = {
   "translator.emptyTitle": "Váš překlad se zobrazí zde",
   "translator.emptyBody":
     "Vyberte cílový jazyk, napište text a klikněte na Přeložit. Automatické rozpoznání najde zdroj.",
+
+  // Tool names + taglines (76 ready tools) — nativní české technické termíny.
+  "tool.translator.name": "Překladač AI",
+  "tool.translator.tagline":
+    "Překládejte mezi 20+ jazyky s automatickým rozpoznáváním a okamžitým přepínáním.",
+  "tool.image-enhancer.name": "Vylepšovač obrázků AI",
+  "tool.image-enhancer.tagline":
+    "Zvyšte rozlišení až 8x, obnovte tváře, odstraňte šum a zvyšte ostrost.",
+  "tool.image-compressor.name": "Kompresor obrázků",
+  "tool.image-compressor.tagline":
+    "Zmenšete velikost obrázkových souborů přímo ve vašem prohlížeči.",
+  "tool.background-remover.name": "Odstranění pozadí",
+  "tool.background-remover.tagline": "Vystřihněte pozadí obrázků a exportujte průhledné PNG.",
+  "tool.video-compressor.name": "Kompresor videa",
+  "tool.video-compressor.tagline":
+    "Zmenšete velikost video souboru s konfigurovatelnou kvalitou a nastavením výstupu.",
+  "tool.video-trimmer.name": "Střih videa",
+  "tool.video-trimmer.tagline": "Vystřihněte vybranou část videa s ovládáním začátku a konce.",
+  "tool.video-to-gif.name": "Video do GIF",
+  "tool.video-to-gif.tagline": "Převeďte podporovaný segment videa do animovaného GIF.",
+  "tool.audio-compressor.name": "Kompresor audia",
+  "tool.audio-compressor.tagline":
+    "Komprimujte zvukové soubory řízením kvality a přenosové rychlosti výstupu.",
+  "tool.audio-cutter.name": "Střih audia",
+  "tool.audio-cutter.tagline":
+    "Vystřihněte vybranou část ze zvukového souboru s ovládáním začátku a konce.",
+  "tool.text-to-speech.name": "Text na řeč",
+  "tool.text-to-speech.tagline":
+    "Převeďte psaný text na přirozený hlas s konfigurovatelnými hlasy.",
+  "tool.file-hash-generator.name": "Generátor hash souborů",
+  "tool.file-hash-generator.tagline":
+    "Vypočítejte hash MD5, SHA-1 a SHA-256 jakéhokoliv souboru v prohlížeči.",
+  "tool.qr-generator.name": "Generátor QR kódů",
+  "tool.qr-generator.tagline": "Vytvořte vlastní QR kódy pro odkazy, text, Wi-Fi a kontakty.",
+  "tool.barcode-generator.name": "Generátor čárových kódů",
+  "tool.barcode-generator.tagline":
+    "Generujte čárové kódy ve více formátech, připravené ke stažení nebo tisku.",
+  "tool.password-generator.name": "Generátor hesel",
+  "tool.password-generator.tagline": "Vytvořte silná, bezpečná hesla s indikátorem entropie.",
+  "tool.password-checker.name": "Kontrola hesel",
+  "tool.password-checker.tagline":
+    "Zkontrolujte sílu, entropii a odhadovaný čas prolomení s praktickými tipy.",
+  "tool.word-counter.name": "Počítadlo slov",
+  "tool.word-counter.tagline": "Počítejte slova, znaky, věty a odstavce okamžitě při psaní.",
+  "tool.case-converter.name": "Převodník velikosti písmen",
+  "tool.case-converter.tagline":
+    "Okamžitě přepínejte mezi velkými, malými, titulními a dalšími formáty.",
+  "tool.slug-generator.name": "Generátor slugů",
+  "tool.slug-generator.tagline":
+    "Převeďte nadpisy na čisté, URL-friendly slugy s oddělovači a délkou.",
+  "tool.lorem-ipsum.name": "Lorem Ipsum",
+  "tool.lorem-ipsum.tagline":
+    "Generujte zástupný text Lorem Ipsum se zvoleným počtem odstavců nebo slov.",
+  "tool.random-number.name": "Generátor náhodných čísel",
+  "tool.random-number.tagline":
+    "Generujte náhodná čísla v rozsahu s možnostmi množství a bez duplicit.",
+  "tool.random-name.name": "Náhodný výběr jmen",
+  "tool.random-name.tagline":
+    "Vyberte jedno nebo více náhodných jmen ze seznamu s možností bez duplicit.",
+  "tool.json-formatter.name": "Formátovač JSON",
+  "tool.json-formatter.tagline":
+    "Zformátujte, minimalizujte a validujte JSON s vlastními možnostmi odsazení.",
+  "tool.uuid-generator.name": "Generátor UUID",
+  "tool.uuid-generator.tagline": "Vytvořte jedinečné identifikátory UUID (v4) rychle a hromadně.",
+  "tool.xml-formatter.name": "Formátovač XML",
+  "tool.xml-formatter.tagline":
+    "Zformátujte, minimalizujte a validujte XML s vlastními možnostmi odsazení.",
+  "tool.csv-viewer.name": "Prohlížeč CSV",
+  "tool.csv-viewer.tagline":
+    "Zobrazte data CSV jako tabulku s výběrem oddělovače a detekcí záhlaví.",
+  "tool.text-compare.name": "Porovnávač textu",
+  "tool.text-compare.tagline":
+    "Porovnejte dva texty řádek po řádku a zvýrazněte přidání, mazání a shody.",
+  "tool.qr-reader.name": "Čtečka QR",
+  "tool.qr-reader.tagline":
+    "Skenujte a dekódujte QR kódy z obrázků nebo kamery do textu nebo odkazů.",
+  "tool.find-and-replace.name": "Najít a nahradit",
+  "tool.find-and-replace.tagline":
+    "Najděte a nahraďte text v dlouhých dokumentech s volitelným regex a rozlišením velikosti písmen.",
+  "tool.remove-duplicate-lines.name": "Odstranit duplicitní řádky",
+  "tool.remove-duplicate-lines.tagline":
+    "Odstraňte duplicitní řádky s nerozlišujícím velikost písmen a citlivým na mezery porovnáváním.",
+  "tool.remove-empty-lines.name": "Odstranit prázdné řádky",
+  "tool.remove-empty-lines.tagline":
+    "Okamžitě odstraňte prázdné řádky nebo řádky pouze s mezerami.",
+  "tool.text-cleaner.name": "Čistič textu",
+  "tool.text-cleaner.tagline":
+    "Vyčistěte text odstraněním přebytečných mezer, zalomení řádků a nežádoucích znaků.",
+  "tool.sort-lines.name": "Seřadit řádky",
+  "tool.sort-lines.tagline":
+    "Seřaďte řádky abecedně, podle délky nebo promíchejte s možnostmi velikosti písmen a prázdných řádků.",
+  "tool.reverse-text.name": "Obrácení textu",
+  "tool.reverse-text.tagline": "Otočte text podle znaků, slov nebo celých řádků okamžitě.",
+  "tool.add-line-numbers.name": "Přidat čísla řádků",
+  "tool.add-line-numbers.tagline":
+    "Přidejte sekvenční čísla řádků s oddělovači, doplněním a počátečním posunem.",
+  "tool.word-frequency.name": "Analyzátor frekvence slov",
+  "tool.word-frequency.tagline":
+    "Analyzujte frekvenci slov s řazením, rozlišením velikosti písmen a filtry délky.",
+  "tool.unit-converter.name": "Převodník jednotek",
+  "tool.unit-converter.tagline":
+    "Okamžitě převádějte mezi jednotkami délky, hmotnosti, objemu a dalšími.",
+  "tool.temperature-converter.name": "Převodník teploty",
+  "tool.temperature-converter.tagline": "Rychle převádějte mezi Celsiem, Fahrenheitem a Kelvinem.",
+  "tool.base64-converter.name": "Převodník Base64",
+  "tool.base64-converter.tagline": "Kódujte a dekódujte text do Base64 a zpět okamžitě.",
+  "tool.timestamp-converter.name": "Převodník časových razítek",
+  "tool.timestamp-converter.tagline":
+    "Převádějte Unixová časová razítka na čitelná data a zpět, s podporou časových pásem.",
+  "tool.csv-to-json.name": "CSV do JSON",
+  "tool.csv-to-json.tagline":
+    "Převeďte data CSV na strukturovaný JSON s automatickou detekcí záhlaví.",
+  "tool.percentage-calculator.name": "Kalkulačka procent",
+  "tool.percentage-calculator.tagline": "Rychle a přesně vypočítejte procenta, nárůsty a slevy.",
+  "tool.bmi-calculator.name": "Kalkulačka BMI",
+  "tool.bmi-calculator.tagline": "Vypočítejte index tělesné hmotnosti z hmotnosti a výšky.",
+  "tool.age-calculator.name": "Kalkulačka věku",
+  "tool.age-calculator.tagline": "Vypočítejte svůj přesný věk v letech, měsících a dnech.",
+  "tool.meta-tag-generator.name": "Generátor meta tagů",
+  "tool.meta-tag-generator.tagline":
+    "Vytvořte HTML meta tagy pro SEO s titulkem, popisem a Open Graph.",
+  "tool.url-encoder.name": "Kodér URL",
+  "tool.url-encoder.tagline": "Okamžitě kódujte a dekódujte URL a komponenty URL.",
+  "tool.html-entity-encoder.name": "Kodér HTML entit",
+  "tool.html-entity-encoder.tagline":
+    "Převeďte speciální znaky na HTML entity a zpět na čitelný text.",
+  "tool.html-minifier.name": "Minifikátor HTML",
+  "tool.html-minifier.tagline":
+    "Zmenšete velikost HTML odstraněním přebytečných mezer a komentářů.",
+  "tool.css-minifier.name": "Minifikátor CSS",
+  "tool.css-minifier.tagline":
+    "Komprimujte CSS odstraněním mezer, komentářů a nadbytečných pravidel.",
+  "tool.js-minifier.name": "Minifikátor JS",
+  "tool.js-minifier.tagline":
+    "Minimalizujte JavaScript odstraněním mezer a komentářů pro menší velikost.",
+  "tool.json-validator.name": "Validátor JSON",
+  "tool.json-validator.tagline": "Validujte syntaxi JSON a okamžitě najděte chyby.",
+  "tool.regex-tester.name": "Tester regex",
+  "tool.regex-tester.tagline": "Testujte regulární výrazy a zvýrazněte shody v reálném čase.",
+  "tool.jwt-decoder.name": "Dekodér JWT",
+  "tool.jwt-decoder.tagline": "Dekódujte tokeny JWT a prozkoumejte obsah záhlaví a payloadu.",
+  "tool.sql-formatter.name": "Formátovač SQL",
+  "tool.sql-formatter.tagline":
+    "Zformátujte a minimalizujte SQL dotazy s klíčovými slovy velkými písmeny a konfigurovatelným odsazením.",
+  "tool.markdown-preview.name": "Náhled Markdown",
+  "tool.markdown-preview.tagline": "Pište Markdown a okamžitě viděte vykreslený HTML náhled.",
+  "tool.color-converter.name": "Převodník barev",
+  "tool.color-converter.tagline": "Převádějte mezi HEX, RGB a HSL a prohlížejte barvu.",
+  "tool.cron-parser.name": "Analyzátor Cron",
+  "tool.cron-parser.tagline":
+    "Přeložte cron výrazy do srozumitelného jazyka s rozpisem polí a dalšími spuštěními.",
+  "tool.xml-validator.name": "Validátor XML",
+  "tool.xml-validator.tagline":
+    "Validujte formát, rovnováhu tagů a strukturu XML s okamžitým hlášením chyb.",
+  "tool.html-formatter.name": "Formátovač HTML",
+  "tool.html-formatter.tagline":
+    "Zformátujte a minimalizujte HTML se správným vnořením a konfigurovatelným odsazením.",
+  "tool.yaml-formatter.name": "Formátovač YAML",
+  "tool.yaml-formatter.tagline":
+    "Zformátujte a normalizujte YAML s konfigurovatelným odsazením a validací.",
+  "tool.markdown-table-generator.name": "Generátor tabulek Markdown",
+  "tool.markdown-table-generator.tagline":
+    "Vytvářejte tabulky Markdown vizuálně a exportujte je připravené k vložení.",
+  "tool.css-gradient-generator.name": "Generátor CSS gradientů",
+  "tool.css-gradient-generator.tagline":
+    "Navrhujte lineární, radiální a konické CSS gradienty se zastávkami barev a ovládáním úhlu.",
+  "tool.audio-converter.name": "Převodník audia",
+  "tool.audio-converter.tagline":
+    "Převeďte zvukové soubory (MP3, OGG, FLAC a další) na WAV v prohlížeči.",
+  "tool.video-converter.name": "Převodník videa",
+  "tool.video-converter.tagline": "Převeďte video na MP4 (H.264) nebo AVI (MPEG-4) v prohlížeči.",
+  "tool.gif-maker.name": "Tvůrce GIF",
+  "tool.gif-maker.tagline": "Vytvořte animovaný GIF z nahraných obrázků nebo podporovaného videa.",
+  "tool.gif-compressor.name": "Kompresor GIF",
+  "tool.gif-compressor.tagline":
+    "Zmenšete velikost souboru GIF při zachování přijatelné vizuální kvality.",
+  "tool.image-to-gif.name": "Obrázek do GIF",
+  "tool.image-to-gif.tagline": "Vytvořte animovaný GIF z více nahraných obrázků.",
+  "tool.pdf-to-excel.name": "PDF do Excel",
+  "tool.pdf-to-excel.tagline":
+    "Převeďte vhodné tabulky a obsah PDF na soubor kompatibilní s Excelem.",
+  "tool.pdf-to-powerpoint.name": "PDF do PowerPoint",
+  "tool.pdf-to-powerpoint.tagline":
+    "Převeďte vhodné stránky a obsah PDF na soubor kompatibilní s PowerPointem.",
+  "tool.pdf-to-text.name": "PDF do textu",
+  "tool.pdf-to-text.tagline": "Extrahujte vybíratelný text z dokumentů PDF.",
+  "tool.pdf-crop.name": "Oříznutí PDF",
+  "tool.pdf-crop.tagline": "Ořízněte stránky PDF s konfigurovatelnými hranicemi oříznutí.",
+  "tool.pdf-page-numbers.name": "Čísla stránek PDF",
+  "tool.pdf-page-numbers.tagline": "Přidejte konfigurovatelná čísla stránek do stránek PDF.",
+  "tool.pdf-header-footer.name": "Záhlaví a zápatí PDF",
+  "tool.pdf-header-footer.tagline": "Přidejte přizpůsobitelná záhlaví a zápatí do stránek PDF.",
+  "tool.text-to-pdf.name": "Text do PDF",
+  "tool.text-to-pdf.tagline": "Převeďte zadaný nebo vložený text na stáhnutelné PDF.",
+  "tool.text-to-word.name": "Text do Word",
+  "tool.text-to-word.tagline": "Převeďte zadaný nebo vložený text na stáhnutelný dokument DOCX.",
+  "tool.markdown-to-pdf.name": "Markdown do PDF",
+  "tool.markdown-to-pdf.tagline": "Převeďte obsah Markdown na formátované PDF.",
+  "tool.markdown-to-word.name": "Markdown do Word",
+  "tool.markdown-to-word.tagline": "Převeďte obsah Markdown na formátovaný dokument DOCX.",
 };

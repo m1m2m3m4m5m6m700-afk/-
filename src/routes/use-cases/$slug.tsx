@@ -15,6 +15,7 @@ import { JsonLd } from "@/components/seo/JsonLd";
 import { usePageSeo } from "@/lib/usePageSeo";
 import { trackPageView } from "@/lib/analytics";
 import { LastUpdatedBadge } from "@/components/seo/LastUpdatedBadge";
+import { SITE_URL } from "@/lib/seo/site";
 
 export const Route = createFileRoute("/use-cases/$slug")({
   component: UseCaseSlugRoute,
@@ -55,7 +56,7 @@ function UseCaseSlugRoute() {
     (t) => uc.recommendedToolIds.includes(t.id) && t.status === "ready",
   );
 
-  const siteUrl = "https://flixotools.com";
+  const siteUrl = SITE_URL;
   const pageUrl = `${siteUrl}/use-cases/${uc.slug}`;
 
   const breadcrumbSchema = {

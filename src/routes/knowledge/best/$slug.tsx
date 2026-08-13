@@ -7,6 +7,7 @@ import { usePageSeo } from "@/lib/usePageSeo";
 import { trackPageView } from "@/lib/analytics";
 import { getBestToolsPage } from "@/data/knowledgeHub";
 import { tools } from "@/data/tools";
+import { SITE_URL } from "@/lib/seo/site";
 
 export const Route = createFileRoute("/knowledge/best/$slug")({
   component: BestToolsPageRoute,
@@ -44,7 +45,7 @@ function BestToolsPageRoute() {
     );
   }
 
-  const siteUrl = "https://flixotools.com";
+  const siteUrl = SITE_URL;
   const pageUrl = `${siteUrl}/knowledge/best/${page.slug}`;
   const recommendedTools = tools.filter(
     (tool) => page.recommendedToolIds.includes(tool.id) && tool.status === "ready",

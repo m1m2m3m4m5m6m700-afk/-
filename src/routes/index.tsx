@@ -10,6 +10,7 @@ import { FAQ } from "@/components/landing/FAQ";
 import { SponsorSection } from "@/components/landing/SponsorSection";
 import { RequestToolDialog } from "@/components/landing/RequestToolDialog";
 import { SiteLayout } from "@/components/layout/SiteLayout";
+import { SITE_URL, getDefaultOgImageUrl } from "@/lib/seo/site";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -27,8 +28,11 @@ export const Route = createFileRoute("/")({
           "Describe what you want to do and Flixo matches the right AI skill or workflow instantly, with file upload, links, and drag-and-drop support.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: SITE_URL },
+      { property: "og:image", content: getDefaultOgImageUrl() },
       { name: "twitter:card", content: "summary_large_image" },
     ],
+    links: [{ rel: "canonical", href: SITE_URL }],
   }),
   component: Index,
 });

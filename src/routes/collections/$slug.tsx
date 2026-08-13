@@ -16,6 +16,7 @@ import { JsonLd } from "@/components/seo/JsonLd";
 import { usePageSeo } from "@/lib/usePageSeo";
 import { trackPageView } from "@/lib/analytics";
 import { LastUpdatedBadge } from "@/components/seo/LastUpdatedBadge";
+import { SITE_URL } from "@/lib/seo/site";
 
 export const Route = createFileRoute("/collections/$slug")({
   component: CollectionSlugRoute,
@@ -57,7 +58,7 @@ function CollectionSlugRoute() {
 
   const bundledTools = tools.filter((t) => col.toolIds.includes(t.id) && t.status === "ready");
 
-  const siteUrl = "https://flixotools.com";
+  const siteUrl = SITE_URL;
   const pageUrl = `${siteUrl}/collections/${col.slug}`;
 
   const breadcrumbSchema = {

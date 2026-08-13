@@ -794,6 +794,77 @@ export const en = {
     "Preview CSV data as a table with delimiter selection and header detection.",
   "tool.csv-viewer.pageDescription":
     "Preview CSV data as a table with delimiter selection and header detection.",
+
+  // Ready tools that previously had no dictionary entry (registry-driven name).
+  "tool.text-to-speech.name": "Text to Speech",
+  "tool.text-to-speech.tagline":
+    "Convert written text into natural-sounding speech with configurable voices.",
+  "tool.file-hash-generator.name": "File Hash Generator",
+  "tool.file-hash-generator.tagline":
+    "Compute MD5, SHA-1 and SHA-256 hashes of any file right in your browser.",
+  "tool.barcode-generator.name": "Barcode Generator",
+  "tool.barcode-generator.tagline":
+    "Generate barcodes in multiple formats ready to download or print.",
+  "tool.word-counter.name": "Word Counter",
+  "tool.word-counter.tagline":
+    "Count words, characters, sentences and paragraphs instantly as you type.",
+  "tool.case-converter.name": "Case Converter",
+  "tool.case-converter.tagline":
+    "Switch between uppercase, lowercase, title case and other formats instantly.",
+  "tool.lorem-ipsum.name": "Lorem Ipsum",
+  "tool.lorem-ipsum.tagline":
+    "Generate Lorem Ipsum placeholder text with your chosen number of paragraphs or words.",
+  "tool.random-number.name": "Random Number",
+  "tool.random-number.tagline":
+    "Generate random numbers within a range with quantity options and no duplicates.",
+  "tool.json-formatter.name": "JSON Formatter",
+  "tool.json-formatter.tagline":
+    "Beautify, minify and validate JSON with custom indentation options.",
+  "tool.uuid-generator.name": "UUID Generator",
+  "tool.uuid-generator.tagline": "Create unique UUID (v4) identifiers quickly and in bulk.",
+  "tool.text-cleaner.name": "Text Cleaner",
+  "tool.text-cleaner.tagline":
+    "Clean text by removing extra spaces, line breaks and unwanted characters.",
+  "tool.unit-converter.name": "Unit Converter",
+  "tool.unit-converter.tagline": "Convert between length, weight, volume and more units instantly.",
+  "tool.temperature-converter.name": "Temperature Converter",
+  "tool.temperature-converter.tagline": "Convert between Celsius, Fahrenheit and Kelvin quickly.",
+  "tool.base64-converter.name": "Base64 Converter",
+  "tool.base64-converter.tagline": "Encode and decode text to Base64 and back instantly.",
+  "tool.csv-to-json.name": "CSV to JSON",
+  "tool.csv-to-json.tagline":
+    "Convert CSV data into structured JSON with automatic header detection.",
+  "tool.percentage-calculator.name": "Percentage Calculator",
+  "tool.percentage-calculator.tagline":
+    "Calculate percentages, increases and discounts quickly and accurately.",
+  "tool.bmi-calculator.name": "BMI Calculator",
+  "tool.bmi-calculator.tagline": "Calculate your body mass index from weight and height.",
+  "tool.age-calculator.name": "Age Calculator",
+  "tool.age-calculator.tagline": "Calculate your exact age in years, months and days.",
+  "tool.meta-tag-generator.name": "Meta Tag Generator",
+  "tool.meta-tag-generator.tagline":
+    "Create HTML meta tags for SEO with title, description and Open Graph.",
+  "tool.url-encoder.name": "URL Encoder",
+  "tool.url-encoder.tagline": "Encode and decode URLs and URL components instantly.",
+  "tool.html-minifier.name": "HTML Minifier",
+  "tool.html-minifier.tagline":
+    "Reduce your HTML size by removing unnecessary spaces and comments.",
+  "tool.css-minifier.name": "CSS Minifier",
+  "tool.css-minifier.tagline":
+    "Compress your CSS by removing spaces, comments and redundant rules.",
+  "tool.js-minifier.name": "JS Minifier",
+  "tool.js-minifier.tagline":
+    "Minify JavaScript by removing spaces and comments for a smaller size.",
+  "tool.json-validator.name": "JSON Validator",
+  "tool.json-validator.tagline": "Validate your JSON syntax and pinpoint errors instantly.",
+  "tool.regex-tester.name": "Regex Tester",
+  "tool.regex-tester.tagline": "Test regular expressions and highlight matches in real time.",
+  "tool.jwt-decoder.name": "JWT Decoder",
+  "tool.jwt-decoder.tagline": "Decode JWT tokens and inspect the header and payload contents.",
+  "tool.markdown-preview.name": "Markdown Preview",
+  "tool.markdown-preview.tagline": "Write Markdown and see the rendered HTML preview instantly.",
+  "tool.color-converter.name": "Color Converter",
+  "tool.color-converter.tagline": "Convert between HEX, RGB and HSL and preview the color.",
 } as const;
 
 export type TranslationKey = keyof typeof en;

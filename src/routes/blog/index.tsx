@@ -6,6 +6,7 @@ import { SiteLayout } from "@/components/layout/SiteLayout";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { usePageSeo } from "@/lib/usePageSeo";
 import { trackPageView } from "@/lib/analytics";
+import { SITE_URL } from "@/lib/seo/site";
 
 export const Route = createFileRoute("/blog/")({
   component: BlogIndexRoute,
@@ -38,7 +39,7 @@ function BlogIndexRoute() {
       ? blogPosts
       : blogPosts.filter((p) => p.category === selectedCategory);
 
-  const siteUrl = "https://flixotools.com";
+  const siteUrl = SITE_URL;
   const blogUrl = `${siteUrl}/blog`;
 
   const breadcrumbSchema = {

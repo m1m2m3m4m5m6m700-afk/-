@@ -564,3 +564,62 @@ leakage, session/cookie integrity, and explicit attack scenarios.
 typecheck → lint (0 errors, 125 pre-existing warnings) → build →
 audit:production (0 vulnerabilities). 117/117 audit assertions passed.
 
+## Localization maintenance hardening (glossary + coverage/stale validation)
+
+Two maintenance gaps from the 25-language audit are now closed. Scope was
+strictly the gaps — no tool/registry/runtime/route/SEO changes.
+
+### Gap 1 — glossary is now functional (`src/lib/i18n/glossary.ts`)
+
+- Populated per-locale concept rows for all 27 locales (25 production + cs/el)
+  for the 28 `GlossaryConcept`s (compress, resize, convert, merge, split,
+  extract, remove, generate, validate, encode, decode, translate, crop,
+  rotate, watermark, protect, unlock, formatter, generator, converter, viewer,
+  reader, checker, parser, tester, minifier, calculator, counter).
+- Technical identifiers (JSON, PDF, CSV, URL, JWT, QR, Base64, HTML, CSS, SQL,
+  YAML, Markdown, UUID, GIF, …) are intentionally NOT in the glossary — they
+  pass through unchanged in every locale.
+- New runtime API: `term(locale, concept)`, `conceptForSlug(slug)`,
+  `toolConceptTerm(locale, slug)`. Real call site:
+  `validate-localization.mjs` reads the glossary and flags terminology
+  inconsistency (advisory only — never auto-edits human translations; native
+  wording stays the priority per the glossary doc).
+
+### Gap 2 — coverage + stale detection (`src/scripts/validate-localization.mjs`)
+
+Derives the production target from the REAL READY tool list
+(`status === "ready"` in `tools.ts`) — never the registry total. Checks, per
+locale, for every ready tool's name+tagline:
+- missing English master keys / empty master values
+- missing locale keys (locale falls back to English → untranslated)
+- empty translations, duplicate keys, untranslated (value === English)
+- broken interpolation placeholders (`{var}` mismatch vs English)
+- NEW English keys (absent from baseline)
+- CHANGED English source → STALE locale translations (hash-based baseline)
+
+Baseline: `src/lib/i18n/translation-source-baseline.json` maps each English
+ready-tool key → sha256(16). `npm run localization:baseline` refreshes it
+after an intentional English change (does NOT touch any locale translation).
+
+### npm scripts
+
+- `npm run validate:localization` — the new validator (added to `verify`).
+- `npm run localization:baseline` — update the staleness baseline.
+
+### New-tool / changed-English flow (now automated detection)
+
+1. Dev adds ONE ready tool (English name/tagline/description in `tools.ts` +
+   `en.ts`).
+2. `npm run validate:localization` reports exactly which locale keys are
+   missing (per-locale) + flags the new English keys (not in baseline).
+3. Translations are added/reviewed; `npm run localization:baseline` updates
+   the baseline. Validation passes. Dev no longer manually tracks 25 files.
+4. If an English string later changes, the validator flags every affected
+   locale translation as STALE (hash mismatch) — never silently undetected.
+
+`npm run verify` is green: registry → tool-runtime → seo → tool-content →
+localization → typecheck → lint (0 errors, 125 pre-existing warnings) → build.
+`npm audit --omit=dev --audit-level=high` = 0 vulnerabilities (requires a
+lockfile; generate transiently with `npm i --package-lock-only` if needed —
+the project does not track one).
+

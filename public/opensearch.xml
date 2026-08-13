@@ -4,6 +4,6 @@
   <Description>Search 1,000+ free online AI tools, PDF converters, image editors, and dev utilities on Flixo.</Description>
   <Tags>tools pdf converter ai image utility</Tags>
   <Contact>support@flixotools.com</Contact>
-  <Url type="text/html" template="https://flixotools.com/?q={searchTerms}"/>
-  <Image height="16" width="16" type="image/svg+xml">https://flixotools.com/favicon.svg</Image>
+  <Url type="text/html" template="https://flixoai.vercel.app/?q={searchTerms}"/>
+  <Image height="16" width="16" type="image/svg+xml">https://flixoai.vercel.app/favicon.svg</Image>
 </OpenSearchDescription>

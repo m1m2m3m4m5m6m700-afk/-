@@ -16,6 +16,7 @@ import { SiteLayout } from "@/components/layout/SiteLayout";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { usePageSeo } from "@/lib/usePageSeo";
 import { trackPageView } from "@/lib/analytics";
+import { SITE_URL } from "@/lib/seo/site";
 
 export const Route = createFileRoute("/blog/$slug")({
   component: BlogPostRoute,
@@ -56,7 +57,7 @@ function BlogPostRoute() {
   const relatedTools = tools.filter((t) => post.relatedToolIds.includes(t.id));
 
   // Schemas
-  const siteUrl = "https://flixotools.com";
+  const siteUrl = SITE_URL;
   const pageUrl = `${siteUrl}/blog/${post.slug}`;
 
   const articleSchema = {

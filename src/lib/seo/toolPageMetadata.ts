@@ -1,16 +1,80 @@
 import { getToolBySlug } from "@/data/tools";
 import { getToolSeo, type ToolSeoData } from "@/data/toolSeo";
+import { en } from "@/lib/i18n/locales/en";
 import { ar } from "@/lib/i18n/locales/ar";
-import type { LocaleCode } from "@/lib/i18n";
+import { es } from "@/lib/i18n/locales/es";
+import { fr } from "@/lib/i18n/locales/fr";
+import { de } from "@/lib/i18n/locales/de";
+import { pt } from "@/lib/i18n/locales/pt";
+import { it } from "@/lib/i18n/locales/it";
+import { nl } from "@/lib/i18n/locales/nl";
+import { pl } from "@/lib/i18n/locales/pl";
+import { sv } from "@/lib/i18n/locales/sv";
+import { tr } from "@/lib/i18n/locales/tr";
+import { ro } from "@/lib/i18n/locales/ro";
+import { uk } from "@/lib/i18n/locales/uk";
+import { ru } from "@/lib/i18n/locales/ru";
+import { ms } from "@/lib/i18n/locales/ms";
+import { id } from "@/lib/i18n/locales/id";
+import { vi } from "@/lib/i18n/locales/vi";
+import { zhCN as zhCNDict } from "@/lib/i18n/locales/zh-CN";
+import { ja } from "@/lib/i18n/locales/ja";
+import { ko } from "@/lib/i18n/locales/ko";
+import { el } from "@/lib/i18n/locales/el";
+import { cs } from "@/lib/i18n/locales/cs";
+import { th } from "@/lib/i18n/locales/th";
+import { hi } from "@/lib/i18n/locales/hi";
+import { he } from "@/lib/i18n/locales/he";
+import { fa } from "@/lib/i18n/locales/fa";
+import { bn } from "@/lib/i18n/locales/bn";
+import type { Dictionary, LocaleCode } from "@/lib/i18n";
 import {
   DEFAULT_ROBOTS,
   NOINDEX_ROBOTS,
   SITE_NAME,
   SITE_TWITTER_HANDLE,
+  SITE_URL,
   getDefaultOgImageUrl,
+  getOgLocale,
   getToolCanonicalUrl,
   stripQueryAndHash,
 } from "./site";
+import { buildToolHreflang } from "./hreflang";
+import { SEO_TEMPLATES } from "./seoTemplates";
+
+/**
+ * Locale dictionary registry for SEO title/description localization. Every
+ * supported locale is mapped so localized tool names/taglines resolve at SSR
+ * time without React context. Locales absent here fall back to English.
+ */
+const SEO_DICTIONARIES: Partial<Record<LocaleCode, Dictionary>> = {
+  ar,
+  es,
+  fr,
+  de,
+  pt,
+  it,
+  nl,
+  pl,
+  sv,
+  tr,
+  ro,
+  uk,
+  ru,
+  ms,
+  id,
+  vi,
+  "zh-CN": zhCNDict,
+  ja,
+  ko,
+  el,
+  cs,
+  th,
+  hi,
+  he,
+  fa,
+  bn,
+};
 
 export interface SeoMetaTag {
   title?: string;
@@ -44,32 +108,43 @@ export function resolvePageSeo(
     seoData?.description ||
     "Flixo provides free, private, browser-based online tools for images, text, translation, PDFs, and developer utilities with zero sign-up.";
 
-  if (locale === "ar" && slug && !customData?.title) {
-    const arName = ar[`tool.${slug}.name` as keyof typeof ar];
-    const arTagline = ar[`tool.${slug}.tagline` as keyof typeof ar];
-    if (arName) {
-      title = `${arName} — أداة مجانية أونلاين | فليكسو`;
-      description = arTagline
-        ? `${arTagline} استخدم ${arName} أونلاين مجانًا وسريعًا وآمنًا مباشرة عبر المتصفح في فليكسو بدون تسجيل.`
-        : `استخدم أداة ${arName} أونلاين مجانًا وسريعًا وآمنًا مباشرة في متصفحك عبر فليكسو بدون تسجيل.`;
-    } else {
-      title = "أدوات فليكسو المجانية أونلاين | Flixo Tools";
-      description =
-        "استخدم أدوات فليكسو المجانية والآمنة أونلاين مباشرة عبر المتصفح بدون الحاجة لتسجيل حساب.";
+  if (slug && !customData?.title && locale !== "en") {
+    const dict = SEO_DICTIONARIES[locale];
+    if (dict) {
+      const nameKey = `tool.${slug}.name` as keyof Dictionary;
+      const taglineKey = `tool.${slug}.tagline` as keyof Dictionary;
+      const locName = dict[nameKey];
+      // Only localize when a real translated name exists (not the en fallback
+      // carried by `...en`). `...en` spreads en values, so a locale that hasn't
+      // overridden a tool name would otherwise show English — detect that by
+      // comparing against the English source value.
+      const enName = en[nameKey];
+      const hasLocalizedName = locName && locName !== enName;
+      const locTagline = dict[taglineKey];
+      const enTagline = en[taglineKey];
+      const hasLocalizedTagline = locTagline && locTagline !== enTagline;
+      const tpl = SEO_TEMPLATES[locale];
+      if (hasLocalizedName && tpl) {
+        title = tpl.title(locName);
+        description = hasLocalizedTagline
+          ? tpl.description(locName, locTagline)
+          : tpl.descriptionFallback(locName);
+      } else if (tpl) {
+        title = tpl.homeTitle;
+        description = tpl.homeDescription;
+      }
     }
   }
 
   const keywords = customData?.keywords ||
     seoData?.keywords || ["flixo", "online tools", "free utilities", "browser tools"];
 
-  const fallbackPageUrl = slug ? getToolCanonicalUrl(slug, locale) : "https://flixotools.com";
+  const fallbackPageUrl = slug ? getToolCanonicalUrl(slug, locale) : SITE_URL;
   const pageUrl =
     typeof window !== "undefined" && window.location?.href ? window.location.href : fallbackPageUrl;
   const canonicalUrl = slug ? getToolCanonicalUrl(slug, locale) : stripQueryAndHash(pageUrl);
   const origin =
-    typeof window !== "undefined" && window.location?.origin
-      ? window.location.origin
-      : "https://flixotools.com";
+    typeof window !== "undefined" && window.location?.origin ? window.location.origin : SITE_URL;
 
   // Hidden / non-ready tools must never be indexed. Direct URLs still resolve
   // to a not-found page, but search engines are told to drop the URL.
@@ -95,14 +170,9 @@ export function buildToolHeadMetadata(
   locale: LocaleCode = "en",
 ) {
   const seo = resolvePageSeo(slug, overrides, locale);
-  const ogLocale = locale === "ar" ? "ar_AR" : "en_US";
+  const ogLocale = getOgLocale(locale);
 
-  const links = [
-    { rel: "canonical", href: seo.canonicalUrl },
-    { rel: "alternate", hrefLang: "en", href: getToolCanonicalUrl(slug, "en") },
-    { rel: "alternate", hrefLang: "ar", href: getToolCanonicalUrl(slug, "ar") },
-    { rel: "alternate", hrefLang: "x-default", href: getToolCanonicalUrl(slug) },
-  ];
+  const links = [{ rel: "canonical", href: seo.canonicalUrl }, ...buildToolHreflang(slug)];
 
   return {
     meta: [
