@@ -657,3 +657,116 @@ config lives in `vercel.json`:
   still pass. Add the secrets in GitHub → Settings → Secrets and variables →
   Actions, then re-run the Deploy workflow.
 
+
+
+## Phase 3 — Postgres persistence + admin management + global analytics
+
+A real, server-side persistence layer that replaces the client-side
+`communicationStore` localStorage backend with Postgres (Drizzle ORM) while
+**preserving the exact `useCommunicationStore` API** the UI relies on (same
+method names, same return shapes — `createConversation` still returns a
+synchronous `Conversation` so `VisitorChatWidget`/`ContactOwnerPage` can set
+`activeConvId`/`submittedId` immediately; the persist is fire-and-forget +
+optimistic + server-confirmed). No UI component was edited.
+
+### Layer map (client-safe vs server-only)
+
+- **Client-safe** (safe for the client bundle — no secrets/SQL/pool):
+  - `src/lib/db/types.ts` — re-exports ONLY the DTO/result types from
+    `server/db/types.ts` (no `getDb`, no config, no SQL).
+  - `src/lib/db/rpc/inbox.rpc.ts`, `analytics.rpc.ts` — TanStack RPC
+    *fetchers* (client import is a thin stub; handler bodies ship server-side
+    only). Export ONLY `createServerFn` fetchers (no helper exports).
+  - `src/lib/security/rpc/csrf.rpc.ts` — CSRF token fetcher.
+  - `src/lib/security/requestMiddleware.ts` — request middleware (lives
+    OUTSIDE `server/` on purpose: RPC fetchers import it at top-level for
+    `.middleware([...])`, and import-protection forbids client `server/*`
+    imports; the secret-bearing helpers it calls run at request time only).
+  - `src/lib/communicationStore.ts` — thin client over the RPCs; preserves
+    the legacy public API (the class-based localStorage store is gone; a
+    no-op `communicationStore` singleton shim remains for stray imports).
+- **Server-only** (never imported by client code; dead-stripped from client):
+  - `src/lib/server/db/{schema,config,client,guards,types}.ts` — Drizzle
+    schema, completable-later config (`isDbConfigured()`), lazy singleton
+    pool, guards mirroring admin/github pattern.
+  - `src/lib/server/db/service/{conversations,analytics,toolRequests}.ts` —
+    the real SQL. `DbServiceError` (kind+message) is thrown and mapped to
+    `DbResult` failures by the RPC layer.
+  - `src/lib/server/security/{csrf,request}.ts` — HMAC-signed CSRF tokens
+    (double-submit cookie + constant-time verify), token-bucket rate limiter,
+    client-IP/country/device/referrer extractors.
+  - `src/lib/email/{config,notify}.ts` — SMTP via `nodemailer`
+    (completable-later; `sendNotification` is a no-op resolving
+    `{sent:false, reason:"not_configured"}` when SMTP unset — the DB write
+    still succeeds). Lazy `require("nodemailer")` so it never enters the
+    client/SSR bundle eagerly.
+
+### "Completable-later" contract (DB + email)
+
+`isDbConfigured()` returns false until `POSTGRES_URL` is set. Every DB RPC
+then returns a real `db_not_configured` failure — **never fake success, never
+a stub treated as production**. The hook surfaces this as empty
+conversations + empty analytics (mirrors the legacy empty-table behavior).
+Once the operator sets `POSTGRES_URL` (+ runs migrations), the same code
+works with zero changes. Email is the same with `SMTP_*`/`NOTIFY_TO`.
+
+### Security (CSRF + rate limiting — TASK 6)
+
+Every mutating RPC (`createConversation`, `sendMessage`, `toggle*`,
+`deleteConversation`, `markAs*`, `addInternalNote`, `deleteInternalNote`,
+`trackAnalyticsEvent`, `createToolRequestRpc`) chains:
+`.middleware([securityRequestMiddleware])` -> `guardDbConfigured()` ->
+`checkCsrf(context.csrfCookie, data.csrfToken ?? null)` -> `rateLimit(...)`.
+The request middleware injects `{csrfCookie, clientIp, country, device,
+referrer}` into context (the only way handlers access the raw request).
+Double-submit cookie: server issues a signed `flixo_csrf` cookie via
+`getCsrfToken` RPC; the client caches the token and echoes it as
+`csrfToken` in the body. No `request` in handler ctx (TanStack constraint —
+same as the GitHub/admin layers).
+
+### Client bundle verified clean
+
+After `npm run build`: client static assets contain NO `api.github.com`, NO
+`POSTGRES_URL`, NO `OPENAI_API_KEY`/`GITHUB_CLIENT`/`SMTP_PASS`, NO
+`assertNotSecret`/`getCachedToken`/`getAdminSessionSecret`/`createHmac`/
+`process.env.GITHUB`/`process.env.ADMIN`/`process.env.DATABASE`, NO
+`drizzle-orm` (it ships only in the server function bundle, never the client).
+
+### Admin management (TASK 2) — read/unread/search/delete/categorize
+
+All in `service/conversations.ts` + `inbox.rpc.ts`: `markAsRead`/`markAsUnread`
+(per admin|visitor), `searchConversationIds` (ILIKE on subject/visitor/message
+text -> IDs -> hydrated), `deleteConversation` (cascades messages/notes),
+`updateStatus`/`updatePriority` (category change). `listConversations` accepts
+status/category/priority/unreadAdminOnly/search filters.
+
+### Global analytics (TASK 4) — no fabricated metrics
+
+`service/analytics.ts` derives every metric from `analytics_events`: total
+visitors (distinct country+device tuples; events with neither signal counted
+as one anon per event — never a hardcoded number), most-used tools, traffic
+sources, countries, devices, recent events. Empty table -> zero counts + empty
+arrays (UI shows "Not enough data"). `trackAnalyticsEvent` RPC ingests events
+(CSRF + rate-limited). `getAnalytics` RPC returns the aggregate (read-only,
+no CSRF needed).
+
+### `useCommunicationStore` migration notes
+
+- `createConversation` is **synchronous** (returns optimistic `Conversation`
+  with a client-generated UUID passed to the server insert so optimistic +
+  persisted rows match). On RPC failure the optimistic row is dropped.
+- All other mutations are async `Promise<void>`; the UI calls them
+  fire-and-forget in onClick handlers (no `await` needed). After each
+  mutation the hook re-fetches the real server state — no fake success.
+- `markAsRead` in `VisitorChatWidget`'s `useEffect` returns a promise (fine —
+  effects may call async fns).
+- `getConversation(id)` is now a local lookup over the fetched list (the
+  single-item RPC exists for server-driven reads if needed later).
+- `lastError` + `error` expose the latest `DbFailure` so the UI can surface
+  `db_not_configured`/`validation`/`db_error` states.
+
+### Verify result (Phase 3)
+
+`npm run verify` green: registry -> tool-runtime -> seo -> tool-content ->
+localization -> typecheck -> lint (0 errors, 125 pre-existing warnings) -> build
+-> audit:production (0 vulnerabilities).
