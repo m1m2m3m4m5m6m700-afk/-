@@ -11,10 +11,10 @@ import { SponsorSection } from "@/components/landing/SponsorSection";
 import { RequestToolDialog } from "@/components/landing/RequestToolDialog";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { LocalI18nProvider, isSupportedLocale, type LocaleCode } from "@/lib/i18n";
-import { SITE_URL } from "@/lib/seo/site";
+import { buildHomeHeadMetadata } from "@/lib/seo/homePageMetadata";
 
 export const Route = createFileRoute("/$locale/")({
-  // Validate the `:locale` segment against the 25 supported locales. Unknown
+  // Validate the `:locale` segment against the supported locales. Unknown
   // locales throw a 404 (no redirect, no English fallback under a foreign URL —
   // keeps the URL space clean for crawlers). Supported locales (incl. zh-CN,
   // ar/he/fa) proceed and render the localized home. Note: English has no
@@ -27,34 +27,7 @@ export const Route = createFileRoute("/$locale/")({
   head: ({ params }) => {
     // Guarded by beforeLoad, so params.locale is a supported non-en LocaleCode.
     const locale = isSupportedLocale(params.locale) ? params.locale : "ar";
-    const isAr = locale === "ar";
-    return {
-      meta: [
-        {
-          title: isAr
-            ? "فليكسو — منصة واحدة لجميع أدوات الذكاء الاصطناعي والمستندات"
-            : "Flixo — One Workspace for Every AI Tool",
-        },
-        {
-          name: "description",
-          content: isAr
-            ? "فليكسو يقدم أدوات مجانية وسريعة للترجمة وتعديل الصور وملفات PDF وتحسين الكتابة مباشرة عبر المتصفح بدون تسجيل."
-            : "Flixo is an AI task assistant that understands your intent, files, links, and media, and instantly selects the best workflow.",
-        },
-        {
-          property: "og:title",
-          content: isAr ? "فليكسو — أدوات الذكاء الاصطناعي" : "Flixo — AI Task Assistant",
-        },
-        { property: "og:type", content: "website" },
-        { property: "og:locale", content: isAr ? "ar_AR" : "en_US" },
-      ],
-      links: [
-        { rel: "canonical", href: `${SITE_URL}/${locale}` },
-        { rel: "alternate", hrefLang: "en", href: SITE_URL },
-        { rel: "alternate", hrefLang: "ar", href: `${SITE_URL}/ar` },
-        { rel: "alternate", hrefLang: "x-default", href: SITE_URL },
-      ],
-    };
+    return buildHomeHeadMetadata(locale);
   },
   component: LocalizedIndexRoute,
 });

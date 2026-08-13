@@ -67,6 +67,31 @@ const blogPosts = loadArrayFromExport(blogSource, "blogPosts");
 const allPages = [
   { url: "/", priority: "1.0", changefreq: "daily" },
   { url: "/ar", priority: "1.0", changefreq: "daily" },
+  { url: "/es", priority: "1.0", changefreq: "daily" },
+  { url: "/fr", priority: "1.0", changefreq: "daily" },
+  { url: "/de", priority: "1.0", changefreq: "daily" },
+  { url: "/pt", priority: "1.0", changefreq: "daily" },
+  { url: "/it", priority: "1.0", changefreq: "daily" },
+  { url: "/nl", priority: "1.0", changefreq: "daily" },
+  { url: "/pl", priority: "1.0", changefreq: "daily" },
+  { url: "/sv", priority: "1.0", changefreq: "daily" },
+  { url: "/tr", priority: "1.0", changefreq: "daily" },
+  { url: "/ro", priority: "1.0", changefreq: "daily" },
+  { url: "/uk", priority: "1.0", changefreq: "daily" },
+  { url: "/ru", priority: "1.0", changefreq: "daily" },
+  { url: "/zh-CN", priority: "1.0", changefreq: "daily" },
+  { url: "/ja", priority: "1.0", changefreq: "daily" },
+  { url: "/ko", priority: "1.0", changefreq: "daily" },
+  { url: "/el", priority: "1.0", changefreq: "daily" },
+  { url: "/cs", priority: "1.0", changefreq: "daily" },
+  { url: "/vi", priority: "1.0", changefreq: "daily" },
+  { url: "/id", priority: "1.0", changefreq: "daily" },
+  { url: "/th", priority: "1.0", changefreq: "daily" },
+  { url: "/hi", priority: "1.0", changefreq: "daily" },
+  { url: "/he", priority: "1.0", changefreq: "daily" },
+  { url: "/fa", priority: "1.0", changefreq: "daily" },
+  { url: "/bn", priority: "1.0", changefreq: "daily" },
+  { url: "/ms", priority: "1.0", changefreq: "daily" },
   { url: "/contact", priority: "0.6", changefreq: "monthly" },
   { url: "/blog", priority: "0.8", changefreq: "weekly" },
   { url: "/changelog", priority: "0.7", changefreq: "weekly" },
@@ -85,6 +110,31 @@ const allPages = [
     .flatMap((tool) => [
       { url: `/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
       { url: `/ar/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
+      { url: `/es/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
+      { url: `/fr/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
+      { url: `/de/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
+      { url: `/pt/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
+      { url: `/it/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
+      { url: `/nl/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
+      { url: `/pl/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
+      { url: `/sv/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
+      { url: `/tr/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
+      { url: `/ro/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
+      { url: `/uk/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
+      { url: `/ru/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
+      { url: `/zh-CN/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
+      { url: `/ja/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
+      { url: `/ko/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
+      { url: `/el/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
+      { url: `/cs/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
+      { url: `/vi/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
+      { url: `/id/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
+      { url: `/th/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
+      { url: `/hi/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
+      { url: `/he/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
+      { url: `/fa/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
+      { url: `/bn/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
+      { url: `/ms/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
     ]),
   ...comparisonRegistry.map((entry) => ({
     url: `/compare/${entry.slug}`,
@@ -127,7 +177,7 @@ const sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://w
   )
   .join("\n")}\n</urlset>\n`;
 
-const robots = `User-agent: *\nAllow: /\nAllow: /tools/\nAllow: /en/\nAllow: /ar/\nAllow: /categories/\nAllow: /blog/\nAllow: /compare/\nAllow: /use-cases/\nAllow: /file-types/\nAllow: /questions/\nAllow: /collections/\nAllow: /sitemap.xml\n\nUser-agent: Googlebot\nAllow: /\n\nUser-agent: Bingbot\nAllow: /\n\nUser-agent: Twitterbot\nAllow: /\n\nUser-agent: facebookexternalhit\nAllow: /\n\nUser-agent: PerplexityBot\nAllow: /\n\nUser-agent: GPTBot\nAllow: /\n\nUser-agent: ChatGPT-User\nAllow: /\n\nUser-agent: ClaudeBot\nAllow: /\n\nUser-agent: Google-Extended\nAllow: /\n\nSitemap: ${SITE_URL}/sitemap.xml\n`;
+const robots = `User-agent: *\nAllow: /\nAllow: /tools/\nAllow: /en/\nAllow: /ar/\nAllow: /es/\nAllow: /fr/\nAllow: /de/\nAllow: /pt/\nAllow: /it/\nAllow: /nl/\nAllow: /pl/\nAllow: /sv/\nAllow: /tr/\nAllow: /ro/\nAllow: /uk/\nAllow: /ru/\nAllow: /zh-CN/\nAllow: /ja/\nAllow: /ko/\nAllow: /el/\nAllow: /cs/\nAllow: /vi/\nAllow: /id/\nAllow: /th/\nAllow: /hi/\nAllow: /he/\nAllow: /fa/\nAllow: /bn/\nAllow: /ms/\nAllow: /categories/\nAllow: /blog/\nAllow: /compare/\nAllow: /use-cases/\nAllow: /file-types/\nAllow: /questions/\nAllow: /collections/\nAllow: /sitemap.xml\n\nUser-agent: Googlebot\nAllow: /\n\nUser-agent: Bingbot\nAllow: /\n\nUser-agent: Twitterbot\nAllow: /\n\nUser-agent: facebookexternalhit\nAllow: /\n\nUser-agent: PerplexityBot\nAllow: /\n\nUser-agent: GPTBot\nAllow: /\n\nUser-agent: ChatGPT-User\nAllow: /\n\nUser-agent: ClaudeBot\nAllow: /\n\nUser-agent: Google-Extended\nAllow: /\n\nSitemap: ${SITE_URL}/sitemap.xml\n`;
 
 fs.writeFileSync(path.join(root, "public/sitemap.xml"), sitemap);
 fs.writeFileSync(path.join(root, "public/robots.txt"), robots);

@@ -1,8 +1,8 @@
 import { useEffect } from "react";
 import { type ToolSeoData } from "@/data/toolSeo";
-import { SITE_NAME, SITE_TWITTER_HANDLE, getToolCanonicalUrl } from "@/lib/seo/site";
+import { SITE_NAME, SITE_TWITTER_HANDLE, getToolCanonicalUrl, getOgLocale } from "@/lib/seo/site";
 import { resolvePageSeo } from "@/lib/seo/toolPageMetadata";
-import type { LocaleCode } from "@/lib/i18n";
+import { LOCALES, type LocaleCode } from "@/lib/i18n";
 
 export function usePageSeo(
   slug?: string,
@@ -61,8 +61,9 @@ export function usePageSeo(
     setCanonical(canonicalUrl);
 
     if (slug) {
-      setHreflang("en", getToolCanonicalUrl(slug, "en"));
-      setHreflang("ar", getToolCanonicalUrl(slug, "ar"));
+      for (const l of LOCALES) {
+        setHreflang(l.code, getToolCanonicalUrl(slug, l.code));
+      }
       setHreflang("x-default", getToolCanonicalUrl(slug));
     }
 
@@ -72,7 +73,7 @@ export function usePageSeo(
     setMeta("property", "og:url", pageUrl);
     setMeta("property", "og:site_name", SITE_NAME);
     setMeta("property", "og:image", ogImage);
-    setMeta("property", "og:locale", locale === "ar" ? "ar_AR" : "en_US");
+    setMeta("property", "og:locale", getOgLocale(locale));
 
     setMeta("name", "twitter:card", "summary_large_image");
     setMeta("name", "twitter:site", SITE_TWITTER_HANDLE);
