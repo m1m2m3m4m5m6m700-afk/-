@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { FileCode, Copy, Check, Download, Eye, Edit3 } from "lucide-react";
 import type { ReadyToolRuntimeDefinition } from "../types";
+import { renderMarkdownToReact } from "@/lib/markdown/safeMarkdown";
 
 const DEFAULT_MD = `# Welcome to Markdown Editor
 
@@ -20,30 +21,6 @@ function MarkdownPreviewTool() {
   const [markdown, setMarkdown] = useState(DEFAULT_MD);
   const [tab, setTab] = useState<"edit" | "preview" | "split">("split");
   const [copied, setCopied] = useState(false);
-
-  // Basic markdown to HTML renderer
-  const renderMarkdownToHtml = (md: string) => {
-    const html = md
-      .replace(/^### (.*$)/gim, '<h3 class="text-lg font-bold text-foreground mt-3 mb-1">$1</h3>')
-      .replace(/^## (.*$)/gim, '<h2 class="text-xl font-bold text-foreground mt-4 mb-2">$1</h2>')
-      .replace(
-        /^# (.*$)/gim,
-        "<" + 'h1 class="text-2xl font-bold text-foreground mt-5 mb-3">$1</' + "h1>",
-      )
-      .replace(/\*\*(.*)\*\*/gim, '<strong class="font-bold text-foreground">$1</strong>')
-      .replace(/\*(.*)\*/gim, '<em class="italic">$1</em>')
-      .replace(
-        /`([^`]+)`/gim,
-        '<code class="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">$1</code>',
-      )
-      .replace(
-        /\[([^\]]+)\]\(([^)]+)\)/gim,
-        '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-primary underline">$1</a>',
-      )
-      .replace(/^- (.*$)/gim, '<li class="ml-4 list-disc text-muted-foreground">$1</li>')
-      .replace(/\n$/gim, "<br />");
-    return html;
-  };
 
   const handleCopyMd = () => {
     navigator.clipboard.writeText(markdown);
@@ -136,11 +113,10 @@ function MarkdownPreviewTool() {
 
         {(tab === "preview" || tab === "split") && (
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-foreground">Live HTML Render</label>
-            <div
-              className="w-full h-80 rounded-2xl border border-border bg-background p-5 overflow-y-auto text-sm leading-relaxed"
-              dangerouslySetInnerHTML={{ __html: renderMarkdownToHtml(markdown) }}
-            />
+            <label className="text-xs font-semibold text-foreground">Live Render</label>
+            <div className="w-full h-80 rounded-2xl border border-border bg-background p-5 overflow-y-auto text-sm leading-relaxed">
+              {renderMarkdownToReact(markdown)}
+            </div>
           </div>
         )}
       </div>

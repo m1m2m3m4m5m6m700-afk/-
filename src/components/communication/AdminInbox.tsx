@@ -313,7 +313,7 @@ export function AdminInbox() {
               Avg Response
             </span>
             <span className="text-lg font-extrabold text-foreground">
-              {analytics.avgResponseTime}
+              {analytics.avgResponseTime ?? "Not enough data"}
             </span>
           </div>
         </div>
@@ -757,7 +757,7 @@ export function AdminInbox() {
                           Location
                         </span>
                         <span className="font-medium text-foreground">
-                          {activeConv.userInfo.location}
+                          {activeConv.userInfo.location ?? "Not available"}
                         </span>
                       </div>
 
@@ -765,7 +765,9 @@ export function AdminInbox() {
                         <span className="text-muted-foreground text-[10px] block font-semibold">
                           IP Address
                         </span>
-                        <span className="font-mono text-foreground">{activeConv.userInfo.ip}</span>
+                        <span className="font-mono text-foreground">
+                          {activeConv.userInfo.ip ?? "Not available"}
+                        </span>
                       </div>
 
                       <div>
@@ -918,7 +920,7 @@ export function AdminInbox() {
                   User Satisfaction
                 </span>
                 <p className="text-2xl font-extrabold text-emerald-500">
-                  {analytics.satisfactionScore}
+                  {analytics.satisfactionScore ?? "Not enough data"}
                 </p>
               </div>
 
@@ -926,13 +928,15 @@ export function AdminInbox() {
                 <span className="text-xs text-muted-foreground font-semibold">
                   Avg Response Time
                 </span>
-                <p className="text-2xl font-extrabold text-primary">{analytics.avgResponseTime}</p>
+                <p className="text-2xl font-extrabold text-primary">
+                  {analytics.avgResponseTime ?? "Not enough data"}
+                </p>
               </div>
 
               <div className="rounded-2xl border border-border/80 bg-surface/50 p-4 space-y-1">
                 <span className="text-xs text-muted-foreground font-semibold">Top Topic</span>
                 <p className="text-base font-bold text-foreground truncate">
-                  {analytics.topRequestedCategory}
+                  {analytics.topRequestedCategory ?? "Not enough data"}
                 </p>
               </div>
             </div>
