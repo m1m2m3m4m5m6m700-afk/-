@@ -1,5 +1,7 @@
 import { tools, toolRoute, type Tool, type ToolStatus } from "@/data/tools";
 import { categoryById, type CategoryId } from "@/data/categories";
+import { LOCALES } from "@/lib/i18n";
+import { getToolSearchTerms } from "./search-intents";
 
 export interface AISkill {
   id: string;
@@ -13,6 +15,8 @@ export interface AISkill {
   route?: string;
   examples: string[];
   actionLabel: string;
+  /** Locale-aware natural-language discovery terms mapped to this canonical skill. */
+  searchTermsByLocale: Record<string, string[]>;
 }
 
 const CUSTOM_EXAMPLES: Record<string, string[]> = {
@@ -64,6 +68,10 @@ function toolToSkill(tool: Tool): AISkill {
     `${tool.name} for ${tool.categoryId} tasks`,
   ];
 
+  const searchTermsByLocale = Object.fromEntries(
+    LOCALES.map((locale) => [locale.code, getToolSearchTerms(tool, locale.code).terms]),
+  );
+
   return {
     id: tool.id,
     name: tool.name,
@@ -76,6 +84,7 @@ function toolToSkill(tool: Tool): AISkill {
     route,
     examples,
     actionLabel: tool.status === "ready" ? `Open ${tool.name}` : `Request ${tool.name}`,
+    searchTermsByLocale,
   };
 }
 
