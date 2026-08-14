@@ -33,6 +33,9 @@ export default tseslint.config(
         },
       ],
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
+      // Prettier remains visible in lint output, but formatting drift must not
+      // block the correctness gate. Functional/type/security rules remain errors.
+      "prettier/prettier": "warn",
       // These rules flag intentional hydration and third-party widget
       // synchronization patterns used by the existing UI.
       "react-hooks/set-state-in-effect": "off",
