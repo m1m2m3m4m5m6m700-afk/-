@@ -4,13 +4,13 @@ import type { ReactNode } from "react";
 import { useI18n } from "@/lib/i18n";
 import { ToolSeoSection } from "./ToolSeoSection";
 import { SponsorSection } from "@/components/landing/SponsorSection";
-import { usePageSeo } from "@/lib/usePageSeo";
 
 interface ToolLayoutProps {
   icon: LucideIcon;
   name: string;
   description: string;
   category: string;
+  categoryId: string;
   slug?: string;
   children: ReactNode;
 }
@@ -21,6 +21,7 @@ export function ToolLayout({
   name,
   description,
   category,
+  categoryId,
   slug,
   children,
 }: ToolLayoutProps) {
@@ -36,8 +37,6 @@ export function ToolLayout({
           .replace(/^\/tools\//, "")
           .split("/")[0]
       : "");
-
-  usePageSeo(pathSlug);
 
   return (
     <div className="bg-hero-glow">
@@ -55,10 +54,10 @@ export function ToolLayout({
             <li>
               <Link
                 to="/categories/$slug"
-                params={{ slug: "utilities" }}
+                params={{ slug: categoryId }}
                 className="hover:text-foreground transition-colors"
               >
-                {t("toolPage.breadcrumb.tools")}
+                {category}
               </Link>
             </li>
             <li>
