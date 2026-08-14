@@ -66,7 +66,13 @@ export interface ActivityEvent {
     | "category_click"
     | "download"
     | "copy"
-    | "external_link";
+    | "external_link"
+    | "session_start"
+    | "session_end"
+    | "tool_start"
+    | "tool_complete"
+    | "navigation"
+    | "survey_response";
   title: string;
   detail: string;
   country: string;
