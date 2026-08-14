@@ -9,6 +9,7 @@ import {
   SITE_URL,
   getCategoryCanonicalUrl,
   getDefaultOgImageUrl,
+  getHomeUrl,
   getToolCanonicalUrl,
 } from "./site";
 
@@ -79,7 +80,7 @@ export function buildToolStructuredData({
     : `${SITE_URL}/categories/utilities`;
 
   const homeName = locale === "ar" ? "الرئيسية" : "Home";
-  const homeUrl = locale ? `${SITE_URL}/${locale}` : SITE_URL;
+  const homeUrl = getHomeUrl(locale);
 
   return [
     {
@@ -88,7 +89,7 @@ export function buildToolStructuredData({
       name: seo.title,
       url: pageUrl,
       description: seo.description,
-      inLanguage: locale === "ar" ? "ar" : "en",
+      inLanguage: locale,
       applicationCategory: categoryName || "UtilityApplication",
       operatingSystem: eeat.supportedPlatforms.join(", "),
       browserRequirements: "Requires Web browser",
@@ -109,7 +110,7 @@ export function buildToolStructuredData({
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
       name: toolName,
-      inLanguage: locale === "ar" ? "ar" : "en",
+      inLanguage: locale,
       operatingSystem: eeat.supportedPlatforms.join(", "),
       applicationCategory: categoryName,
       description: seo.description,
