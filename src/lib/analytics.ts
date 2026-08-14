@@ -3,9 +3,8 @@ import type { AnalyticsData, AnalyticsEventParams } from "./analytics/types";
 
 export * from "./analytics/types";
 export * from "./analytics/analyticsService";
-export * from "./analytics/providers/ga4";
-export * from "./analytics/providers/clarity";
 export * from "./analytics/providers/local";
+export * from "./analytics/providers/firstParty";
 export * from "./analytics/providers/custom";
 export * from "./analytics/AnalyticsProvider";
 
@@ -65,7 +64,7 @@ export function trackKeywordSearch(keyword: string, resultCount?: number): void 
 
 export function trackToolRequest(requestText: string): void {
   analytics.getLocalProvider().trackToolRequest(requestText);
-  analytics.trackEvent("tool_request", { requestText });
+  analytics.trackEvent("tool_request", { requestTextLength: requestText.trim().length });
 }
 
 export function trackExitPage(path: string): void {
