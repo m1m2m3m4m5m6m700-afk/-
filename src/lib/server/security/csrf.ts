@@ -9,8 +9,8 @@
  *
  * Rate limiting: a small in-memory token bucket per identifier (ip or
  * action+ip). Process-scoped; resets on server restart. Suitable for a single
- * serverless function instance; a distributed store can be wired later via
- * the same `RateLimiter` interface (completable-later pattern).
+ * serverless function instance; a distributed store can be wired later via the
+ * same `RateLimiter` interface (completable-later pattern).
  */
 
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
@@ -117,12 +117,13 @@ export function rateLimit(
   return { allowed: true, remaining: Math.floor(bucket.tokens) };
 }
 
-// Presets for the protected endpoints (TASK 6).
+// Presets for protected endpoints.
 export const RATE_PRESETS = {
   login: { capacity: 10, refillPerSecond: 1 / 60 },
   contact: { capacity: 20, refillPerSecond: 1 / 10 },
   toolRequest: { capacity: 20, refillPerSecond: 1 / 10 },
-  // AI generation is cost-bearing, so it is stricter than contact/tool requests.
-  // Per-IP token bucket with a short burst allowance and a steady refill.
   ai: { capacity: 8, refillPerSecond: 1 / 15 },
+  // Analytics accepts short batches, so the per-IP budget is intentionally
+  // higher while each request is still capped at 50 events by the validator.
+  analytics: { capacity: 30, refillPerSecond: 1 / 2 },
 } as const;
