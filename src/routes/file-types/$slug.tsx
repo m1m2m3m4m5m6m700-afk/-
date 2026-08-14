@@ -16,12 +16,15 @@ import { usePageSeo } from "@/lib/usePageSeo";
 import { trackPageView } from "@/lib/analytics";
 import { LastUpdatedBadge } from "@/components/seo/LastUpdatedBadge";
 import { SITE_URL } from "@/lib/seo/site";
+import { useI18n } from "@/lib/i18n";
+import { resolveToolName } from "@/lib/i18n/keys";
 
 export const Route = createFileRoute("/file-types/$slug")({
   component: FileTypeSlugRoute,
 });
 
 function FileTypeSlugRoute() {
+  const { t } = useI18n();
   const { slug } = Route.useParams();
   const ft = fileTypeRegistry.find((f) => f.slug === slug || f.id === slug);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
@@ -158,7 +161,9 @@ function FileTypeSlugRoute() {
                   className="rounded-2xl border border-border/80 bg-card p-4 space-y-3 flex flex-col justify-between"
                 >
                   <div>
-                    <h3 className="text-sm font-bold text-foreground">{tool.name}</h3>
+                    <h3 className="text-sm font-bold text-foreground">
+                      {resolveToolName(tool.slug || tool.id, t)}
+                    </h3>
                     <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                       {tool.description}
                     </p>

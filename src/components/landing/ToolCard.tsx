@@ -5,6 +5,8 @@ import { categoryById } from "@/data/categories";
 import { toolRoute, type Tool, type ToolStatus } from "@/data/tools";
 import { cn } from "@/lib/utils";
 import { trackToolOpen } from "@/lib/analytics";
+import { useI18n } from "@/lib/i18n";
+import { resolveToolName, resolveCategoryName } from "@/lib/i18n/keys";
 
 const STATUS_CONFIG: Record<
   ToolStatus,
@@ -40,6 +42,7 @@ interface ToolCardProps {
 }
 
 export function ToolCard({ tool, onRequestTool, isHighlighted }: ToolCardProps) {
+  const { t } = useI18n();
   const route = tool.status === "ready" ? toolRoute(tool) : undefined;
   const category = categoryById.get(tool.categoryId);
   const CategoryIcon = category?.icon;
@@ -63,7 +66,7 @@ export function ToolCard({ tool, onRequestTool, isHighlighted }: ToolCardProps) 
           {category && (
             <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-surface/80 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
               {CategoryIcon && <CategoryIcon className="size-3 text-primary" />}
-              {category.name}
+              {resolveCategoryName(category.id, t)}
             </span>
           )}
 
@@ -82,7 +85,7 @@ export function ToolCard({ tool, onRequestTool, isHighlighted }: ToolCardProps) 
         {/* Name & Description */}
         <div className="mt-4">
           <h4 className="flex items-center gap-1.5 text-base font-semibold text-foreground group-hover:text-primary transition-colors">
-            {tool.name}
+            {resolveToolName(tool.slug || tool.id, t)}
             {route && (
               <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-primary rtl:-scale-x-100" />
             )}

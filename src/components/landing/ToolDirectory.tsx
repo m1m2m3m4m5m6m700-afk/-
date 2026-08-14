@@ -6,6 +6,8 @@ import { toolsByCategory } from "@/data/tools";
 import { ToolCard } from "@/components/landing/ToolCard";
 import { SponsorSection } from "@/components/landing/SponsorSection";
 import { Sparkles } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
+import { resolveCategoryName } from "@/lib/i18n/keys";
 
 interface ToolDirectoryProps {
   onRequestTool: (prefillPrompt?: string) => void;
@@ -14,6 +16,7 @@ interface ToolDirectoryProps {
 
 /** Full tools directory — one section per category, completely data-driven. */
 export function ToolDirectory({ onRequestTool, highlightedCategoryId }: ToolDirectoryProps) {
+  const { t } = useI18n();
   const [expandedCategoryIds, setExpandedCategoryIds] = useState<Set<CategoryId>>(new Set());
 
   const toggleCategoryExpansion = (categoryId: CategoryId) => {
@@ -77,7 +80,7 @@ export function ToolDirectory({ onRequestTool, highlightedCategoryId }: ToolDire
                     </span>
                     <div>
                       <h3 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
-                        {category.name}
+                        {resolveCategoryName(category.id, t)}
                         {isHighlighted && (
                           <span className="rounded-full bg-primary/20 px-2 py-0.5 text-xs font-medium text-primary animate-pulse">
                             Matched

@@ -9,12 +9,15 @@ import { usePageSeo } from "@/lib/usePageSeo";
 import { trackPageView } from "@/lib/analytics";
 import { LastUpdatedBadge } from "@/components/seo/LastUpdatedBadge";
 import { SITE_URL } from "@/lib/seo/site";
+import { useI18n } from "@/lib/i18n";
+import { resolveToolName } from "@/lib/i18n/keys";
 
 export const Route = createFileRoute("/compare/")({
   component: CompareIndexRoute,
 });
 
 function CompareIndexRoute() {
+  const { t } = useI18n();
   usePageSeo(undefined, {
     title: "Tool Comparisons — Flixo vs Traditional SaaS & Cloud Tools",
     description:
@@ -113,7 +116,10 @@ function CompareIndexRoute() {
 
                   <div className="pt-4 border-t border-border/40 flex items-center justify-between">
                     <span className="text-xs font-semibold text-muted-foreground">
-                      Tool: {matchedTool?.name || comp.toolId}
+                      Tool:{" "}
+                      {matchedTool
+                        ? resolveToolName(matchedTool.slug || matchedTool.id, t)
+                        : comp.toolId}
                     </span>
                     <Link
                       to="/compare/$slug"

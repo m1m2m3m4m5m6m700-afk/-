@@ -8,12 +8,15 @@ import { trackPageView } from "@/lib/analytics";
 import { getBestToolsPage } from "@/data/knowledgeHub";
 import { tools } from "@/data/tools";
 import { SITE_URL } from "@/lib/seo/site";
+import { useI18n } from "@/lib/i18n";
+import { resolveToolName } from "@/lib/i18n/keys";
 
 export const Route = createFileRoute("/knowledge/best/$slug")({
   component: BestToolsPageRoute,
 });
 
 function BestToolsPageRoute() {
+  const { t } = useI18n();
   const { slug } = Route.useParams();
   const page = getBestToolsPage(slug);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
@@ -120,7 +123,9 @@ function BestToolsPageRoute() {
                   to={`/tools/${tool.slug}` as never}
                   className="rounded-2xl border border-border/70 bg-surface/60 p-4 transition-all hover:border-primary/50"
                 >
-                  <div className="font-semibold text-foreground">{tool.name}</div>
+                  <div className="font-semibold text-foreground">
+                    {resolveToolName(tool.slug || tool.id, t)}
+                  </div>
                   <p className="mt-2 text-sm text-muted-foreground">{tool.description}</p>
                 </Link>
               ))}

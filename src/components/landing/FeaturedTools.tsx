@@ -4,6 +4,7 @@ import { Section } from "@/components/layout/Section";
 import { useI18n } from "@/lib/i18n";
 import { sortedCategories, type CategoryId } from "@/data/categories";
 import { toolsByCategory } from "@/data/tools";
+import { resolveCategoryName, resolveToolName } from "@/lib/i18n/keys";
 
 export function FeaturedTools() {
   const { t } = useI18n();
@@ -26,7 +27,7 @@ export function FeaturedTools() {
           const toolNames = toolsByCategory(cat.id)
             .filter((tool) => tool.status === "ready")
             .slice(0, 3)
-            .map((tool) => tool.name)
+            .map((tool) => resolveToolName(tool.slug || tool.id, t))
             .join(" · ");
 
           const card = (
@@ -47,7 +48,7 @@ export function FeaturedTools() {
               </div>
 
               <h3 className="mt-5 flex items-center gap-1.5 text-lg font-semibold">
-                {cat.name}
+                {resolveCategoryName(cat.id, t)}
                 {isLive && (
                   <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 rtl:-scale-x-100" />
                 )}

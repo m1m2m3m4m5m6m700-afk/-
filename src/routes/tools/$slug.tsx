@@ -6,17 +6,20 @@ import { ToolLayout } from "@/components/tools/ToolLayout";
 import { tools } from "@/data/tools";
 import { categoryById } from "@/data/categories";
 import { trackPageView } from "@/lib/analytics";
+import { useI18n } from "@/lib/i18n";
+import { resolveToolName, resolveCategoryName } from "@/lib/i18n/keys";
 
 export const Route = createFileRoute("/tools/$slug")({
   component: ToolSlugRoute,
 });
 
 function ToolSlugRoute() {
+  const { t } = useI18n();
   const { slug } = Route.useParams() as { slug?: string };
   const tool = tools.find((tool) => tool.slug === slug || tool.id === slug);
   const category = tool ? categoryById?.get(tool.categoryId) : undefined;
   const icon = category?.icon ?? Sparkles;
-  const categoryName = category?.name ?? "Tools";
+  const categoryName = category ? resolveCategoryName(category.id, t) : "Tools";
 
   useEffect(() => {
     trackPageView(`/tools/${slug}`);
@@ -50,7 +53,7 @@ function ToolSlugRoute() {
     <SiteLayout>
       <ToolLayout
         icon={icon}
-        name={tool.name}
+        name={tool ? resolveToolName(tool.slug || tool.id, t) : ""}
         description={tool.description}
         category={categoryName}
         slug={tool.slug}
@@ -59,7 +62,8 @@ function ToolSlugRoute() {
           <div className="space-y-4">
             <p className="text-base text-foreground font-semibold">هذه صفحة أداة ديناميكية عامة.</p>
             <p>
-              الأداة <strong>{tool.name}</strong> مدرجة بحالة <strong>{tool.status}</strong>.
+              الأداة <strong>{tool ? resolveToolName(tool.slug || tool.id, t) : ""}</strong> مدرجة
+              بحالة <strong>{tool.status}</strong>.
             </p>
             {tool.status === "ready" ? (
               <p>

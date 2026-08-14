@@ -9,12 +9,15 @@ import { usePageSeo } from "@/lib/usePageSeo";
 import { trackPageView } from "@/lib/analytics";
 import { LastUpdatedBadge } from "@/components/seo/LastUpdatedBadge";
 import { SITE_URL } from "@/lib/seo/site";
+import { useI18n } from "@/lib/i18n";
+import { resolveToolName } from "@/lib/i18n/keys";
 
 export const Route = createFileRoute("/questions/$slug")({
   component: QuestionSlugRoute,
 });
 
 function QuestionSlugRoute() {
+  const { t } = useI18n();
   const { slug } = Route.useParams();
   const q = questionRegistry.find((item) => item.slug === slug || item.id === slug);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
@@ -165,7 +168,11 @@ function QuestionSlugRoute() {
             <div className="rounded-3xl border border-primary/30 bg-primary/10 p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
                 <h3 className="font-bold text-foreground text-base sm:text-lg">
-                  Use {recommendedTool.name} Now
+                  Use{" "}
+                  {recommendedTool
+                    ? resolveToolName(recommendedTool.slug || recommendedTool.id, t)
+                    : ""}{" "}
+                  Now
                 </h3>
                 <p className="text-xs sm:text-sm text-muted-foreground">
                   Follow this guide directly inside our 100% free browser tool.
@@ -176,7 +183,11 @@ function QuestionSlugRoute() {
                   to={`/tools/${recommendedTool.slug}` as never}
                   className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground shadow-xs hover:bg-primary/90 transition-all shrink-0"
                 >
-                  Launch {recommendedTool.name} <ArrowRight className="size-4" />
+                  Launch{" "}
+                  {recommendedTool
+                    ? resolveToolName(recommendedTool.slug || recommendedTool.id, t)
+                    : ""}{" "}
+                  <ArrowRight className="size-4" />
                 </Link>
               )}
             </div>

@@ -17,12 +17,15 @@ import { usePageSeo } from "@/lib/usePageSeo";
 import { trackPageView } from "@/lib/analytics";
 import { LastUpdatedBadge } from "@/components/seo/LastUpdatedBadge";
 import { SITE_URL } from "@/lib/seo/site";
+import { useI18n } from "@/lib/i18n";
+import { resolveToolName } from "@/lib/i18n/keys";
 
 export const Route = createFileRoute("/collections/$slug")({
   component: CollectionSlugRoute,
 });
 
 function CollectionSlugRoute() {
+  const { t } = useI18n();
   const { slug } = Route.useParams();
   const col = collectionRegistry.find((c) => c.slug === slug || c.id === slug);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
@@ -148,7 +151,9 @@ function CollectionSlugRoute() {
                     <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full mb-2">
                       <Sparkles className="size-3" /> Ready to Use
                     </span>
-                    <h3 className="text-base font-bold text-foreground">{tool.name}</h3>
+                    <h3 className="text-base font-bold text-foreground">
+                      {resolveToolName(tool.slug || tool.id, t)}
+                    </h3>
                     <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                       {tool.description}
                     </p>

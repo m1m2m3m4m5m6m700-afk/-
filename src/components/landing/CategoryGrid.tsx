@@ -4,6 +4,8 @@ import { sortedCategories, type CategoryId } from "@/data/categories";
 import { toolsByCategory } from "@/data/tools";
 import { cn } from "@/lib/utils";
 import { trackCategoryVisit } from "@/lib/analytics";
+import { useI18n } from "@/lib/i18n";
+import { resolveCategoryName } from "@/lib/i18n/keys";
 
 interface CategoryGridProps {
   highlightedCategoryId?: CategoryId | null;
@@ -12,6 +14,7 @@ interface CategoryGridProps {
 
 /** Category cards — rendered entirely from src/data/categories.ts. */
 export function CategoryGrid({ highlightedCategoryId, onSelectCategory }: CategoryGridProps) {
+  const { t } = useI18n();
   const handleCategoryClick = (anchor: string, id: CategoryId) => {
     trackCategoryVisit(id);
     onSelectCategory?.(id);
@@ -77,7 +80,7 @@ export function CategoryGrid({ highlightedCategoryId, onSelectCategory }: Catego
 
                 {/* Title & Description */}
                 <h3 className="mt-4 text-base font-semibold text-foreground group-hover:text-primary transition-colors">
-                  {category.name}
+                  {resolveCategoryName(category.id, t)}
                 </h3>
                 <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground line-clamp-2">
                   {category.description}

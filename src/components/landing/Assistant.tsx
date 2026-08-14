@@ -16,6 +16,8 @@ import { classifyIntent, type ClassificationResult } from "@/lib/tool-classifier
 import { toolRoute } from "@/data/tools";
 import { categoryById, type CategoryId } from "@/data/categories";
 import { trackKeywordSearch, trackCategoryVisit, trackToolOpen } from "@/lib/analytics";
+import { useI18n } from "@/lib/i18n";
+import { resolveToolName, resolveCategoryName } from "@/lib/i18n/keys";
 
 interface AssistantProps {
   prompt: string;
@@ -38,6 +40,7 @@ export function Assistant({
   onRequestTool,
   onSelectCategory,
 }: AssistantProps) {
+  const { t } = useI18n();
   const [result, setResult] = useState<ClassificationResult | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -192,7 +195,7 @@ export function Assistant({
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">
-                      Matched Category: {result.category.name}
+                      Matched Category: {resolveCategoryName(result.category.id, t)}
                     </span>
                     {result.matchedKeywords.length > 0 && (
                       <span className="text-xs text-muted-foreground">
@@ -205,14 +208,24 @@ export function Assistant({
                     {result.tool ? (
                       <>
                         We matched your request to{" "}
-                        <strong className="text-foreground">{result.tool.name}</strong> under{" "}
-                        <span className="text-muted-foreground">{result.category.name}</span>.
+                        <strong className="text-foreground">
+                          {result.tool
+                            ? resolveToolName(result.tool.slug || result.tool.id, t)
+                            : ""}
+                        </strong>{" "}
+                        under{" "}
+                        <span className="text-muted-foreground">
+                          {resolveCategoryName(result.category.id, t)}
+                        </span>
+                        .
                       </>
                     ) : (
                       <>
                         Looks like{" "}
-                        <strong className="text-foreground">{result.category.name}</strong>. Explore
-                        available and planned tools below.
+                        <strong className="text-foreground">
+                          {resolveCategoryName(result.category.id, t)}
+                        </strong>
+                        . Explore available and planned tools below.
                       </>
                     )}
                   </p>
@@ -222,7 +235,10 @@ export function Assistant({
                     {result.tool && result.tool.status === "ready" && result.tool.slug ? (
                       <Button asChild size="sm" className="rounded-xl px-4 shadow-sm">
                         <Link to={toolRoute(result.tool)!}>
-                          Open {result.tool.name}
+                          Open{" "}
+                          {result.tool
+                            ? resolveToolName(result.tool.slug || result.tool.id, t)
+                            : ""}
                           <ArrowRight className="ms-1 size-4 rtl:-scale-x-100" />
                         </Link>
                       </Button>
@@ -245,7 +261,7 @@ export function Assistant({
                         handleScrollToCategory(result.category.anchor, result.category.id)
                       }
                     >
-                      View {result.category.name} in Directory ↓
+                      View {resolveCategoryName(result.category.id, t)} in Directory ↓
                     </Button>
                   </div>
                 </div>

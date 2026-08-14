@@ -2,6 +2,8 @@ import { Link } from "@tanstack/react-router";
 import { Sparkles } from "lucide-react";
 import { tools } from "@/data/tools";
 import { categoryById } from "@/data/categories";
+import { useI18n } from "@/lib/i18n";
+import { resolveToolName, resolveCategoryName } from "@/lib/i18n/keys";
 
 const NEW_IDS = [
   "background-remover",
@@ -14,6 +16,7 @@ const NEW_IDS = [
 
 /** Newly added tools — signals to visitors and crawlers that Flixo keeps shipping. */
 export function NewToolsSection() {
+  const { t } = useI18n();
   const fresh = NEW_IDS.map((id) => tools.find((tool) => tool.id === id)).filter(
     (tool): tool is NonNullable<typeof tool> => Boolean(tool?.slug && tool.status === "ready"),
   );
@@ -42,7 +45,7 @@ export function NewToolsSection() {
             >
               <div className="flex items-center justify-between gap-2">
                 <h3 className="text-sm font-bold text-foreground group-hover:text-primary">
-                  {tool.name}
+                  {resolveToolName(tool.slug || tool.id, t)}
                 </h3>
                 <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-500">
                   New
@@ -51,7 +54,7 @@ export function NewToolsSection() {
               <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{tool.description}</p>
               {category && (
                 <p className="mt-3 text-[11px] font-medium text-muted-foreground">
-                  {category.name}
+                  {resolveCategoryName(category.id, t)}
                 </p>
               )}
             </Link>

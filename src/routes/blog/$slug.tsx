@@ -17,12 +17,15 @@ import { JsonLd } from "@/components/seo/JsonLd";
 import { usePageSeo } from "@/lib/usePageSeo";
 import { trackPageView } from "@/lib/analytics";
 import { SITE_URL } from "@/lib/seo/site";
+import { useI18n } from "@/lib/i18n";
+import { resolveToolName } from "@/lib/i18n/keys";
 
 export const Route = createFileRoute("/blog/$slug")({
   component: BlogPostRoute,
 });
 
 function BlogPostRoute() {
+  const { t } = useI18n();
   const { slug } = Route.useParams();
   const post = getBlogPost(slug);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
@@ -267,7 +270,7 @@ function BlogPostRoute() {
                       <div>
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-bold text-foreground group-hover:text-primary transition-colors">
-                            {tool.name}
+                            {resolveToolName(tool.slug || tool.id, t)}
                           </span>
                           <ArrowRight className="size-3.5 text-muted-foreground group-hover:translate-x-0.5 group-hover:text-primary transition-transform" />
                         </div>

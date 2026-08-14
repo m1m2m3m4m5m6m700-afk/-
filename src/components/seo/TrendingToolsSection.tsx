@@ -2,9 +2,12 @@ import { Link } from "@tanstack/react-router";
 import { Flame, ArrowRight, ShieldCheck, Sparkles } from "lucide-react";
 import { tools } from "@/data/tools";
 import { getToolStats } from "@/data/seoEnterpriseData";
+import { useI18n } from "@/lib/i18n";
+import { resolveToolName } from "@/lib/i18n/keys";
 
 export function TrendingToolsSection() {
-  const readyTools = tools.filter((t) => t.status === "ready" && t.slug);
+  const { t: translate } = useI18n();
+  const readyTools = tools.filter((tool) => tool.status === "ready" && tool.slug);
   const trendingTools = readyTools.slice(0, 6);
 
   return (
@@ -43,7 +46,7 @@ export function TrendingToolsSection() {
                 </div>
 
                 <h3 className="mt-2 text-sm font-bold text-foreground group-hover:text-primary transition-colors">
-                  {tool.name}
+                  {resolveToolName(tool.slug || tool.id, translate)}
                 </h3>
                 <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
                   {tool.description}

@@ -3,6 +3,8 @@ import { ArrowRight, Star } from "lucide-react";
 import { motion } from "motion/react";
 import { tools } from "@/data/tools";
 import { categoryById } from "@/data/categories";
+import { useI18n } from "@/lib/i18n";
+import { resolveToolName } from "@/lib/i18n/keys";
 
 const POPULAR_IDS = [
   "image-enhancer",
@@ -15,6 +17,7 @@ const POPULAR_IDS = [
 
 /** Most used tools — a short curated shortlist instead of the whole directory. */
 export function PopularToolsSection() {
+  const { t } = useI18n();
   const popular = POPULAR_IDS.map((id) => tools.find((tool) => tool.id === id)).filter(
     (tool): tool is NonNullable<typeof tool> => Boolean(tool?.slug && tool.status === "ready"),
   );
@@ -53,7 +56,7 @@ export function PopularToolsSection() {
                 <span className="flex items-center gap-2">
                   {Icon && <Icon className="size-4 text-primary" />}
                   <span className="text-sm font-bold text-foreground group-hover:text-primary">
-                    {tool.name}
+                    {resolveToolName(tool.slug || tool.id, t)}
                   </span>
                 </span>
                 <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">

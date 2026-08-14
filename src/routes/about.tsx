@@ -3,12 +3,15 @@ import { ArrowRight, ShieldCheck, Sparkles, Zap } from "lucide-react";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { usePageSeo } from "@/lib/usePageSeo";
 import { categories } from "@/data/categories";
+import { useI18n } from "@/lib/i18n";
+import { resolveCategoryName } from "@/lib/i18n/keys";
 
 export const Route = createFileRoute("/about")({
   component: AboutRoute,
 });
 
 function AboutRoute() {
+  const { t } = useI18n();
   usePageSeo(undefined, {
     title: "About Flixo — Privacy-First AI Tools & Browser Utilities",
     description:
@@ -76,7 +79,7 @@ function AboutRoute() {
                   params={{ slug: category.id }}
                   className="rounded-xl border border-border/70 bg-surface/70 p-3 text-sm font-medium text-foreground transition hover:border-primary/50 hover:text-primary"
                 >
-                  {category.name}
+                  {resolveCategoryName(category.id, t)}
                 </Link>
               ))}
             </div>

@@ -20,6 +20,8 @@ import { JsonLd } from "@/components/seo/JsonLd";
 import { usePageSeo } from "@/lib/usePageSeo";
 import { trackCategoryVisit, trackPageView } from "@/lib/analytics";
 import { SITE_URL } from "@/lib/seo/site";
+import { useI18n } from "@/lib/i18n";
+import { resolveCategoryName, resolveToolName } from "@/lib/i18n/keys";
 
 const TOOL_STATUS_ORDER: Record<Tool["status"], number> = {
   ready: 0,
@@ -32,13 +34,14 @@ interface CategoryLandingPageProps {
 }
 
 export function CategoryLandingPage({ categoryId }: CategoryLandingPageProps) {
+  const { t } = useI18n();
   const category = getCategory(categoryId);
   const [searchQuery, setSearchQuery] = useState("");
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
   const [visibleCount, setVisibleCount] = useState(18);
   const initialVisibleCount = 18;
 
-  const categoryName = category?.name || "AI Tools Category";
+  const categoryName = category ? resolveCategoryName(category.id, t) : "AI Tools Category";
   const categoryDesc =
     category?.description ||
     `Explore fast, free, and private browser-based ${categoryName} on Flixo.`;
@@ -626,7 +629,9 @@ export function CategoryLandingPage({ categoryId }: CategoryLandingPageProps) {
                 if (!destination) {
                   return (
                     <div key={tool.id} className="rounded-xl border border-border/80 bg-card p-4">
-                      <div className="text-sm font-semibold text-foreground">{tool.name}</div>
+                      <div className="text-sm font-semibold text-foreground">
+                        {resolveToolName(tool.slug || tool.id, t)}
+                      </div>
                       <p className="mt-2 text-xs text-muted-foreground">{tool.description}</p>
                     </div>
                   );
@@ -638,7 +643,9 @@ export function CategoryLandingPage({ categoryId }: CategoryLandingPageProps) {
                     to={destination}
                     className="rounded-xl border border-border/80 bg-card p-4 transition-all hover:border-primary/50"
                   >
-                    <div className="text-sm font-semibold text-foreground">{tool.name}</div>
+                    <div className="text-sm font-semibold text-foreground">
+                      {resolveToolName(tool.slug || tool.id, t)}
+                    </div>
                     <p className="mt-2 text-xs text-muted-foreground">{tool.description}</p>
                   </Link>
                 );
@@ -652,13 +659,16 @@ export function CategoryLandingPage({ categoryId }: CategoryLandingPageProps) {
 }
 
 function ToolCategoryCard({ tool }: { tool: Tool }) {
+  const { t } = useI18n();
   const isReady = tool.status === "ready" && tool.slug;
 
   return (
     <div className="rounded-2xl border border-border/80 bg-card p-5 transition-all hover:border-primary/40 hover:shadow-xs flex flex-col justify-between">
       <div>
         <div className="flex items-start justify-between gap-2">
-          <h3 className="font-bold text-sm text-foreground">{tool.name}</h3>
+          <h3 className="font-bold text-sm text-foreground">
+            {resolveToolName(tool.slug || tool.id, t)}
+          </h3>
           {isReady ? (
             <span className="shrink-0 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-500">
               Ready

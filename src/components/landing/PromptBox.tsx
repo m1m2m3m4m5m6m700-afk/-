@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { classifyIntent, type ClassificationResult } from "@/lib/tool-classifier";
 import { toolRoute } from "@/data/tools";
 import { trackSearch } from "@/lib/analytics";
+import { useI18n } from "@/lib/i18n";
+import { resolveToolName, resolveCategoryName } from "@/lib/i18n/keys";
 
 interface PromptBoxProps {
   value: string;
@@ -16,6 +18,7 @@ const EXAMPLES = ["Translate a PDF to Arabic", "Remove image background", "Forma
 
 /** Large AI-style input that routes an intent to a category + suggested tool. */
 export function PromptBox({ value, onChange, onRequestTool }: PromptBoxProps) {
+  const { t } = useI18n();
   const [result, setResult] = useState<ClassificationResult | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -95,11 +98,20 @@ export function PromptBox({ value, onChange, onRequestTool }: PromptBoxProps) {
               {result.kind === "match" ? (
                 <>
                   <p className="text-sm leading-relaxed">
-                    Looks like <span className="font-semibold">{result.category.name}</span>
+                    Looks like{" "}
+                    <span className="font-semibold">
+                      {resolveCategoryName(result.category.id, t)}
+                    </span>
                     {result.tool ? (
                       <>
                         {" "}
-                        — try <span className="font-semibold">{result.tool.name}</span>.
+                        — try{" "}
+                        <span className="font-semibold">
+                          {result.tool
+                            ? resolveToolName(result.tool.slug || result.tool.id, t)
+                            : ""}
+                        </span>
+                        .
                       </>
                     ) : (
                       "."
@@ -114,7 +126,10 @@ export function PromptBox({ value, onChange, onRequestTool }: PromptBoxProps) {
                     {route ? (
                       <Button asChild size="sm" className="rounded-xl">
                         <Link to={route}>
-                          Open {result.tool?.name}
+                          Open{" "}
+                          {result.tool
+                            ? resolveToolName(result.tool.slug || result.tool.id, t)
+                            : ""}
                           <ArrowRight className="size-4 rtl:-scale-x-100" />
                         </Link>
                       </Button>
