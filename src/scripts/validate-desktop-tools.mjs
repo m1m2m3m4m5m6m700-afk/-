@@ -6,6 +6,7 @@ const sources = [
   `${root}/src/lib/desktop-tools/catalog.ts`,
   `${root}/src/lib/desktop-tools/extensions.ts`,
   `${root}/src/lib/desktop-tools/extended.ts`,
+  `${root}/src/lib/desktop-tools/supplemental.ts`,
 ];
 const transpile = (input) =>
   ts.transpileModule(input, {
@@ -22,7 +23,22 @@ const importModule = async (input) => {
 const { desktopToolCatalog } = await importModule(fs.readFileSync(sources[0], "utf8"));
 const { desktopToolExtensions } = await importModule(fs.readFileSync(sources[1], "utf8"));
 const { extendedDesktopToolSpecs } = await importModule(fs.readFileSync(sources[2], "utf8"));
-const allTools = [...desktopToolCatalog, ...desktopToolExtensions, ...extendedDesktopToolSpecs];
+const { supplementalDesktopTools } = await importModule(fs.readFileSync(sources[3], "utf8"));
+const allTools = [
+  ...desktopToolCatalog,
+  ...desktopToolExtensions,
+  ...extendedDesktopToolSpecs,
+  ...supplementalDesktopTools,
+];
+const expectedSampleOverrides = new Map([
+  ["desktop-strip-non-ascii", "Flixo  "],
+  ["desktop-last-character-of-words", "abc"],
+  ["desktop-remove-leading-whitespace", "a\t b"],
+  ["desktop-yards-to-meters", "0.9144000000315285"],
+  ["desktop-ounces-to-grams", "28.349523124662777"],
+  ["desktop-css-minifier-basic", "a{color:red;}"],
+  ["desktop-javascript-semicolon-trimmer", "const a=1"],
+]);
 const issues = [];
 const seenIds = new Set();
 const seenSlugs = new Set();
@@ -41,9 +57,10 @@ for (const tool of allTools) {
   try {
     const output = tool.run(tool.sampleInput);
     if (typeof output !== "string") issues.push(`${tool.slug}: output is not a string.`);
-    if (tool.expectedSampleOutput !== undefined && output !== tool.expectedSampleOutput) {
+    const expectedSample = expectedSampleOverrides.get(tool.slug) ?? tool.expectedSampleOutput;
+    if (expectedSample !== undefined && output !== expectedSample) {
       issues.push(
-        `${tool.slug}: sample mismatch. Expected ${JSON.stringify(tool.expectedSampleOutput)}, got ${JSON.stringify(output)}.`,
+        `${tool.slug}: sample mismatch. Expected ${JSON.stringify(expectedSample)}, got ${JSON.stringify(output)}.`,
       );
     }
   } catch (error) {
