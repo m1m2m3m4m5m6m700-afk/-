@@ -3,7 +3,6 @@ import path from "node:path";
 
 const root = process.cwd();
 const SITE_URL = "https://flixoai.vercel.app";
-const today = new Date().toISOString().split("T")[0];
 
 function read(relativePath) {
   return fs.readFileSync(path.join(root, relativePath), "utf8");
@@ -65,119 +64,92 @@ const collectionRegistry = loadArrayFromExport(seoEnterpriseSource, "collectionR
 const blogPosts = loadArrayFromExport(blogSource, "blogPosts");
 
 const allPages = [
-  { url: "/", priority: "1.0", changefreq: "daily" },
-  { url: "/ar", priority: "1.0", changefreq: "daily" },
-  { url: "/es", priority: "1.0", changefreq: "daily" },
-  { url: "/fr", priority: "1.0", changefreq: "daily" },
-  { url: "/de", priority: "1.0", changefreq: "daily" },
-  { url: "/pt", priority: "1.0", changefreq: "daily" },
-  { url: "/it", priority: "1.0", changefreq: "daily" },
-  { url: "/nl", priority: "1.0", changefreq: "daily" },
-  { url: "/pl", priority: "1.0", changefreq: "daily" },
-  { url: "/sv", priority: "1.0", changefreq: "daily" },
-  { url: "/tr", priority: "1.0", changefreq: "daily" },
-  { url: "/ro", priority: "1.0", changefreq: "daily" },
-  { url: "/uk", priority: "1.0", changefreq: "daily" },
-  { url: "/ru", priority: "1.0", changefreq: "daily" },
-  { url: "/zh-CN", priority: "1.0", changefreq: "daily" },
-  { url: "/ja", priority: "1.0", changefreq: "daily" },
-  { url: "/ko", priority: "1.0", changefreq: "daily" },
-  { url: "/el", priority: "1.0", changefreq: "daily" },
-  { url: "/cs", priority: "1.0", changefreq: "daily" },
-  { url: "/vi", priority: "1.0", changefreq: "daily" },
-  { url: "/id", priority: "1.0", changefreq: "daily" },
-  { url: "/th", priority: "1.0", changefreq: "daily" },
-  { url: "/hi", priority: "1.0", changefreq: "daily" },
-  { url: "/he", priority: "1.0", changefreq: "daily" },
-  { url: "/fa", priority: "1.0", changefreq: "daily" },
-  { url: "/bn", priority: "1.0", changefreq: "daily" },
-  { url: "/ms", priority: "1.0", changefreq: "daily" },
-  { url: "/contact", priority: "0.6", changefreq: "monthly" },
-  { url: "/blog", priority: "0.8", changefreq: "weekly" },
-  { url: "/changelog", priority: "0.7", changefreq: "weekly" },
-  { url: "/compare", priority: "0.8", changefreq: "weekly" },
-  { url: "/use-cases", priority: "0.8", changefreq: "weekly" },
-  { url: "/file-types", priority: "0.8", changefreq: "weekly" },
-  { url: "/questions", priority: "0.8", changefreq: "weekly" },
-  { url: "/collections", priority: "0.8", changefreq: "weekly" },
-  ...categories.map((category) => ({
-    url: `/categories/${category.id}`,
-    priority: "0.8",
-    changefreq: "weekly",
-  })),
+  { url: "/" },
+  { url: "/ar" },
+  { url: "/es" },
+  { url: "/fr" },
+  { url: "/de" },
+  { url: "/pt" },
+  { url: "/it" },
+  { url: "/nl" },
+  { url: "/pl" },
+  { url: "/sv" },
+  { url: "/tr" },
+  { url: "/ro" },
+  { url: "/uk" },
+  { url: "/ru" },
+  { url: "/zh-CN" },
+  { url: "/ja" },
+  { url: "/ko" },
+  { url: "/el" },
+  { url: "/cs" },
+  { url: "/vi" },
+  { url: "/id" },
+  { url: "/th" },
+  { url: "/hi" },
+  { url: "/he" },
+  { url: "/fa" },
+  { url: "/bn" },
+  { url: "/ms" },
+  { url: "/contact" },
+  { url: "/blog" },
+  { url: "/changelog" },
+  { url: "/compare" },
+  { url: "/use-cases" },
+  { url: "/file-types" },
+  { url: "/questions" },
+  { url: "/collections" },
+  ...categories.map((category) => ({ url: `/categories/${category.id}` })),
   ...tools
     .filter((tool) => tool.status === "ready" && tool.slug)
     .flatMap((tool) => [
-      { url: `/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
-      { url: `/ar/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
-      { url: `/es/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
-      { url: `/fr/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
-      { url: `/de/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
-      { url: `/pt/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
-      { url: `/it/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
-      { url: `/nl/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
-      { url: `/pl/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
-      { url: `/sv/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
-      { url: `/tr/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
-      { url: `/ro/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
-      { url: `/uk/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
-      { url: `/ru/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
-      { url: `/zh-CN/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
-      { url: `/ja/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
-      { url: `/ko/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
-      { url: `/el/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
-      { url: `/cs/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
-      { url: `/vi/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
-      { url: `/id/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
-      { url: `/th/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
-      { url: `/hi/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
-      { url: `/he/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
-      { url: `/fa/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
-      { url: `/bn/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
-      { url: `/ms/tools/${tool.slug}`, priority: "0.9", changefreq: "weekly" },
+      { url: `/tools/${tool.slug}` },
+      { url: `/ar/tools/${tool.slug}` },
+      { url: `/es/tools/${tool.slug}` },
+      { url: `/fr/tools/${tool.slug}` },
+      { url: `/de/tools/${tool.slug}` },
+      { url: `/pt/tools/${tool.slug}` },
+      { url: `/it/tools/${tool.slug}` },
+      { url: `/nl/tools/${tool.slug}` },
+      { url: `/pl/tools/${tool.slug}` },
+      { url: `/sv/tools/${tool.slug}` },
+      { url: `/tr/tools/${tool.slug}` },
+      { url: `/ro/tools/${tool.slug}` },
+      { url: `/uk/tools/${tool.slug}` },
+      { url: `/ru/tools/${tool.slug}` },
+      { url: `/zh-CN/tools/${tool.slug}` },
+      { url: `/ja/tools/${tool.slug}` },
+      { url: `/ko/tools/${tool.slug}` },
+      { url: `/el/tools/${tool.slug}` },
+      { url: `/cs/tools/${tool.slug}` },
+      { url: `/vi/tools/${tool.slug}` },
+      { url: `/id/tools/${tool.slug}` },
+      { url: `/th/tools/${tool.slug}` },
+      { url: `/hi/tools/${tool.slug}` },
+      { url: `/he/tools/${tool.slug}` },
+      { url: `/fa/tools/${tool.slug}` },
+      { url: `/bn/tools/${tool.slug}` },
+      { url: `/ms/tools/${tool.slug}` },
     ]),
-  ...comparisonRegistry.map((entry) => ({
-    url: `/compare/${entry.slug}`,
-    priority: "0.7",
-    changefreq: "monthly",
-  })),
-  ...useCaseRegistry.map((entry) => ({
-    url: `/use-cases/${entry.slug}`,
-    priority: "0.7",
-    changefreq: "monthly",
-  })),
-  ...fileTypeRegistry.map((entry) => ({
-    url: `/file-types/${entry.slug}`,
-    priority: "0.7",
-    changefreq: "monthly",
-  })),
-  ...questionRegistry.map((entry) => ({
-    url: `/questions/${entry.slug}`,
-    priority: "0.7",
-    changefreq: "monthly",
-  })),
-  ...collectionRegistry.map((entry) => ({
-    url: `/collections/${entry.slug}`,
-    priority: "0.7",
-    changefreq: "monthly",
-  })),
-  ...blogPosts.map((entry) => ({
-    url: `/blog/${entry.slug}`,
-    priority: "0.7",
-    changefreq: "monthly",
-  })),
+  ...comparisonRegistry.map((entry) => ({ url: `/compare/${entry.slug}` })),
+  ...useCaseRegistry.map((entry) => ({ url: `/use-cases/${entry.slug}` })),
+  ...fileTypeRegistry.map((entry) => ({ url: `/file-types/${entry.slug}` })),
+  ...questionRegistry.map((entry) => ({ url: `/questions/${entry.slug}` })),
+  ...collectionRegistry.map((entry) => ({ url: `/collections/${entry.slug}` })),
+  ...blogPosts.map((entry) => ({ url: `/blog/${entry.slug}` })),
 ];
 
 const uniquePages = Array.from(new Map(allPages.map((page) => [page.url, page])).values());
 
+// Do not emit synthetic lastmod/changefreq/priority values. A build timestamp is
+// not a content modification timestamp, and the old generator marked every URL
+// as changed on every deployment. Search engines should receive only truthful
+// sitemap signals.
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${uniquePages
-  .map(
-    (page) =>
-      `  <url>\n    <loc>${SITE_URL}${page.url}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>${page.changefreq}</changefreq>\n    <priority>${page.priority}</priority>\n  </url>`,
-  )
+  .map((page) => `  <url>\n    <loc>${SITE_URL}${page.url}</loc>\n  </url>`)
   .join("\n")}\n</urlset>\n`;
 
-const robots = `User-agent: *\nAllow: /\nAllow: /tools/\nAllow: /en/\nAllow: /ar/\nAllow: /es/\nAllow: /fr/\nAllow: /de/\nAllow: /pt/\nAllow: /it/\nAllow: /nl/\nAllow: /pl/\nAllow: /sv/\nAllow: /tr/\nAllow: /ro/\nAllow: /uk/\nAllow: /ru/\nAllow: /zh-CN/\nAllow: /ja/\nAllow: /ko/\nAllow: /el/\nAllow: /cs/\nAllow: /vi/\nAllow: /id/\nAllow: /th/\nAllow: /hi/\nAllow: /he/\nAllow: /fa/\nAllow: /bn/\nAllow: /ms/\nAllow: /categories/\nAllow: /blog/\nAllow: /compare/\nAllow: /use-cases/\nAllow: /file-types/\nAllow: /questions/\nAllow: /collections/\nAllow: /sitemap.xml\n\nUser-agent: Googlebot\nAllow: /\n\nUser-agent: Bingbot\nAllow: /\n\nUser-agent: Twitterbot\nAllow: /\n\nUser-agent: facebookexternalhit\nAllow: /\n\nUser-agent: PerplexityBot\nAllow: /\n\nUser-agent: GPTBot\nAllow: /\n\nUser-agent: ChatGPT-User\nAllow: /\n\nUser-agent: ClaudeBot\nAllow: /\n\nUser-agent: Google-Extended\nAllow: /\n\nSitemap: ${SITE_URL}/sitemap.xml\n`;
+const robots = `User-agent: *\nAllow: /\nAllow: /tools/\nAllow: /ar/\nAllow: /es/\nAllow: /fr/\nAllow: /de/\nAllow: /pt/\nAllow: /it/\nAllow: /nl/\nAllow: /pl/\nAllow: /sv/\nAllow: /tr/\nAllow: /ro/\nAllow: /uk/\nAllow: /ru/\nAllow: /zh-CN/\nAllow: /ja/\nAllow: /ko/\nAllow: /el/\nAllow: /cs/\nAllow: /vi/\nAllow: /id/\nAllow: /th/\nAllow: /hi/\nAllow: /he/\nAllow: /fa/\nAllow: /bn/\nAllow: /ms/\nAllow: /categories/\nAllow: /blog/\nAllow: /compare/\nAllow: /use-cases/\nAllow: /file-types/\nAllow: /questions/\nAllow: /collections/\nAllow: /sitemap.xml\n\nUser-agent: Googlebot\nAllow: /\n\nUser-agent: Bingbot\nAllow: /\n\nUser-agent: Twitterbot\nAllow: /\n\nUser-agent: facebookexternalhit\nAllow: /\n\nUser-agent: PerplexityBot\nAllow: /\n\nUser-agent: GPTBot\nAllow: /\n\nUser-agent: ChatGPT-User\nAllow: /\n\nUser-agent: ClaudeBot\nAllow: /\n\nUser-agent: Google-Extended\nAllow: /\n\nSitemap: ${SITE_URL}/sitemap.xml\n`;
 
 fs.writeFileSync(path.join(root, "public/sitemap.xml"), sitemap);
 fs.writeFileSync(path.join(root, "public/robots.txt"), robots);
