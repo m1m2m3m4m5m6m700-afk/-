@@ -5,8 +5,8 @@ export interface AnalyticsEventParams {
 export interface AnalyticsConfig {
   enabled: boolean;
   debug?: boolean;
-  gaMeasurementId?: string;
-  clarityProjectId?: string;
+  /** First-party analytics is the only automatically registered provider. */
+  firstPartyEnabled?: boolean;
   customProviders?: AnalyticsProviderInterface[];
 }
 
@@ -24,7 +24,19 @@ export interface AnalyticsProviderInterface {
 }
 
 export type AnalyticsRecentEventType =
-  "page_view" | "search" | "tool_click" | "category_click" | "download" | "copy" | "external_link";
+  | "page_view"
+  | "search"
+  | "tool_click"
+  | "category_click"
+  | "download"
+  | "copy"
+  | "external_link"
+  | "session_start"
+  | "session_end"
+  | "tool_start"
+  | "tool_complete"
+  | "navigation"
+  | "survey_response";
 
 export interface AnalyticsRecentEvent {
   id: string;
@@ -44,3 +56,18 @@ export interface AnalyticsData {
   exitPages: Record<string, number>;
   recentEvents: AnalyticsRecentEvent[];
 }
+
+export type FirstPartyAnalyticsEvent = {
+  type: Exclude<AnalyticsRecentEventType, "external_link"> | "external_link_click";
+  sessionId: string;
+  locale?: string;
+  intentId?: string;
+  toolId?: string;
+  category?: string;
+  queryHash?: string;
+  referrerOrigin?: string;
+  path?: string;
+  previousPath?: string;
+  durationMs?: number;
+  resultCount?: number;
+};
