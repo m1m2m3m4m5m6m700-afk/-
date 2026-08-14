@@ -1,5 +1,14 @@
 import { useMemo } from "react";
-import { Activity, Eye, Search, Wrench, Download, Copy, ExternalLink, Radio } from "lucide-react";
+import {
+  Activity,
+  Eye,
+  Search,
+  Wrench,
+  Download,
+  Copy,
+  ExternalLink,
+  Radio,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { ActivityEvent } from "./types";
 
@@ -45,6 +54,36 @@ const EVENT_CONFIG: Record<
     label: "External Link",
     color: "bg-indigo-500/15 text-indigo-500 border-indigo-500/30",
     icon: <ExternalLink className="size-3.5" />,
+  },
+  session_start: {
+    label: "Session Start",
+    color: "bg-sky-500/15 text-sky-500 border-sky-500/30",
+    icon: <Radio className="size-3.5" />,
+  },
+  session_end: {
+    label: "Session End",
+    color: "bg-slate-500/15 text-slate-500 border-slate-500/30",
+    icon: <Radio className="size-3.5" />,
+  },
+  tool_start: {
+    label: "Tool Start",
+    color: "bg-emerald-500/15 text-emerald-500 border-emerald-500/30",
+    icon: <Wrench className="size-3.5" />,
+  },
+  tool_complete: {
+    label: "Tool Complete",
+    color: "bg-green-500/15 text-green-500 border-green-500/30",
+    icon: <Wrench className="size-3.5" />,
+  },
+  navigation: {
+    label: "Navigation",
+    color: "bg-violet-500/15 text-violet-500 border-violet-500/30",
+    icon: <Activity className="size-3.5" />,
+  },
+  survey_response: {
+    label: "Survey Response",
+    color: "bg-pink-500/15 text-pink-500 border-pink-500/30",
+    icon: <Activity className="size-3.5" />,
   },
 };
 
