@@ -58,7 +58,7 @@ export function matchSkill(intent: UserIntent, skills: AISkill[]): SkillMatchRes
     const skillNameClean = normalize(skill.name);
     const skillDescClean = normalize(skill.description);
 
-    const localeTerms = skill.searchTermsByLocale[locale] ?? skill.searchTermsByLocale.en ?? [];
+    const localeTerms = skill.searchTermsByLocale?.[locale] ?? skill.searchTermsByLocale?.en ?? [];
     for (const term of localeTerms) {
       const termScore = scoreSearchTerm(intent.cleanPrompt, intent.tokens, term);
       if (termScore > 0) {
