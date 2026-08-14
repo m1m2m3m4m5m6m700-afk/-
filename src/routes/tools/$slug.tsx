@@ -50,6 +50,7 @@ function ToolSlugRoute() {
         name={resolveToolName(runtime.toolId, t)}
         description={description}
         category={resolveCategoryName(runtime.categoryId, t)}
+        categoryId={runtime.categoryId}
         slug={runtime.slug}
       >
         <ToolComponent />
