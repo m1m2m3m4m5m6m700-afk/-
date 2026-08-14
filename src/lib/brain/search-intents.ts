@@ -1,5 +1,5 @@
 import type { LocaleCode } from "@/lib/i18n";
-import { getDictionary } from "@/lib/i18n";
+import { getDictionary } from "@/lib/i18n/dictionaries";
 import type { Tool } from "@/data/tools";
 
 /**
@@ -130,16 +130,18 @@ export function getToolSearchTerms(tool: Tool, locale: LocaleCode): LocalizedSea
 
   return {
     locale,
-    terms: unique([
-      tool.name,
-      tool.description,
-      ...(tool.tags ?? []),
-      englishName,
-      englishTagline,
-      localizedName,
-      localizedTagline,
-      ...aliases,
-    ].filter((v): v is string => typeof v === "string")),
+    terms: unique(
+      [
+        tool.name,
+        tool.description,
+        ...(tool.tags ?? []),
+        englishName,
+        englishTagline,
+        localizedName,
+        localizedTagline,
+        ...aliases,
+      ].filter((v): v is string => typeof v === "string"),
+    ),
   };
 }
 
