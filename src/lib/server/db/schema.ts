@@ -72,6 +72,19 @@ export const analyticsEventTypeEnum = pgEnum("analytics_event_type", [
   "download",
   "external_link_click",
   "copy",
+  "session_start",
+  "session_end",
+  "tool_start",
+  "tool_complete",
+  "navigation",
+  "survey_response",
+]);
+
+export const surveyQuestionTypeEnum = pgEnum("survey_question_type", [
+  "single_choice",
+  "multi_choice",
+  "scale",
+  "text",
 ]);
 
 // ---- conversations ---------------------------------------------------------
@@ -150,13 +163,57 @@ export const toolRequests = pgTable("tool_requests", {
 export const analyticsEvents = pgTable("analytics_events", {
   id: uuid("id").defaultRandom().primaryKey(),
   eventType: analyticsEventTypeEnum("event_type").notNull(),
+  sessionId: text("session_id"),
+  locale: text("locale"),
+  intentId: text("intent_id"),
   toolId: text("tool_id"),
   category: text("category"),
-  query: text("query"),
+  queryHash: text("query_hash"),
   country: text("country"),
   device: text("device"),
-  referrer: text("referrer"),
+  referrerOrigin: text("referrer_origin"),
   path: text("path"),
+  previousPath: text("previous_path"),
+  durationMs: integer("duration_ms"),
   resultCount: integer("result_count"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ---- surveys ---------------------------------------------------------------
+
+export const surveys = pgTable("surveys", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  slug: text("slug").notNull().unique(),
+  title: text("title").notNull(),
+  description: text("description"),
+  active: boolean("active").notNull().default(false),
+  targetLocale: text("target_locale"),
+  maxResponses: integer("max_responses"),
+  startsAt: timestamp("starts_at", { withTimezone: true }),
+  endsAt: timestamp("ends_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const surveyQuestions = pgTable("survey_questions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  surveyId: uuid("survey_id")
+    .notNull()
+    .references(() => surveys.id, { onDelete: "cascade" }),
+  type: surveyQuestionTypeEnum("type").notNull(),
+  prompt: text("prompt").notNull(),
+  options: jsonb("options").$type<string[]>().default([]).notNull(),
+  required: boolean("required").notNull().default(false),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
+export const surveyResponses = pgTable("survey_responses", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  surveyId: uuid("survey_id")
+    .notNull()
+    .references(() => surveys.id, { onDelete: "cascade" }),
+  sessionId: text("session_id"),
+  locale: text("locale"),
+  answers: jsonb("answers").$type<Record<string, string | string[] | number | null>>().notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
