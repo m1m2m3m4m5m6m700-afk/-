@@ -10,7 +10,32 @@
 
 import { useCallback, useRef, useState } from "react";
 import { generate } from "./rpc/generate";
+import { getCsrfToken } from "@/lib/security/rpc/csrf.rpc";
 import type { AIGenerateFailure, AIGenerateResult, AITaskId } from "./types";
+
+/**
+ * Fetch (and cache) a CSRF token for AI generation requests. Issued once per
+ * session via a Set-Cookie and echoed back as `csrfToken` in the request body
+ * (double-submit pattern, matching the inbox/contact RPCs). Best-effort: if it
+ * fails the server returns a CSRF failure, which the hook surfaces as an error.
+ */
+let csrfTokenPromise: Promise<string> | null = null;
+function getCsrf(): Promise<string> {
+  if (!csrfTokenPromise) {
+    csrfTokenPromise = (async () => {
+      try {
+        const r = await getCsrfToken();
+        return (r as { token?: string }).token ?? "";
+      } catch {
+        return "";
+      }
+    })();
+    void csrfTokenPromise.catch(() => {
+      csrfTokenPromise = null;
+    });
+  }
+  return csrfTokenPromise;
+}
 
 export interface UseAIGenerationState {
   loading: boolean;
@@ -52,7 +77,8 @@ export function useAIGeneration(taskId: AITaskId): UseAIGenerationApi {
       lastInputRef.current = input;
       setLoading(true);
       try {
-        const res = await generate({ data: { taskId, input: trimmed } });
+        const csrf = await getCsrf();
+        const res = await generate({ data: { taskId, input: trimmed, csrfToken: csrf } });
         setResult(res);
         return res;
       } catch {

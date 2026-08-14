@@ -13,7 +13,7 @@
 
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { isDbConfigured, getDatabaseUrl } from "./config";
+import { isDbConfigured, getDatabaseUrl, getDbPoolMax } from "./config";
 import * as schema from "./schema";
 
 export type Database = ReturnType<typeof drizzle<typeof schema>>;
@@ -31,10 +31,11 @@ export function getDb(): Database {
     throw new Error("Database is not configured. Call isDbConfigured() first.");
   }
   if (!dbInstance) {
-    // postgres.js pool: max 10 conns, prepared statements disabled (safe with
-    // pgbouncer / serverless-style transient runtimes).
+    // postgres.js pool: prepared statements disabled (safe with pgbouncer /
+    // serverless-style transient runtimes); max connections configurable via
+    // DATABASE_POOL_MAX_CONNECTIONS (default 10).
     sqlInstance = postgres(getDatabaseUrl(), {
-      max: 10,
+      max: getDbPoolMax(),
       prepare: false,
     });
     dbInstance = drizzle(sqlInstance, { schema });

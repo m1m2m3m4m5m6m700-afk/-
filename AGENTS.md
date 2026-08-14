@@ -703,11 +703,11 @@ optimistic + server-confirmed). No UI component was edited.
 
 ### "Completable-later" contract (DB + email)
 
-`isDbConfigured()` returns false until `POSTGRES_URL` is set. Every DB RPC
+`isDbConfigured()` returns false until `DATABASE_URL` is set. Every DB RPC
 then returns a real `db_not_configured` failure — **never fake success, never
 a stub treated as production**. The hook surfaces this as empty
 conversations + empty analytics (mirrors the legacy empty-table behavior).
-Once the operator sets `POSTGRES_URL` (+ runs migrations), the same code
+Once the operator sets `DATABASE_URL` (+ runs migrations), the same code
 works with zero changes. Email is the same with `SMTP_*`/`NOTIFY_TO`.
 
 ### Security (CSRF + rate limiting — TASK 6)
@@ -727,7 +727,7 @@ same as the GitHub/admin layers).
 ### Client bundle verified clean
 
 After `npm run build`: client static assets contain NO `api.github.com`, NO
-`POSTGRES_URL`, NO `OPENAI_API_KEY`/`GITHUB_CLIENT`/`SMTP_PASS`, NO
+`DATABASE_URL`, NO `OPENAI_API_KEY`/`GITHUB_CLIENT`/`SMTP_PASS`, NO
 `assertNotSecret`/`getCachedToken`/`getAdminSessionSecret`/`createHmac`/
 `process.env.GITHUB`/`process.env.ADMIN`/`process.env.DATABASE`, NO
 `drizzle-orm` (it ships only in the server function bundle, never the client).

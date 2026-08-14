@@ -1,6 +1,6 @@
 # Flixo
 
-Flixo is a TanStack Start workspace for browser-based AI and utility tools. The
+Flixo is a TanStack Start workspace for browser-based utility and AI tools. The
 landing page maps user requests to the canonical tool registry, and the
 translator is the first working tool.
 
@@ -29,8 +29,9 @@ npm run verify
 ```
 
 This runs the strict TypeScript check, project lint, production build, and the
-production dependency audit. The translator currently uses a local mock engine;
-the public function signature is kept stable for a future provider integration.
+production dependency audit. The translator calls a server-side AI provider
+chain (OpenAI/Gemini) via the `generate` RPC; when no provider is configured it
+surfaces a clear error and never returns a fake translation.
 
 ## Project structure
 

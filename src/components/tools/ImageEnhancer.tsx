@@ -342,7 +342,7 @@ export function ImageEnhancer() {
             b += (max - b) * amt;
           }
 
-          // 3. Face & Skin Restoration (Smart Skin Tone Boost)
+          // 3. Skin-tone color boost (warm bias for portrait skin tones)
           if (currentOptions.faceEnhancement) {
             // Detect warm skin-tone ranges
             if (r > 95 && g > 40 && b > 20 && r > g && r > b && Math.abs(r - g) > 15) {
@@ -568,9 +568,9 @@ export function ImageEnhancer() {
             <Sparkles className="size-5" />
           </div>
           <div>
-            <h2 className="text-base font-semibold">AI Image Enhancer</h2>
+            <h2 className="text-base font-semibold">Image Enhancer</h2>
             <p className="text-xs text-muted-foreground">
-              Super-resolution upscaling, face restoration, and noise reduction
+              In-browser upscaling, sharpening, and color adjustment
             </p>
           </div>
         </div>

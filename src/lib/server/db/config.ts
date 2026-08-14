@@ -1,12 +1,15 @@
 /**
  * Database configuration — SERVER-ONLY.
  *
- * Reads `DATABASE_URL` from `process.env`. Never imported by client code
- * (lives under `src/lib/server/`; reached only inside `createServerFn` handler
- * bodies which TanStack Start stubs out of the client bundle).
+ * Reads the Postgres connection string from `DATABASE_URL` (the de-facto
+ * standard auto-provisioned by Vercel/Neon/Render). For backward compatibility
+ * with earlier docs, `POSTGRES_URL` is also accepted as a fallback alias.
+ * Never imported by client code (lives under `src/lib/server/`; reached only
+ * inside `createServerFn` handler bodies which TanStack Start stubs out of the
+ * client bundle).
  *
  * "Completable later" contract (identical to the GitHub/AI/Admin layers):
- * - When `DATABASE_URL` is missing, `isDbConfigured()` returns false. Every
+ * - When neither env var is set, `isDbConfigured()` returns false. Every
  *   DB-backed RPC then returns a real `not_configured` failure — never a fake
  *   success, never fabricated data.
  * - Once the operator sets `DATABASE_URL` (a live Postgres connection string),
@@ -15,7 +18,8 @@
  * No connection strings are ever logged or serialized into responses.
  */
 
-const REQUIRED_VAR = "DATABASE_URL";
+const PRIMARY_VAR = "DATABASE_URL";
+const FALLBACK_VAR = "POSTGRES_URL"; // legacy alias (older docs used this name)
 
 let cachedUrl: string | null | undefined = undefined;
 
@@ -27,7 +31,7 @@ function readEnv(name: string): string | undefined {
 
 function load(): void {
   if (cachedUrl !== undefined) return;
-  cachedUrl = readEnv(REQUIRED_VAR) ?? null;
+  cachedUrl = readEnv(PRIMARY_VAR) ?? readEnv(FALLBACK_VAR) ?? null;
 }
 
 /** True only when a Postgres connection string is configured. */
@@ -36,13 +40,20 @@ export function isDbConfigured(): boolean {
   return cachedUrl !== null;
 }
 
-/** Resolved DATABASE_URL. Throws if not configured. */
+/** Resolved database URL. Throws if not configured. */
 export function getDatabaseUrl(): string {
   load();
   if (!cachedUrl) {
-    throw new Error("Database is not configured. Missing: DATABASE_URL");
+    throw new Error("Database is not configured. Set DATABASE_URL.");
   }
   return cachedUrl;
+}
+
+/** Optional pool size override (default 10). Reads DATABASE_POOL_MAX_CONNECTIONS. */
+export function getDbPoolMax(): number {
+  const raw = readEnv("DATABASE_POOL_MAX_CONNECTIONS") ?? readEnv("POSTGRES_POOL_MAX_CONNECTIONS");
+  const n = raw ? Number(raw) : NaN;
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 10;
 }
 
 /** Drop the cache — tests / hot reload. */

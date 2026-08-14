@@ -67,5 +67,19 @@ export default tseslint.config(
       "react-refresh/only-export-components": "off",
     },
   },
+  {
+    files: [
+      "src/lib/tool-runtime/tools/**/*.tsx",
+      "src/lib/tool-runtime/renderReadyToolPage.tsx",
+      "src/components/developer/StateBanners.tsx",
+    ],
+    rules: {
+      // These modules export a React component plus its registration/helper
+      // exports from the same file — the canonical tool-runtime pattern (see
+      // AGENTS.md layer 2). Splitting them would break the registry import
+      // shape / the multi-banner helper bundle with no refresh gain.
+      "react-refresh/only-export-components": "off",
+    },
+  },
   eslintPluginPrettier,
 );

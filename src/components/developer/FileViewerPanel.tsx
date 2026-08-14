@@ -53,11 +53,14 @@ export function FileViewerPanel({
     return fileContent.content.split("\n");
   }, [fileContent]);
 
-  // Reset editor state when the selected file changes.
+  // Reset editor state when the selected file changes. We intentionally key
+  // on path only (not content) so re-fetching the same file's content doesn't
+  // wipe in-progress edits; the draft initializes from content on path change.
   useEffect(() => {
     setEditing(false);
     setDraft(fileContent?.content ?? "");
     setMessage("");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPath, fileContent?.path]);
 
   const canEdit =

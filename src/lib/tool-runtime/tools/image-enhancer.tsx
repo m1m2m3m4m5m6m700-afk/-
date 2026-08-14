@@ -9,5 +9,5 @@ export const imageEnhancerRuntime: ReadyToolRuntimeDefinition = {
   icon: Sparkles,
   component: ImageEnhancer,
   layoutDescription:
-    "Upscale resolution up to 8x, restore faces, remove noise and sharpen photos online.",
+    "Upscale images up to 8x via in-browser resampling, with adjustable sharpness (unsharp mask), brightness, contrast, vibrance, and tone corrections.",
 };

@@ -49,8 +49,6 @@ export interface Category {
   toolIds: string[];
 }
 
-const chromeToolIds = Array.from({ length: 1020 }, (_, index) => `chrome-tool-${index + 1}`);
-
 export const categories: Category[] = [
   {
     id: "translation",
@@ -326,7 +324,7 @@ export const categories: Category[] = [
     icon: Sparkles,
     anchor: "chrome",
     order: 12,
-    toolIds: chromeToolIds,
+    toolIds: [],
   },
   {
     id: "developer",

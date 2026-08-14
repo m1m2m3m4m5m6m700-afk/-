@@ -36,7 +36,6 @@ export function CategoryGrid({ highlightedCategoryId, onSelectCategory }: Catego
           const Icon = category.icon;
           const catTools = toolsByCategory(category.id);
           const readyCount = catTools.filter((tool) => tool.status === "ready").length;
-          const plannedCount = catTools.filter((tool) => tool.status === "planned").length;
           const isHighlighted = highlightedCategoryId === category.id;
 
           return (
@@ -74,7 +73,7 @@ export function CategoryGrid({ highlightedCategoryId, onSelectCategory }: Catego
                         : "bg-muted text-muted-foreground border border-border/50",
                     )}
                   >
-                    {readyCount > 0 ? `${readyCount} Ready` : `${plannedCount} Planned`}
+                    {readyCount > 0 ? `${readyCount} Ready` : "Coming soon"}
                   </span>
                 </div>
 
@@ -90,7 +89,7 @@ export function CategoryGrid({ highlightedCategoryId, onSelectCategory }: Catego
               {/* Footer Tool count */}
               <div className="mt-5 flex items-center justify-between border-t border-border/40 pt-3">
                 <span className="text-[11px] font-mono text-muted-foreground/70 uppercase tracking-wider">
-                  {catTools.length} {catTools.length === 1 ? "tool" : "tools"}
+                  {readyCount} {readyCount === 1 ? "tool" : "tools"}
                 </span>
                 <span className="text-[11px] font-medium text-primary opacity-0 transition-opacity group-hover:opacity-100">
                   Explore →

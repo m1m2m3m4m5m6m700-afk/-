@@ -28,20 +28,6 @@ const t = (
   slug?: string,
 ): Tool => ({ id, name, categoryId, description, status, tags, slug });
 
-const chromeToolCount = 1020;
-const chromeTools: Tool[] = Array.from({ length: chromeToolCount }, (_, index) => {
-  const id = `chrome-tool-${index + 1}`;
-  return t(
-    id,
-    `Chrome Tool ${index + 1}`,
-    "chrome",
-    `Chrome extension utility #${index + 1} for browser workflow and tab productivity.`,
-    "planned",
-    ["chrome", "extension", "browser", "productivity"],
-    id,
-  );
-});
-
 export const tools: Tool[] = [
   // Translation Hub
   t(
@@ -164,11 +150,11 @@ export const tools: Tool[] = [
   ),
   t(
     "image-enhancer",
-    "AI Image Enhancer",
+    "Image Enhancer",
     "images",
-    "Upscale resolution up to 8x, restore faces, remove noise and sharpen photos.",
+    "Upscale and enhance images with adjustable resampling, sharpening, brightness, contrast, and tone controls.",
     "ready",
-    ["upscale", "enhance", "ai", "sharpness", "restore"],
+    ["upscale", "enhance", "sharpen", "brightness", "contrast"],
     "image-enhancer",
   ),
   t(
@@ -2013,8 +1999,6 @@ export const tools: Tool[] = [
     ["markdown", "word", "docx"],
     "markdown-to-word",
   ),
-
-  ...chromeTools,
 ];
 
 export const toolById = new Map<string, Tool>(tools.map((tool) => [tool.id, tool]));

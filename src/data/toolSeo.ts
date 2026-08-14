@@ -24,7 +24,7 @@ const toolSeoRegistry: Record<string, ToolSeoData> = {
     slug: "translator",
     title: "AI Translator — Instant Online Language Translation | Flixo",
     description:
-      "Translate text seamlessly across 20+ languages with automatic detection, instant bi-directional swap, and txt download. Fast, free, and private.",
+      "Translate text seamlessly across 20+ languages with automatic detection, instant bi-directional swap, and txt download. Fast and free.",
     keywords: [
       "ai translator",
       "free translation tool",
@@ -41,7 +41,7 @@ const toolSeoRegistry: Record<string, ToolSeoData> = {
       "Bi-directional One-Click Language Swap",
       "Instant Copy to Clipboard & Download as .TXT",
       "Live Character & Word Count Counter",
-      "100% Client-Side Privacy Protection",
+      "100% Free with No Account Required",
     ],
     howToUse: [
       "Paste or type your text into the left input container.",
@@ -52,7 +52,7 @@ const toolSeoRegistry: Record<string, ToolSeoData> = {
     benefits: [
       "No sign-up or registration needed",
       "Unlimited free daily text translations",
-      "Privacy-focused text handling with no data retention",
+      "Privacy-focused: input is processed server-side and not stored after use",
       "Mobile-friendly responsive workspace",
     ],
     examples: [
@@ -69,7 +69,7 @@ const toolSeoRegistry: Record<string, ToolSeoData> = {
       {
         question: "Does the translator preserve my text privacy?",
         answer:
-          "Absolutely. All processing occurs securely within your browser session and your text is never stored or used for training AI models.",
+          "Absolutely. Translation runs through Flixo's server-side AI provider. Your text is sent to the server for generation and is not stored after the response is returned.",
       },
       {
         question: "Can I download my translated text?",
@@ -85,58 +85,57 @@ const toolSeoRegistry: Record<string, ToolSeoData> = {
   },
   "image-enhancer": {
     slug: "image-enhancer",
-    title: "AI Image Enhancer — Free Online Upscale, Restore & Sharpen Photos | Flixo",
+    title: "Image Enhancer — Free Online Upscale, Sharpen & Adjust Photos | Flixo",
     description:
-      "Upscale images up to 8x resolution, restore old photos, sharpen blurry details, and fix facial lighting online. 100% free, private browser-based AI photo enhancer.",
+      "Upscale images up to 8x and adjust sharpness, brightness, contrast, and color tone with in-browser canvas processing. 100% free, private, no uploads.",
     keywords: [
-      "ai image enhancer",
+      "image enhancer",
       "upscale image 4x 8x",
-      "photo restoration tool",
-      "sharpen blurry photo",
-      "face enhancement online",
-      "image noise reduction",
+      "sharpen photo",
+      "image resizer",
+      "photo sharpener",
+      "brightness contrast image",
       "free photo upscaler",
     ],
     overview:
-      "Flixo AI Image Enhancer allows you to upscale image resolution up to 8x (800%), restore old or faded photographs, reduce noise, and sharpen out-of-focus details using client-side image processing algorithms. Compare results with an interactive before/after slider and export crisp PNG, JPG, or WEBP files instantly.",
+      "Flixo Image Enhancer lets you upscale image resolution up to 8x (800%) through in-browser resampling, then fine-tune sharpness (unsharp mask), brightness, contrast, vibrance, and tone using client-side canvas processing. Compare results with an interactive before/after slider and export PNG, JPG, or WEBP files instantly. All processing runs locally in your browser.",
     features: [
-      "AI Super-Resolution Upscaling (2x, 4x, 8x multiplier)",
-      "Unsharp Mask & Blur Reduction Engine",
-      "Noise Reduction & Smoothing Controls",
-      "Facial Detail & Contrast Restoration",
-      "Old Photo Color & Tone Fix",
+      "Resampling Upscale (2x, 4x, 8x multiplier)",
+      "Unsharp Mask & Blur Reduction Controls",
+      "Brightness, Contrast & Vibrance Adjustments",
+      "Skin-Tone and Old-Photo Tone Presets",
       "Interactive Before / After Split Slider Preview",
       "Clipboard Image Copy & PNG/JPG/WEBP Exports",
       "100% Client-Side Private Canvas Processing",
     ],
     howToUse: [
       "Upload or paste your image into the Flixo workspace.",
-      "Select an AI enhancement preset or customize upscale factor (2x, 4x, 8x).",
-      "Adjust sharpness, noise reduction, and color sliders as needed.",
-      "Click 'Enhance Image' to run the super-resolution pipeline.",
-      "Inspect the results with the split slider or zoom preview and download your enhanced image.",
+      "Select an enhancement preset or customize the upscale factor (2x, 4x, 8x).",
+      "Adjust sharpness, brightness, contrast, and color sliders as needed.",
+      "Click 'Enhance Image' to run the canvas processing pipeline.",
+      "Inspect the results with the split slider or zoom preview and download your image.",
     ],
     benefits: [
-      "Increase low-resolution images for crisp high-res printing",
-      "Breathe new life into vintage family photographs",
+      "Enlarge low-resolution images for higher-resolution display",
+      "Sharpen soft screenshots or social images before reposting",
       "Zero server uploads — total privacy guaranteed",
       "Unlimited free enhancements with no watermarks",
     ],
     examples: [
       "Upscale a product photo for an online storefront without switching to heavy desktop software.",
-      "Restore a low-resolution family photo before saving it to a digital archive.",
-      "Sharpen a blurry screenshot or social image before reposting it.",
+      "Sharpen a blurry screenshot before reposting it.",
+      "Adjust brightness and contrast on a dark photo before exporting.",
     ],
     faqs: [
       {
-        question: "How does the AI Image Enhancer upscale photos?",
+        question: "How does the Image Enhancer upscale photos?",
         answer:
-          "Flixo utilizes advanced client-side bi-cubic interpolation combined with unsharp mask convolution matrices and dynamic range optimization to increase resolution up to 8x while sharpening fine details.",
+          "Flixo uses in-browser high-quality image resampling (smoothed scaling) combined with an unsharp mask convolution and brightness/contrast/vibrance adjustments to enlarge images up to 8x and sharpen fine details. It runs entirely on the HTML5 Canvas — no AI model or server is involved.",
       },
       {
-        question: "Can I restore blurry or noisy photos?",
+        question: "Can I sharpen blurry or soft photos?",
         answer:
-          "Yes! Toggle the Blur Reduction or Noise Reduction settings, or use the 'De-blur & Sharpen' preset to recover soft details and reduce digital noise.",
+          "Yes. Adjust the Sharpness slider, enable Blur Reduction, or use the 'De-blur & Sharpen' preset to apply an unsharp mask that recovers perceived edge detail.",
       },
       {
         question: "Are my private photos uploaded to a cloud server?",
@@ -164,9 +163,9 @@ const toolSeoRegistry: Record<string, ToolSeoData> = {
       "image cutout tool",
     ],
     overview:
-      "Flixo Background Remover automatically extracts subjects from photos and graphics, allowing you to generate transparent PNG images in seconds. Featuring real-time side-by-side comparison, configurable color tolerance, and edge feather controls, it works entirely inside your browser so your images stay 100% private.",
+      "Flixo Background Remover removes backgrounds by sampling the colors at your image's corners and erasing similar pixels, producing a transparent PNG in seconds. With real-time side-by-side comparison, configurable color tolerance, and edge feather controls, it works entirely inside your browser so your images stay 100% private. It works best on images with a fairly uniform background that differs in color from the subject.",
     features: [
-      "Instant Automatic Background Removal",
+      "Color-Based Background Removal (Corner Sampling)",
       "Side-by-Side Before & After Visual Comparison",
       "Customizable Color Tolerance & Edge Feather Controls",
       "Drag & Drop File Upload Support",
@@ -175,7 +174,7 @@ const toolSeoRegistry: Record<string, ToolSeoData> = {
     ],
     howToUse: [
       "Drag and drop your image into the dropzone or click to browse files.",
-      "Flixo automatically isolates the primary subject and strips the background.",
+      "Flixo samples the corner colors and removes pixels that match the background.",
       "Use the sensitivity sliders to adjust color tolerance and edge softness if needed.",
       "Click 'Download PNG' to save your transparent cutout.",
     ],
@@ -3298,14 +3297,20 @@ const toolSeoRegistry: Record<string, ToolSeoData> = {
     slug: "audio-compressor",
     title: "Audio Compressor — Reduce Audio File Size Online | Flixo",
     description:
-      "Compress audio files while controlling output quality and bitrate. Shrink MP3, WAV and more without uploading to a server.",
-    keywords: ["audio compressor", "compress mp3", "reduce audio size", "bitrate", "flixo audio"],
+      "Reduce audio file size by re-encoding to WAV with lower sample rate and mono downmix. Processed locally in your browser, no uploads.",
+    keywords: [
+      "audio compressor",
+      "reduce audio size",
+      "audio resampler",
+      "wav converter",
+      "flixo audio",
+    ],
     overview:
-      "Flixo Audio Compressor reduces audio file size with adjustable quality and bitrate settings, all processed locally in your browser.",
+      "Flixo Audio Compressor re-encodes audio to WAV format with adjustable sample rate and mono/stereo settings to reduce file size, all processed locally in your browser. Note: output is WAV; for already-compressed inputs (e.g. MP3) the WAV output may not always be smaller.",
     features: [
       "100% Client-side browser processing",
       "No account or sign-up required",
-      "Instant real-time preview and export",
+      "Adjustable sample rate and mono/stereo output",
       "Supports English and Arabic interfaces",
     ],
     howToUse: [
@@ -3462,10 +3467,10 @@ const toolSeoRegistry: Record<string, ToolSeoData> = {
     slug: "gif-maker",
     title: "GIF Maker — Create Animated GIFs Online | Flixo",
     description:
-      "Create an animated GIF from uploaded images or supported video input. Build GIFs privately in your browser with no sign-up.",
+      "Create an animated GIF from uploaded images with a custom frame delay. Build GIFs privately in your browser with no sign-up.",
     keywords: ["gif maker", "create gif", "animated gif", "online gif tool", "flixo gif"],
     overview:
-      "Flixo GIF Maker creates animated GIFs from uploaded images or supported video input, entirely inside your browser.",
+      "Flixo GIF Maker creates animated GIFs from uploaded images with a custom frame delay, entirely inside your browser.",
     features: [
       "100% Client-side browser processing",
       "No account or sign-up required",

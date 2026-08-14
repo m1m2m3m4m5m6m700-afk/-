@@ -2,21 +2,32 @@ import { useState } from "react";
 import { Hash, Copy, Check, RefreshCw, Download } from "lucide-react";
 import type { ReadyToolRuntimeDefinition } from "../types";
 
+/** Fill an array of random hex digits using the Web Crypto API (CSPRNG).
+ * Falls back to crypto.randomUUID when available, otherwise getRandomValues. */
+function randomHex(byteCount: number): string {
+  const arr = new Uint8Array(byteCount);
+  crypto.getRandomValues(arr);
+  return Array.from(arr, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 function generateUUIDv4(): string {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
     return crypto.randomUUID();
   }
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
-    const r = (Math.random() * 16) | 0;
-    const v = c === "x" ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
+  // RFC 4122 v4 layout using a CSPRNG (never Math.random).
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40; // version 4
+  bytes[8] = (bytes[8] & 0x3f) | 0x80; // variant 10xx
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
 }
 
 function generateUUIDv1(): string {
   const now = new Date().getTime();
   const timeHex = now.toString(16).padStart(12, "0");
-  return `${timeHex.slice(0, 8)}-${timeHex.slice(8, 12)}-11e1-a832-${Math.random().toString(16).slice(2, 14)}`;
+  // Clock sequence + node come from the CSPRNG, not Math.random.
+  return `${timeHex.slice(0, 8)}-${timeHex.slice(8, 12)}-11e1-a832-${randomHex(6)}`;
 }
 
 function UuidGeneratorTool() {
@@ -181,5 +192,5 @@ export const UuidGeneratorRuntime: ReadyToolRuntimeDefinition = {
   icon: Hash,
   component: UuidGeneratorTool,
   layoutDescription:
-    "Generate random cryptographically strong UUID v4 or timestamp-based UUID v1 identifiers.",
+    "Generate cryptographically random UUID v4 (RFC 4122) or timestamp-based UUID v1 identifiers.",
 };

@@ -17,7 +17,7 @@ Open the Replit preview pane to view the app.
 - **Framework**: TanStack Start (SSR + Vite)
 - **Router**: TanStack Router (file-based)
 - **UI**: Radix UI + Tailwind CSS v4
-- **Translation**: Gemini API when configured, with a local mock fallback
+- **Translation**: Server-side AI provider chain (OpenAI or Gemini, selected via `FLIXO_AI_PROVIDER`) through the `generate` RPC. When no provider is configured, the translator surfaces a clear error and never returns a fake translation.
 
 ## Environment variables
 

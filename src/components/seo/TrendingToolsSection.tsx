@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Flame, ArrowRight, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, ShieldCheck, Sparkles } from "lucide-react";
 import { tools } from "@/data/tools";
 import { getToolStats } from "@/data/seoEnterpriseData";
 import { useI18n } from "@/lib/i18n";
@@ -8,26 +8,26 @@ import { resolveToolName } from "@/lib/i18n/keys";
 export function TrendingToolsSection() {
   const { t: translate } = useI18n();
   const readyTools = tools.filter((tool) => tool.status === "ready" && tool.slug);
-  const trendingTools = readyTools.slice(0, 6);
+  const featuredTools = readyTools.slice(0, 6);
 
   return (
     <section className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="grid size-8 place-items-center rounded-xl bg-amber-500/12 text-amber-500">
-            <Flame className="size-5" />
+          <span className="grid size-8 place-items-center rounded-xl bg-primary/12 text-primary">
+            <Sparkles className="size-5" />
           </span>
           <div>
-            <h2 className="text-lg font-bold tracking-tight sm:text-xl">Trending Tools</h2>
+            <h2 className="text-lg font-bold tracking-tight sm:text-xl">Featured Tools</h2>
             <p className="text-xs text-muted-foreground">
-              Most active browser-based tools used by creators and developers this week.
+              A selection of browser-based tools for creators and developers.
             </p>
           </div>
         </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {trendingTools.map((tool, idx) => {
+        {featuredTools.map((tool) => {
           const stats = getToolStats(tool.id);
           return (
             <Link
@@ -36,20 +36,14 @@ export function TrendingToolsSection() {
               className="group rounded-2xl border border-border/80 bg-card p-4 transition-all hover:border-primary/50 hover:shadow-xs flex flex-col justify-between"
             >
               <div>
-                <div className="flex items-center justify-between">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-500">
-                    <Sparkles className="size-3" /> #{idx + 1} Trending
-                  </span>
-                  <span className="text-[10px] font-mono text-muted-foreground">
-                    {stats.avgTimeMs}
-                  </span>
-                </div>
-
-                <h3 className="mt-2 text-sm font-bold text-foreground group-hover:text-primary transition-colors">
+                <h3 className="text-sm font-bold text-foreground group-hover:text-primary transition-colors">
                   {resolveToolName(tool.slug || tool.id, translate)}
                 </h3>
                 <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
                   {tool.description}
+                </p>
+                <p className="mt-2 text-[10px] font-medium text-muted-foreground">
+                  {stats.keyMetric}
                 </p>
               </div>
 

@@ -5,68 +5,42 @@ import type { Tool } from "./tools";
 // ---------------------------------------------------------------------------
 export interface ToolStatItem {
   toolId: string;
-  processedCount: string;
-  avgTimeMs: string;
+  // Truthful, static capability/privacy descriptors only. No fabricated usage
+  // counts, latency figures, or user ratings — those would be invented metrics.
   privacyRating: string;
-  userRating: string;
   keyMetric: string;
-  lastUpdated: string;
 }
 
 export const toolStatisticsRegistry: Record<string, ToolStatItem> = {
   translator: {
     toolId: "translator",
-    processedCount: "485,200+",
-    avgTimeMs: "< 15ms",
     privacyRating: "100% In-Browser",
-    userRating: "4.9 / 5.0",
     keyMetric: "20+ Languages Supported",
-    lastUpdated: "2026-07-28",
   },
   "image-enhancer": {
     toolId: "image-enhancer",
-    processedCount: "320,150+",
-    avgTimeMs: "120ms",
     privacyRating: "100% Client-Side Canvas",
-    userRating: "4.95 / 5.0",
-    keyMetric: "8x Super-Resolution Upscaling",
-    lastUpdated: "2026-07-29",
+    keyMetric: "Up to 8x Resampling Upscale",
   },
   "background-remover": {
     toolId: "background-remover",
-    processedCount: "294,800+",
-    avgTimeMs: "95ms",
     privacyRating: "100% Zero-Server Retention",
-    userRating: "4.88 / 5.0",
-    keyMetric: "Crisp Alpha Cutout Export",
-    lastUpdated: "2026-07-30",
+    keyMetric: "Transparent PNG Cutout Export",
   },
   "image-compressor": {
     toolId: "image-compressor",
-    processedCount: "612,400+",
-    avgTimeMs: "45ms",
     privacyRating: "100% Local Compression",
-    userRating: "4.92 / 5.0",
-    keyMetric: "Up to 90% Size Reduction",
-    lastUpdated: "2026-07-27",
+    keyMetric: "Adjustable Quality Levels",
   },
   "qr-generator": {
     toolId: "qr-generator",
-    processedCount: "189,300+",
-    avgTimeMs: "< 5ms",
     privacyRating: "Vector SVG Local Render",
-    userRating: "4.90 / 5.0",
     keyMetric: "Wi-Fi & URL Permanent Vectors",
-    lastUpdated: "2026-07-25",
   },
   "password-generator": {
     toolId: "password-generator",
-    processedCount: "540,900+",
-    avgTimeMs: "< 1ms",
     privacyRating: "Web Crypto Native API",
-    userRating: "4.98 / 5.0",
     keyMetric: "64-Char High Entropy",
-    lastUpdated: "2026-07-26",
   },
 };
 
@@ -74,12 +48,8 @@ export function getToolStats(toolId: string): ToolStatItem {
   return (
     toolStatisticsRegistry[toolId] || {
       toolId,
-      processedCount: "150,000+",
-      avgTimeMs: "< 50ms",
       privacyRating: "100% In-Browser Engine",
-      userRating: "4.9 / 5.0",
-      keyMetric: "High Performance Client-Side",
-      lastUpdated: "2026-07-28",
+      keyMetric: "Client-Side Processing",
     }
   );
 }
@@ -510,9 +480,9 @@ export const questionRegistry: QuestionItem[] = [
     id: "how-to-generate-secure-password-offline",
     slug: "how-to-generate-secure-password-offline",
     title: "How to Generate Cryptographically Secure Passwords Online",
-    question: "How to generate unhackable passwords using browser Web Crypto?",
+    question: "How to generate strong passwords using browser Web Crypto?",
     metaDescription:
-      "Learn why Web Crypto random numbers generate stronger, cryptographically unhackable passwords than standard random tools.",
+      "Learn why Web Crypto random numbers produce stronger, high-entropy passwords than standard random tools.",
     shortAnswer:
       "Use Flixo Password Generator. It uses native `crypto.getRandomValues()` to produce up to 64-character high-entropy passwords with custom symbols and numbers.",
     detailedGuide:

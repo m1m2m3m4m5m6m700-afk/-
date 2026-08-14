@@ -107,9 +107,20 @@ export function getAIConfig(): AIGlobalConfig {
   const providerEnv = readEnv("FLIXO_AI_PROVIDER") ?? "openai";
   const activeProvider: AIProviderId = providerEnv === "gemini" ? "gemini" : "openai";
 
+  // Fallback is DISABLED by default so user content is never silently sent to a
+  // second provider. Operators must explicitly set FLIXO_AI_FALLBACK_PROVIDER
+  // (e.g. "gemini" or "openai") to enable a single ordered fallback. An empty /
+  // unset value means the primary provider's failure is returned as-is.
+  const fallbackEnv = readEnv("FLIXO_AI_FALLBACK_PROVIDER");
+  let fallbackProviders: Array<AIProviderId> = [];
+  if (fallbackEnv === "openai" || fallbackEnv === "gemini") {
+    // Never fall back to the same provider that is already primary.
+    fallbackProviders = fallbackEnv === activeProvider ? [] : [fallbackEnv];
+  }
+
   cached = {
     activeProvider,
-    fallbackProviders: activeProvider === "gemini" ? ["gemini", "openai"] : ["openai", "gemini"],
+    fallbackProviders,
     maxInputChars: readInt("FLIXO_AI_MAX_INPUT_CHARS", 12000),
     defaultMaxOutputTokens: readInt("FLIXO_AI_DEFAULT_MAX_TOKENS", 800),
     defaultTimeoutMs: readInt("FLIXO_AI_TIMEOUT_MS", 30_000),

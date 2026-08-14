@@ -1,14 +1,28 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Images, Download, RefreshCw, Upload, ShieldCheck, AlertCircle } from "lucide-react";
 import { downloadBlob, friendlyError, getGifEncoder } from "@/lib/utils";
 import type { ReadyToolRuntimeDefinition } from "../types";
 
 function ImageToGifTool() {
   const [images, setImages] = useState<{ file: File; url: string }[]>([]);
+  const imagesRef = useRef(images);
   const [delay, setDelay] = useState(300);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<{ size: number } | null>(null);
+
+  // Keep the ref in sync with the latest image list (for unmount cleanup) and
+  // revoke all object URLs when the component unmounts so the blob URLs created
+  // for previewing source images are freed (no memory leak across tool visits).
+  useEffect(() => {
+    imagesRef.current = images;
+  }, [images]);
+
+  useEffect(() => {
+    return () => {
+      imagesRef.current.forEach((entry) => URL.revokeObjectURL(entry.url));
+    };
+  }, []);
 
   const addFiles = (files: FileList | null) => {
     if (!files) return;

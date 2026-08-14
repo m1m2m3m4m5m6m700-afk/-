@@ -7,14 +7,16 @@
  * - resolve the task prompt + per-task model/limits from config,
  * - enforce cost control (max input chars, max output tokens, timeout),
  * - validate / sanitize input before it reaches a provider,
- * - pick the configured provider and fall back through the chain on failure,
+ * - pick the configured provider and fall back ONLY through an explicitly
+ *   configured fallback (never silently to a second provider),
  * - map any uncaught error to a safe `AIGenerateResult` failure.
  *
  * Security: this module never logs API keys or user content. Errors surfaced
  * to callers are generic and contain no upstream response bodies.
  *
- * Rate limiting: a pluggable `RateLimiter` slot is exposed so a real limiter
- * can be wired later without touching call sites. Phase 1 ships a no-op.
+ * Rate limiting is enforced at the RPC layer (src/lib/ai/rpc/generate.ts) via
+ * the shared per-IP token-bucket limiter, BEFORE this service is reached, so
+ * an over-limit client never incurs an upstream provider call.
  */
 
 import { getAIConfig, isAIConfigured } from "./config";
@@ -28,23 +30,6 @@ import type {
   AIErrorKind,
   AIMessage,
 } from "./types";
-
-export interface RateLimiter {
-  /** Returns true when the request is allowed, false when over the limit. */
-  allow(taskId: AITaskId, input: string): boolean;
-}
-
-/** No-op limiter used until a real one is wired in. */
-const noopRateLimiter: RateLimiter = {
-  allow: () => true,
-};
-
-let activeRateLimiter: RateLimiter = noopRateLimiter;
-
-/** Swap in a real rate limiter (e.g. per-IP / per-session). Future work. */
-export function setRateLimiter(limiter: RateLimiter): void {
-  activeRateLimiter = limiter;
-}
 
 /** Trim + collapse whitespace; strip NUL bytes (built via charCode to avoid a
  * control-character literal in a RegExp, which trips no-control-regex). */
@@ -96,14 +81,6 @@ class AIService {
         "input_too_long",
         `Input is too long (max ${config.maxInputChars.toLocaleString()} characters).`,
         false,
-      );
-    }
-
-    if (!activeRateLimiter.allow(taskId, input)) {
-      return fail(
-        "rate_limited",
-        "Too many AI requests. Please slow down and try again shortly.",
-        true,
       );
     }
 

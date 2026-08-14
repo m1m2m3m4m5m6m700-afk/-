@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ScanLine,
   Upload,
@@ -9,6 +9,7 @@ import {
   AlertCircle,
   RefreshCw,
 } from "lucide-react";
+import { revokeObjectUrlSafe } from "@/lib/objectUrls";
 import type { ReadyToolRuntimeDefinition } from "../types";
 
 interface DecodeResult {
@@ -60,6 +61,13 @@ function QrReaderTool() {
     }
     setUsingCamera(false);
   };
+
+  // Revoke any object URL preview when the component unmounts.
+  useEffect(() => {
+    return () => {
+      revokeObjectUrlSafe(preview ?? undefined);
+    };
+  }, [preview]);
 
   const handleFile = async (file: File) => {
     setIsProcessing(true);

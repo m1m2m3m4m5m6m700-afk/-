@@ -3,7 +3,7 @@ import { getToolBySlug, tools } from "./tools";
 import { getToolSeo, type ToolFaqItem } from "./toolSeo";
 import { toolContentLocales, type ToolContentOverride } from "./toolContentLocales";
 
-export type ProcessingType = "Local" | "Cloud" | "Hybrid";
+export type ProcessingType = "Local" | "Cloud" | "Hybrid" | "Server-side AI";
 
 export interface ToolEeAtMetadata {
   author: string;
@@ -31,7 +31,7 @@ const defaultPlatforms = ["Web", "Desktop", "Mobile"];
 const toolContentRegistry: Record<string, Omit<ToolContentData, "slug">> = {
   translator: {
     overview:
-      "Flixo AI Translator helps translate short and long text across major world languages with automatic detection, instant switching between source and target languages, and browser-only privacy.",
+      "Flixo AI Translator helps translate short and long text across major world languages with automatic detection, instant switching between source and target languages, and AI-powered output.",
     howItWorks: [
       "Enter or paste text into the source editor.",
       "Choose the output language or let Flixo detect the source automatically.",
@@ -52,24 +52,24 @@ const toolContentRegistry: Record<string, Omit<ToolContentData, "slug">> = {
       version: "v2.6.0",
       supportedPlatforms: defaultPlatforms,
       privacyStatement:
-        "Translations are handled inside the browser session and are not stored after use.",
-      processingType: "Local",
+        "Translation runs through Flixo's server-side AI provider. Input text is sent to the server for generation and is not stored after the response is returned.",
+      processingType: "Server-side AI",
     },
   },
   "image-enhancer": {
     overview:
-      "Flixo AI Image Enhancer improves photo clarity, upscales resolution, reduces noise, and restores detail through an interactive browser-based workspace.",
+      "Flixo Image Enhancer upscales images up to 8x via in-browser resampling and adjusts sharpness, brightness, contrast, vibrance, and tone through an interactive browser-based workspace.",
     howItWorks: [
       "Upload an image or choose a sample photo.",
       "Pick the enhancement view and upscale settings.",
-      "Run the enhancement pipeline and compare before and after states.",
+      "Run the canvas processing pipeline and compare before and after states.",
       "Download the enhanced output in the desired format.",
     ],
     features: getToolSeo("image-enhancer").features,
     useCases: [
-      "Upscale product images for storefronts and print assets.",
-      "Restore low-resolution social images before republishing.",
-      "Sharpen soft or noisy personal photos for archiving.",
+      "Upscale product images for storefronts and display assets.",
+      "Sharpen soft social images before republishing.",
+      "Adjust brightness, contrast, and color on personal photos for archiving.",
     ],
     examples: getToolSeo("image-enhancer").examples,
     faqs: getToolSeo("image-enhancer").faqs,
@@ -111,10 +111,10 @@ const toolContentRegistry: Record<string, Omit<ToolContentData, "slug">> = {
   },
   "background-remover": {
     overview:
-      "Flixo Background Remover separates the primary subject from the image background and exports transparent results for product, profile, and design workflows.",
+      "Flixo Background Remover samples your image's corner colors and erases matching pixels to produce transparent PNG cutouts for product, profile, and design workflows. Best for images with a uniform background that contrasts with the subject.",
     howItWorks: [
       "Upload an image to the workspace.",
-      "Let Flixo generate the cutout preview automatically.",
+      "Flixo samples the corner colors and generates a cutout preview.",
       "Switch between original, compare, and cutout views to inspect edges.",
       "Download the transparent result when satisfied.",
     ],

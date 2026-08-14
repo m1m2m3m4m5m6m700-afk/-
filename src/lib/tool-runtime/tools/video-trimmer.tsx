@@ -25,11 +25,13 @@ function VideoTrimmerTool() {
     setError("");
     setResult(null);
     setProgress(0);
+    let objectUrl: string | null = null;
     try {
       assertFileValid(f, { kind: "video", maxBytes: 512 * 1024 * 1024 });
       const video = document.createElement("video");
       video.preload = "metadata";
-      video.src = URL.createObjectURL(f);
+      objectUrl = URL.createObjectURL(f);
+      video.src = objectUrl;
       await new Promise<void>((res, rej) => {
         video.onloadedmetadata = () => res();
         video.onerror = () => rej(new Error("Could not read video metadata."));
@@ -44,6 +46,9 @@ function VideoTrimmerTool() {
         friendlyError(e, "Could not read this video's metadata. You can still set times manually."),
       );
       setDuration(0);
+    } finally {
+      // The object URL was only needed to read metadata; free it immediately.
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
     }
   };
 
@@ -84,7 +89,16 @@ function VideoTrimmerTool() {
       const outData = (await ffmpeg.readFile(outName)) as Uint8Array;
       if (!outData || outData.length === 0) throw new Error("FFMPEG_PROCESS_FAILED");
       const outFile = file.name.replace(/\.[^.]+$/, "") + "-trimmed." + inExt;
-      downloadBlob(new Uint8Array(outData), outFile, "video/mp4");
+      const videoMimeByExt: Record<string, string> = {
+        mp4: "video/mp4",
+        webm: "video/webm",
+        mov: "video/quicktime",
+        mkv: "video/x-matroska",
+        avi: "video/x-msvideo",
+        m4v: "video/x-m4v",
+        ogv: "video/ogg",
+      };
+      downloadBlob(new Uint8Array(outData), outFile, videoMimeByExt[inExt] ?? "video/mp4");
       setResult({ name: outFile, size: outData.length });
       try {
         await ffmpeg.deleteFile(inName);

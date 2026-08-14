@@ -122,4 +122,7 @@ export const RATE_PRESETS = {
   login: { capacity: 10, refillPerSecond: 1 / 60 },
   contact: { capacity: 20, refillPerSecond: 1 / 10 },
   toolRequest: { capacity: 20, refillPerSecond: 1 / 10 },
+  // AI generation is cost-bearing, so it is stricter than contact/tool requests.
+  // Per-IP token bucket with a short burst allowance and a steady refill.
+  ai: { capacity: 8, refillPerSecond: 1 / 15 },
 } as const;
