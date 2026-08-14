@@ -188,7 +188,9 @@ export function AITaskInterface({ onRequestTool, onSelectCategory }: AITaskInter
                     <HelpCircle className="size-5" />
                   </span>
                   <div>
-                    <h4 className="text-sm font-bold text-foreground">I don't know this task yet.</h4>
+                    <h4 className="text-sm font-bold text-foreground">
+                      I don't know this task yet.
+                    </h4>
                     <p className="text-xs text-muted-foreground">
                       We've logged your request and can prioritize adding this tool.
                     </p>
