@@ -1,5 +1,17 @@
-import { useEffect, useState } from "react";
-import { Activity, BarChart3, Eye, FlaskConical, Globe2, MousePointer2, Route, Search, ShieldCheck, Timer, Wrench } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import {
+  Activity,
+  BarChart3,
+  Eye,
+  FlaskConical,
+  Globe2,
+  MousePointer2,
+  Route,
+  Search,
+  ShieldCheck,
+  Timer,
+  Wrench,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -29,7 +41,13 @@ function formatDuration(ms: number): string {
   return `${minutes}m ${seconds % 60}s`;
 }
 
-function Breakdown({ title, items }: { title: string; items: Array<{ key: string; count: number }> }) {
+function Breakdown({
+  title,
+  items,
+}: {
+  title: string;
+  items: Array<{ key: string; count: number }>;
+}) {
   return (
     <section className="rounded-2xl border border-border/70 bg-card/70 p-5 shadow-sm">
       <h2 className="text-sm font-bold text-foreground">{title}</h2>
@@ -38,9 +56,14 @@ function Breakdown({ title, items }: { title: string; items: Array<{ key: string
           <p className="text-xs text-muted-foreground">No data in this period.</p>
         ) : (
           items.map((item) => (
-            <div key={item.key} className="flex items-center justify-between gap-3 rounded-xl border border-border/50 bg-surface/30 px-3 py-2.5">
+            <div
+              key={item.key}
+              className="flex items-center justify-between gap-3 rounded-xl border border-border/50 bg-surface/30 px-3 py-2.5"
+            >
               <span className="min-w-0 truncate text-xs text-foreground">{item.key}</span>
-              <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">{item.count}</span>
+              <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                {item.count}
+              </span>
             </div>
           ))
         )}
@@ -55,9 +78,14 @@ export function BehaviorIntelligenceDashboard() {
   const [surveys, setSurveys] = useState<Survey[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [newSurvey, setNewSurvey] = useState({ slug: "", title: "", description: "", targetLocale: "" });
+  const [newSurvey, setNewSurvey] = useState({
+    slug: "",
+    title: "",
+    description: "",
+    targetLocale: "",
+  });
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -65,8 +93,16 @@ export function BehaviorIntelligenceDashboard() {
         getAdminBehaviorOverview({ data: { days } }),
         getAdminSurveys(),
       ]);
-      if (!behavior.ok) throw new Error(behavior.kind === "not_configured" ? "Database is not configured." : "Not authenticated.");
-      if (!surveyResult.ok) throw new Error(surveyResult.kind === "not_configured" ? "Database is not configured." : "Not authenticated.");
+      if (!behavior.ok) {
+        throw new Error(
+          behavior.kind === "not_configured" ? "Database is not configured." : "Not authenticated.",
+        );
+      }
+      if (!surveyResult.ok) {
+        throw new Error(
+          surveyResult.kind === "not_configured" ? "Database is not configured." : "Not authenticated.",
+        );
+      }
       setOverview(behavior);
       setSurveys(surveyResult.surveys as Survey[]);
     } catch (err) {
@@ -74,11 +110,11 @@ export function BehaviorIntelligenceDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [days]);
 
   useEffect(() => {
     void load();
-  }, [days]);
+  }, [load]);
 
   const createSurvey = async () => {
     if (!newSurvey.slug || !newSurvey.title) return;
@@ -97,94 +133,179 @@ export function BehaviorIntelligenceDashboard() {
   };
 
   const toggleSurvey = async (survey: Survey) => {
-    const result = await setAdminSurveyActive({ data: { id: survey.id, active: !survey.active } });
+    const result = await setAdminSurveyActive({
+      data: { id: survey.id, active: !survey.active },
+    });
     if (result.ok) await load();
   };
 
   if (loading) {
-    return <div className="mx-auto max-w-7xl px-4 py-10 text-sm text-muted-foreground">Loading privacy-first behavior intelligence…</div>;
+    return (
+      <div className="mx-auto max-w-7xl px-4 py-10 text-sm text-muted-foreground">
+        Loading privacy-first behavior intelligence…
+      </div>
+    );
   }
 
-  if (error) {
-    return <div className="mx-auto max-w-7xl px-4 py-10 text-sm text-rose-500">{error}</div>;
+  if (!overview) {
+    return (
+      <div className="mx-auto max-w-7xl px-4 py-10 text-sm text-destructive">
+        {error ?? "Could not load behavior intelligence."}
+      </div>
+    );
   }
-
-  if (!overview) return null;
-
-  const cards = [
-    ["Sessions", overview.sessions, Globe2],
-    ["Page views", overview.pageViews, Eye],
-    ["Searches", overview.searches, Search],
-    ["Tool starts", overview.toolStarts, Wrench],
-    ["Tool completions", overview.toolCompletions, Activity],
-    ["Avg journey step", formatDuration(overview.averageJourneyMs), Timer],
-  ] as const;
 
   return (
-    <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6">
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/60 pb-5">
+    <div className="mx-auto max-w-7xl space-y-6 px-4 py-8">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <ShieldCheck className="size-5 text-primary" />
-            <h1 className="text-2xl font-black tracking-tight">Privacy-first Behavior Intelligence</h1>
-            <Badge variant="outline" className="border-emerald-500/30 text-emerald-500">No Google tracker</Badge>
+            <Badge variant="outline">Owner</Badge>
+            <span className="text-xs text-muted-foreground">First-party analytics</span>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            First-party movement, search intent, funnels and surveys. No stored IP, raw query, full referrer, or user-agent.
+          <h1 className="mt-2 text-2xl font-bold tracking-tight text-foreground">
+            Privacy-first Behavior Intelligence
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            No Google tracker or raw user content is required for this dashboard.
           </p>
         </div>
         <div className="flex items-center gap-2">
           {[7, 30, 90].map((value) => (
-            <Button key={value} size="sm" variant={days === value ? "default" : "outline"} onClick={() => setDays(value)} className="rounded-xl text-xs">
+            <Button
+              key={value}
+              size="sm"
+              variant={days === value ? "default" : "outline"}
+              onClick={() => setDays(value)}
+              className="rounded-xl text-xs"
+            >
               {value}d
             </Button>
           ))}
-          <Button variant="outline" size="sm" className="rounded-xl" onClick={() => void load()}>Refresh</Button>
+          <Button size="sm" variant="outline" onClick={() => void load()} className="rounded-xl">
+            Refresh
+          </Button>
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        {cards.map(([label, value, Icon]) => (
-          <div key={label} className="rounded-2xl border border-border/70 bg-card/70 p-4 shadow-sm">
-            <div className="flex items-center justify-between"><span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</span><Icon className="size-4 text-primary" /></div>
-            <div className="mt-3 text-2xl font-black text-foreground">{typeof value === "number" ? value.toLocaleString() : value}</div>
-          </div>
-        ))}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <MetricCard icon={Eye} label="Sessions" value={overview.sessions} />
+        <MetricCard icon={MousePointer2} label="Pageviews" value={overview.pageViews} />
+        <MetricCard icon={Wrench} label="Tools started" value={overview.toolStarts} />
+        <MetricCard icon={Timer} label="Avg duration" value={formatDuration(overview.averageSessionDurationMs)} />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Breakdown title="Most used tools" items={overview.topTools} />
-        <Breakdown title="Search intent signals" items={overview.topIntents} />
-        <Breakdown title="Most visited pages" items={overview.topPages} />
-        <Breakdown title="Navigation movement" items={overview.pathTransitions} />
-        <Breakdown title="Locales" items={overview.locales} />
-        <Breakdown title="Event mix" items={overview.eventMix} />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Breakdown title="Top tools" items={overview.topTools} />
+        <Breakdown title="Top search intents" items={overview.topSearchIntents} />
+        <Breakdown title="Top locales" items={overview.topLocales} />
+        <Breakdown title="Top journeys" items={overview.topJourneys} />
       </div>
+
+      {error && (
+        <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {error}
+        </div>
+      )}
 
       <section className="rounded-2xl border border-border/70 bg-card/70 p-5 shadow-sm">
-        <div className="flex items-center gap-2"><FlaskConical className="size-4 text-primary" /><h2 className="text-sm font-bold">Survey control center</h2></div>
-        <div className="mt-4 grid gap-3 md:grid-cols-4">
-          <input className="rounded-xl border border-border bg-background px-3 py-2 text-sm" placeholder="slug" value={newSurvey.slug} onChange={(e) => setNewSurvey((s) => ({ ...s, slug: e.target.value }))} />
-          <input className="rounded-xl border border-border bg-background px-3 py-2 text-sm" placeholder="title" value={newSurvey.title} onChange={(e) => setNewSurvey((s) => ({ ...s, title: e.target.value }))} />
-          <input className="rounded-xl border border-border bg-background px-3 py-2 text-sm" placeholder="target locale (optional)" value={newSurvey.targetLocale} onChange={(e) => setNewSurvey((s) => ({ ...s, targetLocale: e.target.value }))} />
-          <Button className="rounded-xl" onClick={() => void createSurvey()} disabled={!newSurvey.slug || !newSurvey.title}>Create survey</Button>
+        <div className="flex items-center gap-2">
+          <FlaskConical className="size-4 text-primary" />
+          <h2 className="text-sm font-bold">Survey control center</h2>
         </div>
-        <input className="mt-3 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" placeholder="description (optional)" value={newSurvey.description} onChange={(e) => setNewSurvey((s) => ({ ...s, description: e.target.value }))} />
 
-        <div className="mt-5 space-y-2">
+        <div className="mt-4 grid gap-2 md:grid-cols-4">
+          <input
+            className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+            placeholder="slug"
+            value={newSurvey.slug}
+            onChange={(e) => setNewSurvey((s) => ({ ...s, slug: e.target.value }))}
+          />
+          <input
+            className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+            placeholder="title"
+            value={newSurvey.title}
+            onChange={(e) => setNewSurvey((s) => ({ ...s, title: e.target.value }))}
+          />
+          <input
+            className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+            placeholder="target locale (optional)"
+            value={newSurvey.targetLocale}
+            onChange={(e) => setNewSurvey((s) => ({ ...s, targetLocale: e.target.value }))}
+          />
+          <Button
+            className="rounded-xl"
+            onClick={() => void createSurvey()}
+            disabled={!newSurvey.slug || !newSurvey.title}
+          >
+            Create survey
+          </Button>
+          <input
+            className="mt-3 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm md:col-span-4"
+            placeholder="description (optional)"
+            value={newSurvey.description}
+            onChange={(e) => setNewSurvey((s) => ({ ...s, description: e.target.value }))}
+          />
+        </div>
+
+        <div className="mt-4 space-y-2">
           {surveys.length === 0 ? (
-            <p className="text-xs text-muted-foreground">No surveys created yet.</p>
-          ) : surveys.map((survey) => (
-            <div key={survey.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 px-3 py-3">
-              <div><p className="text-sm font-semibold">{survey.title}</p><p className="text-[11px] text-muted-foreground">/{survey.slug}{survey.targetLocale ? ` • ${survey.targetLocale}` : ""}</p></div>
-              <Button size="sm" variant={survey.active ? "default" : "outline"} onClick={() => void toggleSurvey(survey)} className="rounded-xl text-xs">{survey.active ? "Active" : "Draft"}</Button>
-            </div>
-          ))}
+            <p className="text-xs text-muted-foreground">No surveys configured.</p>
+          ) : (
+            surveys.map((survey) => (
+              <div
+                key={survey.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 px-3 py-3"
+              >
+                <div>
+                  <p className="text-sm font-semibold">{survey.title}</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    /{survey.slug}
+                    {survey.targetLocale ? ` • ${survey.targetLocale}` : ""}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant={survey.active ? "default" : "outline"}
+                  onClick={() => void toggleSurvey(survey)}
+                  className="rounded-xl text-xs"
+                >
+                  {survey.active ? "Active" : "Draft"}
+                </Button>
+              </div>
+            ))
+          )}
         </div>
       </section>
 
-      <div className="rounded-2xl border border-border/70 bg-surface/30 px-4 py-3 text-xs text-muted-foreground">
-        Journey data uses a session-scoped random identifier stored only in sessionStorage. It is not a cross-site identity.
+      <div className="grid gap-4 md:grid-cols-3">
+        <MetricCard icon={Route} label="Journeys analyzed" value={overview.journeysAnalyzed} />
+        <MetricCard icon={Search} label="Searches" value={overview.searches} />
+        <MetricCard icon={ShieldCheck} label="Privacy events" value={overview.privacySafeEvents} />
+      </div>
+    </div>
+  );
+}
+
+function MetricCard({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof Activity;
+  label: string;
+  value: number | string;
+}) {
+  return (
+    <div className="rounded-2xl border border-border/70 bg-card/70 p-4 shadow-sm">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {label}
+        </span>
+        <Icon className="size-4 text-primary" />
+      </div>
+      <div className="mt-2 text-2xl font-bold text-foreground">
+        {typeof value === "number" ? value.toLocaleString() : value}
       </div>
     </div>
   );
