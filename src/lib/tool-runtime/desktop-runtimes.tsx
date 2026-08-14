@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Check, Copy, Download, MonitorCog, Play } from "lucide-react";
-import { desktopToolCatalog, type DesktopToolSpec } from "@/lib/desktop-tools/catalog";
+import { allDesktopTools, type AllDesktopTool } from "@/lib/desktop-tools";
 import type { ReadyToolRuntimeDefinition } from "./types";
 
-function DesktopTool({ spec }: { spec: DesktopToolSpec }) {
+function DesktopTool({ spec }: { spec: AllDesktopTool }) {
   const [input, setInput] = useState(spec.sampleInput);
   const [output, setOutput] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -88,7 +88,7 @@ function DesktopTool({ spec }: { spec: DesktopToolSpec }) {
   );
 }
 
-export const desktopToolRuntimes: ReadyToolRuntimeDefinition[] = desktopToolCatalog.map((spec) => ({
+export const desktopToolRuntimes: ReadyToolRuntimeDefinition[] = allDesktopTools.map((spec) => ({
   toolId: spec.id,
   slug: spec.slug,
   categoryId: spec.categoryId,
