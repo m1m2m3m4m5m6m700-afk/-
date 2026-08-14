@@ -33,17 +33,13 @@ export const Route = createFileRoute("/categories/$slug")({
       links: [{ rel: "canonical", href: canonicalUrl }],
     };
   },
-  loader: ({ params }) => {
-    const category = getCategory(params.slug as CategoryId);
-    if (!category) {
-      throw notFound();
-    }
-    return { category };
+  beforeLoad: ({ params }) => {
+    if (!getCategory(params.slug as CategoryId)) throw notFound();
   },
   component: CategorySlugRoute,
 });
 
 function CategorySlugRoute() {
-  const { category } = Route.useLoaderData();
-  return <CategoryLandingPage categoryId={category.id} />;
+  const { slug } = Route.useParams();
+  return <CategoryLandingPage categoryId={slug as CategoryId} />;
 }
