@@ -1,0 +1,53 @@
+name: one-time desktop catalog type migration
+
+on:
+  push:
+    branches:
+      - dependency-lock-alignment
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch desktop catalog tuple contract
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/lib/desktop-tools/catalog.ts')
+          text = path.read_text()
+          old = 'const specs: Omit<DesktopToolSpec, "id" | "slug">[] = ['
+          new = '''type DesktopToolSpecTuple = readonly [
+            name: string,
+            categoryId: DesktopToolCategory,
+            description: string,
+            run: (input: string) => string,
+            sampleInput: string,
+            expectedSampleOutput: string,
+          ];
+
+          const specs: DesktopToolSpecTuple[] = ['''
+          if 'type DesktopToolSpecTuple = readonly [' in text:
+              raise SystemExit(0)
+          if old not in text:
+              raise SystemExit('expected desktop specs declaration not found')
+          path.write_text(text.replace(old, new, 1))
+          PY
+
+      - name: Commit and push migration
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/lib/desktop-tools/catalog.ts
+          git diff --cached --quiet && exit 0
+          git commit -m "fix: type desktop tool specs as tuples"
+          git push origin HEAD:dependency-lock-alignment
