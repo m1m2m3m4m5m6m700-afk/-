@@ -11,22 +11,24 @@
 
 import type { AITaskId } from "./types";
 
+export type AIProviderId = "openai" | "gemini";
+
 export interface AIProviderConfig {
   /** Stable id used by the provider registry. */
-  id: "openai";
+  id: AIProviderId;
   /** API key resolved from the environment. Absent when unconfigured. */
   apiKey?: string;
   /** Default model for this provider. */
   defaultModel: string;
-  /** Base URL (overridable for proxies / Azure OpenAI). */
+  /** Base URL (overridable for proxies / Azure OpenAI / Gemini proxies). */
   baseUrl: string;
 }
 
 export interface AIGlobalConfig {
-  /** Active provider id. Falls back to "openai". */
-  activeProvider: "openai";
+  /** Active provider id. Defaults to "openai"; set FLIXO_AI_PROVIDER=gemini to use Gemini. */
+  activeProvider: AIProviderId;
   /** Ordered providers to try when the primary fails (fallback chain). */
-  fallbackProviders: Array<AIProviderConfig["id"]>;
+  fallbackProviders: Array<AIProviderId>;
   /** Hard ceiling on user input length, in characters. */
   maxInputChars: number;
   /** Default max output tokens when a task does not override it. */
@@ -91,14 +93,28 @@ export function getAIConfig(): AIGlobalConfig {
     baseUrl: readEnv("OPENAI_BASE_URL") ?? "https://api.openai.com/v1",
   };
 
+  const gemini: AIProviderConfig = {
+    id: "gemini",
+    apiKey: readEnv("GEMINI_API_KEY"),
+    // gemini-2.5-flash-lite — free-tier eligible. Overridable via GEMINI_MODEL.
+    defaultModel: readEnv("GEMINI_MODEL") ?? "gemini-2.5-flash-lite",
+    baseUrl: readEnv("GEMINI_BASE_URL") ?? "https://generativelanguage.googleapis.com",
+  };
+
+  // Active provider is chosen by FLIXO_AI_PROVIDER. Defaults to "openai" to
+  // preserve existing behavior; set to "gemini" to make the chatbot (and the
+  // task pipeline) use Gemini Free Tier.
+  const providerEnv = readEnv("FLIXO_AI_PROVIDER") ?? "openai";
+  const activeProvider: AIProviderId = providerEnv === "gemini" ? "gemini" : "openai";
+
   cached = {
-    activeProvider: "openai",
-    fallbackProviders: ["openai"],
+    activeProvider,
+    fallbackProviders: activeProvider === "gemini" ? ["gemini", "openai"] : ["openai", "gemini"],
     maxInputChars: readInt("FLIXO_AI_MAX_INPUT_CHARS", 12000),
     defaultMaxOutputTokens: readInt("FLIXO_AI_DEFAULT_MAX_TOKENS", 800),
     defaultTimeoutMs: readInt("FLIXO_AI_TIMEOUT_MS", 30_000),
     taskOverrides: parseTaskOverrides(),
-    providers: { openai },
+    providers: { openai, gemini },
   };
   return cached;
 }

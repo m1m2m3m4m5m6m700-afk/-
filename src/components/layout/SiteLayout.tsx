@@ -3,6 +3,7 @@ import { Footer } from "./Footer";
 import { Navbar } from "./Navbar";
 import { AnalyticsDialog } from "@/components/landing/AnalyticsDialog";
 import { VisitorChatWidget } from "@/components/communication/VisitorChatWidget";
+import { FlixoChatWidget } from "@/components/chat/FlixoChatWidget";
 
 interface SiteLayoutProps {
   children: ReactNode;
@@ -20,6 +21,8 @@ export function SiteLayout({ children, onRequestTool }: SiteLayoutProps) {
       <Footer onRequestTool={onRequestTool} onOpenAnalytics={() => setAnalyticsOpen(true)} />
       <AnalyticsDialog open={analyticsOpen} onOpenChange={setAnalyticsOpen} />
       <VisitorChatWidget />
+      {/* Free chatbot powered by Gemini Free Tier (server-side, no key in client). */}
+      <FlixoChatWidget />
     </div>
   );
 }

@@ -13,11 +13,13 @@
 import { getAIConfig, type AIProviderConfig } from "../config";
 import type { AIProvider } from "./types";
 import { OpenAIProvider } from "./openai";
+import { GeminiProvider } from "./gemini";
 
 type ProviderFactory = (config: AIProviderConfig) => AIProvider;
 
 const PROVIDER_FACTORIES: Record<string, ProviderFactory> = {
   openai: (config) => new OpenAIProvider(config),
+  gemini: (config) => new GeminiProvider(config),
 };
 
 const instances = new Map<string, AIProvider>();
