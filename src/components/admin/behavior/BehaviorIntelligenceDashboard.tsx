@@ -192,14 +192,14 @@ export function BehaviorIntelligenceDashboard() {
         <MetricCard icon={Eye} label="Sessions" value={overview.sessions} />
         <MetricCard icon={MousePointer2} label="Pageviews" value={overview.pageViews} />
         <MetricCard icon={Wrench} label="Tools started" value={overview.toolStarts} />
-        <MetricCard icon={Timer} label="Avg duration" value={formatDuration(overview.averageSessionDurationMs)} />
+        <MetricCard icon={Timer} label="Avg journey duration" value={formatDuration(overview.averageJourneyMs)} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Breakdown title="Top tools" items={overview.topTools} />
-        <Breakdown title="Top search intents" items={overview.topSearchIntents} />
-        <Breakdown title="Top locales" items={overview.topLocales} />
-        <Breakdown title="Top journeys" items={overview.topJourneys} />
+        <Breakdown title="Top search intents" items={overview.topIntents} />
+        <Breakdown title="Top locales" items={overview.locales} />
+        <Breakdown title="Top path transitions" items={overview.pathTransitions} />
       </div>
 
       {error && (
@@ -279,9 +279,9 @@ export function BehaviorIntelligenceDashboard() {
       </section>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <MetricCard icon={Route} label="Journeys analyzed" value={overview.journeysAnalyzed} />
+        <MetricCard icon={Route} label="Path transitions" value={overview.pathTransitions.length} />
         <MetricCard icon={Search} label="Searches" value={overview.searches} />
-        <MetricCard icon={ShieldCheck} label="Privacy events" value={overview.privacySafeEvents} />
+        <MetricCard icon={ShieldCheck} label="Event types tracked" value={overview.eventMix.length} />
       </div>
     </div>
   );
