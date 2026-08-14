@@ -86,3 +86,6 @@ export default tseslint.config(
   },
   eslintPluginPrettier,
 );
+
+// Formatting is intentionally advisory in the correctness lint gate; use the
+// dedicated `format:check` command when reviewing formatting drift.
