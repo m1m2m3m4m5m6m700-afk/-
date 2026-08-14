@@ -1,4 +1,4 @@
-export type DesktopToolCategory = "utilities" | "converters" | "developer" | "files" | "writing";
+export type DesktopToolCategory = "utilities" | "converters" | "developer" | "calculators";
 
 export type DesktopToolSpec = {
   id: string;
@@ -34,51 +34,23 @@ const lineCount = (input: string) => String(lines(input).length);
 const slugify = (input: string) => normalizeWhitespace(input).toLowerCase().replace(/[^a-z0-9\u0600-\u06ff]+/gu, "-").replace(/^-+|-+$/g, "");
 const kebab = (input: string) => normalizeWhitespace(input).replace(/([a-z])([A-Z])/g, "$1-$2").replace(/[^A-Za-z0-9]+/g, "-").replace(/^-+|-+$/g, "").toLowerCase();
 const snake = (input: string) => kebab(input).replace(/-/g, "_");
-const camel = (input: string) => {
-  const parts = kebab(input).split("-").filter(Boolean);
-  return parts.length ? parts[0] + parts.slice(1).map((part) => part[0].toUpperCase() + part.slice(1)).join("") : "";
-};
+const camel = (input: string) => { const parts = kebab(input).split("-").filter(Boolean); return parts.length ? parts[0] + parts.slice(1).map((part) => part[0].toUpperCase() + part.slice(1)).join("") : ""; };
 const pascal = (input: string) => camel(input).replace(/^./, (c) => c.toUpperCase());
-const toBase64 = (input: string) => {
-  const bytes = new TextEncoder().encode(input);
-  let binary = "";
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary);
-};
-const fromBase64 = (input: string) => {
-  const binary = atob(input);
-  return new TextDecoder().decode(Uint8Array.from(binary, (c) => c.charCodeAt(0)));
-};
+const toBase64 = (input: string) => { const bytes = new TextEncoder().encode(input); let binary = ""; for (const byte of bytes) binary += String.fromCharCode(byte); return btoa(binary); };
+const fromBase64 = (input: string) => { const binary = atob(input); return new TextDecoder().decode(Uint8Array.from(binary, (c) => c.charCodeAt(0))); };
 const urlEncode = (input: string) => encodeURIComponent(input);
 const urlDecode = (input: string) => decodeURIComponent(input);
 const htmlEncode = (input: string) => input.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;").replace(/'/g, "&#39;");
 const htmlDecode = (input: string) => input.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '\"').replace(/&#39;/g, "'").replace(/&amp;/g, "&");
-const csvToJson = (input: string) => {
-  const [header, ...rows] = lines(input).filter(Boolean).map((line) => line.split(","));
-  if (!header) return "[]";
-  return JSON.stringify(rows.map((row) => Object.fromEntries(header.map((key, i) => [key.trim(), (row[i] ?? "").trim()]))), null, 2);
-};
-const jsonToCsv = (input: string) => {
-  const value = JSON.parse(input) as Record<string, unknown>[];
-  if (!Array.isArray(value) || value.length === 0) return "";
-  const headers = [...new Set(value.flatMap((row) => Object.keys(row)))];
-  const quote = (item: unknown) => `\"${String(item ?? "").replace(/\"/g, '\"\"')}\"`;
-  return [headers.map(quote).join(","), ...value.map((row) => headers.map((key) => quote(row[key])).join(","))].join("\n");
-};
+const csvToJson = (input: string) => { const [header, ...rows] = lines(input).filter(Boolean).map((line) => line.split(",")); if (!header) return "[]"; return JSON.stringify(rows.map((row) => Object.fromEntries(header.map((key, i) => [key.trim(), (row[i] ?? "").trim()]))), null, 2); };
+const jsonToCsv = (input: string) => { const value = JSON.parse(input) as Record<string, unknown>[]; if (!Array.isArray(value) || value.length === 0) return ""; const headers = [...new Set(value.flatMap((row) => Object.keys(row)))]; const quote = (item: unknown) => `\"${String(item ?? "").replace(/\"/g, '\"\"')}\"`; return [headers.map(quote).join(","), ...value.map((row) => headers.map((key) => quote(row[key])).join(","))].join("\n"); };
 const parseNumbers = (input: string) => input.split(/[,\s]+/).filter(Boolean).map(Number);
 const sum = (input: string) => String(parseNumbers(input).reduce((a, b) => a + b, 0));
-const average = (input: string) => {
-  const values = parseNumbers(input);
-  return values.length ? String(values.reduce((a, b) => a + b, 0) / values.length) : "0";
-};
+const average = (input: string) => { const values = parseNumbers(input); return values.length ? String(values.reduce((a, b) => a + b, 0) / values.length) : "0"; };
 const min = (input: string) => String(Math.min(...parseNumbers(input)));
 const max = (input: string) => String(Math.max(...parseNumbers(input)));
 const uniqueWords = (input: string) => [...new Set(input.toLowerCase().split(/\s+/u).filter(Boolean))].sort().join("\n");
-const wordFrequency = (input: string) => {
-  const counts = new Map<string, number>();
-  for (const word of input.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []) counts.set(word, (counts.get(word) ?? 0) + 1);
-  return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([word, count]) => `${word}: ${count}`).join("\n");
-};
+const wordFrequency = (input: string) => { const counts = new Map<string, number>(); for (const word of input.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []) counts.set(word, (counts.get(word) ?? 0) + 1); return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([word, count]) => `${word}: ${count}`).join("\n"); };
 const jsonKeys = (input: string) => Object.keys(JSON.parse(input)).join("\n");
 const jsonValues = (input: string) => Object.values(JSON.parse(input)).map(String).join("\n");
 const jsonType = (input: string) => Array.isArray(JSON.parse(input)) ? "array" : typeof JSON.parse(input);
@@ -112,7 +84,6 @@ const yamlToJsonBasic = (input: string) => JSON.stringify(Object.fromEntries(lin
 const htmlPretty = (input: string) => input.replace(/></g, ">\n<").split("\n").map((line) => line.trim()).join("\n");
 const sqlUpper = (input: string) => input.replace(/\b(select|from|where|and|or|insert|into|values|update|set|delete|join|left|right|inner|outer|group|by|order|limit|as|on)\b/gi, (m) => m.toUpperCase());
 const jsonSortKeys = (input: string) => { const value = JSON.parse(input) as Record<string, unknown>; return JSON.stringify(Object.fromEntries(Object.keys(value).sort().map((k) => [k, value[k]])), null, 2); };
-const xmlEscape = htmlEncode;
 const quoteEachLine = (input: string) => lines(input).map((line) => `\"${line.replace(/\"/g, '\"\"')}\"`).join("\n");
 
 const specs: Omit<DesktopToolSpec, "id" | "slug">[] = [
@@ -159,7 +130,6 @@ const specs: Omit<DesktopToolSpec, "id" | "slug">[] = [
   ["SQL Keyword Uppercaser", "developer", "Uppercase common SQL keywords.", sqlUpper, "select * from users", "SELECT * FROM users"],
   ["HTML Pretty Printer", "developer", "Format HTML tags line by line.", htmlPretty, "<div><p>x</p></div>", "<div>\n<p>x</p>\n</div>"],
   ["YAML Basic to JSON", "developer", "Convert simple key-value YAML to JSON.", yamlToJsonBasic, "name: Flixo", '{\n  "name": "Flixo"\n}'],
-  ["XML Escape", "developer", "Escape XML text.", xmlEscape, "<x>", "&lt;x&gt;"],
   ["Extract Emails", "utilities", "Extract email addresses.", extractEmails, "a@example.com b@example.com", "a@example.com\nb@example.com"],
   ["Extract URLs", "utilities", "Extract HTTP URLs.", extractUrls, "See https://flixo.tools now", "https://flixo.tools"],
   ["Extract Numbers", "utilities", "Extract numeric tokens.", extractNumbers, "x=12 y=-3.5", "12\n-3.5"],
