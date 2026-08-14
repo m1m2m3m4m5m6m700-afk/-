@@ -34,13 +34,13 @@ function routePathFromFile(file) {
 
   if (segments.at(-1) === "index") segments.pop();
 
-  const routeSegments = segments.filter(Boolean).map((segment) => {
-    if (segment.startsWith("$") || segment.startsWith("_")) return segment;
-    return segment;
-  });
+  return "/" + segments.filter(Boolean).join("/");
+}
 
-  const route = "/" + routeSegments.join("/");
-  return route === "/" ? "/" : route;
+function generatedCandidates(route) {
+  if (route === "/robots.txt") return ["/robots/txt"];
+  if (route === "/") return ["/"];
+  return [route, `${route}/`];
 }
 
 if (!fs.existsSync(generatedPath)) {
@@ -53,11 +53,13 @@ for (const file of walk(routesDir)) {
   const route = routePathFromFile(file);
   routeCount += 1;
 
-  // Index routes are represented by their normalized parent path in the
-  // generated tree; the generator may also normalize special route tokens.
-  const normalized = route === "/robots/txt" ? "/robots/txt" : route;
-  if (!generated.includes(`'${normalized}'`) && !generated.includes(`"${normalized}"`)) {
-    failures.push({ file: path.relative(root, file), route: normalized });
+  const candidates = generatedCandidates(route);
+  const present = candidates.some(
+    (candidate) => generated.includes(`'${candidate}'`) || generated.includes(`"${candidate}"`),
+  );
+
+  if (!present) {
+    failures.push({ file: path.relative(root, file), route });
   }
 }
 
