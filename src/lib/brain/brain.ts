@@ -2,6 +2,7 @@ import { getAllSkills, type AISkill } from "./skills";
 import { extractIntent, type UserIntent } from "./intent";
 import { matchSkill, type SkillMatchResult } from "./matcher";
 import { trackKeywordSearch, trackToolOpen, trackCategoryVisit } from "@/lib/analytics";
+import type { LocaleCode } from "@/lib/i18n";
 
 export type BrainStatus = "idle" | "thinking" | "analyzing" | "matching" | "ready" | "unknown";
 
@@ -12,6 +13,7 @@ export interface BrainProcessOptions {
     type?: string;
   };
   linkUrl?: string;
+  locale?: LocaleCode;
   onStatusChange?: (status: BrainStatus, text: string) => void;
 }
 
@@ -75,26 +77,23 @@ export class FlixoBrain {
       options?.onStatusChange?.(status, text);
     };
 
-    // Step 1: Thinking
     notify("thinking", "Thinking...");
     await new Promise((resolve) => setTimeout(resolve, 180));
 
-    // Step 2: Extracting Intent
     notify("analyzing", "Analyzing task intent...");
     const intent = extractIntent(prompt, {
       hasAttachment: Boolean(options?.attachment),
       attachmentType: options?.attachment?.type,
       url: options?.linkUrl,
+      locale: options?.locale,
     });
     await new Promise((resolve) => setTimeout(resolve, 220));
 
-    // Step 3: Skill Matching
     notify("matching", "Finding the best tool...");
     const skills = getAllSkills();
-    const match = matchSkill(intent, skills);
+    const match: SkillMatchResult = matchSkill(intent, skills);
     await new Promise((resolve) => setTimeout(resolve, 200));
 
-    // Track intent search analytics
     trackKeywordSearch(prompt);
 
     if (match.matched && match.skill) {
@@ -115,21 +114,20 @@ export class FlixoBrain {
         statusText: "Ready",
         route: match.skill.route,
       };
-    } else {
-      notify("unknown", "No matching tool found");
-      // Record unknown task for future tool development
-      UnknownRequestsService.saveRequest(prompt, options?.attachment?.name);
-
-      return {
-        matched: false,
-        intent,
-        confidence: match.confidence,
-        matchedKeywords: match.matchedKeywords,
-        alternativeSkills: match.alternativeSkills,
-        status: "unknown",
-        statusText: "I don't know this task yet",
-      };
     }
+
+    notify("unknown", "No matching tool found");
+    UnknownRequestsService.saveRequest(prompt, options?.attachment?.name);
+
+    return {
+      matched: false,
+      intent,
+      confidence: match.confidence,
+      matchedKeywords: match.matchedKeywords,
+      alternativeSkills: match.alternativeSkills,
+      status: "unknown",
+      statusText: "I don't know this task yet",
+    };
   }
 }
 
