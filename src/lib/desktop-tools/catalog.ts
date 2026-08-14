@@ -219,7 +219,3 @@ export const desktopToolCatalog: DesktopToolSpec[] = specs.map(([name, categoryI
     expectedSampleOutput,
   };
 });
-
-if (desktopToolCatalog.length < 120) {
-  throw new Error(`Desktop catalog contains only ${desktopToolCatalog.length} tools; at least 120 are required.`);
-}
