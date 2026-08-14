@@ -199,6 +199,10 @@ if (!structuredDataSource.includes("SearchAction"))
   issues.push("Root structured data is missing SearchAction.");
 if (!publicRobots.includes("Sitemap: https://flixoai.vercel.app/sitemap.xml"))
   issues.push("public/robots.txt must reference the canonical sitemap.xml URL.");
+if (/Disallow:\s*\/\s*(?:\r?\n|$)/.test(publicRobots))
+  issues.push("robots.txt must not globally disallow crawling.");
+if (/Disallow:\s*\/admin(?:\/|\s|$)/.test(publicRobots))
+  issues.push("robots.txt should not be the primary protection for admin routes; use route-level noindex/access control.");
 
 const expectedUrls = [
   `${SITE_URL}/`,
@@ -223,8 +227,26 @@ const expectedUrls = [
   ...blogPosts.map((entry) => `${SITE_URL}/blog/${entry.slug}`),
 ];
 
+const sitemapLocs = [...publicSitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
+const expectedSet = new Set(expectedUrls);
+const sitemapSet = new Set(sitemapLocs);
+
+if (sitemapLocs.length !== sitemapSet.size)
+  issues.push("Sitemap contains duplicate <loc> entries.");
+if (sitemapLocs.some((url) => !url.startsWith(`${SITE_URL}/`) && url !== SITE_URL))
+  issues.push("Sitemap contains a URL outside the canonical site origin.");
+if (sitemapLocs.some((url) => /[?#]/.test(url)))
+  issues.push("Sitemap must not contain query strings or URL fragments.");
+if (sitemapLocs.some((url) => /\/ai-tools(?:\/|$)/.test(url)))
+  issues.push("Sitemap must not index the /ai-tools alias; /categories/ai is canonical.");
+if (sitemapLocs.some((url) => /\/admin(?:\/|$)/.test(url)))
+  issues.push("Sitemap must not contain admin routes.");
+
 for (const url of expectedUrls) {
   if (!publicSitemap.includes(`<loc>${url}</loc>`)) issues.push(`Missing sitemap URL: ${url}`);
+}
+for (const url of sitemapSet) {
+  if (!expectedSet.has(url)) issues.push(`Unexpected sitemap URL: ${url}`);
 }
 
 if (issues.length > 0) {
