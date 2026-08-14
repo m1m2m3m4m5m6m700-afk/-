@@ -1,32 +1,34 @@
 import type { AnalyticsConfig, AnalyticsEventParams, AnalyticsProviderInterface } from "./types";
-import { GA4Provider } from "./providers/ga4";
-import { ClarityProvider } from "./providers/clarity";
+import { FirstPartyAnalyticsProvider } from "./providers/firstParty";
 import { LocalAnalyticsProvider } from "./providers/local";
 
 class AnalyticsService {
   private providers: AnalyticsProviderInterface[] = [];
   private localProvider: LocalAnalyticsProvider;
+  private firstPartyProvider: FirstPartyAnalyticsProvider;
   private config: AnalyticsConfig = {
     enabled: true,
+    firstPartyEnabled: true,
   };
   private initialized = false;
 
   constructor() {
     this.localProvider = new LocalAnalyticsProvider();
-    this.providers.push(this.localProvider);
+    this.firstPartyProvider = new FirstPartyAnalyticsProvider();
+    this.providers.push(this.localProvider, this.firstPartyProvider);
   }
 
   public init(customConfig?: Partial<AnalyticsConfig>): void {
     if (typeof window === "undefined" || this.initialized) return;
 
     const envEnabled = import.meta.env.VITE_ENABLE_ANALYTICS !== "false";
+    const firstPartyEnabled = import.meta.env.VITE_ENABLE_FIRST_PARTY_ANALYTICS !== "false";
     const debug = import.meta.env.VITE_ANALYTICS_DEBUG === "true";
 
     this.config = {
       enabled: envEnabled,
+      firstPartyEnabled,
       debug,
-      gaMeasurementId: import.meta.env.VITE_GA_MEASUREMENT_ID || import.meta.env.VITE_GA_ID,
-      clarityProjectId: import.meta.env.VITE_CLARITY_PROJECT_ID || import.meta.env.VITE_CLARITY_ID,
       ...customConfig,
     };
 
@@ -35,40 +37,32 @@ class AnalyticsService {
       return;
     }
 
-    // Defer initialization to requestIdleCallback or setTimeout to minimize main thread blocking
     const loadProviders = () => {
-      // Auto-register GA4 if ID is present
-      if (this.config.gaMeasurementId && !this.providers.some((p) => p.name === "ga4")) {
-        this.providers.push(new GA4Provider());
-      }
-
-      // Auto-register Clarity if Project ID is present
-      if (this.config.clarityProjectId && !this.providers.some((p) => p.name === "clarity")) {
-        this.providers.push(new ClarityProvider());
-      }
-
-      // Add custom providers if specified in config
+      // Flixo no longer auto-registers Google Analytics, Microsoft Clarity, or
+      // any other third-party behavior tracker. First-party anonymous analytics
+      // is the default remote collector; custom providers remain opt-in.
       if (this.config.customProviders) {
-        this.config.customProviders.forEach((p) => {
-          if (!this.providers.some((existing) => existing.name === p.name)) {
-            this.providers.push(p);
+        this.config.customProviders.forEach((provider) => {
+          if (!this.providers.some((existing) => existing.name === provider.name)) {
+            this.providers.push(provider);
           }
         });
       }
 
-      // Initialize all providers
       this.providers.forEach((provider) => {
         try {
           provider.init(this.config);
         } catch (err) {
-          console.warn(`[Analytics] Failed to initialize provider '${provider.name}':`, err);
+          if (debug) {
+            console.warn(`[Analytics] Failed to initialize provider '${provider.name}':`, err);
+          }
         }
       });
 
       this.initialized = true;
       if (debug) {
         console.log(
-          `[Analytics] Centralized service initialized with ${this.providers.length} providers.`,
+          `[Analytics] Privacy-first service initialized with ${this.providers.length} providers.`,
         );
       }
     };
@@ -95,6 +89,10 @@ class AnalyticsService {
 
   public getLocalProvider(): LocalAnalyticsProvider {
     return this.localProvider;
+  }
+
+  public getFirstPartyProvider(): FirstPartyAnalyticsProvider {
+    return this.firstPartyProvider;
   }
 
   public trackPageView(path: string, title?: string): void {
