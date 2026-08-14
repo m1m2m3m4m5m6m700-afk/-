@@ -46,7 +46,7 @@
       ]
     },
     {
-      "source": "/(.*)\\.(?:wasm|gz)",
+      "source": "/(.*)\\.(wasm|gz)",
       "headers": [
         {
           "key": "Cache-Control",
