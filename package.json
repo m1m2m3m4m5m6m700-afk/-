@@ -19,6 +19,7 @@
     "test:build": "npm run build && node src/scripts/validate-build-output.mjs",
     "validate:registry": "node src/scripts/validate-registry.mjs",
     "validate:tool-runtime": "node src/scripts/validate-tool-runtime.mjs",
+    "validate:seo": "node src/scripts/validate-seo.mjs",
     "validate:route-tree": "node src/scripts/validate-route-tree.mjs",
     "validate:tool-content": "node src/scripts/validate-tool-content.mjs",
     "validate:localization": "node src/scripts/validate-localization.mjs",
