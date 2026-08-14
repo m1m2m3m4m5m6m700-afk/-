@@ -74,6 +74,7 @@ import { WordFrequencyRuntime } from "./tools/word-frequency";
 import { XmlFormatterRuntime } from "./tools/xml-formatter";
 import { XmlValidatorRuntime } from "./tools/xml-validator";
 import { YamlFormatterRuntime } from "./tools/yaml-formatter";
+import { desktopToolRuntimes } from "./desktop-runtimes";
 import type { ReadyToolRuntimeDefinition } from "./types";
 
 export const readyToolRuntimes = [
@@ -153,6 +154,7 @@ export const readyToolRuntimes = [
   XmlFormatterRuntime,
   XmlValidatorRuntime,
   YamlFormatterRuntime,
+  ...desktopToolRuntimes,
 ] as const satisfies readonly ReadyToolRuntimeDefinition[];
 
 export const readyToolRuntimeBySlug = new Map<string, ReadyToolRuntimeDefinition>(
