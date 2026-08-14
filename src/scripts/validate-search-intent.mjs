@@ -34,9 +34,7 @@ while ((match = aliasKeyPattern.exec(intentSource)) !== null) aliasKeys.push(mat
 
 for (const slug of aliasKeys) {
   const escaped = slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const readyPattern = new RegExp(
-    `\\"${escaped}\\"[\\s\\S]{0,500}\\"ready\\"`,
-  );
+  const readyPattern = new RegExp(`\\"${escaped}\\"[\\s\\S]{0,500}\\"ready\\"`);
   const alternatePattern = new RegExp(
     `\\"${escaped}\\"[\\s\\S]{0,500}\\` + `status[^\\n]{0,80}ready`,
   );
