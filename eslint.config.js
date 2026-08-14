@@ -1,5 +1,4 @@
 import js from "@eslint/js";
-import eslintPluginPrettier from "eslint-plugin-prettier/recommended";
 import globals from "globals";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
@@ -33,9 +32,6 @@ export default tseslint.config(
         },
       ],
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
-      // Prettier remains visible in lint output, but formatting drift must not
-      // block the correctness gate. Functional/type/security rules remain errors.
-      "prettier/prettier": "warn",
       // These rules flag intentional hydration and third-party widget
       // synchronization patterns used by the existing UI.
       "react-hooks/set-state-in-effect": "off",
@@ -84,8 +80,4 @@ export default tseslint.config(
       "react-refresh/only-export-components": "off",
     },
   },
-  eslintPluginPrettier,
 );
-
-// Formatting is intentionally advisory in the correctness lint gate; use the
-// dedicated `format:check` command when reviewing formatting drift.
