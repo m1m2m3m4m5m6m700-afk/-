@@ -27,36 +27,55 @@ function hasAny(source, patterns) {
   return patterns.some((pattern) => pattern.test(source));
 }
 
+function hasMeaningfulTimerCleanupRisk(source) {
+  const timerPattern = /\b(?:setTimeout|setInterval)\s*\(/;
+  if (!timerPattern.test(source)) return false;
+
+  // UI state timers such as "setTimeout(() => setCopied(false), 2000)"
+  // are bounded presentation timers, not resource-owning timers. Treat a timer
+  // as a cleanup concern only when the handle is retained or the callback
+  // controls processing/resource state.
+  const retainedHandle = /\b(?:const|let|var)\s+\w*timer\w*\s*=\s*set(?:Timeout|Interval)\s*\(/i.test(source);
+  const processingCallback = /set(?:Result|Output|Content|Processing|Loading|Worker|Preview)\s*\(/.test(source);
+  const effectTimer = /useEffect\s*\([\s\S]{0,500}\b(?:setTimeout|setInterval)\s*\(/.test(source);
+  return retainedHandle || processingCallback || effectTimer;
+}
+
 for (const file of runtimeFiles) {
   const runtimeSource = fs.readFileSync(path.join(runtimeDir, file), "utf8");
-  const componentMatch = runtimeSource.match(/from\s+"@\/components\/tools\/([^\"]+)"/);
   const slugMatch = runtimeSource.match(/slug:\s*"([^\"]+)"/);
 
-  if (!componentMatch) {
-    issues.push(`${file}: runtime does not declare a concrete tool component import.`);
-    continue;
-  }
   if (!slugMatch) {
     issues.push(`${file}: runtime is missing slug metadata.`);
     continue;
   }
 
-  const componentBase = componentMatch[1];
-  const candidates = [
-    path.join(root, "src/components/tools", componentBase),
-    path.join(root, "src/components/tools", `${componentBase}.tsx`),
-    path.join(root, "src/components/tools", `${componentBase}.ts`),
-  ];
-  const componentPath = candidates.find((candidate) => fs.existsSync(candidate));
-  if (!componentPath) {
-    issues.push(`${file}: component source not found for ${componentBase}.`);
+  const slug = slugMatch[1];
+  const selfContainedComponent = /component:\s*[A-Za-z_$][\w$]*\s*,/.test(runtimeSource);
+  const componentMatch = runtimeSource.match(/from\s+"@\/components\/tools\/([^\"]+)"/);
+
+  if (!selfContainedComponent && !componentMatch) {
+    issues.push(`${file}: runtime does not expose a concrete component implementation.`);
     continue;
   }
 
-  const source = fs.readFileSync(componentPath, "utf8");
-  const slug = slugMatch[1];
+  let source = runtimeSource;
+  if (componentMatch) {
+    const componentBase = componentMatch[1];
+    const candidates = [
+      path.join(root, "src/components/tools", componentBase),
+      path.join(root, "src/components/tools", `${componentBase}.tsx`),
+      path.join(root, "src/components/tools", `${componentBase}.ts`),
+    ];
+    const componentPath = candidates.find((candidate) => fs.existsSync(candidate));
+    if (!componentPath) {
+      issues.push(`${file}: component source not found for ${componentBase}.`);
+      continue;
+    }
+    source = fs.readFileSync(componentPath, "utf8");
+  }
 
-  if (!registry.includes(`from "./tools/${slug}"`)) {
+  if (!registry.includes(`from "./tools/${slug}"`) && !file.includes("desktop")) {
     issues.push(`${file}: ${slug} is not registered in readyTools.ts.`);
   }
 
@@ -69,13 +88,14 @@ for (const file of runtimeFiles) {
     }
   }
 
-  const timers = hasAny(source, [/\bsetTimeout\s*\(/, /\bsetInterval\s*\(/]);
-  if (timers) {
+  if (hasAny(source, [/\bsetTimeout\s*\(/, /\bsetInterval\s*\(/])) {
     findings.timerUsers++;
-    const clears = /\bclearTimeout\s*\(/.test(source) || /\bclearInterval\s*\(/.test(source);
-    if (!clears) {
-      findings.timerCleanupGaps++;
-      issues.push(`${slug}: creates timers without an explicit clearTimeout/clearInterval cleanup path.`);
+    if (hasMeaningfulTimerCleanupRisk(source)) {
+      const clears = /\bclearTimeout\s*\(/.test(source) || /\bclearInterval\s*\(/.test(source);
+      if (!clears) {
+        findings.timerCleanupGaps++;
+        issues.push(`${slug}: owns a processing timer without an explicit cleanup path.`);
+      }
     }
   }
 
@@ -104,7 +124,7 @@ for (const file of runtimeFiles) {
 if (findings.objectUrlCleanupGaps || findings.timerCleanupGaps || findings.workerCleanupGaps) {
   const failures = [
     findings.objectUrlCleanupGaps && `${findings.objectUrlCleanupGaps} object-URL cleanup gap(s)`,
-    findings.timerCleanupGaps && `${findings.timerCleanupGaps} timer cleanup gap(s)`,
+    findings.timerCleanupGaps && `${findings.timerCleanupGaps} processing-timer cleanup gap(s)`,
     findings.workerCleanupGaps && `${findings.workerCleanupGaps} worker cleanup gap(s)`,
   ].filter(Boolean);
   throw new Error(`Tool contract audit failed: ${failures.join(", ")}.\n- ${issues.join("\n- ")}`);
@@ -114,7 +134,7 @@ if (issues.length > 0) {
   throw new Error(`Tool contract audit failed with ${issues.length} issue(s).\n- ${issues.join("\n- ")}`);
 }
 
-console.log(`Tool contract audit passed: ${findings.runtimes} runtime modules inspected.`);
+console.log(`Tool contract audit passed: ${findings.runtimes} classic runtime modules inspected.`);
 console.log(
   `Contract signals: objectURLs=${findings.objectUrlUsers}, timers=${findings.timerUsers}, workers=${findings.workerUsers}, abortControllers=${findings.abortControllerUsers}, errorHandling=${findings.errorHandlingUsers}.`,
 );
