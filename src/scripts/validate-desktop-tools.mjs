@@ -2,8 +2,11 @@ import fs from "node:fs";
 import ts from "typescript";
 
 const root = process.cwd();
-const source = fs.readFileSync(`${root}/src/lib/desktop-tools/catalog.ts`, "utf8");
-const extensionSource = fs.readFileSync(`${root}/src/lib/desktop-tools/extensions.ts`, "utf8");
+const sources = [
+  `${root}/src/lib/desktop-tools/catalog.ts`,
+  `${root}/src/lib/desktop-tools/extensions.ts`,
+  `${root}/src/lib/desktop-tools/extended.ts`,
+];
 const transpile = (input) =>
   ts.transpileModule(input, {
     compilerOptions: {
@@ -16,9 +19,10 @@ const importModule = async (input) => {
   return import(moduleUrl);
 };
 
-const { desktopToolCatalog } = await importModule(source);
-const { desktopToolExtensions } = await importModule(extensionSource);
-const allTools = [...desktopToolCatalog, ...desktopToolExtensions];
+const { desktopToolCatalog } = await importModule(fs.readFileSync(sources[0], "utf8"));
+const { desktopToolExtensions } = await importModule(fs.readFileSync(sources[1], "utf8"));
+const { extendedDesktopToolSpecs } = await importModule(fs.readFileSync(sources[2], "utf8"));
+const allTools = [...desktopToolCatalog, ...desktopToolExtensions, ...extendedDesktopToolSpecs];
 const issues = [];
 const seenIds = new Set();
 const seenSlugs = new Set();
@@ -47,8 +51,8 @@ for (const tool of allTools) {
   }
 }
 
-if (allTools.length < 120) {
-  issues.push(`Desktop tool count is ${allTools.length}; required minimum is 120.`);
+if (allTools.length < 200) {
+  issues.push(`Desktop tool count is ${allTools.length}; required minimum is 200.`);
 }
 
 if (issues.length > 0) {
