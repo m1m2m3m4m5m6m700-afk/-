@@ -34,6 +34,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Production dependency audit
+        run: npm run audit:production
+
       - name: Validate registry
         run: npm run validate:registry
 
@@ -49,14 +52,20 @@ jobs:
       - name: Validate localization
         run: npm run validate:localization
 
+      # The TanStack Vite plugin regenerates routeTree.gen.ts during build.
+      # Generate it before typecheck so a newly added route cannot leave the
+      # type system stuck on stale generated route definitions.
+      - name: Build and generate route tree
+        run: npm run build
+
+      - name: Validate generated route tree
+        run: npm run validate:route-tree
+
       - name: Typecheck
         run: npm run typecheck
 
       - name: Lint
         run: npm run lint
-
-      - name: Build
-        run: npm run build
 
       - name: Upload build artifact
         if: github.event_name == 'pull_request'
