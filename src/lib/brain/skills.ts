@@ -16,7 +16,7 @@ export interface AISkill {
   examples: string[];
   actionLabel: string;
   /** Locale-aware natural-language discovery terms mapped to this canonical skill. */
-  searchTermsByLocale: Record<string, string[]>;
+  searchTermsByLocale?: Record<string, string[]>;
 }
 
 const CUSTOM_EXAMPLES: Record<string, string[]> = {
