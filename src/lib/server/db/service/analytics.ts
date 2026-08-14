@@ -8,6 +8,7 @@
  * data").
  */
 
+import { createHash } from "node:crypto";
 import { count, desc, eq } from "drizzle-orm";
 import { getDb } from "../client";
 import { analyticsEvents } from "../schema";
@@ -28,14 +29,18 @@ export interface TrackEventInput {
 /** Insert an analytics event. Best-effort: never throws to the caller path. */
 export async function trackEvent(input: TrackEventInput): Promise<void> {
   const db = getDb();
+  const queryHash = input.query
+    ? createHash("sha256").update(input.query).digest("hex")
+    : null;
+
   await db.insert(analyticsEvents).values({
     eventType: input.eventType as (typeof analyticsEvents.$inferSelect)["eventType"],
     toolId: input.toolId ?? null,
     category: input.category ?? null,
-    query: input.query ?? null,
+    queryHash,
     country: input.country ?? null,
     device: input.device ?? null,
-    referrer: input.referrer ?? null,
+    referrerOrigin: input.referrer ?? null,
     path: input.path ?? null,
     resultCount: input.resultCount ?? null,
   });
@@ -48,12 +53,10 @@ export async function getGlobalAnalytics(): Promise<GlobalAnalyticsDTO> {
   const all = await db.select().from(analyticsEvents).orderBy(desc(analyticsEvents.createdAt));
 
   const totalEvents = all.length;
-  // Distinct visitors: count distinct (ip || '|' || device) tuples; events with
-  // no ip are counted as one anonymous visitor per unique event path.
+  // Distinct visitors: country + device tuple. Events with neither signal
+  // are counted as one anonymous visitor per unique event (no fabrication).
   const visitorKeys = new Set<string>();
   for (const e of all) {
-    // Distinct visitor: country + device tuple. Events with neither signal
-    // are counted as one anonymous visitor per unique event (no fabrication).
     const key = `${e.country ?? ""}|${e.device ?? ""}`;
     visitorKeys.add(key.length > 0 ? key : `anon:${e.id}`);
   }
@@ -65,7 +68,9 @@ export async function getGlobalAnalytics(): Promise<GlobalAnalyticsDTO> {
   const deviceCounts = new Map<string, number>();
   for (const e of all) {
     if (e.toolId) toolCounts.set(e.toolId, (toolCounts.get(e.toolId) ?? 0) + 1);
-    if (e.referrer) referrerCounts.set(e.referrer, (referrerCounts.get(e.referrer) ?? 0) + 1);
+    if (e.referrerOrigin) {
+      referrerCounts.set(e.referrerOrigin, (referrerCounts.get(e.referrerOrigin) ?? 0) + 1);
+    }
     if (e.country) countryCounts.set(e.country, (countryCounts.get(e.country) ?? 0) + 1);
     if (e.device) deviceCounts.set(e.device, (deviceCounts.get(e.device) ?? 0) + 1);
   }
@@ -89,7 +94,7 @@ export async function getGlobalAnalytics(): Promise<GlobalAnalyticsDTO> {
     toolId: e.toolId ?? null,
     country: e.country ?? null,
     device: e.device ?? null,
-    referrer: e.referrer ?? null,
+    referrer: e.referrerOrigin ?? null,
     createdAt: e.createdAt.toISOString(),
   }));
 
