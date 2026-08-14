@@ -7,6 +7,9 @@ export interface AnalyticsConfig {
   debug?: boolean;
   /** First-party analytics is the only automatically registered provider. */
   firstPartyEnabled?: boolean;
+  /** Legacy provider config retained only for custom-provider compatibility. */
+  gaMeasurementId?: string;
+  clarityProjectId?: string;
   customProviders?: AnalyticsProviderInterface[];
 }
 
@@ -58,7 +61,20 @@ export interface AnalyticsData {
 }
 
 export type FirstPartyAnalyticsEvent = {
-  type: Exclude<AnalyticsRecentEventType, "external_link"> | "external_link_click";
+  type:
+    | "page_view"
+    | "search"
+    | "tool_click"
+    | "category_click"
+    | "download"
+    | "copy"
+    | "external_link_click"
+    | "session_start"
+    | "session_end"
+    | "tool_start"
+    | "tool_complete"
+    | "navigation"
+    | "survey_response";
   sessionId: string;
   locale?: string;
   intentId?: string;
