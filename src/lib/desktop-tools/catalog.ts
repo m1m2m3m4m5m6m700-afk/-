@@ -86,7 +86,16 @@ const sqlUpper = (input: string) => input.replace(/\b(select|from|where|and|or|i
 const jsonSortKeys = (input: string) => { const value = JSON.parse(input) as Record<string, unknown>; return JSON.stringify(Object.fromEntries(Object.keys(value).sort().map((k) => [k, value[k]])), null, 2); };
 const quoteEachLine = (input: string) => lines(input).map((line) => `\"${line.replace(/\"/g, '\"\"')}\"`).join("\n");
 
-const specs: Omit<DesktopToolSpec, "id" | "slug">[] = [
+type DesktopToolSpecTuple = readonly [
+  name: string,
+  categoryId: DesktopToolCategory,
+  description: string,
+  run: (input: string) => string,
+  sampleInput: string,
+  expectedSampleOutput: string,
+];
+
+const specs: DesktopToolSpecTuple[] = [
   ["Remove Spaces", "utilities", "Remove extra spaces.", removeEmpty, "a  b", "a  b"],
   ["Normalize Whitespace", "utilities", "Normalize whitespace.", normalizeWhitespace, "  a   b  ", "a b"],
   ["Uppercase Text", "utilities", "Convert text to uppercase.", upper, "Flixo", "FLIXO"],
