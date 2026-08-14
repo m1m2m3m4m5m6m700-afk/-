@@ -28,17 +28,15 @@ function hasAny(source, patterns) {
 }
 
 function hasMeaningfulTimerCleanupRisk(source) {
-  const timerPattern = /\b(?:setTimeout|setInterval)\s*\(/;
-  if (!timerPattern.test(source)) return false;
+  if (/\bsetInterval\s*\(/.test(source)) return true;
+  return /\b(?:const|let|var)\s+\w*timer\w*\s*=\s*setTimeout\s*\(/i.test(source) ||
+    /useEffect\s*\([\s\S]{0,500}\bsetTimeout\s*\(/.test(source);
+}
 
-  // UI state timers such as "setTimeout(() => setCopied(false), 2000)"
-  // are bounded presentation timers, not resource-owning timers. Treat a timer
-  // as a cleanup concern only when the handle is retained or the callback
-  // controls processing/resource state.
-  const retainedHandle = /\b(?:const|let|var)\s+\w*timer\w*\s*=\s*set(?:Timeout|Interval)\s*\(/i.test(source);
-  const processingCallback = /set(?:Result|Output|Content|Processing|Loading|Worker|Preview)\s*\(/.test(source);
-  const effectTimer = /useEffect\s*\([\s\S]{0,500}\b(?:setTimeout|setInterval)\s*\(/.test(source);
-  return retainedHandle || processingCallback || effectTimer;
+function hasObjectUrlCleanup(source) {
+  return /URL\.revokeObjectURL\s*\(/.test(source) ||
+    /revokeObjectUrlSafe\s*\(/.test(source) ||
+    /revokeObjectURLs?\s*\(/.test(source);
 }
 
 for (const file of runtimeFiles) {
@@ -82,9 +80,9 @@ for (const file of runtimeFiles) {
   const objectUrls = (source.match(/URL\.createObjectURL\s*\(/g) ?? []).length;
   if (objectUrls > 0) {
     findings.objectUrlUsers++;
-    if (!/URL\.revokeObjectURL\s*\(/.test(source)) {
+    if (!hasObjectUrlCleanup(source)) {
       findings.objectUrlCleanupGaps++;
-      issues.push(`${slug}: creates object URLs but has no URL.revokeObjectURL cleanup.`);
+      issues.push(`${slug}: creates object URLs but has no recognized cleanup path.`);
     }
   }
 
@@ -112,11 +110,7 @@ for (const file of runtimeFiles) {
     findings.abortControllerUsers++;
   }
 
-  if (
-    hasAny(source, [
-      /\btry\s*\{/, /\.catch\s*\(/, /catch\s*\(/, /\.onerror\s*=/, /setError\s*\(/,
-    ])
-  ) {
+  if (hasAny(source, [/\btry\s*\{/, /\.catch\s*\(/, /catch\s*\(/, /\.onerror\s*=/, /setError\s*\(/])) {
     findings.errorHandlingUsers++;
   }
 }
