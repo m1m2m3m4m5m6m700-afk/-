@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
   ChevronRight,
@@ -16,11 +16,38 @@ import { JsonLd } from "@/components/seo/JsonLd";
 import { usePageSeo } from "@/lib/usePageSeo";
 import { trackPageView } from "@/lib/analytics";
 import { LastUpdatedBadge } from "@/components/seo/LastUpdatedBadge";
-import { SITE_URL } from "@/lib/seo/site";
+import { DEFAULT_ROBOTS, NOINDEX_ROBOTS, SITE_NAME, SITE_URL } from "@/lib/seo/site";
 import { useI18n } from "@/lib/i18n";
 import { resolveToolName } from "@/lib/i18n/keys";
 
 export const Route = createFileRoute("/compare/$slug")({
+  head: ({ params }) => {
+    const comp = comparisonRegistry.find((c) => c.slug === params.slug || c.id === params.slug);
+    if (!comp) {
+      return { meta: [{ name: "robots", content: NOINDEX_ROBOTS }] };
+    }
+    const title = comp.title;
+    return {
+      meta: [
+        { title },
+        { name: "description", content: comp.metaDescription },
+        { name: "robots", content: DEFAULT_ROBOTS },
+        { property: "og:title", content: title },
+        { property: "og:description", content: comp.metaDescription },
+        { property: "og:type", content: "article" },
+        { property: "og:url", content: `${SITE_URL}/compare/${comp.slug}` },
+        { property: "og:site_name", content: SITE_NAME },
+        { name: "twitter:card", content: "summary_large_image" },
+        { name: "twitter:title", content: title },
+        { name: "twitter:description", content: comp.metaDescription },
+      ],
+      links: [{ rel: "canonical", href: `${SITE_URL}/compare/${comp.slug}` }],
+    };
+  },
+  beforeLoad: ({ params }) => {
+    const comp = comparisonRegistry.find((c) => c.slug === params.slug || c.id === params.slug);
+    if (!comp) throw notFound();
+  },
   component: ComparisonSlugRoute,
 });
 
@@ -41,19 +68,7 @@ function ComparisonSlugRoute() {
   }, [slug]);
 
   if (!comp) {
-    return (
-      <SiteLayout>
-        <div className="mx-auto max-w-4xl px-5 py-20 text-center">
-          <h1 className="text-2xl font-bold">Comparison Page Not Found</h1>
-          <p className="mt-2 text-muted-foreground">
-            The requested comparison benchmark does not exist.
-          </p>
-          <Link to="/compare" className="mt-4 inline-block font-semibold text-primary underline">
-            Back to Comparisons Index
-          </Link>
-        </div>
-      </SiteLayout>
-    );
+    throw notFound();
   }
 
   const matchedTool = tools.find((t) => t.id === comp.toolId);
@@ -87,60 +102,39 @@ function ComparisonSlugRoute() {
 
       <div className="bg-hero-glow min-h-screen">
         <article className="mx-auto max-w-4xl px-5 pb-20 pt-10 md:pt-14 space-y-10">
-          {/* Breadcrumb */}
           <nav aria-label="Breadcrumb" className="text-xs text-muted-foreground">
             <ol className="flex items-center flex-wrap gap-1.5">
               <li>
-                <Link to="/" className="hover:text-foreground transition-colors">
-                  Home
-                </Link>
+                <Link to="/" className="hover:text-foreground transition-colors">Home</Link>
               </li>
+              <li><ChevronRight className="size-3 opacity-60 rtl:rotate-180" /></li>
               <li>
-                <ChevronRight className="size-3 opacity-60 rtl:rotate-180" />
+                <Link to="/compare" className="hover:text-foreground transition-colors">Comparisons</Link>
               </li>
-              <li>
-                <Link to="/compare" className="hover:text-foreground transition-colors">
-                  Comparisons
-                </Link>
-              </li>
-              <li>
-                <ChevronRight className="size-3 opacity-60 rtl:rotate-180" />
-              </li>
-              <li
-                className="font-semibold text-foreground truncate max-w-[200px]"
-                aria-current="page"
-              >
+              <li><ChevronRight className="size-3 opacity-60 rtl:rotate-180" /></li>
+              <li className="font-semibold text-foreground truncate max-w-[200px]" aria-current="page">
                 {comp.competitorName}
               </li>
             </ol>
           </nav>
 
-          {/* Header */}
           <header className="space-y-4">
             <LastUpdatedBadge />
             <h1 className="text-3xl font-bold tracking-tight md:text-4xl text-foreground leading-tight">
               {comp.title}
             </h1>
-            <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
-              {comp.summary}
-            </p>
+            <p className="text-sm md:text-base text-muted-foreground leading-relaxed">{comp.summary}</p>
           </header>
 
-          {/* Feature Matrix Table */}
           <section className="rounded-3xl border border-border/80 bg-card p-6 space-y-4 shadow-xs">
-            <h2 className="text-lg font-bold text-foreground">
-              Feature-by-Feature Comparison Matrix
-            </h2>
+            <h2 className="text-lg font-bold text-foreground">Feature-by-Feature Comparison Matrix</h2>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs sm:text-sm border-collapse">
                 <thead>
                   <tr className="border-b border-border/60 text-muted-foreground">
                     <th className="py-3 px-4 font-bold">Feature</th>
                     <th className="py-3 px-4 font-bold text-primary">
-                      Flixo{" "}
-                      {matchedTool
-                        ? resolveToolName(matchedTool.slug || matchedTool.id, t)
-                        : "Tool"}
+                      Flixo {matchedTool ? resolveToolName(matchedTool.slug || matchedTool.id, t) : "Tool"}
                     </th>
                     <th className="py-3 px-4 font-bold">{comp.competitorName}</th>
                   </tr>
@@ -157,9 +151,7 @@ function ComparisonSlugRoute() {
                           <span className="flex items-center gap-1.5 text-muted-foreground">
                             <X className="size-4 shrink-0 text-amber-500" /> {row.competitor}
                           </span>
-                        ) : (
-                          row.competitor
-                        )}
+                        ) : row.competitor}
                       </td>
                     </tr>
                   ))}
@@ -168,7 +160,6 @@ function ComparisonSlugRoute() {
             </div>
           </section>
 
-          {/* Key Advantages */}
           <section className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-6 space-y-4">
             <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold">
               <ShieldCheck className="size-5" /> Why Flixo Wins
@@ -183,29 +174,23 @@ function ComparisonSlugRoute() {
             </ul>
           </section>
 
-          {/* Action Callout */}
           {matchedTool && matchedTool.slug && matchedTool.status === "ready" && (
             <div className="rounded-3xl border border-primary/30 bg-primary/10 p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
                 <h3 className="font-bold text-foreground text-base sm:text-lg">
-                  Ready to test Flixo{" "}
-                  {matchedTool ? resolveToolName(matchedTool.slug || matchedTool.id, t) : ""}?
+                  Ready to test Flixo {resolveToolName(matchedTool.slug || matchedTool.id, t)}?
                 </h3>
-                <p className="text-xs sm:text-sm text-muted-foreground">
-                  No sign-up required. Runs instantly inside your browser canvas.
-                </p>
+                <p className="text-xs sm:text-sm text-muted-foreground">No sign-up required. Runs instantly inside your browser canvas.</p>
               </div>
               <Link
                 to={`/tools/${matchedTool.slug}` as never}
                 className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground shadow-xs hover:bg-primary/90 transition-all shrink-0"
               >
-                Launch {matchedTool ? resolveToolName(matchedTool.slug || matchedTool.id, t) : ""}{" "}
-                <ArrowRight className="size-4" />
+                Launch {resolveToolName(matchedTool.slug || matchedTool.id, t)} <ArrowRight className="size-4" />
               </Link>
             </div>
           )}
 
-          {/* FAQs */}
           <section className="space-y-4">
             <div className="flex items-center gap-2">
               <HelpCircle className="size-5 text-primary" />
@@ -215,21 +200,14 @@ function ComparisonSlugRoute() {
               {comp.faqs.map((faq, index) => {
                 const isOpen = openFaqIndex === index;
                 return (
-                  <div
-                    key={index}
-                    className="rounded-2xl border border-border/80 bg-surface/30 overflow-hidden"
-                  >
+                  <div key={index} className="rounded-2xl border border-border/80 bg-surface/30 overflow-hidden">
                     <button
                       type="button"
                       onClick={() => setOpenFaqIndex(isOpen ? null : index)}
                       className="flex w-full items-center justify-between p-4 text-left text-sm font-semibold text-foreground focus:outline-none"
                     >
                       <span>{faq.question}</span>
-                      <ChevronDown
-                        className={`size-4 shrink-0 transition-transform ${
-                          isOpen ? "rotate-180 text-primary" : "text-muted-foreground"
-                        }`}
-                      />
+                      <ChevronDown className={`size-4 shrink-0 transition-transform ${isOpen ? "rotate-180 text-primary" : "text-muted-foreground"}`} />
                     </button>
                     {isOpen && (
                       <div className="border-t border-border/50 px-4 pb-4 pt-2 text-xs sm:text-sm text-muted-foreground leading-relaxed">
