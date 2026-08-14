@@ -1,9 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
-import { and, desc, gte, eq } from "drizzle-orm";
+import { desc, eq, gte } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/lib/server/db/client";
 import { isDbConfigured } from "@/lib/server/db/config";
-import { analyticsEvents, surveys } from "@/lib/server/db/schema";
+import { analyticsEvents, surveyQuestions, surveys } from "@/lib/server/db/schema";
 import { adminSessionMiddleware } from "../auth/adminSession";
 
 type Aggregate = { key: string; count: number };
@@ -22,16 +22,16 @@ function top(values: Iterable<string | null | undefined>, limit = 10): Aggregate
 
 const daysSchema = z.number().int().min(1).max(90).default(30);
 
+function requireAdmin(context: { adminSession?: { role: string } | null }) {
+  return Boolean(context.adminSession && context.adminSession.role === "admin");
+}
+
 export const getAdminBehaviorOverview = createServerFn({ method: "GET" })
   .middleware([adminSessionMiddleware])
   .validator(z.object({ days: daysSchema }))
   .handler(async ({ context, data }) => {
-    if (!context.adminSession || context.adminSession.role !== "admin") {
-      return { ok: false as const, kind: "not_authenticated" as const };
-    }
-    if (!isDbConfigured()) {
-      return { ok: false as const, kind: "not_configured" as const };
-    }
+    if (!requireAdmin(context)) return { ok: false as const, kind: "not_authenticated" as const };
+    if (!isDbConfigured()) return { ok: false as const, kind: "not_configured" as const };
 
     const since = new Date(Date.now() - data.days * 86_400_000);
     const rows = await getDb()
@@ -42,11 +42,6 @@ export const getAdminBehaviorOverview = createServerFn({ method: "GET" })
       .limit(10_000);
 
     const sessionIds = new Set(rows.map((row) => row.sessionId).filter(Boolean));
-    const sessionStartCount = rows.filter((row) => row.eventType === "session_start").length;
-    const toolStarts = rows.filter((row) => row.eventType === "tool_start").length;
-    const toolCompletions = rows.filter((row) => row.eventType === "tool_complete").length;
-    const searches = rows.filter((row) => row.eventType === "search").length;
-    const surveyResponses = rows.filter((row) => row.eventType === "survey_response").length;
     const durations = rows
       .map((row) => row.durationMs)
       .filter((duration): duration is number => typeof duration === "number" && duration >= 0);
@@ -55,12 +50,12 @@ export const getAdminBehaviorOverview = createServerFn({ method: "GET" })
       ok: true as const,
       periodDays: data.days,
       sessions: sessionIds.size,
-      sessionStarts: sessionStartCount,
+      sessionStarts: rows.filter((row) => row.eventType === "session_start").length,
       pageViews: rows.filter((row) => row.eventType === "page_view").length,
-      searches,
-      toolStarts,
-      toolCompletions,
-      surveyResponses,
+      searches: rows.filter((row) => row.eventType === "search").length,
+      toolStarts: rows.filter((row) => row.eventType === "tool_start").length,
+      toolCompletions: rows.filter((row) => row.eventType === "tool_complete").length,
+      surveyResponses: rows.filter((row) => row.eventType === "survey_response").length,
       averageJourneyMs:
         durations.length > 0
           ? Math.round(durations.reduce((sum, value) => sum + value, 0) / durations.length)
@@ -81,13 +76,23 @@ export const getAdminBehaviorOverview = createServerFn({ method: "GET" })
 export const getAdminSurveys = createServerFn({ method: "GET" })
   .middleware([adminSessionMiddleware])
   .handler(async ({ context }) => {
-    if (!context.adminSession || context.adminSession.role !== "admin") {
-      return { ok: false as const, kind: "not_authenticated" as const };
-    }
-    if (!isDbConfigured()) {
-      return { ok: false as const, kind: "not_configured" as const };
-    }
-    const rows = await getDb().select().from(surveys).orderBy(desc(surveys.updatedAt)).limit(100);
+    if (!requireAdmin(context)) return { ok: false as const, kind: "not_authenticated" as const };
+    if (!isDbConfigured()) return { ok: false as const, kind: "not_configured" as const };
+
+    const rows = await getDb()
+      .select({
+        id: surveys.id,
+        slug: surveys.slug,
+        title: surveys.title,
+        description: surveys.description,
+        active: surveys.active,
+        targetLocale: surveys.targetLocale,
+        maxResponses: surveys.maxResponses,
+        updatedAt: surveys.updatedAt,
+      })
+      .from(surveys)
+      .orderBy(desc(surveys.updatedAt))
+      .limit(100);
     return { ok: true as const, surveys: rows };
   });
 
@@ -103,29 +108,37 @@ export const createAdminSurvey = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ context, data }) => {
-    if (!context.adminSession || context.adminSession.role !== "admin") {
-      return { ok: false as const, kind: "not_authenticated" as const };
-    }
-    if (!isDbConfigured()) {
-      return { ok: false as const, kind: "not_configured" as const };
-    }
+    if (!requireAdmin(context)) return { ok: false as const, kind: "not_authenticated" as const };
+    if (!isDbConfigured()) return { ok: false as const, kind: "not_configured" as const };
     const [created] = await getDb().insert(surveys).values(data).returning();
     return { ok: true as const, survey: created };
+  });
+
+export const createAdminSurveyQuestion = createServerFn({ method: "POST" })
+  .middleware([adminSessionMiddleware])
+  .validator(
+    z.object({
+      surveyId: z.string().uuid(),
+      type: z.enum(["single_choice", "multi_choice", "scale", "text"]),
+      prompt: z.string().min(2).max(1000),
+      options: z.array(z.string().max(200)).max(50).default([]),
+      required: z.boolean().default(false),
+      sortOrder: z.number().int().min(0).max(500).default(0),
+    }),
+  )
+  .handler(async ({ context, data }) => {
+    if (!requireAdmin(context)) return { ok: false as const, kind: "not_authenticated" as const };
+    if (!isDbConfigured()) return { ok: false as const, kind: "not_configured" as const };
+    const [created] = await getDb().insert(surveyQuestions).values(data).returning();
+    return { ok: true as const, question: created };
   });
 
 export const setAdminSurveyActive = createServerFn({ method: "POST" })
   .middleware([adminSessionMiddleware])
   .validator(z.object({ id: z.string().uuid(), active: z.boolean() }))
   .handler(async ({ context, data }) => {
-    if (!context.adminSession || context.adminSession.role !== "admin") {
-      return { ok: false as const, kind: "not_authenticated" as const };
-    }
-    if (!isDbConfigured()) {
-      return { ok: false as const, kind: "not_configured" as const };
-    }
-    await getDb()
-      .update(surveys)
-      .set({ active: data.active, updatedAt: new Date() })
-      .where(eq(surveys.id, data.id));
+    if (!requireAdmin(context)) return { ok: false as const, kind: "not_authenticated" as const };
+    if (!isDbConfigured()) return { ok: false as const, kind: "not_configured" as const };
+    await getDb().update(surveys).set({ active: data.active, updatedAt: new Date() }).where(eq(surveys.id, data.id));
     return { ok: true as const };
   });
