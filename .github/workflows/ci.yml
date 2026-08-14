@@ -43,6 +43,9 @@ jobs:
       - name: Validate tool runtime
         run: npm run validate:tool-runtime
 
+      - name: Validate tool contract
+        run: npm run validate:tool-contract
+
       - name: Validate SEO
         run: npm run validate:seo
 
