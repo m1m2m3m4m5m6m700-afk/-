@@ -34,7 +34,8 @@ export const Route = createFileRoute("/categories/$slug")({
     };
   },
   beforeLoad: ({ params }) => {
-    if (!getCategory(params.slug as CategoryId)) throw notFound();
+    const category = getCategory(params.slug as CategoryId);
+    return category ? undefined : notFound();
   },
   component: CategorySlugRoute,
 });
