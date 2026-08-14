@@ -3,20 +3,27 @@ import ts from "typescript";
 
 const root = process.cwd();
 const source = fs.readFileSync(`${root}/src/lib/desktop-tools/catalog.ts`, "utf8");
-const transpiled = ts.transpileModule(source, {
-  compilerOptions: {
-    target: ts.ScriptTarget.ES2022,
-    module: ts.ModuleKind.ESNext,
-  },
-}).outputText;
+const extensionSource = fs.readFileSync(`${root}/src/lib/desktop-tools/extensions.ts`, "utf8");
+const transpile = (input) =>
+  ts.transpileModule(input, {
+    compilerOptions: {
+      target: ts.ScriptTarget.ES2022,
+      module: ts.ModuleKind.ESNext,
+    },
+  }).outputText;
+const importModule = async (input) => {
+  const moduleUrl = `data:text/javascript;base64,${Buffer.from(transpile(input), "utf8").toString("base64")}`;
+  return import(moduleUrl);
+};
 
-const moduleUrl = `data:text/javascript;base64,${Buffer.from(transpiled, "utf8").toString("base64")}`;
-const { desktopToolCatalog } = await import(moduleUrl);
+const { desktopToolCatalog } = await importModule(source);
+const { desktopToolExtensions } = await importModule(extensionSource);
+const allTools = [...desktopToolCatalog, ...desktopToolExtensions];
 const issues = [];
 const seenIds = new Set();
 const seenSlugs = new Set();
 
-for (const tool of desktopToolCatalog) {
+for (const tool of allTools) {
   if (seenIds.has(tool.id)) issues.push(`Duplicate id: ${tool.id}`);
   if (seenSlugs.has(tool.slug)) issues.push(`Duplicate slug: ${tool.slug}`);
   seenIds.add(tool.id);
@@ -40,12 +47,12 @@ for (const tool of desktopToolCatalog) {
   }
 }
 
-if (desktopToolCatalog.length < 120) {
-  issues.push(`Desktop tool count is ${desktopToolCatalog.length}; required minimum is 120.`);
+if (allTools.length < 120) {
+  issues.push(`Desktop tool count is ${allTools.length}; required minimum is 120.`);
 }
 
 if (issues.length > 0) {
   throw new Error(`Desktop tool validation failed with ${issues.length} issue(s).\n- ${issues.join("\n- ")}`);
 }
 
-console.log(`Desktop tool validation passed: ${desktopToolCatalog.length} tools executed successfully with sample contracts.`);
+console.log(`Desktop tool validation passed: ${allTools.length} tools executed successfully with sample contracts.`);
