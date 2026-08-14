@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ArrowRight, Lightbulb, CheckCircle2, HelpCircle } from "lucide-react";
+import { ArrowRight, Lightbulb, CheckCircle2, HelpCircle, Sparkles, Copy } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { AIPromptBox } from "./AIPromptBox";
 import { UnknownTaskDialog } from "./UnknownTaskDialog";
 import { HeroStats, QuickAccessBar, TrustBar } from "./HomeSignals";
 import { FlixoBrain, type BrainStatus, type BrainProcessResult } from "@/lib/brain";
+import { useAIGeneration } from "@/lib/ai/useAIGeneration";
 import { useI18n } from "@/lib/i18n";
 import type { TranslationKey } from "@/lib/i18n/locales/en";
 import type { CategoryId } from "@/data/categories";
@@ -23,12 +24,11 @@ export function AITaskInterface({ onRequestTool, onSelectCategory }: AITaskInter
   const { t, locale } = useI18n();
   const [prompt, setPrompt] = useState("");
   const [status, setStatus] = useState<BrainStatus>("idle");
-  const [statusText, setStatusText] = useState("Ready");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<BrainProcessResult | null>(null);
-
   const [unknownDialogOpen, setUnknownDialogOpen] = useState(false);
   const [unmatchedPrompt, setUnmatchedPrompt] = useState("");
+  const ai = useAIGeneration("ai-chat");
 
   const BRAIN_STATUS_KEY: Record<BrainStatus, TranslationKey> = {
     idle: "brain.status.idle",
@@ -41,7 +41,9 @@ export function AITaskInterface({ onRequestTool, onSelectCategory }: AITaskInter
   const localizedStatusText = result?.statusText
     ? result.matched
       ? t("brain.notify.ready")
-      : t("brain.notify.unknownLong")
+      : ai.loading
+        ? "AI is answering..."
+        : t("brain.notify.unknownLong")
     : t(BRAIN_STATUS_KEY[status]);
 
   const handleExecuteTask = async (
@@ -53,37 +55,42 @@ export function AITaskInterface({ onRequestTool, onSelectCategory }: AITaskInter
 
     setLoading(true);
     setResult(null);
+    ai.clear();
 
     const brainResult = await brain.processRequest(inputPrompt, {
       attachment,
       linkUrl,
       locale,
-      onStatusChange: (newStatus, text) => {
-        setStatus(newStatus);
-        setStatusText(text);
-      },
+      onStatusChange: (newStatus) => setStatus(newStatus),
     });
 
     setResult(brainResult);
-    setLoading(false);
 
     if (brainResult.matched && brainResult.skill) {
       if (onSelectCategory) onSelectCategory(brainResult.skill.categoryId);
       if (brainResult.skill.status === "ready" && brainResult.skill.route) {
         const targetRoute = brainResult.skill.route;
+        setLoading(false);
         setTimeout(() => {
           navigate({ to: targetRoute as "/tools/translator" });
-        }, 800);
+        }, 500);
+      } else {
+        setLoading(false);
       }
-    } else {
-      setUnmatchedPrompt(inputPrompt);
-      setUnknownDialogOpen(true);
+      return;
     }
+
+    setUnmatchedPrompt(inputPrompt);
+    // The homepage is now an AI entry point: if Flixo cannot map the request
+    // to one of its concrete tools, the free-first AI layer answers it instead
+    // of immediately forcing the user into a tool-request workflow.
+    await ai.run(inputPrompt);
+    setLoading(false);
   };
 
   const handleSelectTask = (taskPrompt: string) => {
     setPrompt(taskPrompt);
-    handleExecuteTask(taskPrompt);
+    void handleExecuteTask(taskPrompt);
   };
 
   return (
@@ -94,7 +101,7 @@ export function AITaskInterface({ onRequestTool, onSelectCategory }: AITaskInter
         onSubmit={handleExecuteTask}
         status={status}
         statusText={localizedStatusText}
-        loading={loading}
+        loading={loading || ai.loading}
       />
 
       <TrustBar />
@@ -123,11 +130,9 @@ export function AITaskInterface({ onRequestTool, onSelectCategory }: AITaskInter
                       <h3 className="text-lg font-bold text-foreground">{result.skill.name}</h3>
                     </div>
                   </div>
-
                   <p className="text-xs text-muted-foreground leading-relaxed max-w-xl">
                     {result.skill.description}
                   </p>
-
                   <div className="flex flex-wrap items-center gap-2 pt-1">
                     <span className="rounded-full bg-primary/10 border border-primary/20 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
                       {t("assistant.result.category")}: {result.skill.categoryName}
@@ -167,14 +172,9 @@ export function AITaskInterface({ onRequestTool, onSelectCategory }: AITaskInter
                     </p>
                     <div className="mt-3 grid gap-3 sm:grid-cols-2">
                       {result.alternativeSkills.map((skill) => (
-                        <div
-                          key={skill.id}
-                          className="rounded-2xl border border-border/70 bg-card/60 p-3"
-                        >
+                        <div key={skill.id} className="rounded-2xl border border-border/70 bg-card/60 p-3">
                           <p className="text-sm font-semibold text-foreground">{skill.name}</p>
-                          <p className="text-xs text-muted-foreground leading-relaxed">
-                            {skill.description}
-                          </p>
+                          <p className="text-xs text-muted-foreground leading-relaxed">{skill.description}</p>
                         </div>
                       ))}
                     </div>
@@ -182,28 +182,44 @@ export function AITaskInterface({ onRequestTool, onSelectCategory }: AITaskInter
                 )}
               </div>
             ) : (
-              <div className="flex items-center justify-between gap-3">
+              <div className="space-y-5">
                 <div className="flex items-center gap-3">
-                  <span className="grid size-9 place-items-center rounded-2xl bg-amber-500/10 text-amber-500 font-bold">
-                    <HelpCircle className="size-5" />
+                  <span className="grid size-9 place-items-center rounded-2xl bg-primary/10 text-primary">
+                    <Sparkles className="size-5" />
                   </span>
                   <div>
-                    <h4 className="text-sm font-bold text-foreground">
-                      I don't know this task yet.
-                    </h4>
-                    <p className="text-xs text-muted-foreground">
-                      We've logged your request and can prioritize adding this tool.
-                    </p>
+                    <h4 className="text-sm font-bold text-foreground">Flixo AI</h4>
+                    <p className="text-xs text-muted-foreground">No matching project tool was required, so the AI assistant answered directly.</p>
                   </div>
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setUnknownDialogOpen(true)}
-                  className="rounded-xl text-xs font-bold"
-                >
-                  Request Tool
-                </Button>
+
+                {ai.result?.ok ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-xs text-muted-foreground">{ai.result.provider} · {ai.result.model}</span>
+                      <button
+                        type="button"
+                        onClick={() => void navigator.clipboard.writeText(ai.content)}
+                        className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted"
+                      >
+                        <Copy className="size-3.5" /> Copy
+                      </button>
+                    </div>
+                    <pre className="whitespace-pre-wrap break-words rounded-2xl bg-background p-4 text-sm leading-7 text-foreground">
+                      {ai.content}
+                    </pre>
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-border/70 bg-background/60 p-4 text-sm text-muted-foreground">
+                    {ai.result?.message ?? "No AI response was available."}
+                  </div>
+                )}
+
+                <div className="flex justify-end">
+                  <Button size="sm" variant="outline" onClick={() => setUnknownDialogOpen(true)} className="rounded-xl text-xs font-bold">
+                    <HelpCircle className="me-1.5 size-4" /> Request a new tool
+                  </Button>
+                </div>
               </div>
             )}
           </motion.div>
