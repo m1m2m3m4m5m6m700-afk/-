@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Sparkles, ArrowRight, Lightbulb, CheckCircle2, HelpCircle } from "lucide-react";
+import { ArrowRight, Lightbulb, CheckCircle2, HelpCircle } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { AIPromptBox } from "./AIPromptBox";
@@ -20,7 +20,7 @@ const brain = new FlixoBrain();
 
 export function AITaskInterface({ onRequestTool, onSelectCategory }: AITaskInterfaceProps) {
   const navigate = useNavigate();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [prompt, setPrompt] = useState("");
   const [status, setStatus] = useState<BrainStatus>("idle");
   const [statusText, setStatusText] = useState("Ready");
@@ -57,6 +57,7 @@ export function AITaskInterface({ onRequestTool, onSelectCategory }: AITaskInter
     const brainResult = await brain.processRequest(inputPrompt, {
       attachment,
       linkUrl,
+      locale,
       onStatusChange: (newStatus, text) => {
         setStatus(newStatus);
         setStatusText(text);
@@ -70,7 +71,6 @@ export function AITaskInterface({ onRequestTool, onSelectCategory }: AITaskInter
       if (onSelectCategory) {
         onSelectCategory(brainResult.skill.categoryId);
       }
-      // Auto navigate if skill is ready and has a route
       if (brainResult.skill.status === "ready" && brainResult.skill.route) {
         const targetRoute = brainResult.skill.route;
         setTimeout(() => {
@@ -78,7 +78,6 @@ export function AITaskInterface({ onRequestTool, onSelectCategory }: AITaskInter
         }, 800);
       }
     } else {
-      // Trigger Unknown Task Dialog
       setUnmatchedPrompt(inputPrompt);
       setUnknownDialogOpen(true);
     }
@@ -91,7 +90,6 @@ export function AITaskInterface({ onRequestTool, onSelectCategory }: AITaskInter
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-8">
-      {/* Central Large AI Prompt Box */}
       <AIPromptBox
         prompt={prompt}
         onPromptChange={setPrompt}
@@ -105,7 +103,6 @@ export function AITaskInterface({ onRequestTool, onSelectCategory }: AITaskInter
       <HeroStats />
       <QuickAccessBar onSelect={handleSelectTask} />
 
-      {/* Matched Skill Result Card */}
       <AnimatePresence mode="wait">
         {result && !loading && (
           <motion.div
@@ -123,7 +120,7 @@ export function AITaskInterface({ onRequestTool, onSelectCategory }: AITaskInter
                     </span>
                     <div>
                       <span className="text-xs font-semibold text-emerald-500 uppercase tracking-wider block">
-                        Matched AI Skill Found
+                        {t("brain.result.matched")}
                       </span>
                       <h3 className="text-lg font-bold text-foreground">{result.skill.name}</h3>
                     </div>
@@ -135,11 +132,11 @@ export function AITaskInterface({ onRequestTool, onSelectCategory }: AITaskInter
 
                   <div className="flex flex-wrap items-center gap-2 pt-1">
                     <span className="rounded-full bg-primary/10 border border-primary/20 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
-                      Category: {result.skill.categoryName}
+                      {t("brain.result.category")}: {result.skill.categoryName}
                     </span>
                     {result.matchedKeywords.length > 0 && (
                       <span className="text-[11px] text-muted-foreground">
-                        Matched: {result.matchedKeywords.join(", ")}
+                        {t("brain.result.matched")}: {result.matchedKeywords.join(", ")}
                       </span>
                     )}
                   </div>
@@ -149,7 +146,7 @@ export function AITaskInterface({ onRequestTool, onSelectCategory }: AITaskInter
                   {result.skill.status === "ready" && result.skill.route ? (
                     <Button asChild size="sm" className="rounded-xl px-4 shadow-sm font-bold">
                       <Link to={result.skill.route as "/tools/translator"}>
-                        Open {result.skill.name}
+                        {t("brain.result.open")} {result.skill.name}
                         <ArrowRight className="ms-1.5 size-4" />
                       </Link>
                     </Button>
@@ -160,7 +157,7 @@ export function AITaskInterface({ onRequestTool, onSelectCategory }: AITaskInter
                       className="rounded-xl px-4 shadow-sm font-bold"
                     >
                       <Lightbulb className="me-1.5 size-4" />
-                      Request Priority Build
+                      {t("brain.requestPriorityBuild")}
                     </Button>
                   )}
                 </div>
@@ -168,7 +165,7 @@ export function AITaskInterface({ onRequestTool, onSelectCategory }: AITaskInter
                 {result.alternativeSkills.length > 0 && (
                   <div className="mt-5 rounded-3xl border border-border/70 bg-surface/80 p-4">
                     <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
-                      Suggested workflow
+                      {t("brain.suggestedWorkflow")}
                     </p>
                     <div className="mt-3 grid gap-3 sm:grid-cols-2">
                       {result.alternativeSkills.map((skill) => (
@@ -193,12 +190,8 @@ export function AITaskInterface({ onRequestTool, onSelectCategory }: AITaskInter
                     <HelpCircle className="size-5" />
                   </span>
                   <div>
-                    <h4 className="text-sm font-bold text-foreground">
-                      I don't know this task yet.
-                    </h4>
-                    <p className="text-xs text-muted-foreground">
-                      We've logged your request and can prioritize adding this tool.
-                    </p>
+                    <h4 className="text-sm font-bold text-foreground">{t("brain.unknown.title")}</h4>
+                    <p className="text-xs text-muted-foreground">{t("brain.unknown.body")}</p>
                   </div>
                 </div>
                 <Button
@@ -207,7 +200,7 @@ export function AITaskInterface({ onRequestTool, onSelectCategory }: AITaskInter
                   onClick={() => setUnknownDialogOpen(true)}
                   className="rounded-xl text-xs font-bold"
                 >
-                  Request Tool
+                  {t("brain.requestTool")}
                 </Button>
               </div>
             )}
@@ -215,9 +208,6 @@ export function AITaskInterface({ onRequestTool, onSelectCategory }: AITaskInter
         )}
       </AnimatePresence>
 
-      {/* The assistant interface only. */}
-
-      {/* Unknown Task Dialog */}
       <UnknownTaskDialog
         open={unknownDialogOpen}
         onOpenChange={setUnknownDialogOpen}
