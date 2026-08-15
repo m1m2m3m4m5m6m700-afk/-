@@ -1,42 +1,18 @@
 /**
- * HTTP chat handler — `POST /api/chat`, the real server-side endpoint for
- * Flixo's free Gemini chatbot (Phase 1: structured JSON, non-streaming).
+ * Server-only Flex chat handler.
  *
- * Server-only: imported only by `src/server.ts` (the Nitro server entry, where
- * the `/api/chat` path is short-circuited before reaching the TanStack Start
- * SSR handler). It never enters the client bundle — no API key or upstream
- * endpoint is ever shipped to the browser.
+ * Flex uses a free-model fleet behind one endpoint:
+ * 1) OpenRouter `openrouter/free` — dynamically selects from the currently
+ *    available free model variants and adapts to request capabilities.
+ * 2) Gemini free-tier model as a direct fallback when configured.
  *
- * Contract (request JSON):
- *   {
- *     "message": "...",           // required, the new user turn
- *     "history": [                 // optional, prior turns (no "system" role)
- *       { "role": "user", "content": "..." },
- *       { "role": "assistant", "content": "..." }
- *     ]
- *   }
- *
- * Response (structured JSON):
- *   success: { "reply": "...", "model": "gemini-2.5-flash-lite" }
- *   error:   { "error": "...", "retryable": boolean }
- *
- * Security:
- * - Reads `GEMINI_API_KEY` from the server environment via `getAIConfig()`.
- *   The key is sent only to Google's endpoint (as a `?key=` param) and is
- *   never logged, returned, or serialized.
- * - User message content is sent to Google but never logged here.
- * - Error responses carry safe, generic messages (no upstream bodies, no key).
- * - Cross-origin abuse is prevented at the server-entry layer (same-origin
- *   check), not here — this module is single-purpose and request-shaped.
- *
- * Provider/model: uses the Gemini provider resolved by `getAIConfig()`:
- * `GEMINI_MODEL` (default `gemini-2.5-flash-lite`, free-tier eligible) with
- * the existing `GEMINI_BASE_URL` fallback. No OpenAI / Anthropic.
+ * The browser never sees provider keys. User content is sent only to the
+ * selected provider, and to the fallback only when the first provider has a
+ * retryable availability/quota failure.
  */
 
-import { getAIConfig } from "../config";
+import { getAIConfig, type AIProviderConfig } from "../config";
 
-/** A single chat turn in the request. */
 interface ChatTurn {
   role: "user" | "assistant";
   content: string;
@@ -47,13 +23,12 @@ interface ChatRequestBody {
   history?: unknown;
 }
 
-/** Structured success response body. */
 interface ChatSuccessBody {
   reply: string;
   model: string;
+  provider: string;
 }
 
-/** Structured error response body. */
 interface ChatErrorBody {
   error: string;
   retryable: boolean;
@@ -63,59 +38,57 @@ const MAX_MESSAGE_CHARS = 4000;
 const MAX_TURNS = 20;
 const MAX_REPLY_CHARS = 4000;
 
-/** Gemini `generateContent` response shape (only the fields we read). */
 interface GeminiGenerateResponse {
   candidates?: Array<{
     content?: { parts?: Array<{ text?: string }> };
-    finishReason?: string;
   }>;
   promptFeedback?: { blockReason?: string };
   error?: { message?: string; status?: string };
 }
 
-/** System prompt shaping Flixo's chatbot persona. */
-const CHAT_SYSTEM_PROMPT =
-  "You are Flixo's friendly assistant, embedded as a chatbot on the Flixo " +
-  "website (a workspace of free online AI tools — text, image, audio, video, " +
-  "PDF, translation, and developer utilities). Help users briefly: explain " +
-  "what Flixo can do, suggest a relevant tool, or answer quick questions. " +
-  "Keep replies concise and friendly, ideally a few sentences. If a question " +
-  "needs a tool, point to Flixo's categories. Never invent facts. Write in the " +
-  "user's language when possible.";
-
-/** Map the wire `user`/`assistant` roles to Gemini's `user`/`model` roles. */
-function toGeminiRole(role: ChatTurn["role"]): "user" | "model" {
-  return role === "assistant" ? "model" : "user";
+interface OpenRouterResponse {
+  choices?: Array<{
+    message?: { content?: string | Array<{ type?: string; text?: string }> };
+  }>;
+  model?: string;
+  error?: { message?: string; code?: number };
 }
 
-/** Strip NUL bytes and trailing whitespace; collapse CR. */
+const CHAT_SYSTEM_PROMPT = [
+  "You are Flex, the intelligent assistant inside Flixo, a free online workspace of tools.",
+  "Be concise, practical, and honest. Reply in the user's language when possible; for Arabic, use clear modern Arabic unless the user writes in dialect.",
+  "You can explain what Flixo can do, recommend the most suitable tool, help the user formulate a task, or answer a short question.",
+  "Never claim that a tool, model, feature, or result exists unless it is known from the Flixo context you were given.",
+  "When the user asks for a Flixo action, describe the next concrete step rather than pretending the action has already happened.",
+].join(" ");
+
 function sanitizeContent(content: string): string {
   const nul = String.fromCharCode(0);
   return content.split(nul).join("").replace(/\r/g, "").trim();
 }
 
-/** A structured JSON response (200 by default with a structured body). */
 function jsonResponse(body: ChatSuccessBody | ChatErrorBody, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "content-type": "application/json; charset=utf-8" },
+    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
   });
 }
 
-/** Surface a clear "Gemini not configured" message (never a fake reply). */
 function notConfiguredResponse(): Response {
   return jsonResponse({
-    error: "The chatbot is not configured yet. Ask the site admin to set GEMINI_API_KEY.",
+    error:
+      "Flex is not configured yet. Add OPENROUTER_API_KEY or GEMINI_API_KEY in the server environment.",
     retryable: false,
   });
 }
 
-/** Validate and normalize the raw request body into chat turns. */
 function parseTurns(
   body: ChatRequestBody,
 ): { ok: true; turns: ChatTurn[] } | { ok: false; response: Response } {
   const message = typeof body.message === "string" ? body.message : "";
-  if (!sanitizeContent(message)) {
+  const cleanedMessage = sanitizeContent(message);
+
+  if (!cleanedMessage) {
     return {
       ok: false,
       response: jsonResponse({
@@ -124,7 +97,8 @@ function parseTurns(
       }),
     };
   }
-  if (message.length > MAX_MESSAGE_CHARS) {
+
+  if (cleanedMessage.length > MAX_MESSAGE_CHARS) {
     return {
       ok: false,
       response: jsonResponse({
@@ -148,92 +122,148 @@ function parseTurns(
     }
     if (turns.length > MAX_TURNS) turns.splice(0, turns.length - MAX_TURNS);
   }
-  turns.push({ role: "user", content: sanitizeContent(message) });
+
+  turns.push({ role: "user", content: cleanedMessage });
   return { ok: true, turns };
 }
 
-/**
- * Build the Gemini `contents` payload, collapsing consecutive same-role
- * messages so the alternation invariant (user/model/user/...) holds.
- */
-function buildContents(
+function toOpenRouterMessages(turns: ChatTurn[]) {
+  return [
+    { role: "system" as const, content: CHAT_SYSTEM_PROMPT },
+    ...turns.map((turn) => ({
+      role: turn.role as "user" | "assistant",
+      content: turn.content,
+    })),
+  ];
+}
+
+function buildGeminiContents(
   turns: ChatTurn[],
 ): Array<{ role: "user" | "model"; parts: Array<{ text: string }> }> {
   const contents: Array<{ role: "user" | "model"; parts: Array<{ text: string }> }> = [];
-  for (const t of turns) {
-    const role = toGeminiRole(t.role);
+  for (const turn of turns) {
+    const role = turn.role === "assistant" ? "model" : "user";
     const last = contents[contents.length - 1];
     if (last && last.role === role) {
-      last.parts[0].text += "\n\n" + t.content;
+      last.parts[0].text += `\n\n${turn.content}`;
     } else {
-      contents.push({ role, parts: [{ text: t.content }] });
+      contents.push({ role, parts: [{ text: turn.content }] });
     }
   }
   return contents;
 }
 
-/** Map a failed upstream HTTP status to a safe error response. */
-function upstreamErrorResponse(status: number): Response {
-  if (status === 429 || status === 403) {
-    return jsonResponse({
-      error:
-        "The free-tier quota for the AI provider has been exhausted or rate-limited. Please try again later.",
-      retryable: true,
-    });
-  }
-  if (status === 401) {
-    return jsonResponse({
-      error: "The AI provider rejected the API key. Ask the site admin to check GEMINI_API_KEY.",
-      retryable: false,
-    });
-  }
-  if (status >= 500) {
-    return jsonResponse({
-      error: "The AI provider is temporarily unavailable. Please try again.",
-      retryable: true,
-    });
-  }
-  return jsonResponse({
-    error: `The AI provider returned an error (status ${status}).`,
-    retryable: false,
-  });
+function extractOpenRouterText(content: OpenRouterResponse["choices"] extends Array<infer T>
+  ? T extends { message?: infer M }
+    ? M extends { content?: infer C }
+      ? C
+      : never
+    : never
+  : never): string {
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return "";
+  return content.map((part) => part.text ?? "").join("");
 }
 
-/** Map a Gemini error object (from a 200 body) to a safe error response. */
-function geminiErrorResponse(error: NonNullable<GeminiGenerateResponse["error"]>): Response {
-  const status = error.status ?? "";
-  if (status === "RESOURCE_EXHAUSTED" || /quota|rate/i.test(error.message ?? "")) {
-    return jsonResponse({
-      error: "The free-tier quota for the AI provider has been exhausted. Please try again later.",
-      retryable: true,
-    });
-  }
-  return jsonResponse({
-    error: "The AI provider returned an error while generating a response.",
-    retryable: false,
+async function callOpenRouter(
+  provider: AIProviderConfig,
+  turns: ChatTurn[],
+  signal: AbortSignal,
+): Promise<
+  | { ok: true; reply: string; model: string }
+  | { ok: false; retryable: boolean; blocked?: boolean }
+> {
+  if (!provider.apiKey) return { ok: false, retryable: false };
+
+  const response = await fetch(`${provider.baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${provider.apiKey}`,
+      "http-referer": "https://flixoai.vercel.app",
+      "x-title": "Flixo",
+    },
+    signal,
+    body: JSON.stringify({
+      model: provider.defaultModel,
+      messages: toOpenRouterMessages(turns),
+      temperature: 0.6,
+      max_tokens: 1200,
+    }),
   });
+
+  if (!response.ok) {
+    return {
+      ok: false,
+      retryable: response.status === 408 || response.status === 429 || response.status >= 500,
+    };
+  }
+
+  const data = (await response.json()) as OpenRouterResponse;
+  if (data.error) return { ok: false, retryable: false };
+
+  const reply = extractOpenRouterText(data.choices?.[0]?.message?.content).trim();
+  if (!reply) return { ok: false, retryable: true };
+
+  return {
+    ok: true,
+    reply: reply.slice(0, MAX_REPLY_CHARS),
+    model: data.model ?? provider.defaultModel,
+  };
 }
 
-/**
- * Handle `POST /api/chat`.
- *
- * @param request the incoming POST request (already same-origin-checked).
- * @returns a structured JSON `Response` (success or error).
- */
+async function callGemini(
+  provider: AIProviderConfig,
+  turns: ChatTurn[],
+  signal: AbortSignal,
+): Promise<
+  | { ok: true; reply: string; model: string }
+  | { ok: false; retryable: boolean; blocked?: boolean }
+> {
+  if (!provider.apiKey) return { ok: false, retryable: false };
+
+  const url =
+    `${provider.baseUrl}/v1beta/models/${encodeURIComponent(provider.defaultModel)}:generateContent` +
+    `?key=${encodeURIComponent(provider.apiKey)}`;
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    signal,
+    body: JSON.stringify({
+      contents: buildGeminiContents(turns),
+      systemInstruction: { parts: [{ text: CHAT_SYSTEM_PROMPT }] },
+      generationConfig: { maxOutputTokens: 1200, temperature: 0.6 },
+    }),
+  });
+
+  if (!response.ok) {
+    return {
+      ok: false,
+      retryable: response.status === 408 || response.status === 429 || response.status >= 500,
+    };
+  }
+
+  const data = (await response.json()) as GeminiGenerateResponse;
+  if (data.promptFeedback?.blockReason) return { ok: false, retryable: false, blocked: true };
+  if (data.error) {
+    const retryable =
+      data.error.status === "RESOURCE_EXHAUSTED" || /quota|rate|unavailable/i.test(data.error.message ?? "");
+    return { ok: false, retryable };
+  }
+
+  const reply =
+    data.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("").trim() ?? "";
+  if (!reply) return { ok: false, retryable: true };
+
+  return { ok: true, reply: reply.slice(0, MAX_REPLY_CHARS), model: provider.defaultModel };
+}
+
 export async function handleChatRequest(request: Request): Promise<Response> {
-  // Method guard — the server entry only routes POST here, but defend in depth.
   if (request.method !== "POST") {
-    return new Response("Method Not Allowed", {
-      status: 405,
-      headers: { allow: "POST" },
-    });
+    return new Response("Method Not Allowed", { status: 405, headers: { allow: "POST" } });
   }
 
-  const config = getAIConfig();
-  const gemini = config.providers.gemini;
-  if (!gemini?.apiKey) return notConfiguredResponse();
-
-  // Parse + validate the JSON body.
   let body: ChatRequestBody;
   try {
     body = (await request.json()) as ChatRequestBody;
@@ -243,74 +273,66 @@ export async function handleChatRequest(request: Request): Promise<Response> {
       retryable: false,
     });
   }
+
   const parsed = parseTurns(body);
   if (!parsed.ok) return parsed.response;
-  const turns = parsed.turns;
 
-  const contents = buildContents(turns);
-  if (contents.length === 0 || contents[contents.length - 1].role !== "user") {
-    return jsonResponse({
-      error: "Please send a message to continue the conversation.",
-      retryable: false,
-    });
-  }
+  const config = getAIConfig();
+  const openrouter = config.providers.openrouter;
+  const gemini = config.providers.gemini;
+  if (!openrouter?.apiKey && !gemini?.apiKey) return notConfiguredResponse();
 
-  const model = gemini.defaultModel;
-  const url =
-    `${gemini.baseUrl}/v1beta/models/${encodeURIComponent(model)}:generateContent` +
-    `?key=${encodeURIComponent(gemini.apiKey)}`;
+  const timeout = setTimeout(() => undefined, config.defaultTimeoutMs);
+  const controller = new AbortController();
 
-  const payload = JSON.stringify({
-    contents,
-    systemInstruction: { parts: [{ text: CHAT_SYSTEM_PROMPT }] },
-    generationConfig: { maxOutputTokens: 1024, temperature: 0.7 },
-  });
-
-  let upstream: Response;
   try {
-    upstream = await fetch(url, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: payload,
-    });
-  } catch {
-    return jsonResponse({
-      error: "Could not reach the AI provider. Please check your connection and try again.",
-      retryable: true,
-    });
+    const providers: Array<{
+      name: "openrouter" | "gemini";
+      config: AIProviderConfig;
+    }> = [];
+
+    if (openrouter?.apiKey) providers.push({ name: "openrouter", config: openrouter });
+    if (gemini?.apiKey) providers.push({ name: "gemini", config: gemini });
+
+    let lastRetryable = false;
+    for (const provider of providers) {
+      try {
+        const result =
+          provider.name === "openrouter"
+            ? await callOpenRouter(provider.config, parsed.turns, controller.signal)
+            : await callGemini(provider.config, parsed.turns, controller.signal);
+
+        if (result.ok) {
+          return jsonResponse({
+            reply: result.reply,
+            model: result.model,
+            provider: provider.name,
+          });
+        }
+
+        if (result.blocked) {
+          return jsonResponse({
+            error: "The AI provider blocked this request with its safety filters.",
+            retryable: false,
+          });
+        }
+        lastRetryable = result.retryable;
+        if (!result.retryable) break;
+      } catch {
+        lastRetryable = true;
+      }
+    }
+
+    return jsonResponse(
+      {
+        error: lastRetryable
+          ? "Flex's free AI providers are temporarily unavailable or rate-limited. Please try again shortly."
+          : "Flex could not generate a response with the configured free AI providers.",
+        retryable: lastRetryable,
+      },
+      200,
+    );
+  } finally {
+    clearTimeout(timeout);
   }
-
-  if (!upstream.ok) return upstreamErrorResponse(upstream.status);
-
-  let data: GeminiGenerateResponse;
-  try {
-    data = (await upstream.json()) as GeminiGenerateResponse;
-  } catch {
-    return jsonResponse({
-      error: "The AI provider returned an unreadable response.",
-      retryable: true,
-    });
-  }
-
-  if (data.error) return geminiErrorResponse(data.error);
-
-  if (data.promptFeedback?.blockReason) {
-    return jsonResponse({
-      error: "The request was blocked by the AI provider's safety filters.",
-      retryable: false,
-    });
-  }
-
-  const reply = (data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "")
-    .trim()
-    .slice(0, MAX_REPLY_CHARS);
-
-  if (!reply) {
-    return jsonResponse({
-      error: "The AI provider returned an empty response.",
-      retryable: true,
-    });
-  }
-
-  return jsonResponse({ reply, model });
 }
