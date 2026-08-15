@@ -1,101 +1,93 @@
 import { motion } from "motion/react";
+import { ArrowRight, Boxes } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { Section } from "@/components/layout/Section";
 import { sortedCategories, type CategoryId } from "@/data/categories";
 import { toolsByCategory } from "@/data/tools";
-import { cn } from "@/lib/utils";
 import { trackCategoryVisit } from "@/lib/analytics";
 import { useI18n } from "@/lib/i18n";
-import { resolveCategoryName } from "@/lib/i18n/keys";
+import { resolveCategoryName, resolveToolName } from "@/lib/i18n/keys";
 
 interface CategoryGridProps {
   highlightedCategoryId?: CategoryId | null;
   onSelectCategory?: (categoryId: CategoryId) => void;
 }
 
-/** Category cards — rendered entirely from src/data/categories.ts. */
+const FEATURED_CATEGORY_IDS: CategoryId[] = ["translation", "images", "pdf", "writing", "utilities", "developer"];
+
 export function CategoryGrid({ highlightedCategoryId, onSelectCategory }: CategoryGridProps) {
   const { t } = useI18n();
-  const handleCategoryClick = (anchor: string, id: CategoryId) => {
-    trackCategoryVisit(id);
-    onSelectCategory?.(id);
-    const element = document.getElementById(`cat-${anchor}`);
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  };
+  const categories = FEATURED_CATEGORY_IDS.map((id) => sortedCategories.find((category) => category.id === id)).filter(Boolean);
 
   return (
     <Section
       id="categories"
-      eyebrow="Category Hubs"
-      title="Every tool has a home"
-      description={`${sortedCategories.length} dedicated hubs cover the work people bring to Flixo. Jump straight to a hub or explore the full directory below.`}
+      eyebrow={t("categories.eyebrow")}
+      title={t("categories.title")}
+      description={t("categories.description")}
     >
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {sortedCategories.map((category, index) => {
+      <div className="mb-5 flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+        <Boxes className="size-4 text-primary" />
+        <span>{t("categories.toolsLabel")}</span>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {categories.map((category, index) => {
+          if (!category) return null;
           const Icon = category.icon;
-          const catTools = toolsByCategory(category.id);
-          const readyCount = catTools.filter((tool) => tool.status === "ready").length;
-          const isHighlighted = highlightedCategoryId === category.id;
+          const tools = toolsByCategory(category.id);
+          const readyTools = tools.filter((tool) => tool.status === "ready");
+          const preview = readyTools.slice(0, 4);
+          const highlighted = highlightedCategoryId === category.id;
+          const blurbKey = `category.${category.id}.blurb` as Parameters<typeof t>[0];
+          const translatedBlurb = t(blurbKey);
+          const blurb = translatedBlurb === blurbKey ? t("categories.description") : translatedBlurb;
 
           return (
-            <motion.a
+            <motion.div
               key={category.id}
-              href={`#cat-${category.anchor}`}
-              onClick={(e) => {
-                e.preventDefault();
-                handleCategoryClick(category.anchor, category.id);
-              }}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 16 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: index * 0.03 }}
-              whileHover={{ y: -4, scale: 1.01 }}
-              whileTap={{ scale: 0.99 }}
-              className={cn(
-                "group relative flex h-full flex-col justify-between rounded-2xl border p-5 backdrop-blur-md transition-all duration-300",
-                isHighlighted
-                  ? "border-primary bg-primary/10 ring-2 ring-primary/50 shadow-lift"
-                  : "border-border/70 bg-card/70 hover:border-primary/40 hover:bg-card hover:shadow-lift",
-              )}
+              transition={{ duration: 0.3, delay: index * 0.04 }}
             >
-              <div>
-                {/* Header icon & badge */}
+              <Link
+                to="/categories/$slug"
+                params={{ slug: category.id }}
+                onClick={() => {
+                  trackCategoryVisit(category.id);
+                  onSelectCategory?.(category.id);
+                }}
+                className={`group flex h-full flex-col rounded-3xl border p-5 transition-all hover:-translate-y-1 hover:border-primary/40 hover:bg-card hover:shadow-lift ${
+                  highlighted ? "border-primary bg-primary/10 ring-2 ring-primary/30" : "border-border/70 bg-card/70"
+                }`}
+              >
                 <div className="flex items-start justify-between gap-3">
-                  <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                  <span className="grid size-11 place-items-center rounded-2xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground">
                     <Icon className="size-5" />
                   </span>
-                  <span
-                    className={cn(
-                      "rounded-full px-2.5 py-1 text-[11px] font-medium shadow-xs",
-                      readyCount > 0
-                        ? "bg-primary/15 text-primary border border-primary/30"
-                        : "bg-muted text-muted-foreground border border-border/50",
-                    )}
-                  >
-                    {readyCount > 0 ? `${readyCount} Ready` : "Coming soon"}
+                  <span className="rounded-full border border-border/70 bg-muted/50 px-2.5 py-1 text-[10px] font-bold text-muted-foreground">
+                    {readyTools.length} {t("categories.status.live")}
                   </span>
                 </div>
 
-                {/* Title & Description */}
-                <h3 className="mt-4 text-base font-semibold text-foreground group-hover:text-primary transition-colors">
-                  {resolveCategoryName(category.id, t)}
-                </h3>
-                <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground line-clamp-2">
-                  {category.description}
-                </p>
-              </div>
+                <h3 className="mt-4 text-lg font-black tracking-tight">{resolveCategoryName(category.id, t)}</h3>
+                <p className="mt-1.5 line-clamp-2 text-xs leading-5 text-muted-foreground">{blurb}</p>
 
-              {/* Footer Tool count */}
-              <div className="mt-5 flex items-center justify-between border-t border-border/40 pt-3">
-                <span className="text-[11px] font-mono text-muted-foreground/70 uppercase tracking-wider">
-                  {readyCount} {readyCount === 1 ? "tool" : "tools"}
+                <div className="mt-4 flex flex-wrap gap-1.5">
+                  {preview.map((tool) => (
+                    <span key={tool.id} className="rounded-full border border-border/70 bg-background/70 px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">
+                      {resolveToolName(tool.slug || tool.id, t)}
+                    </span>
+                  ))}
+                </div>
+
+                <span className="mt-auto inline-flex items-center gap-1.5 pt-5 text-xs font-bold text-primary">
+                  {t("hero.browse")}
+                  <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5 rtl:-scale-x-100" />
                 </span>
-                <span className="text-[11px] font-medium text-primary opacity-0 transition-opacity group-hover:opacity-100">
-                  Explore →
-                </span>
-              </div>
-            </motion.a>
+              </Link>
+            </motion.div>
           );
         })}
       </div>
