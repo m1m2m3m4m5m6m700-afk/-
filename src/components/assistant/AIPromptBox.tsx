@@ -11,7 +11,8 @@ import {
   Loader2,
   CheckCircle2,
   HelpCircle,
-  Wand2,
+  Bot,
+  Send,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,11 @@ const EXAMPLE_PROMPTS = [
   "Generate source code",
 ];
 
+interface FlexMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
 interface AIPromptBoxProps {
   prompt: string;
   onPromptChange: (value: string) => void;
@@ -47,6 +53,12 @@ interface AIPromptBoxProps {
   loading: boolean;
 }
 
+const MAX_FLEX_HISTORY = 12;
+
+function appendFlexMessage(messages: FlexMessage[], message: FlexMessage): FlexMessage[] {
+  return [...messages, message].slice(-MAX_FLEX_HISTORY);
+}
+
 export function AIPromptBox({
   prompt,
   onPromptChange,
@@ -55,12 +67,14 @@ export function AIPromptBox({
   statusText,
   loading,
 }: AIPromptBoxProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const [pastedLink, setPastedLink] = useState<string>("");
   const [linkPopoverOpen, setLinkPopoverOpen] = useState<boolean>(false);
   const [tempLink, setTempLink] = useState<string>("");
   const [isDragging, setIsDragging] = useState(false);
+  const [flexMessages, setFlexMessages] = useState<FlexMessage[]>([]);
+  const [flexLoading, setFlexLoading] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -87,6 +101,46 @@ export function AIPromptBox({
         : undefined,
       pastedLink || undefined,
     );
+  };
+
+  const handleAskFlex = async () => {
+    const text = prompt.trim();
+    if (!text || flexLoading) return;
+
+    const nextMessages = appendFlexMessage(flexMessages, { role: "user", content: text });
+    setFlexMessages(nextMessages);
+    setFlexLoading(true);
+
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          message: text,
+          history: nextMessages.slice(0, -1),
+        }),
+      });
+
+      const payload = (await response.json()) as { reply?: string; error?: string };
+      const reply =
+        payload.reply?.trim() ||
+        payload.error ||
+        (locale === "ar" ? "لم يتمكن Flex من الإجابة الآن." : "Flex could not answer right now.");
+
+      setFlexMessages((current) => appendFlexMessage(current, { role: "assistant", content: reply }));
+    } catch {
+      setFlexMessages((current) =>
+        appendFlexMessage(current, {
+          role: "assistant",
+          content:
+            locale === "ar"
+              ? "تعذر الاتصال بخدمة Flex حاليًا."
+              : "Flex could not reach the AI service right now.",
+        }),
+      );
+    } finally {
+      setFlexLoading(false);
+    }
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -118,7 +172,6 @@ export function AIPromptBox({
 
   return (
     <div className="w-full max-w-3xl mx-auto space-y-3">
-      {/* Animated AI Status Badge */}
       <AnimatePresence mode="wait">
         {status !== "idle" && (
           <motion.div
@@ -151,7 +204,6 @@ export function AIPromptBox({
         )}
       </AnimatePresence>
 
-      {/* Main Container */}
       <div
         className={`relative rounded-3xl border bg-card/80 p-3 shadow-lift backdrop-blur-xl transition-all duration-300 focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/20 ${
           isDragging ? "border-primary/60 bg-primary/10" : "border-border/80"
@@ -160,7 +212,6 @@ export function AIPromptBox({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
-        {/* Attachment Chips Bar */}
         {(attachedFile || pastedLink) && (
           <div className="flex flex-wrap items-center gap-2 px-3 pt-1 pb-2 border-b border-border/50">
             {attachedFile && (
@@ -191,7 +242,27 @@ export function AIPromptBox({
           </div>
         )}
 
-        {/* Textarea Input */}
+        {flexMessages.length > 0 && (
+          <div className="mb-2 max-h-48 space-y-2 overflow-y-auto border-b border-border/40 px-3 py-2">
+            {flexMessages.slice(-4).map((message, index) => (
+              <div
+                key={`${message.role}-${index}-${message.content.slice(0, 16)}`}
+                className={
+                  message.role === "user"
+                    ? "ms-8 rounded-2xl bg-primary/10 px-3 py-2 text-xs text-foreground"
+                    : "me-8 rounded-2xl border border-primary/10 bg-background/70 px-3 py-2 text-xs leading-relaxed text-muted-foreground"
+                }
+              >
+                <div className="mb-1 flex items-center gap-1.5 font-bold text-foreground">
+                  {message.role === "assistant" ? <Bot className="size-3.5 text-primary" /> : null}
+                  {message.role === "assistant" ? "Flex" : locale === "ar" ? "أنت" : "You"}
+                </div>
+                <div className="whitespace-pre-wrap">{message.content}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="px-2 pt-2">
           <label htmlFor="ai-task-input" className="sr-only">
             {t("brain.input.label")}
@@ -214,7 +285,6 @@ export function AIPromptBox({
               type="button"
               onClick={() => {
                 onPromptChange(example);
-                handleTriggerSubmit();
               }}
               className="rounded-2xl border border-border/70 bg-surface/80 px-3 py-2 text-left text-xs font-medium text-muted-foreground transition-all duration-200 hover:border-primary/40 hover:bg-card"
             >
@@ -223,13 +293,10 @@ export function AIPromptBox({
           ))}
         </div>
 
-        {/* Control Bar inside input */}
-        <div className="mt-2 flex items-center justify-between gap-2 border-t border-border/40 pt-2 px-1">
-          <div className="flex items-center gap-1">
-            {/* Hidden file input */}
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-border/40 pt-2 px-1">
+          <div className="flex flex-wrap items-center gap-1">
             <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
 
-            {/* Upload File Button */}
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -248,7 +315,6 @@ export function AIPromptBox({
               </Tooltip>
             </TooltipProvider>
 
-            {/* Drag / Drop hint */}
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -266,7 +332,6 @@ export function AIPromptBox({
               </Tooltip>
             </TooltipProvider>
 
-            {/* Paste Link Button */}
             <Popover open={linkPopoverOpen} onOpenChange={setLinkPopoverOpen}>
               <PopoverTrigger asChild>
                 <Button
@@ -281,9 +346,7 @@ export function AIPromptBox({
               </PopoverTrigger>
               <PopoverContent className="w-80 rounded-2xl p-3 shadow-lg" align="start">
                 <div className="space-y-2">
-                  <h4 className="text-xs font-bold text-foreground">
-                    {t("brain.input.linkTitle")}
-                  </h4>
+                  <h4 className="text-xs font-bold text-foreground">{t("brain.input.linkTitle")}</h4>
                   <div className="flex gap-1.5">
                     <Input
                       placeholder="https://example.com/file"
@@ -303,7 +366,6 @@ export function AIPromptBox({
               </PopoverContent>
             </Popover>
 
-            {/* Voice Button (Disabled placeholder) */}
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -323,26 +385,43 @@ export function AIPromptBox({
             </TooltipProvider>
           </div>
 
-          {/* Submit Action */}
-          <Button
-            type="button"
-            onClick={handleTriggerSubmit}
-            disabled={loading || (!prompt.trim() && !attachedFile && !pastedLink)}
-            className="rounded-2xl px-4 py-2 text-xs font-bold shadow-sm transition-all duration-200"
-          >
-            {loading ? (
-              <span className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void handleAskFlex()}
+              disabled={flexLoading || !prompt.trim()}
+              className="rounded-2xl border-primary/30 px-4 py-2 text-xs font-bold text-primary hover:bg-primary/10"
+              aria-label="Ask Flex"
+            >
+              {flexLoading ? (
                 <Loader2 className="size-4 animate-spin" />
-                <span>{t("brain.input.processing")}</span>
-              </span>
-            ) : (
-              <span className="flex items-center gap-1.5">
-                <Sparkles className="size-4" />
-                <span>{t("brain.input.execute")}</span>
-                <CornerDownLeft className="size-3 opacity-70 ms-1 hidden sm:inline" />
-              </span>
-            )}
-          </Button>
+              ) : (
+                <Send className="size-4" />
+              )}
+              <span>{locale === "ar" ? "اسأل Flex" : "Ask Flex"}</span>
+            </Button>
+
+            <Button
+              type="button"
+              onClick={handleTriggerSubmit}
+              disabled={loading || (!prompt.trim() && !attachedFile && !pastedLink)}
+              className="rounded-2xl px-4 py-2 text-xs font-bold shadow-sm transition-all duration-200"
+            >
+              {loading ? (
+                <span className="flex items-center gap-1.5">
+                  <Loader2 className="size-4 animate-spin" />
+                  <span>{t("brain.input.processing")}</span>
+                </span>
+              ) : (
+                <span className="flex items-center gap-1.5">
+                  <Sparkles className="size-4" />
+                  <span>{t("brain.input.execute")}</span>
+                  <CornerDownLeft className="size-3 opacity-70 ms-1 hidden sm:inline" />
+                </span>
+              )}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
