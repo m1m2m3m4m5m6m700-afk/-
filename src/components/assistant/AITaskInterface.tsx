@@ -21,25 +21,58 @@ export function AITaskInterface() {
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  useEffect(() => { try { const stored = JSON.parse(sessionStorage.getItem(storageKey) ?? "[]") as Message[]; setMessages(Array.isArray(stored) ? stored.slice(-MAX_HISTORY) : []); } catch { setMessages([]); } }, [storageKey]);
-  useEffect(() => { try { sessionStorage.setItem(storageKey, JSON.stringify(messages.slice(-MAX_HISTORY))); } catch {} endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, storageKey]);
-  const newChat = () => { setMessages([]); setInput(""); setError(null); try { sessionStorage.removeItem(storageKey); } catch {} inputRef.current?.focus(); };
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(sessionStorage.getItem(storageKey) ?? "[]") as Message[];
+      setMessages(Array.isArray(stored) ? stored.slice(-MAX_HISTORY) : []);
+    } catch {
+      setMessages([]);
+    }
+  }, [storageKey]);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(storageKey, JSON.stringify(messages.slice(-MAX_HISTORY)));
+    } catch {
+      // Session storage can be unavailable in privacy-restricted browser contexts.
+    }
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, storageKey]);
+
+  const newChat = () => {
+    setMessages([]);
+    setInput("");
+    setError(null);
+    try {
+      sessionStorage.removeItem(storageKey);
+    } catch {
+      // Ignore storage failures; clearing in-memory state is still effective.
+    }
+    inputRef.current?.focus();
+  };
 
   const send = async (preset?: string) => {
     const text = (preset ?? input).trim();
     if (!text || loading) return;
     const history = messages.slice(-MAX_HISTORY).map(({ role, content }) => ({ role, content }));
     const userMessage: Message = { id: `u-${Date.now()}`, role: "user", content: text };
-    setMessages((current) => [...current, userMessage].slice(-MAX_HISTORY)); setInput(""); setError(null); setLoading(true);
+    setMessages((current) => [...current, userMessage].slice(-MAX_HISTORY));
+    setInput("");
+    setError(null);
+    setLoading(true);
     try {
       const response = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ message: text, history, locale }) });
       const data = (await response.json()) as { reply?: string; error?: string };
       if (!response.ok || !data.reply) throw new Error(data.error || "Flex is temporarily unavailable.");
       const assistantMessage: Message = { id: `a-${Date.now()}`, role: "assistant", content: data.reply };
       setMessages((current) => [...current, assistantMessage].slice(-MAX_HISTORY));
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "Flex is temporarily unavailable."); }
-    finally { setLoading(false); }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Flex is temporarily unavailable.");
+    } finally {
+      setLoading(false);
+    }
   };
+
   const submit = (event: React.FormEvent) => { event.preventDefault(); void send(); };
   const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void send(); } };
   const suggestions = [t("assistant.suggestion.translation"), t("assistant.suggestion.writing"), t("assistant.suggestion.utilities")];
