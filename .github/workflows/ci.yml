@@ -42,6 +42,9 @@ jobs:
       - name: Validate cross-layer integration contract
         run: npm run validate:integration
 
+      - name: Validate canonical tool contract
+        run: npm run validate:tool-contract
+
       - name: Install Chromium for operational tests
         run: npx playwright install --with-deps chromium
 
