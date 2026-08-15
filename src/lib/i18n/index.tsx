@@ -1,55 +1,91 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { en, type Dictionary, type TranslationKey } from "./locales/en";
+export type { Dictionary };
 import { ar } from "./locales/ar";
-import { bn } from "./locales/bn";
-import { cs } from "./locales/cs";
-import { de } from "./locales/de";
-import { el } from "./locales/el";
-import { en } from "./locales/en";
 import { es } from "./locales/es";
-import { fa } from "./locales/fa";
 import { fr } from "./locales/fr";
-import { he } from "./locales/he";
-import { hi } from "./locales/hi";
-import { id } from "./locales/id";
+import { de } from "./locales/de";
+import { pt } from "./locales/pt";
 import { it } from "./locales/it";
+import { nl } from "./locales/nl";
+import { sv } from "./locales/sv";
+import { pl } from "./locales/pl";
+import { tr } from "./locales/tr";
+import { ro } from "./locales/ro";
+import { cs } from "./locales/cs";
+import { uk } from "./locales/uk";
+import { el } from "./locales/el";
+import { he } from "./locales/he";
+import { fa } from "./locales/fa";
+import { ru } from "./locales/ru";
+import { ms } from "./locales/ms";
+import { zhCN } from "./locales/zh-CN";
 import { ja } from "./locales/ja";
 import { ko } from "./locales/ko";
-import { ms } from "./locales/ms";
-import { nl } from "./locales/nl";
-import { pl } from "./locales/pl";
-import { pt } from "./locales/pt";
-import { ro } from "./locales/ro";
-import { ru } from "./locales/ru";
-import { sv } from "./locales/sv";
+import { hi } from "./locales/hi";
+import { bn } from "./locales/bn";
 import { th } from "./locales/th";
-import { tr } from "./locales/tr";
-import { uk } from "./locales/uk";
 import { vi } from "./locales/vi";
-import { zhCN } from "./locales/zh-CN";
+import { id } from "./locales/id";
 
-export type LocaleCode = "en" | "ar" | "es" | "fr" | "de" | "pt" | "it" | "nl" | "pl" | "sv" | "tr" | "ro" | "uk" | "ru" | "ms" | "id" | "vi" | "zh-CN" | "ja" | "ko" | "el" | "cs" | "th" | "hi" | "he" | "fa" | "bn";
-export type Dictionary = typeof en;
+export type LocaleCode = "en" | "ar" | "es" | "zh-CN" | "hi" | "pt" | "fr" | "de" | "ja" | "ko" | "tr" | "it" | "vi" | "id" | "th" | "pl" | "nl" | "sv" | "uk" | "ro" | "el" | "cs" | "he" | "bn" | "fa" | "ru" | "ms";
+export type Direction = "ltr" | "rtl";
+export interface LocaleMeta { code: LocaleCode; label: string; dir: Direction; }
 
-export const LOCALES: Array<{ code: LocaleCode; nativeName: string; dir: "ltr" | "rtl" }> = [
-  { code: "en", nativeName: "English", dir: "ltr" }, { code: "ar", nativeName: "العربية", dir: "rtl" }, { code: "es", nativeName: "Español", dir: "ltr" }, { code: "fr", nativeName: "Français", dir: "ltr" }, { code: "de", nativeName: "Deutsch", dir: "ltr" }, { code: "pt", nativeName: "Português", dir: "ltr" }, { code: "it", nativeName: "Italiano", dir: "ltr" }, { code: "nl", nativeName: "Nederlands", dir: "ltr" }, { code: "pl", nativeName: "Polski", dir: "ltr" }, { code: "sv", nativeName: "Svenska", dir: "ltr" }, { code: "tr", nativeName: "Türkçe", dir: "ltr" }, { code: "ro", nativeName: "Română", dir: "ltr" }, { code: "uk", nativeName: "Українська", dir: "ltr" }, { code: "ru", nativeName: "Русский", dir: "ltr" }, { code: "ms", nativeName: "Bahasa Melayu", dir: "ltr" }, { code: "id", nativeName: "Bahasa Indonesia", dir: "ltr" }, { code: "vi", nativeName: "Tiếng Việt", dir: "ltr" }, { code: "zh-CN", nativeName: "简体中文", dir: "ltr" }, { code: "ja", nativeName: "日本語", dir: "ltr" }, { code: "ko", nativeName: "한국어", dir: "ltr" }, { code: "el", nativeName: "Ελληνικά", dir: "ltr" }, { code: "cs", nativeName: "Čeština", dir: "ltr" }, { code: "th", nativeName: "ไทย", dir: "ltr" }, { code: "hi", nativeName: "हिन्दी", dir: "ltr" }, { code: "he", nativeName: "עברית", dir: "rtl" }, { code: "fa", nativeName: "فارسی", dir: "rtl" }, { code: "bn", nativeName: "বাংলা", dir: "ltr" },
+export const LOCALES: LocaleMeta[] = [
+  { code: "en", label: "English", dir: "ltr" },
+  { code: "ar", label: "العربية", dir: "rtl" },
+  { code: "es", label: "Español", dir: "ltr" },
+  { code: "zh-CN", label: "中文", dir: "ltr" },
+  { code: "hi", label: "हिन्दी", dir: "ltr" },
+  { code: "pt", label: "Português", dir: "ltr" },
+  { code: "fr", label: "Français", dir: "ltr" },
+  { code: "de", label: "Deutsch", dir: "ltr" },
+  { code: "ja", label: "日本語", dir: "ltr" },
+  { code: "ko", label: "한국어", dir: "ltr" },
+  { code: "tr", label: "Türkçe", dir: "ltr" },
+  { code: "it", label: "Italiano", dir: "ltr" },
+  { code: "vi", label: "Tiếng Việt", dir: "ltr" },
+  { code: "id", label: "Bahasa Indonesia", dir: "ltr" },
+  { code: "th", label: "ไทย", dir: "ltr" },
+  { code: "pl", label: "Polski", dir: "ltr" },
+  { code: "nl", label: "Nederlands", dir: "ltr" },
+  { code: "sv", label: "Svenska", dir: "ltr" },
+  { code: "uk", label: "Українська", dir: "ltr" },
+  { code: "ro", label: "Română", dir: "ltr" },
+  { code: "el", label: "Ελληνικά", dir: "ltr" },
+  { code: "cs", label: "Čeština", dir: "ltr" },
+  { code: "he", label: "עברית", dir: "rtl" },
+  { code: "bn", label: "বাংলা", dir: "ltr" },
+  { code: "fa", label: "فارسی", dir: "rtl" },
+  { code: "ru", label: "Русский", dir: "ltr" },
+  { code: "ms", label: "Bahasa Melayu", dir: "ltr" },
 ];
 
-export const DICTIONARIES: Record<LocaleCode, Dictionary> = { en, ar, es, fr, de, pt, it, nl, pl, sv, tr, ro, uk, ru, ms, id, vi, "zh-CN": zhCN, ja, ko, el, cs, th, hi, he, fa, bn } as Record<LocaleCode, Dictionary>;
+const DICTIONARIES: Record<LocaleCode, Dictionary> = { en, ar, es, "zh-CN": zhCN, hi, pt, fr, de, ja, ko, tr, it, vi, id, th, pl, nl, sv, uk, ro, el, cs, he, bn, fa, ru, ms };
 export const DEFAULT_LOCALE: LocaleCode = "en";
-const LOCALE_STORAGE_KEY = "flixo_locale";
-export const STRICT_DICTIONARY_LOCALES = new Set<LocaleCode>(LOCALES.filter(({ code }) => code !== "en").map(({ code }) => code));
+export const LOCALE_STORAGE_KEY = "flixo-lang";
+const LOCALE_CODES = new Set<string>(LOCALES.map((l) => l.code));
 
-export const localeMeta = (locale: LocaleCode) => LOCALES.find((item) => item.code === locale) ?? LOCALES[0];
-export const isSupportedLocale = (value: string | undefined): value is LocaleCode => LOCALES.some(({ code }) => code === value);
+export const STRICT_DICTIONARY_LOCALES = new Set<LocaleCode>(
+  LOCALES.filter((l) => l.code !== "en").map((l) => l.code),
+);
 
-function interpolate(value: string, vars?: Record<string, string | number>) {
-  if (!vars) return value;
-  return Object.entries(vars).reduce((result, [key, replacement]) => result.replace(new RegExp(`\\{${key}\\}`, "g"), String(replacement)), value);
+export function localeMeta(code: LocaleCode): LocaleMeta { return LOCALES.find((l) => l.code === code) ?? LOCALES[0]; }
+export function isSupportedLocale(code: string | undefined | null): code is LocaleCode { return typeof code === "string" && LOCALE_CODES.has(code); }
+export function localeFromPathname(pathname: string): LocaleCode {
+  if (!pathname || pathname === "/") return DEFAULT_LOCALE;
+  const candidate = pathname.split("/").filter(Boolean)[0];
+  return isSupportedLocale(candidate) && candidate !== DEFAULT_LOCALE ? candidate : DEFAULT_LOCALE;
 }
 
-function translateFromDictionary(locale: LocaleCode, dictionary: Dictionary, key: keyof Dictionary, vars?: Record<string, string | number>) {
-  const value = dictionary[key];
-  if (typeof value === "string") return interpolate(value, vars);
+type Vars = Record<string, string | number>;
+interface I18nValue { locale: LocaleCode; dir: Direction; setLocale: (code: LocaleCode) => void; t: (key: TranslationKey, vars?: Vars) => string; }
+const I18nContext = createContext<I18nValue>({ locale: DEFAULT_LOCALE, dir: "ltr", setLocale: () => {}, t: (key) => en[key] ?? key });
+function interpolate(template: string, vars?: Vars) { return !vars ? template : template.replace(/\{(\w+)\}/g, (match, name: string) => name in vars ? String(vars[name]) : match); }
+function translateFromDictionary(locale: LocaleCode, dict: Dictionary, key: TranslationKey, vars?: Vars): string {
+  const localized = dict[key];
+  if (localized !== undefined && localized !== "") return interpolate(localized, vars);
   if (STRICT_DICTIONARY_LOCALES.has(locale)) {
     const message = `[${locale}] Missing translation key: ${String(key)}`;
     if (import.meta.env?.DEV) console.error(message);
@@ -58,62 +94,43 @@ function translateFromDictionary(locale: LocaleCode, dictionary: Dictionary, key
   return interpolate(en[key] ?? key, vars);
 }
 
-type I18nValue = { locale: LocaleCode; dir: "ltr" | "rtl"; setLocale: (code: LocaleCode) => void; t: (key: keyof Dictionary, vars?: Record<string, string | number>) => string };
-const I18nContext = createContext<I18nValue | null>(null);
-
-export function useI18n() {
-  const value = useContext(I18nContext);
-  if (!value) throw new Error("useI18n must be used within I18nProvider");
-  return value;
-}
-
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<LocaleCode>(DEFAULT_LOCALE);
   useEffect(() => {
     let next: LocaleCode | null = null;
-    try {
-      const stored = localStorage.getItem(LOCALE_STORAGE_KEY) as LocaleCode | null;
-      if (stored && LOCALES.some((l) => l.code === stored)) next = stored;
-    } catch (cause) {
-      if (import.meta.env?.DEV) console.debug("Could not read saved locale", cause);
-    }
+    try { const stored = localStorage.getItem(LOCALE_STORAGE_KEY) as LocaleCode | null; if (stored && LOCALES.some((l) => l.code === stored)) next = stored; } catch (cause) { if (import.meta.env?.DEV) console.debug("Could not read saved locale", cause); }
     if (!next) next = detectBrowserLocale();
     if (next && next !== DEFAULT_LOCALE) setLocaleState(next);
   }, []);
   const dir = localeMeta(locale).dir;
   useEffect(() => { document.documentElement.setAttribute("lang", locale); document.documentElement.setAttribute("dir", dir); }, [locale, dir]);
-  const setLocale = useCallback((code: LocaleCode) => {
-    setLocaleState(code);
-    try {
-      localStorage.setItem(LOCALE_STORAGE_KEY, code);
-    } catch (cause) {
-      if (import.meta.env?.DEV) console.debug("Could not save locale", cause);
-    }
-  }, []);
-  const value = useMemo<I18nValue>(() => {
-    const dict = DICTIONARIES[locale];
-    return { locale, dir, setLocale, t: (key, vars) => translateFromDictionary(locale, dict, key, vars) };
-  }, [locale, dir, setLocale]);
+  const setLocale = useCallback((code: LocaleCode) => { setLocaleState(code); try { localStorage.setItem(LOCALE_STORAGE_KEY, code); } catch (cause) { if (import.meta.env?.DEV) console.debug("Could not save locale", cause); } }, []);
+  const value = useMemo<I18nValue>(() => { const dict = DICTIONARIES[locale]; return { locale, dir, setLocale, t: (key, vars) => translateFromDictionary(locale, dict, key, vars) }; }, [locale, dir, setLocale]);
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }
 
 function detectBrowserLocale(): LocaleCode | null {
   if (typeof navigator === "undefined") return null;
   const candidates = navigator.languages?.length ? navigator.languages : [navigator.language];
-  for (const candidate of candidates) {
-    const exact = candidate as LocaleCode;
-    if (isSupportedLocale(exact)) return exact;
-    const base = candidate.split("-")[0] as LocaleCode;
-    if (isSupportedLocale(base)) return base;
+  for (const raw of candidates) {
+    if (!raw) continue;
+    const normalized = raw.toLowerCase();
+    const exact = LOCALES.find((l) => l.code.toLowerCase() === normalized);
+    if (exact) return exact.code;
+    const primary = normalized.split("-")[0];
+    const prefix = LOCALES.find((l) => l.code.toLowerCase() === primary);
+    if (prefix) return prefix.code;
   }
   return null;
 }
 
 export function LocalI18nProvider({ locale, children }: { locale: LocaleCode; children: ReactNode }) {
-  const dict = DICTIONARIES[locale];
+  const parent = useI18n();
   const dir = localeMeta(locale).dir;
-  useEffect(() => { document.documentElement.setAttribute("lang", locale); document.documentElement.setAttribute("dir", dir); }, [locale, dir]);
-  const setLocale = useCallback(() => undefined, []);
-  const value = useMemo<I18nValue>(() => ({ locale, dir, setLocale, t: (key, vars) => translateFromDictionary(locale, dict, key, vars) }), [locale, dir, setLocale, dict]);
+  useEffect(() => { if (typeof document !== "undefined") { document.documentElement.setAttribute("lang", locale); document.documentElement.setAttribute("dir", dir); } }, [locale, dir]);
+  const value = useMemo<I18nValue>(() => { const dict = DICTIONARIES[locale]; return { locale, dir, setLocale: parent.setLocale, t: (key, vars) => translateFromDictionary(locale, dict, key, vars) }; }, [locale, dir, parent.setLocale]);
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }
+
+export const useI18n = () => useContext(I18nContext);
+export type { TranslationKey };
