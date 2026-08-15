@@ -4,7 +4,7 @@ import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
 import { useTheme } from "@/lib/theme";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type MouseEvent } from "react";
 
 export function Navbar() {
   const { theme, toggleTheme } = useTheme();
@@ -19,7 +19,7 @@ export function Navbar() {
     };
   }, []);
 
-  const handleLogoClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+  const handleLogoClick = (event: MouseEvent<HTMLAnchorElement>) => {
     logoClicksRef.current += 1;
     if (resetTimerRef.current !== null) window.clearTimeout(resetTimerRef.current);
     resetTimerRef.current = window.setTimeout(() => {
