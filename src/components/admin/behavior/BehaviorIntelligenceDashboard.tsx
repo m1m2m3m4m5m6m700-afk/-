@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Activity,
   BarChart3,
@@ -72,7 +72,7 @@ export function BehaviorIntelligenceDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [newSurvey, setNewSurvey] = useState({ slug: "", title: "", description: "", targetLocale: "" });
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -89,11 +89,11 @@ export function BehaviorIntelligenceDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [days]);
 
   useEffect(() => {
     void load();
-  }, [days]);
+  }, [load]);
 
   const loadSurveyResults = async (surveyId: string) => {
     setSelectedSurveyId(surveyId);
