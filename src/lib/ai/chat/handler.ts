@@ -1,6 +1,7 @@
 import { getAIConfig, type AIProviderConfig } from "../config";
 import { tools } from "@/data/tools";
 import { categoryById } from "@/data/categories";
+import { isFeatureEnabled } from "@/lib/feature-flags";
 
 interface ChatTurn {
   role: "user" | "assistant";
@@ -53,7 +54,7 @@ function parseTurns(body: ChatRequestBody): { ok:true; turns:ChatTurn[]; locale:
     if (turns.length > MAX_TURNS) turns.splice(0, turns.length - MAX_TURNS);
   }
   turns.push({ role:"user", content:cleanedMessage });
-  return { ok:true, turns, locale:normalizeLocale(body.locale) };
+  return { ok:true; turns, locale:normalizeLocale(body.locale) };
 }
 
 function toOpenRouterMessages(turns:ChatTurn[], locale:string|null) { return [{ role:"system" as const, content:localizedSystemPrompt(locale) }, ...turns.map((turn)=>({ role:turn.role as "user"|"assistant", content:turn.content }))]; }
@@ -67,17 +68,20 @@ function extractOpenRouterText(content:OpenRouterContent|undefined):string { if(
 function buildFlixoContext(message:string):string {
   const q = message.toLowerCase();
   const categoryEntries = [...categoryById.values()].map((c)=>`${c.name}: ${c.description}`).join("\n");
-  const scored = tools.map((tool)=>{
+  const scored = tools.filter((tool)=>tool.status === "ready" && Boolean(tool.slug)).map((tool)=>{
     const hay = `${tool.name} ${tool.description} ${tool.slug}`.toLowerCase();
     const words = q.split(/[^\p{L}\p{N}]+/u).filter((w)=>w.length>=3);
     const score = words.reduce((sum,w)=>sum + (hay.includes(w) ? 1 : 0),0);
     return { tool, score };
   }).filter((item)=>item.score>0).sort((a,b)=>b.score-a.score).slice(0,8);
-  const toolLines = scored.length ? scored.map(({tool})=>`- ${tool.name} (${tool.slug}) — ${tool.description}`).join("\n") : "No close tool match found; discuss the task normally and only recommend a tool when justified.";
-  return `[Flixo catalog context]\nCategories:\n${categoryEntries}\nRelevant tools:\n${toolLines}`;
+  const toolLines = scored.length ? scored.map(({tool})=>`- ${tool.name} (${tool.slug}) — ${tool.description}`).join("\n") : "No close runtime-ready tool match found; discuss the task normally and only recommend a tool when justified.";
+  return `[Flixo catalog context]\nCategories:\n${categoryEntries}\nRelevant runtime-ready tools:\n${toolLines}`;
 }
 
-function shouldWebSearch(message:string):boolean { return /(search the web|search online|on the internet|web search|google it|latest|today|tonight|current|recent|news|price today|ابحث|الإنترنت|الانترنت|آخر|اليوم|حاليا|حديث|الأخبار|السعر الآن|الاخبار)/i.test(message); }
+function shouldWebSearch(message:string):boolean {
+  if (!isFeatureEnabled("webResearch")) return false;
+  return /(search the web|search online|on the internet|web search|google it|latest|today|tonight|current|recent|news|price today|ابحث|الإنترنت|الانترنت|آخر|اليوم|حاليا|حديث|الأخبار|السعر الآن|الاخبار)/i.test(message);
+}
 
 async function searchWeb(query:string, signal:AbortSignal):Promise<string> {
   try {
@@ -122,7 +126,10 @@ export async function handleChatRequest(request:Request):Promise<Response>{
   const config=getAIConfig(); const openrouter=config.providers.openrouter; const gemini=config.providers.gemini; if(!openrouter?.apiKey&&!gemini?.apiKey) return notConfiguredResponse();
   const controller=new AbortController(); const timeout=setTimeout(()=>controller.abort(),config.defaultTimeoutMs);
   try {
-    const catalog=buildFlixoContext(body.message as string); const fresh=shouldWebSearch(body.message as string) ? await searchWeb(body.message as string,controller.signal) : ""; const last=parsed.turns[parsed.turns.length-1]; const augmentedTurns=[...parsed.turns.slice(0,-1),{...last,content:[last.content,catalog,fresh].filter(Boolean).join("\n\n")}];
+    const catalog=buildFlixoContext(body.message as string);
+    const fresh=shouldWebSearch(body.message as string) ? await searchWeb(body.message as string,controller.signal) : "";
+    const last=parsed.turns[parsed.turns.length-1];
+    const augmentedTurns=[...parsed.turns.slice(0,-1),{...last,content:[last.content,catalog,fresh].filter(Boolean).join("\n\n")}];
     const providers:Array<{name:"openrouter"|"gemini";config:AIProviderConfig}>=[]; if(openrouter?.apiKey) providers.push({name:"openrouter",config:openrouter}); if(gemini?.apiKey) providers.push({name:"gemini",config:gemini});
     let lastRetryable=false;
     for(const provider of providers){ try { const result=provider.name==="openrouter" ? await callOpenRouter(provider.config,augmentedTurns,parsed.locale,controller.signal) : await callGemini(provider.config,augmentedTurns,parsed.locale,controller.signal); if(result.ok) return jsonResponse({reply:result.reply,model:result.model,provider:provider.name}); if(result.blocked) return jsonResponse({error:"The AI provider blocked this request with its safety filters.",retryable:false}); lastRetryable=result.retryable; if(!result.retryable) break; } catch { lastRetryable=true; } if(controller.signal.aborted) break; }
