@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "playwright/test";
 
 test.describe("Flex interactive chat", () => {
   test("supports multi-turn conversation and session persistence", async ({ page }) => {
