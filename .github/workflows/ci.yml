@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   verify:
-    name: Verify (dependency · contract · typecheck · lint · SEO · i18n · terminology · quality · accessibility · security · desktop-tools · mega-tools · build)
+    name: Verify (dependency · contract · typecheck · lint · SEO · i18n · terminology · AI · quality · accessibility · security · desktop-tools · mega-tools · build)
     runs-on: ubuntu-latest
     timeout-minutes: 40
 
@@ -53,6 +53,9 @@ jobs:
 
       - name: Validate tool quality publication contract
         run: npm run validate:tool-quality
+
+      - name: Validate AI contract
+        run: npm run validate:ai
 
       - name: Validate accessibility contract
         run: npm run validate:accessibility
