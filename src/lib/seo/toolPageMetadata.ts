@@ -1,4 +1,5 @@
 import { getToolBySlug } from "@/data/tools";
+import { getVerifiedDesktopTool } from "@/lib/desktop-tools/verifiedCatalog";
 import { getToolSeo, type ToolSeoData } from "@/data/toolSeo";
 import { en } from "@/lib/i18n/locales/en";
 import { ar } from "@/lib/i18n/locales/ar";
@@ -50,6 +51,10 @@ const SEO_DICTIONARIES: Partial<Record<LocaleCode, Dictionary>> = {
 export interface SeoMetaTag { title?: string; name?: string; property?: string; content?: string; charSet?: string; }
 export interface ResolvedPageSeo { title: string; description: string; keywords: string[]; robots: string; pageUrl: string; canonicalUrl: string; ogImage: string; locale: LocaleCode; }
 
+function getToolRecord(slug: string) {
+  return getToolBySlug(slug) ?? getVerifiedDesktopTool(slug);
+}
+
 function getLocalizedToolCopy(slug: string, locale: LocaleCode) {
   if (locale === "en") return null;
   const dict = SEO_DICTIONARIES[locale];
@@ -61,20 +66,10 @@ function getLocalizedToolCopy(slug: string, locale: LocaleCode) {
   const locTagline = dict[taglineKey];
   const enName = en[nameKey];
   const enTagline = en[taglineKey];
-
-  // Never use English as a localized SEO fallback. A missing localization is
-  // a release issue and the page is made noindex until the agent completes it.
   if (!locName || locName === enName) return { missing: true } as const;
-
   const hasLocalizedTagline = Boolean(locTagline && locTagline !== enTagline);
   if (!hasLocalizedTagline) return { missing: true, name: locName } as const;
-
-  return {
-    missing: false,
-    name: locName,
-    title: tpl.title(locName),
-    description: tpl.description(locName, locTagline),
-  } as const;
+  return { missing: false, name: locName, title: tpl.title(locName), description: tpl.description(locName, locTagline) } as const;
 }
 
 export function resolvePageSeo(slug?: string, customData?: Partial<ToolSeoData>, locale: LocaleCode = "en"): ResolvedPageSeo {
@@ -100,7 +95,7 @@ export function resolvePageSeo(slug?: string, customData?: Partial<ToolSeoData>,
   const pageUrl = typeof window !== "undefined" && window.location?.href ? window.location.href : fallbackPageUrl;
   const canonicalUrl = slug ? getToolCanonicalUrl(slug, locale) : stripQueryAndHash(pageUrl);
   const origin = typeof window !== "undefined" && window.location?.origin ? window.location.origin : SITE_URL;
-  const tool = slug ? getToolBySlug(slug) : undefined;
+  const tool = slug ? getToolRecord(slug) : undefined;
   const isPublicTool = !slug || tool?.status === "ready";
   const robots = isPublicTool && localizationComplete ? DEFAULT_ROBOTS : NOINDEX_ROBOTS;
 
@@ -110,7 +105,7 @@ export function resolvePageSeo(slug?: string, customData?: Partial<ToolSeoData>,
 export function buildToolHeadMetadata(slug: string, overrides?: Partial<ToolSeoData>, locale: LocaleCode = "en") {
   const seo = resolvePageSeo(slug, overrides, locale);
   const ogLocale = getOgLocale(locale);
-  const tool = getToolBySlug(slug);
+  const tool = getToolRecord(slug);
   const localizedCopy = getLocalizedToolCopy(slug, locale);
   const shortTitle = locale !== "en" && localizedCopy?.missing ? `Missing localization — ${locale}` : `${localizedCopy?.name ?? tool?.name ?? slug} | Flixo Tools`;
   const links = [
