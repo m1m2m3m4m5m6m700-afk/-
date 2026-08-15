@@ -8,9 +8,10 @@ const VisitorChatWidget = lazy(() => import("@/components/communication/VisitorC
 interface SiteLayoutProps {
   children: ReactNode;
   onRequestTool?: () => void;
+  showFloatingChat?: boolean;
 }
 
-export function SiteLayout({ children, onRequestTool }: SiteLayoutProps) {
+export function SiteLayout({ children, onRequestTool, showFloatingChat = true }: SiteLayoutProps) {
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
 
   return (
@@ -20,7 +21,7 @@ export function SiteLayout({ children, onRequestTool }: SiteLayoutProps) {
       <Footer onRequestTool={onRequestTool} onOpenAnalytics={() => setAnalyticsOpen(true)} />
       <Suspense fallback={null}>
         {analyticsOpen && <AnalyticsDialog open={analyticsOpen} onOpenChange={setAnalyticsOpen} />}
-        <VisitorChatWidget />
+        {showFloatingChat && <VisitorChatWidget />}
       </Suspense>
     </div>
   );
