@@ -3,6 +3,7 @@ import path from "node:path";
 
 const root = process.cwd();
 const toolsSource = fs.readFileSync(path.join(root, "src/data/tools.ts"), "utf8");
+const desktopCatalogSource = fs.readFileSync(path.join(root, "src/lib/desktop-tools/verifiedCatalog.ts"), "utf8");
 const runtimeDir = path.join(root, "src/lib/tool-runtime/tools");
 const routeDir = path.join(root, "src/routes/tools");
 
@@ -16,24 +17,19 @@ function extractBetween(source, startMarker, endMarker) {
 }
 
 function loadTools(source) {
-  const body = extractBetween(
-    source,
-    "export const tools: Tool[] = [",
-    "];\n\nexport const toolById",
-  );
-  const sanitizedBody = body
-    .replace(/\.\.\.chromeTools,/g, "")
-    .replace(/\.\.\.([A-Za-z0-9_]+),/g, "");
-  const t = (id, name, categoryId, description, status = "placeholder", tags, slug) => ({
-    id,
-    name,
-    categoryId,
-    description,
-    status,
-    tags,
-    slug,
-  });
+  const body = extractBetween(source, "export const tools: Tool[] = [", "];\n\nexport const toolById");
+  const sanitizedBody = body.replace(/\.\.\.chromeTools,/g, "").replace(/\.\.\.([A-Za-z0-9_]+),/g, "");
+  const t = (id, name, categoryId, description, status = "placeholder", tags, slug) => ({ id, name, categoryId, description, status, tags, slug });
   return Function("t", `return [${sanitizedBody}];`)(t);
+}
+
+function loadVerifiedDesktopTools(source) {
+  const entries = [];
+  const pattern = /id:\s*"([^"]+)"[\s\S]*?name:\s*"([^"]+)"[\s\S]*?categoryId:\s*"([^"]+)"[\s\S]*?description:\s*"([^"]+)"[\s\S]*?status:\s*"(ready|planned|placeholder)"[\s\S]*?slug:\s*"([^"]+)"/g;
+  for (const match of source.matchAll(pattern)) {
+    entries.push({ id: match[1], name: match[2], categoryId: match[3], description: match[4], status: match[5], slug: match[6] });
+  }
+  return entries;
 }
 
 function recordDuplicates(values, label, issues) {
@@ -46,10 +42,6 @@ function recordDuplicates(values, label, issues) {
   duplicates.forEach((value) => issues.push(`Duplicate ${label}: ${value}`));
 }
 
-// Strings that indicate a fake/placeholder runtime. Any runtime source file
-// containing one of these is not a real implementation and must not be flagged
-// ready. Matching is intentionally on plain text content so it catches both
-// runtime output strings and comments advertising fake behaviour.
 const FAKE_SIGNATURES = [
   "Processed Result for this tool",
   "Processed file:",
@@ -57,22 +49,12 @@ const FAKE_SIGNATURES = [
   "Everything processed locally",
 ];
 
-// A setTimeout used to gate a "processing" state is the canonical fake-runtime
-// pattern in this codebase (a real implementation does work synchronously or via
-// a real async operation, never a bare delay that resolves with canned output).
-// To avoid false positives on legitimate UI timers (e.g. `setTimeout(() =>
-// setCopied(false), 2000)`), we only flag a setTimeout whose *own callback body*
-// fabricates an output string — i.e. it assigns to a result/output/content
-// setter with a literal or template string. Genuine copy-state resets and
-// debounces do not match because their callbacks only toggle transient UI flags.
 function hasFakeSetTimeout(source) {
   const lines = source.split("\n");
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const idx = line.indexOf("setTimeout(");
     if (idx === -1) continue;
-    // Collect the setTimeout(...) argument body across following lines until
-    // the matching closing paren at the same depth.
     let depth = 0;
     let body = "";
     let started = false;
@@ -80,131 +62,67 @@ function hasFakeSetTimeout(source) {
       const l = lines[j];
       for (let k = j === i ? idx : 0; k < l.length; k++) {
         const ch = l[k];
-        if (ch === "(") {
-          depth++;
-          started = true;
-        } else if (ch === ")") {
-          depth--;
-        }
+        if (ch === "(") { depth++; started = true; }
+        else if (ch === ")") depth--;
       }
       body += l + "\n";
       if (started && depth === 0) break;
     }
-    // The callback is the first argument. Detect an output-fabricating call
-    // inside that callback: assigning a literal/template to a result setter.
-    const callbackMatch = body.match(
-      /setTimeout\s*\(\s*(?:\(\)\s*=>|function\s*\([^)]*\))\s*=>?\s*\{?([\s\S]*?)\}\s*,/,
-    );
+    const callbackMatch = body.match(/setTimeout\s*\(\s*(?:\(\)\s*=>|function\s*\([^)]*\))\s*=>?\s*\{?([\s\S]*?)\}\s*,/);
     const callback = callbackMatch ? callbackMatch[1] : body;
-    if (/set(Result|Output|Content|Value)\s*\(\s*[`"\\d{[]/.test(callback)) {
-      return true;
-    }
+    if (/set(Result|Output|Content|Value)\s*\(\s*[`"\\d{[]/.test(callback)) return true;
   }
   return false;
 }
 
 const tools = loadTools(toolsSource);
-const readyTools = tools.filter((tool) => tool.status === "ready");
+const verifiedDesktopTools = loadVerifiedDesktopTools(desktopCatalogSource);
+const allCatalogTools = [...tools, ...verifiedDesktopTools];
+const duplicateIds = new Set();
+const allIds = new Set();
+for (const tool of allCatalogTools) {
+  if (allIds.has(tool.id)) duplicateIds.add(tool.id);
+  allIds.add(tool.id);
+}
+const readyTools = allCatalogTools.filter((tool) => tool.status === "ready");
 const readyIds = new Set(readyTools.map((tool) => tool.id));
 const readySlugs = new Set(readyTools.map((tool) => tool.slug));
-const runtimeFiles = fs
-  .readdirSync(runtimeDir)
-  .filter((file) => file.endsWith(".ts") || file.endsWith(".tsx"))
-  .sort();
-const issues = [];
+const runtimeFiles = fs.readdirSync(runtimeDir).filter((file) => file.endsWith(".ts") || file.endsWith(".tsx")).sort();
+const issues = [...[...duplicateIds].map((id) => `Duplicate tool id across canonical and verified desktop catalogs: ${id}`)];
 const runtimeEntries = [];
 
 for (const file of runtimeFiles) {
   const source = fs.readFileSync(path.join(runtimeDir, file), "utf8");
   const slugMatch = source.match(/slug:\s*"([^"]+)"/);
   const toolIdMatch = source.match(/toolId:\s*"([^"]+)"/);
-
   if (!slugMatch) issues.push(`Runtime file ${file} is missing a slug.`);
   if (!toolIdMatch) issues.push(`Runtime file ${file} is missing a toolId.`);
   if (!slugMatch || !toolIdMatch) continue;
-
   const slug = slugMatch[1];
   const toolId = toolIdMatch[1];
   runtimeEntries.push({ file, slug, toolId, source });
-
-  // Every runtime must belong to a ready tool — a runtime for a planned/
-  // placeholder tool is dead infrastructure that can be mistakenly loaded.
-  if (!readyIds.has(toolId)) {
-    issues.push(
-      `Runtime ${file} belongs to non-ready tool ${toolId}. Only ready tools may have a runtime.`,
-    );
-  }
-  if (!readySlugs.has(slug)) {
-    issues.push(
-      `Runtime ${file} uses slug ${slug} which is not a ready tool slug. Only ready tools may have a runtime.`,
-    );
-  }
-
-  // Every ready runtime must have a concrete route.
-  const routePath = path.join(routeDir, `${slug}.tsx`);
-  if (!fs.existsSync(routePath)) {
-    issues.push(`Ready tool runtime ${slug} is missing route file src/routes/tools/${slug}.tsx.`);
-  }
-
-  // Reject fake implementation signatures outright.
-  for (const signature of FAKE_SIGNATURES) {
-    if (source.includes(signature)) {
-      issues.push(`Runtime ${file} contains fake implementation signature: "${signature}".`);
-    }
-  }
-  if (hasFakeSetTimeout(source)) {
-    issues.push(
-      `Runtime ${file} uses setTimeout to fabricate processing output — not a real implementation.`,
-    );
-  }
+  if (!readyIds.has(toolId)) issues.push(`Runtime ${file} belongs to non-ready tool ${toolId}. Only ready tools may have a runtime.`);
+  if (!readySlugs.has(slug)) issues.push(`Runtime ${file} uses slug ${slug} which is not a ready tool slug.`);
+  if (!fs.existsSync(path.join(routeDir, `${slug}.tsx`))) issues.push(`Ready tool runtime ${slug} is missing route file src/routes/tools/${slug}.tsx.`);
+  for (const signature of FAKE_SIGNATURES) if (source.includes(signature)) issues.push(`Runtime ${file} contains fake implementation signature: "${signature}".`);
+  if (hasFakeSetTimeout(source)) issues.push(`Runtime ${file} uses setTimeout to fabricate processing output — not a real implementation.`);
 }
 
-recordDuplicates(
-  runtimeEntries.map((entry) => entry.slug),
-  "runtime slug",
-  issues,
-);
-recordDuplicates(
-  runtimeEntries.map((entry) => entry.toolId),
-  "runtime tool id",
-  issues,
-);
+recordDuplicates(runtimeEntries.map((entry) => entry.slug), "runtime slug", issues);
+recordDuplicates(runtimeEntries.map((entry) => entry.toolId), "runtime tool id", issues);
 
-// Every ready tool must have exactly one runtime.
 for (const tool of readyTools) {
   const matches = runtimeEntries.filter((runtime) => runtime.toolId === tool.id);
-  if (matches.length === 0) {
-    issues.push(`Ready tool ${tool.id} is missing a runtime definition.`);
-  } else if (matches.length > 1) {
-    issues.push(`Ready tool ${tool.id} has ${matches.length} runtime definitions.`);
-  } else if (matches[0].slug !== tool.slug) {
-    issues.push(
-      `Runtime definition for ${tool.id} has slug ${matches[0].slug}, expected ${tool.slug}.`,
-    );
-  }
+  if (matches.length === 0) issues.push(`Ready tool ${tool.id} is missing a runtime definition.`);
+  else if (matches.length > 1) issues.push(`Ready tool ${tool.id} has ${matches.length} runtime definitions.`);
+  else if (matches[0].slug !== tool.slug) issues.push(`Runtime definition for ${tool.id} has slug ${matches[0].slug}, expected ${tool.slug}.`);
 }
 
-// Every ready runtime must be registered in the runtime registry
-// (readyTools.ts) so it is actually wired into getReadyToolRuntime.
-const readyToolsRegistrySource = fs.readFileSync(
-  path.join(root, "src/lib/tool-runtime/readyTools.ts"),
-  "utf8",
-);
+const readyToolsRegistrySource = fs.readFileSync(path.join(root, "src/lib/tool-runtime/readyTools.ts"), "utf8");
 for (const entry of runtimeEntries) {
   const importPattern = new RegExp(`from\\s+"./tools/${entry.slug}"`);
-  if (!importPattern.test(readyToolsRegistrySource)) {
-    issues.push(
-      `Runtime ${entry.file} is not imported by src/lib/tool-runtime/readyTools.ts (unreachable runtime).`,
-    );
-  }
+  if (!importPattern.test(readyToolsRegistrySource)) issues.push(`Runtime ${entry.file} is not imported by src/lib/tool-runtime/readyTools.ts.`);
 }
 
-if (issues.length > 0) {
-  throw new Error(
-    `Tool runtime validation failed with ${issues.length} issue(s).\n- ${issues.join("\n- ")}`,
-  );
-}
-
-console.log(
-  `Tool runtime validation passed: ${runtimeEntries.length} runtimes for ${readyTools.length} ready tools.`,
-);
+if (issues.length > 0) throw new Error(`Tool runtime validation failed with ${issues.length} issue(s).\n- ${issues.join("\n- ")}`);
+console.log(`Tool runtime validation passed: ${runtimeEntries.length} runtimes for ${readyTools.length} ready tools (${verifiedDesktopTools.length} verified desktop extensions).`);
