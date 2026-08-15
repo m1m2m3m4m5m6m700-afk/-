@@ -17,6 +17,7 @@ interface ChatTurn {
 interface ChatRequestBody {
   message?: unknown;
   history?: unknown;
+  locale?: unknown;
 }
 
 interface ChatSuccessBody {
@@ -33,6 +34,35 @@ interface ChatErrorBody {
 const MAX_MESSAGE_CHARS = 4000;
 const MAX_TURNS = 20;
 const MAX_REPLY_CHARS = 4000;
+const SUPPORTED_LOCALES = new Set([
+  "en",
+  "ar",
+  "es",
+  "zh-CN",
+  "hi",
+  "pt",
+  "fr",
+  "de",
+  "ja",
+  "ko",
+  "tr",
+  "it",
+  "vi",
+  "id",
+  "th",
+  "pl",
+  "nl",
+  "sv",
+  "uk",
+  "ro",
+  "el",
+  "cs",
+  "he",
+  "bn",
+  "fa",
+  "ru",
+  "ms",
+]);
 
 type OpenRouterContent = string | Array<{ type?: string; text?: string }>;
 
@@ -60,9 +90,54 @@ const CHAT_SYSTEM_PROMPT = [
   "When the user asks for a Flixo action, describe the next concrete step rather than pretending the action has already happened.",
 ].join(" ");
 
+const LOCALE_NAMES: Record<string, string> = {
+  en: "English",
+  ar: "Arabic",
+  es: "Spanish",
+  "zh-CN": "Simplified Chinese",
+  hi: "Hindi",
+  pt: "Portuguese",
+  fr: "French",
+  de: "German",
+  ja: "Japanese",
+  ko: "Korean",
+  tr: "Turkish",
+  it: "Italian",
+  vi: "Vietnamese",
+  id: "Indonesian",
+  th: "Thai",
+  pl: "Polish",
+  nl: "Dutch",
+  sv: "Swedish",
+  uk: "Ukrainian",
+  ro: "Romanian",
+  el: "Greek",
+  cs: "Czech",
+  he: "Hebrew",
+  bn: "Bengali",
+  fa: "Persian",
+  ru: "Russian",
+  ms: "Malay",
+};
+
 function sanitizeContent(content: string): string {
   const nul = String.fromCharCode(0);
   return content.split(nul).join("").replace(/\r/g, "").trim();
+}
+
+function normalizeLocale(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const locale = value.trim();
+  return SUPPORTED_LOCALES.has(locale) ? locale : null;
+}
+
+function localizedSystemPrompt(locale: string | null): string {
+  if (!locale || locale === "en") return CHAT_SYSTEM_PROMPT;
+  const name = LOCALE_NAMES[locale] ?? locale;
+  return [
+    CHAT_SYSTEM_PROMPT,
+    `The active Flixo interface language is ${name} (${locale}). Prefer answering in this language unless the user clearly writes in another language. Keep Flixo's product and tool names accurate rather than inventing translations.`,
+  ].join(" ");
 }
 
 function jsonResponse(body: ChatSuccessBody | ChatErrorBody, status = 200): Response {
@@ -85,7 +160,7 @@ function notConfiguredResponse(): Response {
 
 function parseTurns(
   body: ChatRequestBody,
-): { ok: true; turns: ChatTurn[] } | { ok: false; response: Response } {
+): { ok: true; turns: ChatTurn[]; locale: string | null } | { ok: false; response: Response } {
   const message = typeof body.message === "string" ? body.message : "";
   const cleanedMessage = sanitizeContent(message);
 
@@ -125,12 +200,12 @@ function parseTurns(
   }
 
   turns.push({ role: "user", content: cleanedMessage });
-  return { ok: true, turns };
+  return { ok: true, turns, locale: normalizeLocale(body.locale) };
 }
 
-function toOpenRouterMessages(turns: ChatTurn[]) {
+function toOpenRouterMessages(turns: ChatTurn[], locale: string | null) {
   return [
-    { role: "system" as const, content: CHAT_SYSTEM_PROMPT },
+    { role: "system" as const, content: localizedSystemPrompt(locale) },
     ...turns.map((turn) => ({
       role: turn.role as "user" | "assistant",
       content: turn.content,
@@ -163,6 +238,7 @@ function extractOpenRouterText(content: OpenRouterContent | undefined): string {
 async function callOpenRouter(
   provider: AIProviderConfig,
   turns: ChatTurn[],
+  locale: string | null,
   signal: AbortSignal,
 ): Promise<
   | { ok: true; reply: string; model: string }
@@ -181,7 +257,7 @@ async function callOpenRouter(
     signal,
     body: JSON.stringify({
       model: provider.defaultModel,
-      messages: toOpenRouterMessages(turns),
+      messages: toOpenRouterMessages(turns, locale),
       temperature: 0.6,
       max_tokens: 1200,
     }),
@@ -210,6 +286,7 @@ async function callOpenRouter(
 async function callGemini(
   provider: AIProviderConfig,
   turns: ChatTurn[],
+  locale: string | null,
   signal: AbortSignal,
 ): Promise<
   | { ok: true; reply: string; model: string }
@@ -227,7 +304,7 @@ async function callGemini(
     signal,
     body: JSON.stringify({
       contents: buildGeminiContents(turns),
-      systemInstruction: { parts: [{ text: CHAT_SYSTEM_PROMPT }] },
+      systemInstruction: { parts: [{ text: localizedSystemPrompt(locale) }] },
       generationConfig: { maxOutputTokens: 1200, temperature: 0.6 },
     }),
   });
@@ -264,7 +341,7 @@ export async function handleChatRequest(request: Request): Promise<Response> {
     body = (await request.json()) as ChatRequestBody;
   } catch {
     return jsonResponse({
-      error: "Invalid JSON body. Expected { message, history }.",
+      error: "Invalid JSON body. Expected { message, history, locale }.",
       retryable: false,
     });
   }
@@ -294,8 +371,8 @@ export async function handleChatRequest(request: Request): Promise<Response> {
       try {
         const result =
           provider.name === "openrouter"
-            ? await callOpenRouter(provider.config, parsed.turns, controller.signal)
-            : await callGemini(provider.config, parsed.turns, controller.signal);
+            ? await callOpenRouter(provider.config, parsed.turns, parsed.locale, controller.signal)
+            : await callGemini(provider.config, parsed.turns, parsed.locale, controller.signal);
 
         if (result.ok) {
           return jsonResponse({
