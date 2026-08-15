@@ -70,9 +70,12 @@ const LOCALE_CODES = new Set<string>(LOCALES.map((l) => l.code));
 /**
  * Multilingual is a production invariant: every non-English locale must have
  * an explicit value for every key in the English master dictionary. English is
- * the only locale allowed to be a source-of-truth fallback.
+ * the only locale allowed to be the source language; it is NEVER a production
+ * fallback for another locale.
  */
-const STRICT_DICTIONARY_LOCALES = new Set<LocaleCode>(LOCALES.filter((l) => l.code !== "en").map((l) => l.code));
+export const STRICT_DICTIONARY_LOCALES = new Set<LocaleCode>(
+  LOCALES.filter((l) => l.code !== "en").map((l) => l.code),
+);
 
 export function localeMeta(code: LocaleCode): LocaleMeta { return LOCALES.find((l) => l.code === code) ?? LOCALES[0]; }
 export function isSupportedLocale(code: string | undefined | null): code is LocaleCode { return typeof code === "string" && LOCALE_CODES.has(code); }
@@ -86,20 +89,6 @@ type Vars = Record<string, string | number>;
 interface I18nValue { locale: LocaleCode; dir: Direction; setLocale: (code: LocaleCode) => void; t: (key: TranslationKey, vars?: Vars) => string; }
 const I18nContext = createContext<I18nValue>({ locale: DEFAULT_LOCALE, dir: "ltr", setLocale: () => {}, t: (key) => en[key] ?? key });
 function interpolate(template: string, vars?: Vars) { return !vars ? template : template.replace(/\{(\w+)\}/g, (match, name: string) => name in vars ? String(vars[name]) : match); }
-function detectBrowserLocale(): LocaleCode | null {
-  if (typeof navigator === "undefined") return null;
-  const candidates = navigator.languages?.length ? navigator.languages : [navigator.language];
-  for (const raw of candidates) {
-    if (!raw) continue;
-    const normalized = raw.toLowerCase();
-    const exact = LOCALES.find((l) => l.code.toLowerCase() === normalized);
-    if (exact) return exact.code;
-    const primary = normalized.split("-")[0];
-    const prefix = LOCALES.find((l) => l.code.toLowerCase() === primary);
-    if (prefix) return prefix.code;
-  }
-  return null;
-}
 function translateFromDictionary(locale: LocaleCode, dict: Dictionary, key: TranslationKey, vars?: Vars): string {
   const localized = dict[key];
   if (localized !== undefined && localized !== "") return interpolate(localized, vars);
@@ -124,6 +113,21 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const setLocale = useCallback((code: LocaleCode) => { setLocaleState(code); try { localStorage.setItem(LOCALE_STORAGE_KEY, code); } catch {} }, []);
   const value = useMemo<I18nValue>(() => { const dict = DICTIONARIES[locale]; return { locale, dir, setLocale, t: (key, vars) => translateFromDictionary(locale, dict, key, vars) }; }, [locale, dir, setLocale]);
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
+}
+
+function detectBrowserLocale(): LocaleCode | null {
+  if (typeof navigator === "undefined") return null;
+  const candidates = navigator.languages?.length ? navigator.languages : [navigator.language];
+  for (const raw of candidates) {
+    if (!raw) continue;
+    const normalized = raw.toLowerCase();
+    const exact = LOCALES.find((l) => l.code.toLowerCase() === normalized);
+    if (exact) return exact.code;
+    const primary = normalized.split("-")[0];
+    const prefix = LOCALES.find((l) => l.code.toLowerCase() === primary);
+    if (prefix) return prefix.code;
+  }
+  return null;
 }
 
 export function LocalI18nProvider({ locale, children }: { locale: LocaleCode; children: ReactNode }) {
