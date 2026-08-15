@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   verify:
-    name: Verify (contract · typecheck · lint · SEO · i18n · terminology · mega-tools · build)
+    name: Verify (contract · typecheck · lint · SEO · i18n · terminology · desktop-tools · mega-tools · build)
     runs-on: ubuntu-latest
     timeout-minutes: 40
 
@@ -90,6 +90,9 @@ jobs:
       - name: Run Flex chat browser tests
         run: npx playwright test tests/chat.spec.ts
 
+      - name: Run verified desktop/file tool browser tests
+        run: npm run test:desktop
+
       - name: Run all 528 operational mega-tool tests
         run: npx playwright test tests/mega-tools.spec.ts
 
@@ -106,6 +109,15 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: flex-chat-playwright-report
+          path: playwright-report
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload verified desktop/file tool report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-tools-playwright-report
           path: playwright-report
           if-no-files-found: ignore
           retention-days: 7
