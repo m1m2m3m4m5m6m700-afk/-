@@ -1,42 +1,67 @@
-# Flixo
+# Flixo Tools
 
-Flixo is a TanStack Start workspace for browser-based utility and AI tools. The
-landing page maps user requests to the canonical tool registry, and the
-translator is the first working tool.
+Flixo is a multilingual, privacy-first browser tools platform built with TanStack Start, React, TypeScript, Vite, Tailwind CSS, and server-side AI integrations.
+
+The project is organized around a canonical tool registry and real runtimes. Public discovery must never expose a tool that is only planned or placeholder code.
+
+## Product principles
+
+- Real execution over placeholder UI.
+- Public search contains only capabilities that satisfy the runtime/release gates.
+- Manual QA is separate from the user-facing star/rating feedback mechanism.
+- Localization is a product capability and a release requirement, not a convenience translation layer.
+- Browser-local processing is preferred when it improves privacy and reliability.
+- AI failures are explicit; the system does not manufacture successful results.
 
 ## Stack
 
-- TanStack Start and TanStack Router
-- React and TypeScript
-- Vite, Tailwind CSS, and shadcn-style UI components
-- Node.js server output with SSR error handling and security headers
+- TanStack Start / TanStack Router
+- React 19 / TypeScript
+- Vite 8 / Tailwind CSS
+- Node.js 22
+- Drizzle ORM / PostgreSQL
+- Playwright for browser-level regression coverage
 
 ## Development
 
-Use Node.js 20.19 or newer.
-
 ```sh
-npm install
+npm ci
 npm run dev
 ```
-
-The development server listens on port 5000.
 
 ## Verification
 
 ```sh
-npm run verify
+npm run typecheck
+npm run lint
+npm run build
+npx playwright test tests/chat.spec.ts
+npm run test:desktop
+npx playwright test tests/mega-tools.spec.ts
 ```
 
-This runs the strict TypeScript check, project lint, production build, and the
-production dependency audit. The translator calls a server-side AI provider
-chain (OpenAI/Gemini) via the `generate` RPC; when no provider is configured it
-surfaces a clear error and never returns a fake translation.
+The CI workflow applies the same gates plus registry, runtime, SEO, localization, RTL, terminology, and dependency-contract validation.
 
-## Project structure
+## Tool lifecycle
 
-- `src/data` — canonical categories, tools, and SEO data
-- `src/components` — reusable layout, landing, tool, and UI components
+`placeholder` → planning only
+
+`planned` → roadmap only; not public runtime
+
+`ready` → real runtime exists and is eligible for automated testing
+
+Manual QA is tracked separately. User stars/ratings remain user feedback and never represent administrator QA approval.
+
+## Architecture
+
+- `src/data` — canonical tool/category/SEO data
+- `src/lib/tool-runtime` — executable tool implementations
 - `src/routes` — TanStack file-based routes
-- `src/lib` — typed utilities, analytics, localization, and tool logic
-- `public` — static metadata, service-worker, and pre-paint initialization assets
+- `src/lib/ai` — AI orchestration and provider logic
+- `src/lib/i18n` — locale dictionaries and localization contracts
+- `src/lib/analytics` — privacy-first product analytics
+- `src/lib/admin` — protected administration and survey/behavior tooling
+- `tests` — browser-level regression coverage
+- `scripts` — release and contract validators
+
+See [`docs/ENGINEERING-ROADMAP.md`](docs/ENGINEERING-ROADMAP.md) for the production engineering roadmap and release gates.
