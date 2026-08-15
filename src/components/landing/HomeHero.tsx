@@ -7,7 +7,7 @@ interface HomeHeroProps {
   onRequestTool?: (prefillPrompt?: string) => void;
 }
 
-export function HomeHero({}: HomeHeroProps) {
+export function HomeHero(_props: HomeHeroProps) {
   const { t } = useI18n();
   return (
     <section className="relative overflow-hidden bg-hero-glow">
