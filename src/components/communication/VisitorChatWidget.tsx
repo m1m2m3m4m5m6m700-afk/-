@@ -146,10 +146,19 @@ export function VisitorChatWidget({ initialOpen = false, showTrigger = true }: V
   return (
     <details
       ref={detailsRef}
-      open={initialOpen}
+      defaultOpen={initialOpen}
       onToggle={(event) => setOpen(event.currentTarget.open)}
       className="fixed bottom-5 right-5 z-50"
     >
+      {showTrigger && (
+        <summary
+          className="group grid size-14 cursor-pointer list-none place-items-center rounded-full border border-primary/20 bg-primary p-0 text-primary-foreground shadow-xl transition hover:bg-primary/90 [&::-webkit-details-marker]:hidden"
+          aria-label={open ? "Close Flex chat" : "Open Flex chat"}
+        >
+          {open ? <ChevronDown className="size-5" /> : <MessageSquare className="size-6 transition-transform group-hover:scale-105" />}
+        </summary>
+      )}
+
       <motion.div
         className="mb-3 flex h-[min(700px,calc(100vh-7rem))] w-[min(420px,calc(100vw-2rem))] flex-col overflow-hidden rounded-3xl border border-border/80 bg-card/95 shadow-2xl backdrop-blur-xl"
       >
@@ -279,15 +288,6 @@ export function VisitorChatWidget({ initialOpen = false, showTrigger = true }: V
           </form>
         </div>
       </motion.div>
-
-      {showTrigger && (
-        <summary
-          className="group grid size-14 cursor-pointer list-none place-items-center rounded-full border border-primary/20 bg-primary p-0 text-primary-foreground shadow-xl transition hover:bg-primary/90 [&::-webkit-details-marker]:hidden"
-          aria-label={open ? "Close Flex chat" : "Open Flex chat"}
-        >
-          {open ? <ChevronDown className="size-5" /> : <MessageSquare className="size-6 transition-transform group-hover:scale-105" />}
-        </summary>
-      )}
     </details>
   );
 }
