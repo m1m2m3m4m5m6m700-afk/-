@@ -22,6 +22,28 @@ function top(values: Iterable<string | null | undefined>, limit = 10): Aggregate
 
 const daysSchema = z.number().int().min(1).max(90).default(30);
 
+const surveyQuestionTypeSchema = z.enum([
+  "single_choice",
+  "multi_choice",
+  "dropdown",
+  "scale",
+  "rating",
+  "nps",
+  "yes_no",
+  "text",
+  "textarea",
+  "number",
+  "date",
+  "email",
+  "url",
+  "ranking",
+  "matrix_single",
+  "matrix_multi",
+  "consent",
+]);
+
+const questionConfigSchema = z.record(z.string(), z.unknown()).default({});
+
 function requireAdmin(context: { adminSession?: { role: string } | null }) {
   return Boolean(context.adminSession && context.adminSession.role === "admin");
 }
@@ -89,6 +111,8 @@ export const getAdminSurveys = createServerFn({ method: "GET" })
         active: surveys.active,
         targetLocale: surveys.targetLocale,
         maxResponses: surveys.maxResponses,
+        startsAt: surveys.startsAt,
+        endsAt: surveys.endsAt,
         updatedAt: surveys.updatedAt,
       })
       .from(surveys)
@@ -134,6 +158,7 @@ export const getAdminSurveyResults = createServerFn({ method: "GET" })
         questionId: question.id,
         prompt: question.prompt,
         type: question.type,
+        config: question.config,
         totalAnswers: [...counts.values()].reduce((sum, value) => sum + value, 0),
         choices: [...counts.entries()].map(([key, count]) => ({ key, count })).sort((a, b) => b.count - a.count),
       };
@@ -157,6 +182,10 @@ export const createAdminSurvey = createServerFn({ method: "POST" })
       description: z.string().max(500).optional(),
       targetLocale: z.string().max(16).optional(),
       maxResponses: z.number().int().min(1).max(1_000_000).optional(),
+      startsAt: z.coerce.date().optional(),
+      endsAt: z.coerce.date().optional(),
+    }).refine((value) => !value.startsAt || !value.endsAt || value.endsAt > value.startsAt, {
+      message: "endsAt must be after startsAt",
     }),
   )
   .handler(async ({ context, data }) => {
@@ -171,9 +200,10 @@ export const createAdminSurveyQuestion = createServerFn({ method: "POST" })
   .validator(
     z.object({
       surveyId: z.string().uuid(),
-      type: z.enum(["single_choice", "multi_choice", "scale", "text"]),
-      prompt: z.string().min(2).max(1000),
-      options: z.array(z.string().max(200)).max(50).default([]),
+      type: surveyQuestionTypeSchema,
+      prompt: z.string().min(2).max(2000),
+      options: z.array(z.string().min(1).max(300)).max(100).default([]),
+      config: questionConfigSchema,
       required: z.boolean().default(false),
       sortOrder: z.number().int().min(0).max(500).default(0),
     }),
@@ -181,6 +211,16 @@ export const createAdminSurveyQuestion = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     if (!requireAdmin(context)) return { ok: false as const, kind: "not_authenticated" as const };
     if (!isDbConfigured()) return { ok: false as const, kind: "not_configured" as const };
+    if (["single_choice", "multi_choice", "dropdown", "ranking", "matrix_single", "matrix_multi"].includes(data.type) && data.options.length === 0) {
+      return { ok: false as const, kind: "invalid_question", message: "This question type requires options." };
+    }
+    if (data.type === "matrix_single" || data.type === "matrix_multi") {
+      const rows = Array.isArray(data.config.rows) ? data.config.rows : [];
+      const columns = Array.isArray(data.config.columns) ? data.config.columns : [];
+      if (rows.length === 0 || columns.length === 0) {
+        return { ok: false as const, kind: "invalid_question", message: "Matrix questions require rows and columns in config." };
+      }
+    }
     const [created] = await getDb().insert(surveyQuestions).values(data).returning();
     return { ok: true as const, question: created };
   });
@@ -193,4 +233,41 @@ export const setAdminSurveyActive = createServerFn({ method: "POST" })
     if (!isDbConfigured()) return { ok: false as const, kind: "not_configured" as const };
     await getDb().update(surveys).set({ active: data.active, updatedAt: new Date() }).where(eq(surveys.id, data.id));
     return { ok: true as const };
+  });
+
+/** Public read-only survey payload. Only active, scheduled surveys are exposed. */
+export const getPublicSurvey = createServerFn({ method: "GET" })
+  .validator(z.object({ slug: z.string().min(2).max(80).regex(/^[a-z0-9-]+$/) }))
+  .handler(async ({ data }) => {
+    if (!isDbConfigured()) return { ok: false as const, kind: "not_available" as const };
+    const now = new Date();
+    const [survey] = await getDb()
+      .select({
+        id: surveys.id,
+        slug: surveys.slug,
+        title: surveys.title,
+        description: surveys.description,
+        active: surveys.active,
+        targetLocale: surveys.targetLocale,
+        maxResponses: surveys.maxResponses,
+        startsAt: surveys.startsAt,
+        endsAt: surveys.endsAt,
+      })
+      .from(surveys)
+      .where(eq(surveys.slug, data.slug))
+      .limit(1);
+    if (!survey || !survey.active) return { ok: false as const, kind: "not_found" as const };
+    if ((survey.startsAt && now < survey.startsAt) || (survey.endsAt && now > survey.endsAt)) return { ok: false as const, kind: "closed" as const };
+
+    if (survey.maxResponses) {
+      const [{ count }] = await getDb().select({ count: sql<number>`count(*)::int` }).from(surveyResponses).where(eq(surveyResponses.surveyId, survey.id));
+      if (count >= survey.maxResponses) return { ok: false as const, kind: "closed" as const };
+    }
+
+    const questions = await getDb()
+      .select({ id: surveyQuestions.id, type: surveyQuestions.type, prompt: surveyQuestions.prompt, options: surveyQuestions.options, config: surveyQuestions.config, required: surveyQuestions.required, sortOrder: surveyQuestions.sortOrder })
+      .from(surveyQuestions)
+      .where(eq(surveyQuestions.surveyId, survey.id))
+      .orderBy(surveyQuestions.sortOrder);
+    return { ok: true as const, survey, questions };
   });
