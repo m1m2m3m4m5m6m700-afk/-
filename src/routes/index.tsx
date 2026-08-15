@@ -25,7 +25,7 @@ function Index() {
   };
 
   return (
-    <SiteLayout onRequestTool={() => handleRequestTool()} showFloatingChat={false}>
+    <SiteLayout onRequestTool={() => handleRequestTool()}>
       <div className="bg-hero-glow">
         <div className="mx-auto max-w-7xl space-y-14 px-5 py-12 sm:px-6 lg:px-8 lg:py-16">
           <AITaskInterface />
