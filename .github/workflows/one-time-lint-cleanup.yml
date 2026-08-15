@@ -1,0 +1,64 @@
+name: one-time lint cleanup
+
+on:
+  push:
+    branches:
+      - dependency-lock-alignment
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fix regex lint and split desktop runtime registry
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          catalog = Path('src/lib/desktop-tools/catalog.ts')
+          text = catalog.read_text()
+          text = text.replace('\\\\"', '"')
+          marker = 'const specs: DesktopToolSpecTuple[] = ['
+          helper = 'const isAscii = (input: string) => String(Array.from(new TextEncoder().encode(input)).every((byte) => byte <= 0x7f));\n\n'
+          if helper not in text:
+              text = text.replace(marker, helper + marker, 1)
+          text = text.replace('(input) => String(/^[\\x00-\\x7F]*$/.test(input))', 'isAscii')
+          catalog.write_text(text)
+
+          extensions = Path('src/lib/desktop-tools/extensions.ts')
+          ext = extensions.read_text()
+          ext = ext.replace('run: (input: string) => input.replace(/[^\\x00-\\x7F]/g, ""),', 'run: (input: string) => Array.from(input).filter((char) => char.codePointAt(0)! <= 0x7f).join(""),')
+          extensions.write_text(ext)
+
+          old_path = Path('src/lib/tool-runtime/desktop-runtimes.tsx')
+          old = old_path.read_text()
+          split = '\nexport const desktopToolRuntimes:'
+          head, tail = old.split(split, 1)
+          head = head.replace('function DesktopTool(', 'export function DesktopTool(', 1)
+
+          ui_path = Path('src/lib/tool-runtime/desktop-runtime-ui.tsx')
+          ui_path.write_text(head.rstrip() + '\n')
+
+          registry = '''import { MonitorCog } from "lucide-react";\nimport { allDesktopTools, type AllDesktopTool } from "@/lib/desktop-tools";\nimport { DesktopTool } from "./desktop-runtime-ui";\nimport type { ReadyToolRuntimeDefinition } from "./types";\n\n'''
+          registry += 'export const desktopToolRuntimes: ReadyToolRuntimeDefinition[]' + tail
+          Path('src/lib/tool-runtime/desktop-runtimes.ts').write_text(registry)
+          old_path.unlink()
+          PY
+
+      - name: Commit and push cleanup
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .
+          git diff --cached --quiet && exit 0
+          git commit -m "fix: clean desktop lint and split runtime registry"
+          git push origin HEAD:dependency-lock-alignment
