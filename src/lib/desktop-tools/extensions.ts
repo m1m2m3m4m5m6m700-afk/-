@@ -34,7 +34,7 @@ export const desktopToolExtensions = [
     categoryId: "utilities",
     description: "Remove characters outside the ASCII range.",
     tags: ["ascii", "clean", "text"],
-    run: (input: string) => input.replace(/[^\x00-\x7F]/g, ""),
+    run: (input: string) => Array.from(input).filter((char) => char.codePointAt(0)! <= 0x7f).join(""),
     sampleInput: "Flixo — أدوات",
     expectedSampleOutput: "Flixo ",
   },

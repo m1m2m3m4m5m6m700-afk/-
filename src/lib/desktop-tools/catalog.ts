@@ -95,6 +95,8 @@ type DesktopToolSpecTuple = readonly [
   expectedSampleOutput: string,
 ];
 
+const isAscii = (input: string) => String(Array.from(new TextEncoder().encode(input)).every((byte) => byte <= 0x7f));
+
 const specs: DesktopToolSpecTuple[] = [
   ["Remove Spaces", "utilities", "Remove extra spaces.", removeEmpty, "a  b", "a  b"],
   ["Normalize Whitespace", "utilities", "Normalize whitespace.", normalizeWhitespace, "  a   b  ", "a b"],
@@ -206,7 +208,7 @@ const specs: DesktopToolSpecTuple[] = [
   ["Whitespace Character Counter", "utilities", "Count whitespace characters.", (input) => String((input.match(/\s/gu) ?? []).length), "a b", "1"],
   ["Digit Counter", "utilities", "Count digits.", (input) => String((input.match(/\d/g) ?? []).length), "a12b3", "3"],
   ["Letter Counter", "utilities", "Count letters.", (input) => String((input.match(/\p{L}/gu) ?? []).length), "a1b", "2"],
-  ["ASCII Detector", "utilities", "Check whether input is ASCII only.", (input) => String(/^[\x00-\x7F]*$/.test(input)), "abc", "true"],
+  ["ASCII Detector", "utilities", "Check whether input is ASCII only.", isAscii, "abc", "true"],
   ["URL Detector", "utilities", "Check whether input looks like a URL.", (input) => String(/^https?:\/\//i.test(input.trim())), "https://flixo.tools", "true"],
   ["Email Detector", "utilities", "Check whether input looks like an email.", (input) => String(/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(input.trim())), "a@example.com", "true"],
   ["JSON Detector", "developer", "Check whether input is valid JSON.", (input) => { try { JSON.parse(input); return "true"; } catch { return "false"; } }, '{"a":1}', "true"],
