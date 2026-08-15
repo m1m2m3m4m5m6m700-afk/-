@@ -11,10 +11,26 @@ export const Route = createFileRoute("/survey/$slug")({
 
 type SurveyPayload = Extract<Awaited<ReturnType<typeof getPublicSurvey>>, { ok: true }>;
 type Answer = string | number | boolean | string[] | null;
-
+type SurveyConfig = Record<string, string | number | boolean | null | string[]>;
 type MatrixConfig = { rows: string[]; columns: string[] };
+
+function parseConfig(serialized: string): SurveyConfig {
+  try {
+    const parsed: unknown = JSON.parse(serialized);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    const result: SurveyConfig = {};
+    for (const [key, value] of Object.entries(parsed)) {
+      if (typeof value === "string" || typeof value === "number" || typeof value === "boolean" || value === null) result[key] = value;
+      else if (Array.isArray(value) && value.every((item) => typeof item === "string")) result[key] = value;
+    }
+    return result;
+  } catch {
+    return {};
+  }
+}
+
 const stringArray = (value: unknown): string[] => Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
-const matrixValues = (config: SurveyPayload["questions"][number]["config"]): MatrixConfig => ({ rows: stringArray(config.rows), columns: stringArray(config.columns) });
+const matrixValues = (config: SurveyConfig): MatrixConfig => ({ rows: stringArray(config.rows), columns: stringArray(config.columns) });
 
 function sessionId() {
   const key = "flixo-survey-session";
@@ -27,7 +43,7 @@ function sessionId() {
 
 function Question({ question, value, onChange }: { question: SurveyPayload["questions"][number]; value: Answer; onChange: (value: Answer) => void }) {
   const options = question.options ?? [];
-  const config = question.config ?? {};
+  const config = parseConfig(question.config);
   switch (question.type) {
     case "yes_no": return <div className="grid gap-2 sm:grid-cols-2"><button className={`rounded-xl border p-3 text-sm ${value === true ? "border-primary bg-primary/10" : "border-border"}`} onClick={() => onChange(true)} type="button">{String(config.yesLabel ?? "نعم")}</button><button className={`rounded-xl border p-3 text-sm ${value === false ? "border-primary bg-primary/10" : "border-border"}`} onClick={() => onChange(false)} type="button">{String(config.noLabel ?? "لا")}</button></div>;
     case "single_choice": return <div className="grid gap-2">{options.map((option) => <label key={option} className="flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm"><input type="radio" name={question.id} checked={value === option} onChange={() => onChange(option)} />{option}</label>)}</div>;
@@ -49,12 +65,12 @@ function Question({ question, value, onChange }: { question: SurveyPayload["ques
     case "matrix_single": {
       const { rows, columns } = matrixValues(config);
       const selected = typeof value === "string" ? (() => { try { return JSON.parse(value) as Record<string, string>; } catch { return {}; } })() : {};
-      return <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr><th className="p-2 text-start">البند</th>{columns.map((column: string) => <th key={column} className="p-2">{column}</th>)}</tr></thead><tbody>{rows.map((row: string) => <tr key={row} className="border-t border-border/50"><td className="p-2 font-semibold">{row}</td>{columns.map((column: string) => <td key={column} className="p-2 text-center"><input type="radio" name={`${question.id}-${row}`} checked={selected[row] === column} onChange={() => onChange(JSON.stringify({ ...selected, [row]: column }))} /></td>)}</tr>)}</tbody></table></div>;
+      return <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr><th className="p-2 text-start">البند</th>{columns.map((column) => <th key={column} className="p-2">{column}</th>)}</tr></thead><tbody>{rows.map((row) => <tr key={row} className="border-t border-border/50"><td className="p-2 font-semibold">{row}</td>{columns.map((column) => <td key={column} className="p-2 text-center"><input type="radio" name={`${question.id}-${row}`} checked={selected[row] === column} onChange={() => onChange(JSON.stringify({ ...selected, [row]: column }))} /></td>)}</tr>)}</tbody></table></div>;
     }
     case "matrix_multi": {
       const { rows, columns } = matrixValues(config);
       const current = Array.isArray(value) ? value : [];
-      return <div className="space-y-3">{rows.map((row: string) => <div key={row} className="rounded-xl border border-border p-3"><p className="mb-2 text-xs font-semibold">{row}</p><div className="flex flex-wrap gap-3">{columns.map((column: string) => { const key = `${row}::${column}`; return <label key={key} className="flex items-center gap-1.5 text-xs"><input type="checkbox" checked={current.includes(key)} onChange={(e) => onChange(e.target.checked ? [...current, key] : current.filter((item) => item !== key))} />{column}</label>; })}</div></div>)}</div>;
+      return <div className="space-y-3">{rows.map((row) => <div key={row} className="rounded-xl border border-border p-3"><p className="mb-2 text-xs font-semibold">{row}</p><div className="flex flex-wrap gap-3">{columns.map((column) => { const key = `${row}::${column}`; return <label key={key} className="flex items-center gap-1.5 text-xs"><input type="checkbox" checked={current.includes(key)} onChange={(e) => onChange(e.target.checked ? [...current, key] : current.filter((item) => item !== key))} />{column}</label>; })}</div></div>)}</div>;
     }
     case "consent": return <label className="flex items-start gap-2 rounded-xl border border-border p-3 text-sm"><input type="checkbox" checked={value === true} onChange={(e) => onChange(e.target.checked)} /><span>{String(config.label ?? "أوافق على المشاركة")}</span></label>;
     case "text": return <input className="w-full rounded-xl border border-border bg-background px-3 py-2" type="text" maxLength={Number(config.maxLength ?? 300)} value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} />;
