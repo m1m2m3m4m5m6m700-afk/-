@@ -116,7 +116,7 @@
   },
   "overrides": {
     "@tanstack/react-router": "1.170.18",
-    "@tanstack/react-router-core": "1.171.15",
+    "@tanstack/router-core": "1.171.15",
     "image-size": "2.0.2"
   },
   "devDependencies": {
