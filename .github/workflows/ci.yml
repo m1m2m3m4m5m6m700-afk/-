@@ -60,6 +60,12 @@ jobs:
       - name: Validate localized pages and dictionaries
         run: node src/scripts/validate-localization-pages.mjs
 
+      - name: Report localization health
+        run: node src/scripts/report-localization-health.mjs
+
+      - name: Validate RTL localization contract
+        run: node src/scripts/validate-localization-rtl.mjs
+
       # The TanStack Vite plugin regenerates routeTree.gen.ts during build.
       # Generate it before typecheck so a newly added route cannot leave the
       # type system stuck on stale generated route definitions.
