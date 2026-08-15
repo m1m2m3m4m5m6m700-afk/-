@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 
 type Role = "user" | "assistant";
 type ChatMessage = { id: string; role: Role; content: string };
@@ -29,10 +30,10 @@ function message(role: Role, content: string): ChatMessage {
   return { id: `${role}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, role, content };
 }
 
-function loadHistory(): ChatMessage[] {
+function loadHistory(storageKey: string): ChatMessage[] {
   if (typeof window === "undefined") return [WELCOME];
   try {
-    const stored = JSON.parse(window.sessionStorage.getItem(STORAGE_KEY) ?? "null") as ChatMessage[] | null;
+    const stored = JSON.parse(window.sessionStorage.getItem(storageKey) ?? "null") as ChatMessage[] | null;
     const valid = Array.isArray(stored)
       ? stored.filter(
           (item): item is ChatMessage =>
@@ -49,8 +50,10 @@ function loadHistory(): ChatMessage[] {
 }
 
 export function VisitorChatWidget() {
+  const { locale } = useI18n();
+  const storageKey = `${STORAGE_KEY}:${locale}`;
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>(loadHistory);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => loadHistory(storageKey));
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,12 +61,19 @@ export function VisitorChatWidget() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
+    setMessages(loadHistory(storageKey));
+    setInput("");
+    setError(null);
+    setLoading(false);
+  }, [storageKey]);
+
+  useEffect(() => {
     try {
-      window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(messages.slice(-MAX_HISTORY)));
+      window.sessionStorage.setItem(storageKey, JSON.stringify(messages.slice(-MAX_HISTORY)));
     } catch {
       // Persistence is best-effort.
     }
-  }, [messages]);
+  }, [messages, storageKey]);
 
   useEffect(() => {
     if (open) endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -78,7 +88,7 @@ export function VisitorChatWidget() {
     setInput("");
     setError(null);
     try {
-      window.sessionStorage.removeItem(STORAGE_KEY);
+      window.sessionStorage.removeItem(storageKey);
     } catch {
       // Persistence is best-effort.
     }
@@ -98,7 +108,7 @@ export function VisitorChatWidget() {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ message: text, history }),
+        body: JSON.stringify({ message: text, history, locale }),
       });
       const data = (await response.json()) as { reply?: string; error?: string };
       if (!response.ok || !data.reply) throw new Error(data.error || "Flex could not respond right now.");
@@ -146,7 +156,7 @@ export function VisitorChatWidget() {
                       AI Chat
                     </Badge>
                   </div>
-                  <p className="text-[11px] text-muted-foreground">Interactive Flixo assistant</p>
+                  <p className="text-[11px] text-muted-foreground">Interactive Flixo assistant · {locale}</p>
                 </div>
               </div>
               <div className="flex items-center gap-1">
