@@ -183,3 +183,17 @@ export const adminAccounts = pgTable(
     emailUnique: uniqueIndex("admin_accounts_email_idx").on(table.email),
   }),
 );
+
+export const toolReviews = pgTable(
+  "tool_reviews",
+  {
+    slug: text("slug").primaryKey(),
+    reviewed: boolean("reviewed").notNull().default(false),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    reviewedBy: text("reviewed_by"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    reviewedIndex: uniqueIndex("tool_reviews_reviewed_idx").on(table.reviewed, table.slug),
+  }),
+);
