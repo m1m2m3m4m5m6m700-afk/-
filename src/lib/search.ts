@@ -1,4 +1,5 @@
 import { tools, type Tool } from "@/data/tools";
+import { verifiedDesktopTools } from "@/lib/desktop-tools/verifiedCatalog";
 
 export type SearchResult<T> = {
   item: T;
@@ -68,12 +69,18 @@ const uniq = (values: string[]) => Array.from(new Set(values.filter(Boolean)));
 /**
  * Canonical public search catalog.
  *
- * Only tools that have a real runtime and are marked `ready` are searchable.
- * Planned and placeholder entries remain in the internal roadmap/catalog, but
- * they must never be presented as currently usable search results.
+ * Only tools with a real runtime and `ready` status are searchable. Verified
+ * desktop extensions replace roadmap entries with the same id so the public
+ * catalog has one authoritative version of each tool.
  */
+const verifiedById = new Map(verifiedDesktopTools.map((tool) => [tool.id, tool]));
+const publicToolCatalog: Tool[] = tools.map((tool) => verifiedById.get(tool.id) ?? tool);
+for (const verifiedTool of verifiedDesktopTools) {
+  if (!publicToolCatalog.some((tool) => tool.id === verifiedTool.id)) publicToolCatalog.push(verifiedTool);
+}
+
 export const searchableTools: readonly Tool[] = Object.freeze(
-  tools.filter((tool) => tool.status === "ready" && Boolean(tool.slug)),
+  publicToolCatalog.filter((tool) => tool.status === "ready" && Boolean(tool.slug)),
 );
 
 export const searchableToolSlugs: readonly string[] = Object.freeze(
