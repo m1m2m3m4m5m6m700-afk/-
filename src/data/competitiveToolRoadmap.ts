@@ -13,7 +13,7 @@ export interface CompetitiveToolCandidate {
  * These are roadmap targets, not claims that every capability is implemented.
  * Public search and public routes remain governed by the real tool registry.
  */
-export const competitiveToolRoadmap: readonly CompetitiveToolCandidate[] = [
+export const competitiveToolRoadmap = [
   // PDF & Documents
   [
     ["pdf-merge", "Merge PDF", "PDF", "core", "Combine multiple PDFs into one."],
@@ -171,4 +171,4 @@ export const competitiveToolRoadmap: readonly CompetitiveToolCandidate[] = [
   ].map(([slug, name, category, priority, purpose]) => ({ slug, name, category, priority, purpose })),
 ] as const;
 
-export const competitiveToolRoadmapFlat = competitiveToolRoadmap.flat();
+export const competitiveToolRoadmapFlat: readonly CompetitiveToolCandidate[] = competitiveToolRoadmap.flat();
