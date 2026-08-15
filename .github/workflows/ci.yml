@@ -81,6 +81,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Run Flex chat browser tests
+        run: npx playwright test tests/chat.spec.ts
+
       - name: Run all 528 operational mega-tool tests
         run: npx playwright test tests/mega-tools.spec.ts
 
@@ -91,6 +94,15 @@ jobs:
           name: vercel-build
           path: .vercel/output
           retention-days: 3
+
+      - name: Upload chat browser report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flex-chat-playwright-report
+          path: playwright-report
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Upload mega-tool browser report
         if: always()
