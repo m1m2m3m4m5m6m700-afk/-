@@ -5,6 +5,7 @@ import { useI18n } from "@/lib/i18n";
 import { resolveCategoryName, resolveToolName } from "@/lib/i18n/keys";
 import { buildToolHeadMetadata } from "@/lib/seo/toolPageMetadata";
 import { getToolBySlug } from "@/data/tools";
+import { getVerifiedDesktopTool } from "@/lib/desktop-tools/verifiedCatalog";
 import type { ReadyToolRuntimeDefinition } from "./types";
 
 export const createReadyToolHead = (definition: ReadyToolRuntimeDefinition) => () =>
@@ -18,12 +19,7 @@ function HiddenToolNotice() {
         <h1 className="text-3xl font-bold text-foreground">{t("toolPage.notFound.title")}</h1>
         <p className="mt-4 text-muted-foreground">{t("toolPage.notFound.description")}</p>
         <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-          <Link
-            to="/"
-            className="rounded-xl border border-border px-4 py-3 text-sm font-semibold text-primary hover:bg-primary/10"
-          >
-            {t("toolPage.notFound.backHome")}
-          </Link>
+          <Link to="/" className="rounded-xl border border-border px-4 py-3 text-sm font-semibold text-primary hover:bg-primary/10">{t("toolPage.notFound.backHome")}</Link>
         </div>
       </div>
     </SiteLayout>
@@ -32,16 +28,9 @@ function HiddenToolNotice() {
 
 export function renderReadyToolPage(definition: ReadyToolRuntimeDefinition) {
   const ToolPage = () => {
-    // Hooks must run on every render, so call useI18n before any early return.
     const { t } = useI18n();
-
-    // Guard: if the tool has been hidden (status no longer "ready"), do not
-    // render its implementation. Show a not-found notice instead. This keeps
-    // direct URLs from exposing stub/mock tools while preserving their source.
-    const tool = getToolBySlug(definition.slug);
-    if (tool && tool.status !== "ready") {
-      return <HiddenToolNotice />;
-    }
+    const tool = getToolBySlug(definition.slug) ?? getVerifiedDesktopTool(definition.slug);
+    if (tool && tool.status !== "ready") return <HiddenToolNotice />;
 
     const ToolComponent = definition.component;
     const description = definition.layoutDescriptionKey
