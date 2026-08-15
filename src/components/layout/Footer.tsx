@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Sparkles, BarChart3 } from "lucide-react";
+import { BarChart3 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 
 interface FooterProps {
@@ -15,10 +15,15 @@ export function Footer({ onRequestTool, onOpenAnalytics }: FooterProps) {
       <div className="mx-auto grid max-w-6xl gap-10 px-5 py-14 md:grid-cols-4">
         <div className="md:col-span-1">
           <div className="flex items-center gap-2">
-            <span className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground">
-              <Sparkles className="size-4" />
-            </span>
-            <span className="font-display text-lg font-bold">Flixo</span>
+            <img
+              src="/flixo-lockup.svg"
+              alt="Flixo AI — All Tools. One Place."
+              className="h-14 w-auto max-w-[210px] object-contain object-left"
+              width="920"
+              height="240"
+              loading="lazy"
+              decoding="async"
+            />
           </div>
           <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
             {t("footer.tagline")}
