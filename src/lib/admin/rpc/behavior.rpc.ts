@@ -3,7 +3,7 @@ import { desc, eq, gte, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/lib/server/db/client";
 import { isDbConfigured } from "@/lib/server/db/config";
-import { analyticsEvents, surveyQuestions, surveyResponses, surveys, type SerializableSurveyConfig, type SurveyAnswers } from "@/lib/server/db/schema";
+import { analyticsEvents, surveyQuestions, surveyResponses, surveys } from "@/lib/server/db/schema";
 import { adminSessionMiddleware } from "../auth/adminSession";
 
 type Aggregate = { key: string; count: number };
@@ -14,13 +14,16 @@ const questionConfigSchema = z.record(z.string(), serializableConfigValueSchema)
 const answerSchema = z.union([z.string(), z.number(), z.boolean(), z.array(z.string()), z.null()]);
 
 type SurveyQuestionType = z.infer<typeof surveyQuestionTypeSchema>;
-type SurveyQuestionDTO = { id: string; type: SurveyQuestionType; prompt: string; options: string[]; config: SerializableSurveyConfig; required: boolean; sortOrder: number };
+type SurveyQuestionDTO = { id: string; type: SurveyQuestionType; prompt: string; options: string[]; config: string; required: boolean; sortOrder: number };
 type SurveyDTO = { id: string; slug: string; title: string; description: string | null; active: boolean; targetLocale: string | null; maxResponses: number | null; startsAt: string | null; endsAt: string | null };
+
+type SurveyConfigValue = string | number | boolean | null | string[];
+type SurveyConfig = Record<string, SurveyConfigValue>;
 
 function top(values: Iterable<string | null | undefined>, limit = 10): Aggregate[] { const counts = new Map<string, number>(); for (const value of values) { if (!value) continue; counts.set(value, (counts.get(value) ?? 0) + 1); } return [...counts.entries()].map(([key, count]) => ({ key, count })).sort((a, b) => b.count - a.count).slice(0, limit); }
 function requireAdmin(context: { adminSession?: { role: string } | null }) { return Boolean(context.adminSession && context.adminSession.role === "admin"); }
 function serializeSurvey(row: typeof surveys.$inferSelect): SurveyDTO { return { id: row.id, slug: row.slug, title: row.title, description: row.description, active: row.active, targetLocale: row.targetLocale, maxResponses: row.maxResponses, startsAt: row.startsAt?.toISOString() ?? null, endsAt: row.endsAt?.toISOString() ?? null }; }
-function serializeQuestion(row: typeof surveyQuestions.$inferSelect): SurveyQuestionDTO { return { id: row.id, type: row.type, prompt: row.prompt, options: row.options, config: row.config, required: row.required, sortOrder: row.sortOrder }; }
+function serializeQuestion(row: typeof surveyQuestions.$inferSelect): SurveyQuestionDTO { return { id: row.id, type: row.type, prompt: row.prompt, options: row.options, config: JSON.stringify(row.config as SurveyConfig), required: row.required, sortOrder: row.sortOrder }; }
 
 export const getAdminBehaviorOverview = createServerFn({ method: "GET" }).middleware([adminSessionMiddleware]).validator(z.object({ days: daysSchema })).handler(async ({ context, data }) => {
   if (!requireAdmin(context)) return { ok: false as const, kind: "not_authenticated" as const };
@@ -49,7 +52,7 @@ export const getAdminSurveyResults = createServerFn({ method: "GET" }).middlewar
   const answerSummary = questions.map((question) => {
     const counts = new Map<string, number>();
     for (const response of responses) { const value = response.answers[question.id]; for (const entry of Array.isArray(value) ? value : [value]) { if (entry === null || entry === undefined || entry === "") continue; const key = String(entry); counts.set(key, (counts.get(key) ?? 0) + 1); } }
-    return { questionId: question.id, prompt: question.prompt, type: question.type, config: question.config, totalAnswers: [...counts.values()].reduce((sum, value) => sum + value, 0), choices: [...counts.entries()].map(([key, count]) => ({ key, count })).sort((a, b) => b.count - a.count) };
+    return { questionId: question.id, prompt: question.prompt, type: question.type, config: JSON.stringify(question.config as SurveyConfig), totalAnswers: [...counts.values()].reduce((sum, value) => sum + value, 0), choices: [...counts.entries()].map(([key, count]) => ({ key, count })).sort((a, b) => b.count - a.count) };
   });
   return { ok: true as const, survey: { id: survey.id, title: survey.title, active: survey.active }, responses: responses.length, locales: top(responses.map((response) => response.locale)), questions: answerSummary };
 });
@@ -99,6 +102,6 @@ export const submitPublicSurvey = createServerFn({ method: "POST" }).validator(z
   const allowed = new Set(questions.map((question) => question.id));
   for (const questionId of Object.keys(data.answers)) if (!allowed.has(questionId)) return { ok: false as const, kind: "invalid_answers" as const };
   for (const question of questions) if (question.required && (data.answers[question.id] === undefined || data.answers[question.id] === null || data.answers[question.id] === "")) return { ok: false as const, kind: "missing_required" as const, questionId: question.id };
-  await getDb().insert(surveyResponses).values({ surveyId: survey.id, sessionId: data.sessionId, locale: data.locale, answers: data.answers as SurveyAnswers });
+  await getDb().insert(surveyResponses).values({ surveyId: survey.id, sessionId: data.sessionId, locale: data.locale, answers: data.answers });
   return { ok: true as const };
 });
