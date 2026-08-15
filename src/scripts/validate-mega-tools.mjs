@@ -1,11 +1,11 @@
-import { MEGA_TOOLS } from "../data/megaTools.mjs";
+import { MEGA_TOOLS } from "../data/megaToolsCatalog.mjs";
 
 const expectedCount = 528;
 const categories = ["images", "video", "audio", "pdf"];
 const requiredPresets = ["quick", "small", "medium", "large", "social", "web", "mobile", "print", "hd", "pro", "max"];
 const handlersByCategory = {
   images: ["resize", "compress", "convert-png", "convert-jpg", "convert-webp", "rotate", "flip", "grayscale", "invert", "brightness", "contrast", "saturation"],
-  video: ["inspect", "poster", "frame-25", "frame-50", "frame-75", "resize", "rotate", "flip", "mute", "speed", "contact-sheet", "aspect"],
+  video: ["inspect", "poster", "frame-25", "frame-50", "frame-75", "resize", "rotate", "flip", "mute", "speed", "metadata", "preview"],
   audio: ["inspect", "waveform", "peak", "rms", "normalize", "trim", "fade-in", "fade-out", "mono", "reverse", "speed", "wav"],
   pdf: ["inspect", "extract-text", "rotate", "page-numbers", "watermark", "remove-metadata", "duplicate", "extract-range", "split-even", "blank-cover", "flatten", "poster"],
 };
@@ -30,5 +30,5 @@ for (const category of categories) {
   for (const preset of requiredPresets) if (!presets.has(preset)) issues.push(`${category} missing preset ${preset}.`);
 }
 
-if (issues.length) throw new Error(`Mega-tool validation failed with ${issues.length} issue(s).\n- ${issues.join("\n- ")}`);
+if (issues.length) throw new Error(`Mega-tool catalog validation failed with ${issues.length} issue(s).\n- ${issues.join("\n- ")}`);
 console.log(`Mega-tool catalog validation passed: ${MEGA_TOOLS.length} tools across 4 categories.`);
