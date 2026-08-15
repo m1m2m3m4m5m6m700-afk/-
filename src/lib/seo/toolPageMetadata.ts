@@ -43,60 +43,18 @@ import { buildToolHreflang } from "./hreflang";
 import { SEO_TEMPLATES } from "./seoTemplates";
 
 const SEO_DICTIONARIES: Partial<Record<LocaleCode, Dictionary>> = {
-  ar,
-  es,
-  fr,
-  de,
-  pt,
-  it,
-  nl,
-  pl,
-  sv,
-  tr,
-  ro,
-  uk,
-  ru,
-  ms,
-  id,
-  vi,
-  "zh-CN": zhCNDict,
-  ja,
-  ko,
-  el,
-  cs,
-  th,
-  hi,
-  he,
-  fa,
-  bn,
+  ar, es, fr, de, pt, it, nl, pl, sv, tr, ro, uk, ru, ms, id, vi,
+  "zh-CN": zhCNDict, ja, ko, el, cs, th, hi, he, fa, bn,
 };
 
-export interface SeoMetaTag {
-  title?: string;
-  name?: string;
-  property?: string;
-  content?: string;
-  charSet?: string;
-}
-
-export interface ResolvedPageSeo {
-  title: string;
-  description: string;
-  keywords: string[];
-  robots: string;
-  pageUrl: string;
-  canonicalUrl: string;
-  ogImage: string;
-  locale: LocaleCode;
-}
+export interface SeoMetaTag { title?: string; name?: string; property?: string; content?: string; charSet?: string; }
+export interface ResolvedPageSeo { title: string; description: string; keywords: string[]; robots: string; pageUrl: string; canonicalUrl: string; ogImage: string; locale: LocaleCode; }
 
 function getLocalizedToolCopy(slug: string, locale: LocaleCode) {
   if (locale === "en") return null;
-
   const dict = SEO_DICTIONARIES[locale];
   const tpl = SEO_TEMPLATES[locale];
-  if (!dict || !tpl) return null;
-
+  if (!dict || !tpl) return { missing: true } as const;
   const nameKey = `tool.${slug}.name` as keyof Dictionary;
   const taglineKey = `tool.${slug}.tagline` as keyof Dictionary;
   const locName = dict[nameKey];
@@ -104,83 +62,62 @@ function getLocalizedToolCopy(slug: string, locale: LocaleCode) {
   const enName = en[nameKey];
   const enTagline = en[taglineKey];
 
-  if (!locName || locName === enName) return null;
+  // Never use English as a localized SEO fallback. A missing localization is
+  // a release issue and the page is made noindex until the agent completes it.
+  if (!locName || locName === enName) return { missing: true } as const;
 
   const hasLocalizedTagline = Boolean(locTagline && locTagline !== enTagline);
+  if (!hasLocalizedTagline) return { missing: true, name: locName } as const;
+
   return {
+    missing: false,
     name: locName,
     title: tpl.title(locName),
-    description: hasLocalizedTagline
-      ? tpl.description(locName, locTagline)
-      : tpl.descriptionFallback(locName),
-  };
+    description: tpl.description(locName, locTagline),
+  } as const;
 }
 
-export function resolvePageSeo(
-  slug?: string,
-  customData?: Partial<ToolSeoData>,
-  locale: LocaleCode = "en",
-): ResolvedPageSeo {
+export function resolvePageSeo(slug?: string, customData?: Partial<ToolSeoData>, locale: LocaleCode = "en"): ResolvedPageSeo {
   const seoData = slug ? getToolSeo(slug) : null;
-
   let title = customData?.title || seoData?.title || "Flixo — Free Online Tools & Utilities";
-  let description =
-    customData?.description ||
-    seoData?.description ||
-    "Flixo provides free, private, browser-based online tools for images, text, translation, PDFs, and developer utilities with zero sign-up.";
+  let description = customData?.description || seoData?.description || "Flixo provides free, private, browser-based online tools for images, text, translation, PDFs, and developer utilities with zero sign-up.";
+  let localizationComplete = true;
 
   if (slug && !customData?.title) {
     const localizedCopy = getLocalizedToolCopy(slug, locale);
-    if (localizedCopy) {
+    if (locale !== "en" && localizedCopy?.missing) {
+      localizationComplete = false;
+      title = `Missing localization — ${locale}`;
+      description = `This ${locale} page is hidden from search until its localized title and description are completed.`;
+    } else if (localizedCopy && !localizedCopy.missing) {
       title = localizedCopy.title;
       description = localizedCopy.description;
     }
   }
 
-  const keywords =
-    customData?.keywords ||
-    seoData?.keywords || ["flixo", "online tools", "free utilities", "browser tools"];
-
+  const keywords = customData?.keywords || seoData?.keywords || ["flixo", "online tools", "free utilities", "browser tools"];
   const fallbackPageUrl = slug ? getToolCanonicalUrl(slug, locale) : SITE_URL;
-  const pageUrl =
-    typeof window !== "undefined" && window.location?.href ? window.location.href : fallbackPageUrl;
+  const pageUrl = typeof window !== "undefined" && window.location?.href ? window.location.href : fallbackPageUrl;
   const canonicalUrl = slug ? getToolCanonicalUrl(slug, locale) : stripQueryAndHash(pageUrl);
-  const origin =
-    typeof window !== "undefined" && window.location?.origin ? window.location.origin : SITE_URL;
-
+  const origin = typeof window !== "undefined" && window.location?.origin ? window.location.origin : SITE_URL;
   const tool = slug ? getToolBySlug(slug) : undefined;
   const isPublicTool = !slug || tool?.status === "ready";
-  const robots = isPublicTool ? DEFAULT_ROBOTS : NOINDEX_ROBOTS;
+  const robots = isPublicTool && localizationComplete ? DEFAULT_ROBOTS : NOINDEX_ROBOTS;
 
-  return {
-    title,
-    description,
-    keywords,
-    robots,
-    pageUrl,
-    canonicalUrl,
-    ogImage: getDefaultOgImageUrl(origin),
-    locale,
-  };
+  return { title, description, keywords, robots, pageUrl, canonicalUrl, ogImage: getDefaultOgImageUrl(origin), locale };
 }
 
-export function buildToolHeadMetadata(
-  slug: string,
-  overrides?: Partial<ToolSeoData>,
-  locale: LocaleCode = "en",
-) {
+export function buildToolHeadMetadata(slug: string, overrides?: Partial<ToolSeoData>, locale: LocaleCode = "en") {
   const seo = resolvePageSeo(slug, overrides, locale);
   const ogLocale = getOgLocale(locale);
   const tool = getToolBySlug(slug);
   const localizedCopy = getLocalizedToolCopy(slug, locale);
-  const shortTitle = `${localizedCopy?.name ?? tool?.name ?? slug} | Flixo Tools`;
-
+  const shortTitle = locale !== "en" && localizedCopy?.missing ? `Missing localization — ${locale}` : `${localizedCopy?.name ?? tool?.name ?? slug} | Flixo Tools`;
   const links = [
     { rel: "icon", href: "/flixo-mark.svg", type: "image/svg+xml" },
     { rel: "canonical", href: seo.canonicalUrl },
     ...buildToolHreflang(slug),
   ];
-
   return {
     meta: [
       { title: shortTitle },
