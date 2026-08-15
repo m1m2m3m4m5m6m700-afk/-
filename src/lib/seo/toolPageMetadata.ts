@@ -42,11 +42,6 @@ import {
 import { buildToolHreflang } from "./hreflang";
 import { SEO_TEMPLATES } from "./seoTemplates";
 
-/**
- * Locale dictionary registry for SEO title/description localization. Every
- * supported locale is mapped so localized tool names/taglines resolve at SSR
- * time without React context. Locales absent here fall back to English.
- */
 const SEO_DICTIONARIES: Partial<Record<LocaleCode, Dictionary>> = {
   ar,
   es,
@@ -114,10 +109,6 @@ export function resolvePageSeo(
       const nameKey = `tool.${slug}.name` as keyof Dictionary;
       const taglineKey = `tool.${slug}.tagline` as keyof Dictionary;
       const locName = dict[nameKey];
-      // Only localize when a real translated name exists (not the en fallback
-      // carried by `...en`). `...en` spreads en values, so a locale that hasn't
-      // overridden a tool name would otherwise show English — detect that by
-      // comparing against the English source value.
       const enName = en[nameKey];
       const hasLocalizedName = locName && locName !== enName;
       const locTagline = dict[taglineKey];
@@ -136,7 +127,8 @@ export function resolvePageSeo(
     }
   }
 
-  const keywords = customData?.keywords ||
+  const keywords =
+    customData?.keywords ||
     seoData?.keywords || ["flixo", "online tools", "free utilities", "browser tools"];
 
   const fallbackPageUrl = slug ? getToolCanonicalUrl(slug, locale) : SITE_URL;
@@ -146,8 +138,6 @@ export function resolvePageSeo(
   const origin =
     typeof window !== "undefined" && window.location?.origin ? window.location.origin : SITE_URL;
 
-  // Hidden / non-ready tools must never be indexed. Direct URLs still resolve
-  // to a not-found page, but search engines are told to drop the URL.
   const tool = slug ? getToolBySlug(slug) : undefined;
   const isPublicTool = !slug || tool?.status === "ready";
   const robots = isPublicTool ? DEFAULT_ROBOTS : NOINDEX_ROBOTS;
@@ -171,12 +161,18 @@ export function buildToolHeadMetadata(
 ) {
   const seo = resolvePageSeo(slug, overrides, locale);
   const ogLocale = getOgLocale(locale);
+  const tool = getToolBySlug(slug);
+  const shortTitle = `${tool?.name ?? slug} | Flixo Tools`;
 
-  const links = [{ rel: "canonical", href: seo.canonicalUrl }, ...buildToolHreflang(slug)];
+  const links = [
+    { rel: "icon", href: "/flixo-mark.svg", type: "image/svg+xml" },
+    { rel: "canonical", href: seo.canonicalUrl },
+    ...buildToolHreflang(slug),
+  ];
 
   return {
     meta: [
-      { title: seo.title },
+      { title: shortTitle },
       { name: "description", content: seo.description },
       { name: "keywords", content: seo.keywords.join(", ") },
       { name: "robots", content: seo.robots },
