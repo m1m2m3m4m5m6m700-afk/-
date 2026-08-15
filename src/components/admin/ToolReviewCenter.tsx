@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, ExternalLink, Search, ShieldCheck, Star } from "lucide-react";
+import { BadgeCheck, CheckCircle2, ExternalLink, Search, ShieldCheck } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { tools } from "@/data/tools";
@@ -113,7 +113,7 @@ export function ToolReviewCenter() {
             </div>
             <h1 className="mt-3 text-2xl font-black tracking-tight sm:text-3xl">مركز مراجعة أدوات Flixo</h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-              النجمة الممتلئة تعني أن المالك راجع الأداة فعليًا. النجمة الفارغة تعني أنها لم تُراجع بعد، حتى لو كانت الأداة تعمل تقنيًا.
+              علامة التحقق تعني أن المالك راجع الأداة فعليًا. العلامة الرمادية تعني أنها لم تُراجع بعد. زر النجمة العام يبقى مخصصًا لمساهمة المستخدمين في الاستبيانات التي يديرها الأدمن.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -169,7 +169,7 @@ export function ToolReviewCenter() {
                   onClick={() => void toggleReview(item.slug)}
                   className={`grid size-10 place-items-center rounded-xl border transition ${reviewed ? "border-primary/30 bg-primary/10 text-primary" : "border-border bg-background text-muted-foreground hover:border-primary/30 hover:text-primary"}`}
                 >
-                  <Star className={`size-5 ${reviewed ? "fill-current" : ""}`} />
+                  <BadgeCheck className="size-5" />
                 </button>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
@@ -197,7 +197,7 @@ export function ToolReviewCenter() {
       </div>
 
       <div className="rounded-2xl border border-border/60 bg-muted/15 px-4 py-3 text-xs text-muted-foreground">
-        <div className="flex items-center gap-2"><CheckCircle2 className="size-4 text-primary" /><span>قاعدة الجودة: <strong>النجمة لا تعني أن الأداة تعمل.</strong> تعني فقط أنك اختبرتها يدويًا وراجعت الناتج الفعلي. لذلك تبدأ كل الأدوات بدون نجمة.</span></div>
+        <div className="flex items-center gap-2"><CheckCircle2 className="size-4 text-primary" /><span>قاعدة الجودة: <strong>علامة التحقق لا تعني أن الأداة تعمل تلقائيًا.</strong> تعني فقط أن المالك اختبرها يدويًا وراجع الناتج الفعلي. أما النجمة العامة فهي مستقلة ومخصصة لمساهمة المستخدمين في الاستبيانات.</span></div>
       </div>
     </div>
   );
