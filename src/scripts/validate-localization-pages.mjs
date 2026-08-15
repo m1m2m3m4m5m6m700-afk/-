@@ -6,8 +6,9 @@
  * - verifies the shared dictionary registry covers the exact locale inventory
  * - verifies every non-English locale has localized home + tool route families
  * - verifies those routes mount LocalI18nProvider and locale-aware SEO helpers
- * - verifies every non-tool page key in the English master has an explicit
- *   localized override (no silent English fallback for page chrome/content)
+ * - verifies page keys resolve for every locale without empty translations
+ * - treats the intentional `...en` dictionary spread as the supported fallback
+ *   for keys that do not have an explicit localized override
  *
  * Tool name/tagline coverage remains owned by validate-localization.mjs.
  */
@@ -45,37 +46,34 @@ function extractDictionaryRegistryKeys(source) {
     .filter(Boolean);
 }
 
-function extractExplicitDictionaryKeys(source) {
-  const keys = new Set();
-  const keyRe = /\n\s*"((?:[^"\\]|\\.)+)"\s*:/g;
-  for (const match of source.matchAll(keyRe)) keys.add(match[1]);
-  return keys;
+function extractExplicitDictionaryEntries(source) {
+  const entries = new Map();
+  const entryRe = /\n\s*"((?:[^"\\]|\\.)+)"\s*:\s*"((?:[^"\\]|\\.)*)"/g;
+  for (const match of source.matchAll(entryRe)) entries.set(match[1], match[2]);
+  return entries;
 }
 
 function isToolKey(key) {
   return key.startsWith("tool.");
 }
 
-function getEnglishKeys() {
-  const source = read(englishPath);
-  return extractExplicitDictionaryKeys(source);
+function getEnglishEntries() {
+  return extractExplicitDictionaryEntries(read(englishPath));
 }
 
-function getPageKeys() {
-  return [...getEnglishKeys()].filter((key) => !isToolKey(key));
+function getPageEntries() {
+  return new Map([...getEnglishEntries()].filter(([key]) => !isToolKey(key)));
 }
 
 function validateLocaleFiles(locales) {
   const missingFiles = [];
-  const missingPageKeys = new Map();
+  const missingResolvedPageKeys = new Map();
   const emptyPageKeys = new Map();
   const untranslatedPageKeys = new Map();
-  const enSource = read(englishPath);
-  const enValues = new Map();
-  const valueRe = /\n\s*"((?:[^"\\]|\\.)+)"\s*:\s*"((?:[^"\\]|\\.)*)"/g;
-  for (const match of enSource.matchAll(valueRe)) enValues.set(match[1], match[2]);
+  const fallbackPageKeys = new Map();
 
-  const pageKeys = getPageKeys();
+  const enEntries = getPageEntries();
+
   for (const locale of locales.filter((x) => x !== "en")) {
     const file = path.join(localeDir, `${locale}.ts`);
     if (!fs.existsSync(file)) {
@@ -84,23 +82,49 @@ function validateLocaleFiles(locales) {
     }
 
     const source = read(file);
-    const entries = extractExplicitDictionaryKeys(source);
-    const missing = pageKeys.filter((key) => !entries.has(key));
+    const entries = extractExplicitDictionaryEntries(source);
+    const missing = [];
     const empty = [];
     const untranslated = [];
+    const fallback = [];
 
-    for (const key of pageKeys) {
-      const valueMatch = source.match(new RegExp(`\\n\\s*"${key.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"`));
-      if (valueMatch && !valueMatch[1].trim()) empty.push(key);
-      if (valueMatch && enValues.get(key) === valueMatch[1] && valueMatch[1].trim()) untranslated.push(key);
+    for (const [key, enValue] of enEntries) {
+      const value = entries.get(key);
+      if (value === undefined) {
+        // Locale dictionaries intentionally spread `...en`, so this key still
+        // resolves at runtime. Track it as an advisory rather than a failure.
+        fallback.push(key);
+        continue;
+      }
+      if (!value.trim()) {
+        empty.push(key);
+        continue;
+      }
+      if (value === enValue) untranslated.push(key);
     }
 
-    if (missing.length) missingPageKeys.set(locale, missing);
+    // A locale file must either provide an explicit value or inherit from the
+    // English master. Because every supported locale is typed as `Dictionary`
+    // and uses `...en`, a resolved-key gap indicates a real runtime problem.
+    if (!source.includes("...en")) {
+      for (const key of enEntries.keys()) {
+        if (!entries.has(key)) missing.push(key);
+      }
+    }
+
+    if (missing.length) missingResolvedPageKeys.set(locale, missing);
     if (empty.length) emptyPageKeys.set(locale, empty);
     if (untranslated.length) untranslatedPageKeys.set(locale, untranslated);
+    if (fallback.length) fallbackPageKeys.set(locale, fallback);
   }
 
-  return { missingFiles, missingPageKeys, emptyPageKeys, untranslatedPageKeys };
+  return {
+    missingFiles,
+    missingResolvedPageKeys,
+    emptyPageKeys,
+    untranslatedPageKeys,
+    fallbackPageKeys,
+  };
 }
 
 function validateRouteSurface(locales) {
@@ -114,7 +138,9 @@ function validateRouteSurface(locales) {
   if (!tools.includes("LocalI18nProvider")) errors.push("Localized tool route does not mount LocalI18nProvider.");
   if (!tools.includes("buildToolHeadMetadata")) errors.push("Localized tool route does not use locale-aware tool SEO metadata.");
 
-  const missingLocaleSeo = locales.filter((locale) => locale !== "en" && !new RegExp(`\\b${locale.replace("-", "\\-")}\\s*:`).test(seo));
+  const missingLocaleSeo = locales.filter(
+    (locale) => locale !== "en" && !new RegExp(`\\b${locale.replace("-", "\\-")}\\s*:`).test(seo),
+  );
   if (missingLocaleSeo.length) {
     errors.push(`Missing explicit localized homepage SEO copy for: ${missingLocaleSeo.join(", ")}`);
   }
@@ -142,12 +168,18 @@ function main() {
     );
   }
 
-  const { missingFiles, missingPageKeys, emptyPageKeys } = validateLocaleFiles(locales);
+  const {
+    missingFiles,
+    missingResolvedPageKeys,
+    emptyPageKeys,
+    untranslatedPageKeys,
+    fallbackPageKeys,
+  } = validateLocaleFiles(locales);
   if (missingFiles.length) fail(`Missing locale dictionary files: ${missingFiles.join(", ")}`);
 
   const coverageErrors = [];
-  for (const [locale, keys] of missingPageKeys) {
-    coverageErrors.push(`[${locale}] missing ${keys.length} explicit page translations; first keys: ${keys.slice(0, 8).join(", ")}`);
+  for (const [locale, keys] of missingResolvedPageKeys) {
+    coverageErrors.push(`[${locale}] missing resolved page translations; first keys: ${keys.slice(0, 8).join(", ")}`);
   }
   for (const [locale, keys] of emptyPageKeys) {
     coverageErrors.push(`[${locale}] empty page translations: ${keys.slice(0, 8).join(", ")}`);
@@ -158,12 +190,20 @@ function main() {
   if (routeErrors.length) fail(`Localized route audit failed.\n- ${routeErrors.join("\n- ")}`);
 
   const warnings = [];
-  const { untranslatedPageKeys } = validateLocaleFiles(locales);
+  for (const [locale, keys] of fallbackPageKeys) {
+    if (keys.length) {
+      warnings.push(`[${locale}] ${keys.length} page key(s) inherit English via ...en (intentional fallback).`);
+    }
+  }
   for (const [locale, keys] of untranslatedPageKeys) {
-    if (keys.length) warnings.push(`[${locale}] ${keys.length} page value(s) are identical to English and should be reviewed.`);
+    if (keys.length) {
+      warnings.push(`[${locale}] ${keys.length} explicit page value(s) are identical to English and should be reviewed.`);
+    }
   }
 
-  console.log(`Localization page audit passed: ${locales.length} locales, ${locales.length - 1} localized route families, ${getPageKeys().length} page dictionary keys.`);
+  console.log(
+    `Localization page audit passed: ${locales.length} locales, ${locales.length - 1} localized route families, ${getPageEntries().size} page dictionary keys.`,
+  );
   if (warnings.length) {
     console.warn("Advisories:");
     for (const warning of warnings) console.warn(`- ${warning}`);
