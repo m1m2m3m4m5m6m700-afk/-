@@ -3,7 +3,7 @@ import { desc, eq, gte } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/lib/server/db/client";
 import { isDbConfigured } from "@/lib/server/db/config";
-import { analyticsEvents, surveyQuestions, surveys } from "@/lib/server/db/schema";
+import { analyticsEvents, surveyQuestions, surveyResponses, surveys } from "@/lib/server/db/schema";
 import { adminSessionMiddleware } from "../auth/adminSession";
 
 type Aggregate = { key: string; count: number };
@@ -56,6 +56,7 @@ export const getAdminBehaviorOverview = createServerFn({ method: "GET" })
       toolStarts: rows.filter((row) => row.eventType === "tool_start").length,
       toolCompletions: rows.filter((row) => row.eventType === "tool_complete").length,
       surveyResponses: rows.filter((row) => row.eventType === "survey_response").length,
+      clickEvents: rows.filter((row) => ["tool_click", "category_click", "external_link_click", "download", "copy"].includes(row.eventType)).length,
       averageJourneyMs:
         durations.length > 0
           ? Math.round(durations.reduce((sum, value) => sum + value, 0) / durations.length)
@@ -94,6 +95,57 @@ export const getAdminSurveys = createServerFn({ method: "GET" })
       .orderBy(desc(surveys.updatedAt))
       .limit(100);
     return { ok: true as const, surveys: rows };
+  });
+
+export const getAdminSurveyResults = createServerFn({ method: "GET" })
+  .middleware([adminSessionMiddleware])
+  .validator(z.object({ surveyId: z.string().uuid() }))
+  .handler(async ({ context, data }) => {
+    if (!requireAdmin(context)) return { ok: false as const, kind: "not_authenticated" as const };
+    if (!isDbConfigured()) return { ok: false as const, kind: "not_configured" as const };
+
+    const [survey] = await getDb().select().from(surveys).where(eq(surveys.id, data.surveyId)).limit(1);
+    if (!survey) return { ok: false as const, kind: "not_found" as const };
+
+    const questions = await getDb()
+      .select()
+      .from(surveyQuestions)
+      .where(eq(surveyQuestions.surveyId, data.surveyId))
+      .orderBy(surveyQuestions.sortOrder);
+    const responses = await getDb()
+      .select({ answers: surveyResponses.answers, locale: surveyResponses.locale, createdAt: surveyResponses.createdAt })
+      .from(surveyResponses)
+      .where(eq(surveyResponses.surveyId, data.surveyId))
+      .orderBy(desc(surveyResponses.createdAt))
+      .limit(10_000);
+
+    const answerSummary = questions.map((question) => {
+      const counts = new Map<string, number>();
+      for (const response of responses) {
+        const value = response.answers[question.id];
+        const values = Array.isArray(value) ? value : [value];
+        for (const entry of values) {
+          if (entry === null || entry === undefined || entry === "") continue;
+          const key = String(entry);
+          counts.set(key, (counts.get(key) ?? 0) + 1);
+        }
+      }
+      return {
+        questionId: question.id,
+        prompt: question.prompt,
+        type: question.type,
+        totalAnswers: [...counts.values()].reduce((sum, value) => sum + value, 0),
+        choices: [...counts.entries()].map(([key, count]) => ({ key, count })).sort((a, b) => b.count - a.count),
+      };
+    });
+
+    return {
+      ok: true as const,
+      survey: { id: survey.id, title: survey.title, active: survey.active },
+      responses: responses.length,
+      locales: top(responses.map((response) => response.locale)),
+      questions: answerSummary,
+    };
   });
 
 export const createAdminSurvey = createServerFn({ method: "POST" })
