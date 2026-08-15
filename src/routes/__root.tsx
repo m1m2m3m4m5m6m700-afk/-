@@ -28,16 +28,13 @@ type RootJsonLd =
   | ReturnType<typeof buildOrganizationSchema>
   | ReturnType<typeof buildWebSiteSchema>;
 
-let _jsonLdData: RootJsonLd[] | null = null;
-function getJsonLdData() {
-  if (!_jsonLdData) {
-    _jsonLdData = [
-      buildRootWebApplicationSchema(),
-      buildOrganizationSchema(),
-      buildWebSiteSchema(),
-    ];
-  }
-  return _jsonLdData;
+function getJsonLdData(locale: LocaleCode): RootJsonLd[] {
+  // The global Organization/WebSite identity is shared. The root WebApplication
+  // schema is emitted only on the English canonical homepage so localized pages
+  // do not publish an English-only application description as if it were their
+  // localized page content.
+  const shared: RootJsonLd[] = [buildOrganizationSchema(), buildWebSiteSchema()];
+  return locale === "en" ? [buildRootWebApplicationSchema(), ...shared] : shared;
 }
 
 function NotFoundComponent() {
@@ -170,7 +167,7 @@ function RootShell({ children }: { children: ReactNode }) {
         <script src="/init-theme.js" />
         <script src="/init-locale.js" />
         <script src="/register-sw.js" />
-        <JsonLd data={getJsonLdData()} />
+        <JsonLd data={getJsonLdData(locale)} />
       </head>
       <body>
         {children}
