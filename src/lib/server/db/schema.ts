@@ -53,7 +53,27 @@ export const analyticsEventTypeEnum = pgEnum("analytics_event_type", [
   "navigation",
   "survey_response",
 ]);
-export const surveyQuestionTypeEnum = pgEnum("survey_question_type", ["single_choice", "multi_choice", "scale", "text"]);
+
+/** Supported survey interaction controls. Configuration-specific details live in surveyQuestions.config. */
+export const surveyQuestionTypeEnum = pgEnum("survey_question_type", [
+  "single_choice",
+  "multi_choice",
+  "dropdown",
+  "scale",
+  "rating",
+  "nps",
+  "yes_no",
+  "text",
+  "textarea",
+  "number",
+  "date",
+  "email",
+  "url",
+  "ranking",
+  "matrix_single",
+  "matrix_multi",
+  "consent",
+]);
 
 export const conversations = pgTable("conversations", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -154,6 +174,7 @@ export const surveyQuestions = pgTable("survey_questions", {
   type: surveyQuestionTypeEnum("type").notNull(),
   prompt: text("prompt").notNull(),
   options: jsonb("options").$type<string[]>().default([]).notNull(),
+  config: jsonb("config").$type<Record<string, unknown>>().default({}).notNull(),
   required: boolean("required").notNull().default(false),
   sortOrder: integer("sort_order").notNull().default(0),
 });
@@ -163,7 +184,7 @@ export const surveyResponses = pgTable("survey_responses", {
   surveyId: uuid("survey_id").notNull().references(() => surveys.id, { onDelete: "cascade" }),
   sessionId: text("session_id"),
   locale: text("locale"),
-  answers: jsonb("answers").$type<Record<string, string | string[] | number | null>>().notNull(),
+  answers: jsonb("answers").$type<Record<string, string | string[] | number | boolean | null>>().notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
