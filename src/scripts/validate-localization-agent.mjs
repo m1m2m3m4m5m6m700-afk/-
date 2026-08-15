@@ -12,10 +12,6 @@ const LOCALES = [
   "it", "ru", "vi", "id", "th", "pl", "nl", "sv", "uk", "ro", "he", "fa", "bn", "ms", "cs", "el",
 ];
 
-function read(file) {
-  return fs.readFileSync(path.join(root, file), "utf8");
-}
-
 function parseEntries(source) {
   const entries = {};
   const re = /"((?:[^"\\]|\\.)+)"\s*:\s*(?:"((?:[^"\\]|\\.)*)"|`([\\s\\S]*?)`)/g;
@@ -31,51 +27,55 @@ function loadDictionary(locale) {
 }
 
 const en = loadDictionary("en");
+const toolNameKeys = Object.keys(en).filter((key) => key.startsWith("tool.") && key.endsWith(".name"));
 const issues = [];
 const byLocale = {};
 
 for (const locale of LOCALES) {
   const dict = loadDictionary(locale);
-  const missing = [];
-  const englishFallback = [];
-  const empty = [];
+  const missingNames = [];
+  const englishFallbackNames = [];
+  const emptyNames = [];
 
-  for (const key of Object.keys(en)) {
+  for (const key of toolNameKeys) {
     const value = dict[key];
     if (value === undefined) {
-      missing.push(key);
+      missingNames.push(key);
       continue;
     }
-    if (!String(value).trim()) empty.push(key);
-    if (value === en[key] && !/^\{[^}]+\}$/.test(value)) englishFallback.push(key);
+    if (!String(value).trim()) emptyNames.push(key);
+    if (value === en[key] && value.trim()) englishFallbackNames.push(key);
   }
 
   byLocale[locale] = {
-    missing,
-    empty,
-    englishFallback,
-    complete: missing.length === 0 && empty.length === 0 && englishFallback.length === 0,
+    toolNameKeys: toolNameKeys.length,
+    missingNames,
+    emptyNames,
+    englishFallbackNames,
+    complete: missingNames.length === 0 && emptyNames.length === 0 && englishFallbackNames.length === 0,
   };
 
-  for (const key of missing) issues.push({ locale, key, kind: "missing", source: en[key] });
-  for (const key of empty) issues.push({ locale, key, kind: "empty", source: en[key] });
-  for (const key of englishFallback) issues.push({ locale, key, kind: "english-fallback", source: en[key] });
+  for (const key of missingNames) issues.push({ locale, key, kind: "missing-name", source: en[key] });
+  for (const key of emptyNames) issues.push({ locale, key, kind: "empty-name", source: en[key] });
+  for (const key of englishFallbackNames) issues.push({ locale, key, kind: "english-name-fallback", source: en[key] });
 }
 
 const report = {
   generatedAt: new Date().toISOString(),
   sourceLocale: "en",
+  checked: "tool names only",
+  toolNameKeyCount: toolNameKeys.length,
   locales: byLocale,
-  missingCount: issues.filter((i) => i.kind === "missing").length,
-  englishFallbackCount: issues.filter((i) => i.kind === "english-fallback").length,
-  emptyCount: issues.filter((i) => i.kind === "empty").length,
+  missingNameCount: issues.filter((i) => i.kind === "missing-name").length,
+  englishNameFallbackCount: issues.filter((i) => i.kind === "english-name-fallback").length,
+  emptyNameCount: issues.filter((i) => i.kind === "empty-name").length,
   completeLocales: LOCALES.filter((l) => byLocale[l].complete),
   incompleteLocales: LOCALES.filter((l) => !byLocale[l].complete),
   ok: issues.length === 0,
 };
 
 fs.mkdirSync(reportDir, { recursive: true });
-fs.writeFileSync(reportPath, JSON.stringify(report, null, 2) + "\n", "utf8");
+fs.writeFileSync(reportPath, JSON.stringify({ ...report, issues }, null, 2) + "\n", "utf8");
 
 const grouped = new Map();
 for (const issue of issues) {
@@ -85,26 +85,26 @@ for (const issue of issues) {
 }
 
 const lines = [
-  "# مهمة وكيل Flixo — استكمال الترجمة",
+  "# مهمة وكيل Flixo — استكمال أسماء الأدوات",
   "",
-  "هذه المهمة تُنشأ تلقائيًا عند وجود نص مفقود أو إنجليزي في أي لغة.",
+  "يُنشأ هذا الملف تلقائيًا عندما لا يتوفر اسم أداة باللغة المختارة.",
   "",
-  "## القاعدة",
-  "لا تستخدم الإنجليزية كحل بديل. أضف المصطلح أو العبارة إلى قاموس اللغة نفسها، ثم راجع الصياغة وفق المصطلحات المحلية.",
+  "## قاعدة التنفيذ",
+  "لا تستخدم الاسم الإنجليزي كبديل. أضف الاسم إلى قاموس اللغة نفسها، ثم اختر المصطلح الطبيعي المستخدم فعليًا في تلك اللغة.",
+  "بعد الإضافة أعد تشغيل validator حتى تختفي المهمة.",
   "",
 ];
 
-if (issues.length === 0) {
-  lines.push("✅ لا توجد ترجمات ناقصة أو سقوط إلى الإنجليزية.");
+if (!issues.length) {
+  lines.push("✅ كل أسماء الأدوات موجودة في القواميس ولا يوجد اسم إنجليزي متسرب.");
 } else {
   for (const locale of LOCALES) {
     const list = grouped.get(locale);
     if (!list?.length) continue;
     lines.push(`## ${locale}`);
-    for (const issue of list.slice(0, 200)) {
-      lines.push(`- [${issue.kind}] ${issue.key}` + (issue.source ? ` — المصدر: ${issue.source}` : ""));
+    for (const issue of list) {
+      lines.push(`- [${issue.kind}] ${issue.key} — الاسم المصدر: ${issue.source}`);
     }
-    if (list.length > 200) lines.push(`- … ${list.length - 200} عنصر إضافي`);
     lines.push("");
   }
 }
@@ -113,6 +113,6 @@ fs.writeFileSync(instructionPath, lines.join("\n") + "\n", "utf8");
 
 console.log(`Localization agent report: ${reportPath}`);
 console.log(`Agent instructions: ${instructionPath}`);
-console.log(`Missing: ${report.missingCount}; English fallback: ${report.englishFallbackCount}; Empty: ${report.emptyCount}`);
+console.log(`Missing names: ${report.missingNameCount}; English fallbacks: ${report.englishNameFallbackCount}; Empty names: ${report.emptyNameCount}`);
 
 if (issues.length) process.exit(1);
