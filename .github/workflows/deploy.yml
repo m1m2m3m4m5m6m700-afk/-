@@ -1,7 +1,9 @@
 name: Deploy
 
 on:
-  # Deploy to production only after CI passes on main.
+  # Deployment is intentionally paused while the project is under active
+  # development/testing. Re-enable the job guard below when the codebase is
+  # stable enough for production deployments.
   workflow_run:
     workflows: [CI]
     types: [completed]
@@ -14,9 +16,10 @@ permissions:
 jobs:
   deploy:
     name: Deploy to Vercel (production)
-    # Only deploy when the triggering CI run succeeded. Guards against
-    # deploying after a cancelled/failed CI run.
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    # PAUSED: do not consume Vercel deployment quota during development.
+    # Re-enable by restoring the CI-success/manual condition when production
+    # deployment is intentionally resumed.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -52,7 +55,7 @@ jobs:
       - name: Deploy to Vercel (production)
         id: deploy
         run: |
-          URL=$(npx vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }} 2>&1 | tee /dev/stderr | grep -oE 'https://[^ ]+\.vercel\.app' | head -1)
+          URL=$(npx vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }} 2>&1 | tee /dev/stderr | grep -oE 'https://[^ ]+\\.vercel\\.app' | head -1)
           echo "url=$URL" >> "$GITHUB_OUTPUT"
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
