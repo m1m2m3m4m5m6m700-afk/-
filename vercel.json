@@ -4,7 +4,6 @@
   "buildCommand": "vite build",
   "installCommand": "npm install",
   "devCommand": "vite --host 0.0.0.0 --port 3000",
-  "ignoreCommand": "node scripts/vercel-ignore.mjs",
   "headers": [
     {
       "source": "/assets/(.*)",
