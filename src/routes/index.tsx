@@ -3,6 +3,7 @@ import { useState } from "react";
 import { AITaskInterface } from "@/components/assistant/AITaskInterface";
 import { CapabilityCards, SupportedFiles } from "@/components/assistant/HomeSignals";
 import { PrimaryToolCategories } from "@/components/landing/PrimaryToolCategories";
+import { MegaToolHub } from "@/components/landing/MegaToolHub";
 import { WhyFlixo } from "@/components/landing/WhyFlixo";
 import { FAQ } from "@/components/landing/FAQ";
 import { SponsorSection } from "@/components/landing/SponsorSection";
@@ -30,13 +31,13 @@ function Index() {
         <div className="mx-auto max-w-7xl space-y-14 px-5 py-16 sm:px-6 lg:px-8 lg:py-20">
           <AITaskInterface onRequestTool={handleRequestTool} />
           <PrimaryToolCategories />
+          <MegaToolHub />
           <CapabilityCards />
           <SupportedFiles />
         </div>
       </div>
 
       <WhyFlixo />
-
       <FAQ />
 
       <div className="mx-auto max-w-5xl px-5 pb-24 sm:px-6 lg:px-8">
