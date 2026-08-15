@@ -23,7 +23,9 @@ function ArchiveExtractorTool() {
       for (const [name, entry] of Object.entries(zip.files)) {
         if (entry.dir) continue;
         const bytes = await entry.async("uint8array");
-        output.push({ name, url: URL.createObjectURL(new Blob([bytes])) });
+        const buffer = new ArrayBuffer(bytes.byteLength);
+        new Uint8Array(buffer).set(bytes);
+        output.push({ name, url: URL.createObjectURL(new Blob([buffer])) });
       }
       setEntries(output);
       if (!output.length) setError("The ZIP archive contains no extractable files.");
