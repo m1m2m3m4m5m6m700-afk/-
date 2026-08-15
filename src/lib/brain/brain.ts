@@ -3,6 +3,7 @@ import { extractIntent, type UserIntent } from "./intent";
 import { matchSkill, type SkillMatchResult } from "./matcher";
 import { trackKeywordSearch, trackToolOpen, trackCategoryVisit } from "@/lib/analytics";
 import type { LocaleCode } from "@/lib/i18n";
+import { submitFlexToolRequest } from "@/lib/requests/submitToolRequest";
 
 export type BrainStatus = "idle" | "thinking" | "analyzing" | "matching" | "ready" | "unknown";
 
@@ -63,7 +64,7 @@ export class UnknownRequestsService {
 
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(requests.slice(0, 100)));
     } catch {
-      // Storage fallback
+      // local fallback only; database write happens separately in the server function.
     }
   }
 }
@@ -99,9 +100,7 @@ export class FlixoBrain {
     if (match.matched && match.skill) {
       notify("ready", "Ready");
       trackCategoryVisit(match.skill.categoryId);
-      if (match.skill.status === "ready") {
-        trackToolOpen(match.skill.name);
-      }
+      if (match.skill.status === "ready") trackToolOpen(match.skill.name);
 
       return {
         matched: true,
@@ -117,7 +116,20 @@ export class FlixoBrain {
     }
 
     notify("unknown", "No matching tool found");
+
+    // Keep the legacy browser cache for resilience, but make the admin database
+    // the authoritative backlog whenever the database is configured.
     UnknownRequestsService.saveRequest(prompt, options?.attachment?.name);
+    void submitFlexToolRequest({
+      data: {
+        prompt,
+        locale: options?.locale,
+        attachmentName: options?.attachment?.name,
+        linkUrl: options?.linkUrl,
+        confidence: match.confidence,
+        intentId: intent.actionKeywords.join(",") || undefined,
+      },
+    }).catch(() => undefined);
 
     return {
       matched: false,
