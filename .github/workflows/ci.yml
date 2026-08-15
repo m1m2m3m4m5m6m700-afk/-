@@ -12,11 +12,11 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   verify:
-    name: Verify (contract · typecheck · lint · SEO · i18n · terminology · desktop-tools · mega-tools · build)
+    name: Verify (dependency · contract · typecheck · lint · SEO · i18n · terminology · desktop-tools · mega-tools · build)
     runs-on: ubuntu-latest
     timeout-minutes: 40
 
@@ -33,37 +33,8 @@ jobs:
       - name: Validate CI contract
         run: npm run validate-ci-contract
 
-      - name: Synchronize npm lockfile when manifest and lock are out of sync
-        shell: bash
-        run: |
-          node <<'NODE'
-          const fs = require('node:fs');
-          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-          const lock = JSON.parse(fs.readFileSync('package-lock.json', 'utf8'));
-          const root = lock.packages?.[''] ?? {};
-          const manifest = { ...(pkg.dependencies ?? {}), ...(pkg.devDependencies ?? {}) };
-          const locked = { ...(root.dependencies ?? {}), ...(root.devDependencies ?? {}) };
-          const required = [
-            ...Object.keys(manifest).filter((name) => manifest[name] !== locked[name]),
-            ...(lock.packages?.['node_modules/@playwright/test'] ? [] : ['node_modules/@playwright/test']),
-          ];
-          if (required.length) {
-            console.log(`Lockfile synchronization required: ${required.slice(0, 20).join(', ')}`);
-            fs.writeFileSync('.lockfile-sync-required', '1\n');
-          }
-          NODE
-
-          if [ -f .lockfile-sync-required ]; then
-            npm install --package-lock-only --ignore-scripts --no-audit --no-fund
-            rm -f .lockfile-sync-required
-            if ! git diff --quiet -- package-lock.json; then
-              git config user.name "github-actions[bot]"
-              git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-              git add package-lock.json
-              git commit -m "chore: synchronize npm lockfile [skip ci]"
-              git push origin HEAD:main
-            fi
-          fi
+      - name: Validate dependency contract
+        run: node scripts/validate-dependency-contract.mjs
 
       - name: Install dependencies
         run: npm ci
