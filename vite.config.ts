@@ -53,6 +53,11 @@ const nitroConfig: LovableNitroOptions = {
   },
 };
 
+const allowedHosts = (process.env.VITE_ALLOWED_HOSTS ?? "")
+  .split(",")
+  .map((host) => host.trim())
+  .filter(Boolean);
+
 export default defineConfig({
   nitro: nitroConfig,
   tanstackStart: { server: { entry: "server" } },
@@ -62,7 +67,9 @@ export default defineConfig({
       host: "0.0.0.0",
       port: 3000,
       strictPort: true,
-      allowedHosts: true,
+      // Never disable Vite host protection globally. Preview/container hosts can
+      // be added explicitly with VITE_ALLOWED_HOSTS when required.
+      allowedHosts,
     },
   },
 });
