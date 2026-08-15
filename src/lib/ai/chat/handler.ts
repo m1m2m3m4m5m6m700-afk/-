@@ -33,6 +33,7 @@ interface ChatErrorBody {
 const MAX_MESSAGE_CHARS = 4000;
 const MAX_TURNS = 20;
 const MAX_REPLY_CHARS = 4000;
+const MAX_REQUEST_BODY_CHARS = 128_000;
 
 type OpenRouterContent = string | Array<{ type?: string; text?: string }>;
 
@@ -259,9 +260,24 @@ export async function handleChatRequest(request: Request): Promise<Response> {
     return new Response("Method Not Allowed", { status: 405, headers: { allow: "POST" } });
   }
 
+  const contentLength = Number(request.headers.get("content-length"));
+  if (Number.isFinite(contentLength) && contentLength > MAX_REQUEST_BODY_CHARS) {
+    return jsonResponse({
+      error: "Request payload is too large.",
+      retryable: false,
+    }, 413);
+  }
+
   let body: ChatRequestBody;
   try {
-    body = (await request.json()) as ChatRequestBody;
+    const rawBody = await request.text();
+    if (rawBody.length > MAX_REQUEST_BODY_CHARS) {
+      return jsonResponse({
+        error: "Request payload is too large.",
+        retryable: false,
+      }, 413);
+    }
+    body = JSON.parse(rawBody) as ChatRequestBody;
   } catch {
     return jsonResponse({
       error: "Invalid JSON body. Expected { message, history }.",
