@@ -1,16 +1,28 @@
 import { useEffect, useState } from "react";
-import { Activity, BarChart3, Eye, FlaskConical, Globe2, MousePointer2, Route, Search, ShieldCheck, Timer, Wrench } from "lucide-react";
+import {
+  Activity,
+  BarChart3,
+  BrainCircuit,
+  Eye,
+  FlaskConical,
+  Globe2,
+  MousePointer2,
+  Search,
+  ShieldCheck,
+  Timer,
+  Wrench,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   createAdminSurvey,
   getAdminBehaviorOverview,
+  getAdminSurveyResults,
   getAdminSurveys,
   setAdminSurveyActive,
 } from "@/lib/admin/rpc/behavior.rpc";
 
 type Overview = Extract<Awaited<ReturnType<typeof getAdminBehaviorOverview>>, { ok: true }>;
-
 type Survey = {
   id: string;
   slug: string;
@@ -20,6 +32,7 @@ type Survey = {
   targetLocale: string | null;
   maxResponses: number | null;
 };
+type SurveyResults = Extract<Awaited<ReturnType<typeof getAdminSurveyResults>>, { ok: true }>;
 
 function formatDuration(ms: number): string {
   if (!ms) return "—";
@@ -53,6 +66,8 @@ export function BehaviorIntelligenceDashboard() {
   const [days, setDays] = useState(30);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [surveys, setSurveys] = useState<Survey[]>([]);
+  const [selectedSurveyId, setSelectedSurveyId] = useState<string | null>(null);
+  const [surveyResults, setSurveyResults] = useState<SurveyResults | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [newSurvey, setNewSurvey] = useState({ slug: "", title: "", description: "", targetLocale: "" });
@@ -79,6 +94,12 @@ export function BehaviorIntelligenceDashboard() {
   useEffect(() => {
     void load();
   }, [days]);
+
+  const loadSurveyResults = async (surveyId: string) => {
+    setSelectedSurveyId(surveyId);
+    const result = await getAdminSurveyResults({ data: { surveyId } });
+    if (result.ok) setSurveyResults(result);
+  };
 
   const createSurvey = async () => {
     if (!newSurvey.slug || !newSurvey.title) return;
@@ -115,8 +136,8 @@ export function BehaviorIntelligenceDashboard() {
     ["Sessions", overview.sessions, Globe2],
     ["Page views", overview.pageViews, Eye],
     ["Searches", overview.searches, Search],
+    ["Clicks", overview.clickEvents, MousePointer2],
     ["Tool starts", overview.toolStarts, Wrench],
-    ["Tool completions", overview.toolCompletions, Activity],
     ["Avg journey step", formatDuration(overview.averageJourneyMs), Timer],
   ] as const;
 
@@ -127,10 +148,10 @@ export function BehaviorIntelligenceDashboard() {
           <div className="flex items-center gap-2">
             <ShieldCheck className="size-5 text-primary" />
             <h1 className="text-2xl font-black tracking-tight">Privacy-first Behavior Intelligence</h1>
-            <Badge variant="outline" className="border-emerald-500/30 text-emerald-500">No Google tracker</Badge>
+            <Badge variant="outline" className="border-emerald-500/30 text-emerald-500">First-party only</Badge>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            First-party movement, search intent, funnels and surveys. No stored IP, raw query, full referrer, or user-agent.
+            Real movement, search intent, clicks, journeys, tools and surveys. No stored IP, raw query, full referrer, or user-agent.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -177,14 +198,46 @@ export function BehaviorIntelligenceDashboard() {
           ) : surveys.map((survey) => (
             <div key={survey.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 px-3 py-3">
               <div><p className="text-sm font-semibold">{survey.title}</p><p className="text-[11px] text-muted-foreground">/{survey.slug}{survey.targetLocale ? ` • ${survey.targetLocale}` : ""}</p></div>
-              <Button size="sm" variant={survey.active ? "default" : "outline"} onClick={() => void toggleSurvey(survey)} className="rounded-xl text-xs">{survey.active ? "Active" : "Draft"}</Button>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" onClick={() => void loadSurveyResults(survey.id)} className="rounded-xl text-xs">Results</Button>
+                <Button size="sm" variant={survey.active ? "default" : "outline"} onClick={() => void toggleSurvey(survey)} className="rounded-xl text-xs">{survey.active ? "Active" : "Draft"}</Button>
+              </div>
             </div>
           ))}
         </div>
       </section>
 
+      {surveyResults && selectedSurveyId && (
+        <section className="rounded-2xl border border-border/70 bg-card/70 p-5 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-bold">Survey results · {surveyResults.survey.title}</h2>
+              <p className="mt-1 text-xs text-muted-foreground">{surveyResults.responses.toLocaleString()} anonymous responses</p>
+            </div>
+            <Badge variant="outline" className="border-primary/30 text-primary">No respondent identity</Badge>
+          </div>
+          <div className="mt-5 grid gap-5 lg:grid-cols-2">
+            {surveyResults.questions.map((question) => (
+              <div key={question.questionId} className="rounded-2xl border border-border/60 p-4">
+                <p className="text-xs font-semibold text-foreground">{question.prompt}</p>
+                <div className="mt-3 space-y-2">
+                  {question.choices.length === 0 ? (
+                    <p className="text-[11px] text-muted-foreground">No responses yet.</p>
+                  ) : question.choices.slice(0, 10).map((choice) => (
+                    <div key={choice.key} className="flex items-center justify-between gap-3 text-xs">
+                      <span className="min-w-0 truncate">{choice.key}</span>
+                      <span className="font-semibold text-primary">{choice.count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       <div className="rounded-2xl border border-border/70 bg-surface/30 px-4 py-3 text-xs text-muted-foreground">
-        Journey data uses a session-scoped random identifier stored only in sessionStorage. It is not a cross-site identity.
+        Journey data uses a session-scoped random identifier stored only in sessionStorage. It is not a cross-site identity, and raw search text never reaches the analytics database.
       </div>
     </div>
   );
