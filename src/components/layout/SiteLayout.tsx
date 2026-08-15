@@ -1,15 +1,15 @@
-import { useState, type ReactNode } from "react";
+import { lazy, Suspense, useState, type ReactNode } from "react";
 import { Footer } from "./Footer";
 import { Navbar } from "./Navbar";
-import { AnalyticsDialog } from "@/components/landing/AnalyticsDialog";
-import { VisitorChatWidget } from "@/components/communication/VisitorChatWidget";
+
+const AnalyticsDialog = lazy(() => import("@/components/landing/AnalyticsDialog").then((module) => ({ default: module.AnalyticsDialog })));
+const VisitorChatWidget = lazy(() => import("@/components/communication/VisitorChatWidget").then((module) => ({ default: module.VisitorChatWidget })));
 
 interface SiteLayoutProps {
   children: ReactNode;
   onRequestTool?: () => void;
 }
 
-/** Shared page chrome. Every public page and tool page renders inside this. */
 export function SiteLayout({ children, onRequestTool }: SiteLayoutProps) {
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
 
@@ -18,8 +18,10 @@ export function SiteLayout({ children, onRequestTool }: SiteLayoutProps) {
       <Navbar />
       <main className="flex-1">{children}</main>
       <Footer onRequestTool={onRequestTool} onOpenAnalytics={() => setAnalyticsOpen(true)} />
-      <AnalyticsDialog open={analyticsOpen} onOpenChange={setAnalyticsOpen} />
-      <VisitorChatWidget />
+      <Suspense fallback={null}>
+        {analyticsOpen && <AnalyticsDialog open={analyticsOpen} onOpenChange={setAnalyticsOpen} />}
+        <VisitorChatWidget />
+      </Suspense>
     </div>
   );
 }
