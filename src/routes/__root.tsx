@@ -120,8 +120,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content: "Translation, writing, vision and audio tools under a single calm interface.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:image", content: "https://flixoai.vercel.app/flixo-logo.svg" },
+      { property: "og:image:alt", content: "Official Flixo AI logo — All Tools. One Place." },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@FlixoTools" },
+      { name: "twitter:image", content: "https://flixoai.vercel.app/flixo-logo.svg" },
     ],
     links: [
       { rel: "manifest", href: "/manifest.json" },
@@ -136,6 +139,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: appCss,
       },
       { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+      { rel: "apple-touch-icon", href: "/flixo-mark.svg" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
