@@ -20,6 +20,8 @@ interface OpenRouterResponseBody {
   error?: { message?: string; code?: number };
 }
 
+type OpenRouterContent = string | Array<{ text?: string }> | undefined;
+
 function toFailure(kind: AIErrorKind, message: string, retryable: boolean): AIGenerateResult {
   return { ok: false, kind, message, retryable };
 }
@@ -37,7 +39,7 @@ function withTimeout(
   return { signal: controller.signal, cleanup: () => clearTimeout(timer) };
 }
 
-function extractText(content: OpenRouterResponseBody["choices"][number]["message"]["content"]): string {
+function extractText(content: OpenRouterContent): string {
   if (typeof content === "string") return content;
   if (!Array.isArray(content)) return "";
   return content.map((part) => part.text ?? "").join("");
