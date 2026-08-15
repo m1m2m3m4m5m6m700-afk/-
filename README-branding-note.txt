@@ -1,0 +1,1 @@
+Official Flixo branding is provided by public/flixo-official-logo.svg.
