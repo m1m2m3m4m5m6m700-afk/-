@@ -2,9 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { AITaskInterface } from "@/components/assistant/AITaskInterface";
 import { CapabilityCards, SupportedFiles } from "@/components/assistant/HomeSignals";
-import { PopularToolsSection } from "@/components/landing/PopularToolsSection";
-import { NewToolsSection } from "@/components/landing/NewToolsSection";
-import { TrendingToolsSection } from "@/components/seo/TrendingToolsSection";
+import { PrimaryToolCategories } from "@/components/landing/PrimaryToolCategories";
 import { WhyFlixo } from "@/components/landing/WhyFlixo";
 import { FAQ } from "@/components/landing/FAQ";
 import { SponsorSection } from "@/components/landing/SponsorSection";
@@ -22,29 +20,22 @@ function Index() {
   const [requestOpen, setRequestOpen] = useState(false);
 
   const handleRequestTool = (prefillPrompt?: string) => {
-    if (prefillPrompt) {
-      setQuery(prefillPrompt);
-    }
+    if (prefillPrompt) setQuery(prefillPrompt);
     setRequestOpen(true);
   };
 
   return (
     <SiteLayout onRequestTool={() => handleRequestTool()}>
       <div className="bg-hero-glow">
-        <div className="mx-auto max-w-4xl space-y-16 px-5 py-20 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl space-y-14 px-5 py-16 sm:px-6 lg:px-8 lg:py-20">
           <AITaskInterface onRequestTool={handleRequestTool} />
-          <PopularToolsSection />
+          <PrimaryToolCategories />
           <CapabilityCards />
           <SupportedFiles />
         </div>
       </div>
 
       <WhyFlixo />
-
-      <div className="mx-auto max-w-4xl space-y-16 px-5 py-20 sm:px-6 lg:px-8">
-        <TrendingToolsSection />
-        <NewToolsSection />
-      </div>
 
       <FAQ />
 
