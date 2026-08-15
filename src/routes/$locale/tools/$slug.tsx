@@ -1,5 +1,6 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useEffect } from "react";
+import { Sparkles } from "lucide-react";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { ToolLayout } from "@/components/tools/ToolLayout";
 import { getReadyToolRuntime } from "@/lib/tool-runtime/readyTools";
@@ -56,6 +57,7 @@ function LocalizedToolPageContent({ slug, locale }: { slug: string; locale: Loca
   }
 
   const category = toolRecord ? categoryById.get(toolRecord.categoryId) : undefined;
+  const icon = category?.icon ?? Sparkles;
   const categoryName = category ? resolveCategoryName(category.id, t) : t("nav.tools");
 
   if (!toolRecord || toolRecord.status !== "ready") {
@@ -75,7 +77,7 @@ function LocalizedToolPageContent({ slug, locale }: { slug: string; locale: Loca
   return (
     <SiteLayout>
       <ToolLayout
-        icon={category?.icon}
+        icon={icon}
         name={resolveToolName(toolRecord.slug || toolRecord.id, t)}
         description={toolRecord.description}
         category={categoryName}
