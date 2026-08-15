@@ -1,242 +1,158 @@
-import { useState } from "react";
-import { Link } from "@tanstack/react-router";
-import { ArrowRight, Lightbulb, CheckCircle2, Bot, Loader2 } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
-import { Button } from "@/components/ui/button";
-import { AIPromptBox } from "./AIPromptBox";
-import { UnknownTaskDialog } from "./UnknownTaskDialog";
-import { HeroStats, QuickAccessBar, TrustBar } from "./HomeSignals";
-import { FlixoBrain, type BrainStatus, type BrainProcessResult } from "@/lib/brain";
+import { useEffect, useRef, useState } from "react";
+import { Bot, Plus, Send, Sparkles, Trash2 } from "lucide-react";
+import { motion } from "motion/react";
 import { useI18n } from "@/lib/i18n";
-import type { TranslationKey } from "@/lib/i18n/locales/en";
-import type { CategoryId } from "@/data/categories";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
-interface AITaskInterfaceProps {
-  onRequestTool: (prefillPrompt?: string) => void;
-  onSelectCategory?: (categoryId: CategoryId) => void;
-}
+type Role = "user" | "assistant";
+type Message = { id: string; role: Role; content: string };
 
-const brain = new FlixoBrain();
+const MAX_HISTORY = 20;
 
-interface FlexGuidance {
-  reply: string;
-}
-
-export function AITaskInterface({ onRequestTool, onSelectCategory }: AITaskInterfaceProps) {
+export function AITaskInterface() {
   const { t, locale } = useI18n();
-  const [prompt, setPrompt] = useState("");
-  const [status, setStatus] = useState<BrainStatus>("idle");
-  const [statusText, setStatusText] = useState("Ready");
+  const storageKey = `flixo-flex-home:${locale}`;
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<BrainProcessResult | null>(null);
-  const [flexGuidance, setFlexGuidance] = useState<FlexGuidance | null>(null);
-  const [unknownDialogOpen, setUnknownDialogOpen] = useState(false);
-  const [unmatchedPrompt, setUnmatchedPrompt] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const endRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  const BRAIN_STATUS_KEY: Record<BrainStatus, TranslationKey> = {
-    idle: "brain.status.idle",
-    thinking: "brain.notify.thinking",
-    analyzing: "brain.notify.analyzing",
-    matching: "brain.notify.matching",
-    ready: "brain.notify.ready",
-    unknown: "brain.notify.unknownLong",
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(sessionStorage.getItem(storageKey) ?? "[]") as Message[];
+      setMessages(Array.isArray(stored) ? stored.slice(-MAX_HISTORY) : []);
+    } catch {
+      setMessages([]);
+    }
+  }, [storageKey]);
+
+  useEffect(() => {
+    try { sessionStorage.setItem(storageKey, JSON.stringify(messages.slice(-MAX_HISTORY))); } catch {}
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, storageKey]);
+
+  const newChat = () => {
+    setMessages([]);
+    setInput("");
+    setError(null);
+    try { sessionStorage.removeItem(storageKey); } catch {}
+    inputRef.current?.focus();
   };
 
-  const localizedStatusText = result?.statusText
-    ? result.matched
-      ? t("brain.notify.ready")
-      : t("brain.notify.unknownLong")
-    : t(BRAIN_STATUS_KEY[status]);
+  const send = async (preset?: string) => {
+    const text = (preset ?? input).trim();
+    if (!text || loading) return;
 
-  const askFlexForGuidance = async (inputPrompt: string) => {
+    const history = messages.slice(-MAX_HISTORY).map(({ role, content }) => ({ role, content }));
+    const userMessage: Message = { id: `u-${Date.now()}`, role: "user", content: text };
+    setMessages((current) => [...current, userMessage].slice(-MAX_HISTORY));
+    setInput("");
+    setError(null);
+    setLoading(true);
+
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ message: inputPrompt, history: [] }),
+        body: JSON.stringify({ message: text, history, locale }),
       });
-      const payload = (await response.json()) as { reply?: string; error?: string };
-      return (
-        payload.reply?.trim() ||
-        payload.error ||
-        (locale === "ar"
-          ? "لم أتمكن من فهم المهمة بالكامل. جرّب وصف ما تريد فعله بالملف أو الرابط وسأرشدك للأداة المناسبة."
-          : "I could not fully understand the task. Describe what you want to do with the file or link and I will guide you to the right tool.")
-      );
-    } catch {
-      return locale === "ar"
-        ? "تعذر الاتصال بـFlex الآن. يمكنك وصف المهمة مرة أخرى وسأحاول إرشادك للأداة المناسبة."
-        : "Flex could not reach the AI service right now. Try describing the task again and I will guide you to the right tool.";
+      const data = (await response.json()) as { reply?: string; error?: string };
+      if (!response.ok || !data.reply) throw new Error(data.error || "Flex is temporarily unavailable.");
+      setMessages((current) => [...current, { id: `a-${Date.now()}`, role: "assistant", content: data.reply! }].slice(-MAX_HISTORY));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Flex is temporarily unavailable.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleFlexTask = async (
-    inputPrompt: string,
-    attachment?: { file?: File; name?: string; type?: string },
-    linkUrl?: string,
-  ) => {
-    if (!inputPrompt.trim() && !attachment && !linkUrl) return;
-
-    setLoading(true);
-    setResult(null);
-    setFlexGuidance(null);
-
-    const brainResult = await brain.processRequest(inputPrompt, {
-      attachment,
-      linkUrl,
-      locale,
-      onStatusChange: (newStatus, text) => {
-        setStatus(newStatus);
-        setStatusText(text);
-      },
-    });
-
-    setResult(brainResult);
-    setLoading(false);
-
-    if (brainResult.matched && brainResult.skill) {
-      if (onSelectCategory) onSelectCategory(brainResult.skill.categoryId);
-      return;
-    }
-
-    setUnmatchedPrompt(inputPrompt);
-    const reply = await askFlexForGuidance(inputPrompt);
-    setFlexGuidance({ reply });
+  const submit = (event: React.FormEvent) => { event.preventDefault(); void send(); };
+  const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void send(); }
   };
 
-  const handleSelectTask = (taskPrompt: string) => {
-    setPrompt(taskPrompt);
-  };
+  const suggestions = [
+    t("assistant.suggestion.translation"),
+    t("assistant.suggestion.writing"),
+    t("assistant.suggestion.utilities"),
+  ];
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-8">
-      <AIPromptBox
-        prompt={prompt}
-        onPromptChange={setPrompt}
-        onSubmit={handleFlexTask}
-        status={status}
-        statusText={localizedStatusText}
-        loading={loading}
-      />
-
-      <TrustBar />
-      <HeroStats />
-      <QuickAccessBar onSelect={handleSelectTask} />
-
-      <AnimatePresence mode="wait">
-        {result && !loading && result.matched && result.skill && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.98, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.98, y: -10 }}
-            className="overflow-hidden rounded-3xl border border-primary/20 bg-surface/90 p-5 shadow-lift backdrop-blur-xl"
-          >
-            <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-              <div className="space-y-2">
-                <div className="flex items-center gap-3">
-                  <span className="grid size-10 place-items-center rounded-2xl bg-primary/10 text-primary">
-                    <Bot className="size-5" />
-                  </span>
-                  <div>
-                    <span className="block text-[11px] font-bold uppercase tracking-wider text-primary">Flex</span>
-                    <h3 className="text-lg font-bold text-foreground">
-                      {locale === "ar" ? "وجدت لك الأداة المناسبة" : "I found the right tool for you"}
-                    </h3>
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-border/70 bg-card/60 p-4">
-                  <p className="text-sm font-bold text-foreground">{result.skill.name}</p>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{result.skill.description}</p>
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
-                      {t("assistant.result.category")}: {result.skill.categoryName}
-                    </span>
-                    {result.matchedKeywords.length > 0 && (
-                      <span className="text-[11px] text-muted-foreground">
-                        {t("assistant.result.matched")}: {result.matchedKeywords.join(", ")}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="shrink-0 pt-2">
-                {result.skill.status === "ready" && result.skill.route ? (
-                  <Button asChild size="sm" className="rounded-xl px-4 font-bold shadow-sm">
-                    <Link to={result.skill.route as "/tools/translator"}>
-                      {locale === "ar" ? "افتح الأداة" : "Open tool"}
-                      <ArrowRight className="ms-1.5 size-4" />
-                    </Link>
-                  </Button>
-                ) : (
-                  <Button
-                    size="sm"
-                    onClick={() => onRequestTool(prompt)}
-                    className="rounded-xl px-4 font-bold shadow-sm"
-                  >
-                    <Lightbulb className="me-1.5 size-4" />
-                    {locale === "ar" ? "اطلب إضافة الأداة" : "Request this tool"}
-                  </Button>
-                )}
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {flexGuidance && !loading && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="rounded-3xl border border-primary/20 bg-surface/90 p-5 shadow-lift backdrop-blur-xl"
-          >
+    <section className="mx-auto w-full max-w-5xl" aria-label="Flex AI chat">
+      <div className="overflow-hidden rounded-[2rem] border border-border/70 bg-card/80 shadow-lift backdrop-blur-xl">
+        <div className="border-b border-border/60 bg-gradient-to-br from-primary/12 via-card to-card px-5 py-5 sm:px-7">
+          <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-3">
-              <span className="grid size-9 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary">
-                <Bot className="size-4" />
-              </span>
-              <div className="min-w-0">
-                <div className="mb-2 flex items-center gap-2">
-                  <span className="text-sm font-bold text-foreground">Flex</span>
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-primary">
-                    {locale === "ar" ? "إرشاد" : "Guidance"}
-                  </span>
-                </div>
-                <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">{flexGuidance.reply}</p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setUnknownDialogOpen(true)}
-                    className="rounded-xl text-xs font-bold"
-                  >
-                    {locale === "ar" ? "اطلب أداة جديدة" : "Request a new tool"}
-                  </Button>
-                </div>
+              <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
+                <Sparkles className="size-5" />
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">{t("assistant.eyebrow")}</p>
+                <h1 className="mt-1 text-2xl font-black tracking-tight sm:text-3xl">{t("hero.title")}</h1>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{t("hero.description")}</p>
               </div>
             </div>
-          </motion.div>
-        )}
-
-        {loading && (
-          <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-            <Loader2 className="size-4 animate-spin text-primary" />
-            <span>{locale === "ar" ? "Flex يفهم طلبك…" : "Flex is understanding your request…"}</span>
+            <Button variant="ghost" size="icon" onClick={newChat} className="size-9 rounded-xl" title="New chat">
+              <Plus className="size-4" />
+            </Button>
           </div>
-        )}
-      </AnimatePresence>
-
-      {result?.matched && result.skill && (
-        <div className="sr-only" aria-live="polite">
-          <CheckCircle2 /> {result.skill.name}
         </div>
-      )}
 
-      <UnknownTaskDialog
-        open={unknownDialogOpen}
-        onOpenChange={setUnknownDialogOpen}
-        prompt={unmatchedPrompt || prompt}
-        onRequestSubmitted={(p) => onRequestTool(p)}
-      />
-    </div>
+        <div className="min-h-60 max-h-[480px] overflow-y-auto px-4 py-5 sm:px-6">
+          {messages.length === 0 ? (
+            <div className="flex min-h-52 flex-col items-center justify-center text-center">
+              <div className="grid size-12 place-items-center rounded-2xl bg-primary/10 text-primary"><Bot className="size-6" /></div>
+              <h2 className="mt-4 text-lg font-bold">{t("assistant.title")}</h2>
+              <p className="mt-1 max-w-xl text-sm text-muted-foreground">{t("assistant.empty.body")}</p>
+              <div className="mt-5 flex max-w-3xl flex-wrap justify-center gap-2">
+                {suggestions.map((suggestion) => (
+                  <button key={suggestion} type="button" onClick={() => void send(suggestion)} className="rounded-full border border-border/70 bg-background px-3 py-2 text-xs text-muted-foreground hover:border-primary/40 hover:text-foreground">
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {messages.map((item) => (
+                <div key={item.id} className={cn("flex gap-3", item.role === "user" ? "justify-end" : "justify-start")}>
+                  {item.role === "assistant" && <div className="mt-1 grid size-8 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><Bot className="size-4" /></div>}
+                  <div dir="auto" className={cn("max-w-[88%] whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm leading-6", item.role === "user" ? "bg-primary text-primary-foreground" : "border border-border/70 bg-background text-foreground")}>
+                    {item.content}
+                  </div>
+                </div>
+              ))}
+              {loading && <div className="flex items-center gap-2 text-xs text-muted-foreground"><Bot className="size-4 text-primary" /><span>{t("assistant.thinking")}</span><span className="animate-pulse">…</span></div>}
+              <div ref={endRef} />
+            </div>
+          )}
+        </div>
+
+        {error && <div className="mx-4 mb-3 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive sm:mx-6">{error}</div>}
+
+        <form onSubmit={submit} className="border-t border-border/60 bg-background/70 p-3 sm:p-4">
+          <div className="rounded-2xl border border-border/80 bg-card p-2 focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/10">
+            <Textarea
+              ref={inputRef}
+              value={input}
+              onChange={(event) => setInput(event.target.value)}
+              onKeyDown={onKeyDown}
+              rows={3}
+              disabled={loading}
+              placeholder={t("hero.searchPlaceholder")}
+              className="min-h-20 resize-none border-0 bg-transparent px-2 py-1.5 text-sm shadow-none focus-visible:ring-0"
+            />
+            <div className="flex items-center justify-between gap-2 px-1 pt-1">
+              <div className="flex items-center gap-2 text-[11px] text-muted-foreground"><Trash2 className="size-3.5" /><button type="button" onClick={newChat} className="hover:text-foreground">{t("assistant.reset")}</button></div>
+              <Button type="submit" disabled={!input.trim() || loading} className="rounded-xl px-4 font-bold"><Send className="me-2 size-4" />{t("assistant.button")}</Button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </section>
   );
 }
