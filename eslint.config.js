@@ -31,6 +31,9 @@ export default tseslint.config(
           ],
         },
       ],
+      // Allow variables that are intentionally read by a closure before their
+      // assignment (for example, a timer referenced by cleanup logic).
+      "prefer-const": ["error", { ignoreReadBeforeAssign: true }],
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
       "react-hooks/set-state-in-effect": "off",
       "react-hooks/purity": "off",
