@@ -14,6 +14,10 @@ interface FlexChatBarProps {
 
 const MAX_HISTORY = 12;
 
+function appendMessage(messages: FlexMessage[], message: FlexMessage): FlexMessage[] {
+  return [...messages, message].slice(-MAX_HISTORY);
+}
+
 export function FlexChatBar({ prompt }: FlexChatBarProps) {
   const { locale } = useI18n();
   const [messages, setMessages] = useState<FlexMessage[]>([]);
@@ -40,7 +44,7 @@ export function FlexChatBar({ prompt }: FlexChatBarProps) {
     const text = prompt.trim();
     if (!text || loading) return;
 
-    const nextMessages = [...messages, { role: "user" as const, content: text }].slice(-MAX_HISTORY);
+    const nextMessages = appendMessage(messages, { role: "user", content: text });
     setMessages(nextMessages);
     setLoading(true);
 
@@ -53,20 +57,17 @@ export function FlexChatBar({ prompt }: FlexChatBarProps) {
 
       const payload = (await response.json()) as {
         reply?: string;
-        model?: string;
-        provider?: string;
         error?: string;
       };
 
       const reply = payload.reply?.trim() || payload.error || "Flex could not answer right now.";
-      setMessages((current) =>
-        [...current, { role: "assistant", content: reply }].slice(-MAX_HISTORY),
-      );
+      setMessages((current) => appendMessage(current, { role: "assistant", content: reply }));
     } catch {
       setMessages((current) =>
-        [...current, { role: "assistant", content: "Flex could not reach the AI service right now." }].slice(
-          -MAX_HISTORY,
-        ),
+        appendMessage(current, {
+          role: "assistant",
+          content: "Flex could not reach the AI service right now.",
+        }),
       );
     } finally {
       setLoading(false);
