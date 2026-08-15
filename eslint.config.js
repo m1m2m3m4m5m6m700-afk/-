@@ -1,5 +1,4 @@
 import js from "@eslint/js";
-import eslintPluginPrettier from "eslint-plugin-prettier/recommended";
 import globals from "globals";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
@@ -33,8 +32,6 @@ export default tseslint.config(
         },
       ],
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
-      // These rules flag intentional hydration and third-party widget
-      // synchronization patterns used by the existing UI.
       "react-hooks/set-state-in-effect": "off",
       "react-hooks/purity": "off",
       "@typescript-eslint/no-unused-vars": "off",
@@ -43,8 +40,6 @@ export default tseslint.config(
   {
     files: ["src/routes/**/*.tsx"],
     rules: {
-      // TanStack file routes export a route definition and a component from
-      // the same module by design; Fast Refresh cannot interpret that shape.
       "react-refresh/only-export-components": "off",
     },
   },
@@ -61,9 +56,6 @@ export default tseslint.config(
       "src/lib/theme.tsx",
     ],
     rules: {
-      // These shared modules intentionally export hooks, contexts, and style
-      // helpers alongside components; splitting them would make the public
-      // component API less coherent without improving runtime refresh behavior.
       "react-refresh/only-export-components": "off",
     },
   },
@@ -74,12 +66,7 @@ export default tseslint.config(
       "src/components/developer/StateBanners.tsx",
     ],
     rules: {
-      // These modules export a React component plus its registration/helper
-      // exports from the same file — the canonical tool-runtime pattern (see
-      // AGENTS.md layer 2). Splitting them would break the registry import
-      // shape / the multi-banner helper bundle with no refresh gain.
       "react-refresh/only-export-components": "off",
     },
   },
-  eslintPluginPrettier,
 );
