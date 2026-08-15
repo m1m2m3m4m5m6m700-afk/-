@@ -9,6 +9,7 @@ const require = createRequire(import.meta.url);
 
 function ffmpegWasmGzipPlugin(): Plugin {
   const VIRTUAL_ID = "\0flixo:ffmpeg-core-wasm-gz";
+  let moduleSource: string | undefined;
   return {
     name: "flixo:ffmpeg-wasm-gzip",
     apply: "build",
@@ -18,13 +19,13 @@ function ffmpegWasmGzipPlugin(): Plugin {
     },
     load(id) {
       if (id !== VIRTUAL_ID) return;
-      const wasmPath = require.resolve("@ffmpeg/core/wasm");
-      const raw = readFileSync(wasmPath);
+      if (moduleSource) return moduleSource;
+      const raw = readFileSync(require.resolve("@ffmpeg/core/wasm"));
       const gz = gzipSync(raw, { level: 9 });
       const hash = createHash("sha1").update(gz).digest("hex").slice(0, 8);
-      const fileName = `assets/ffmpeg-core-${hash}.wasm.gz`;
-      const refId = this.emitFile({ type: "asset", fileName, source: gz });
-      return `export default ${JSON.stringify(`/${this.getFileName(refId)}`)};`;
+      const refId = this.emitFile({ type: "asset", fileName: `assets/ffmpeg-core-${hash}.wasm.gz`, source: gz });
+      moduleSource = `export default ${JSON.stringify(`/${this.getFileName(refId)}`)};`;
+      return moduleSource;
     },
   };
 }
