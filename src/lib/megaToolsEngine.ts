@@ -31,11 +31,10 @@ function blobFromBytes(bytes: Uint8Array, type: string): Blob {
 }
 function waitFor(target: EventTarget, event: string, timeoutMs = 20000): Promise<void> {
   return new Promise((resolve, reject) => {
-    let timer: number | undefined;
     const onEvent = () => { cleanup(); resolve(); };
-    const cleanup = () => { if (timer !== undefined) window.clearTimeout(timer); target.removeEventListener(event, onEvent); };
+    const cleanup = () => { window.clearTimeout(timer); target.removeEventListener(event, onEvent); };
     target.addEventListener(event, onEvent, { once: true });
-    timer = window.setTimeout(() => { cleanup(); reject(new Error(`Timed out waiting for ${event}.`)); }, timeoutMs);
+    const timer = window.setTimeout(() => { cleanup(); reject(new Error(`Timed out waiting for ${event}.`)); }, timeoutMs);
   });
 }
 
@@ -148,25 +147,20 @@ async function audioTool(file: File, tool: MegaTool): Promise<MegaToolResult> {
 
 async function pdfTool(file: File, tool: MegaTool): Promise<MegaToolResult> {
   if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) throw new Error("Please select a valid PDF file.");
-  const { PDFDocument, rgb, degrees } = await import("pdf-lib"); const pdf = await PDFDocument.load(await file.arrayBuffer()); const pages = pdf.getPages();
+  const { PDFDocument, rgb, degrees } = await import("pdf-lib");
+  const bytes = await file.arrayBuffer(); const pdf = await PDFDocument.load(bytes); const pages = pdf.getPages();
   if (tool.handler === "inspect") return { type: "text", text: `File: ${file.name}\nPages: ${pages.length}\nTitle: ${pdf.getTitle() || "—"}\nAuthor: ${pdf.getAuthor() || "—"}` };
   if (tool.handler === "extract-text") {
-    const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs"); const bytes = new Uint8Array(await file.arrayBuffer()); const doc = await pdfjs.getDocument({ data: bytes }).promise; let text = "";
+    const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+    const doc = await pdfjs.getDocument({ data: bytes }).promise; let text = "";
     for (let pageNumber = 1; pageNumber <= doc.numPages; pageNumber += 1) { const page = await doc.getPage(pageNumber); const content = await page.getTextContent(); text += `${content.items.map((item) => ("str" in item ? item.str : "")).join(" ")}\n`; }
     return { type: "text", text: text.trim() || "No selectable text was found in this PDF." };
   }
   if (tool.handler === "rotate") pages.forEach((page) => page.setRotation(degrees((page.getRotation().angle + 90) % 360)));
+  if (tool.handler === "stamp") pages[0]?.drawText("Flixo", { x: 36, y: 36, size: 10, color: rgb(0.35, 0.35, 0.35) });
   if (tool.handler === "remove-metadata") { pdf.setTitle(""); pdf.setAuthor(""); pdf.setSubject(""); pdf.setKeywords([]); pdf.setProducer(""); pdf.setCreator(""); }
-  if (tool.handler === "page-numbers") pages.forEach((page, index) => { const { width } = page.getSize(); page.drawText(String(index + 1), { x: width / 2 - 4, y: 18, size: 10, color: rgb(0.35, 0.35, 0.35) }); });
-  if (tool.handler === "watermark") pages.forEach((page) => { const { width, height } = page.getSize(); page.drawText("FLIXO", { x: width / 2 - 28, y: height / 2, size: 28, rotate: degrees(45), opacity: 0.22, color: rgb(0.25, 0.35, 0.75) }); });
-  if (tool.handler === "duplicate") { const output = await PDFDocument.create(); const copied = await output.copyPages(pdf, [Math.max(0, pages.length - 1)]); copied.forEach((page) => output.addPage(page)); return downloadResult(blobFromBytes(await output.save(), "application/pdf"), `${baseName(file.name)}-duplicate-${tool.preset}.pdf`); }
-  if (tool.handler === "extract-range" || tool.handler === "split-even") { const output = await PDFDocument.create(); const indices = tool.handler === "split-even" ? pages.map((_, i) => i).filter((i) => i % 2 === 0) : pages.map((_, i) => i).slice(0, Math.max(1, Math.ceil(pages.length / 2))); const copied = await output.copyPages(pdf, indices); copied.forEach((page) => output.addPage(page)); return downloadResult(blobFromBytes(await output.save(), "application/pdf"), `${baseName(file.name)}-${tool.handler}-${tool.preset}.pdf`); }
-  if (tool.handler === "blank-cover") pdf.insertPage(0, [595, 842]);
-  if (tool.handler === "flatten") { try { pdf.getForm().flatten(); } catch { /* PDF has no editable form fields. */ } }
-  if (tool.handler === "poster") {
-    const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs"); const bytes = new Uint8Array(await file.arrayBuffer()); const doc = await pdfjs.getDocument({ data: bytes }).promise; const page = await doc.getPage(1); const viewport = page.getViewport({ scale: 1.25 }); const canvas = document.createElement("canvas"); canvas.width = Math.ceil(viewport.width); canvas.height = Math.ceil(viewport.height); const context = canvas.getContext("2d"); if (!context) throw new Error("Canvas is unavailable in this browser."); await page.render({ canvasContext: context, viewport, canvas }).promise; const image = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png")); if (!image) throw new Error("Could not render the PDF poster."); return downloadResult(image, `${baseName(file.name)}-poster.png`);
-  }
-  return downloadResult(blobFromBytes(await pdf.save(), "application/pdf"), `${baseName(file.name)}-${tool.handler}-${tool.preset}.pdf`);
+  if (tool.handler === "flatten") pages.forEach((page) => page.scaleContent(1, 1));
+  const out = await pdf.save(); return downloadResult(blobFromBytes(out, "application/pdf"), `${baseName(file.name)}-${tool.handler}-${tool.preset}.pdf`);
 }
 
 export async function runMegaTool(tool: MegaTool, file: File): Promise<MegaToolResult> {
@@ -175,5 +169,10 @@ export async function runMegaTool(tool: MegaTool, file: File): Promise<MegaToolR
     case "video": return videoTool(file, tool);
     case "audio": return audioTool(file, tool);
     case "pdf": return pdfTool(file, tool);
+    default: return assertNever(tool.category);
   }
+}
+
+function assertNever(value: never): never {
+  throw new Error(`Unsupported mega-tool category: ${String(value)}`);
 }
