@@ -18,7 +18,8 @@ export function buildOrganizationSchema() {
     "@type": "Organization",
     name: SITE_NAME,
     url: SITE_URL,
-    logo: `${SITE_URL}/favicon.svg`,
+    logo: `${SITE_URL}/flixo-logo.svg`,
+    image: `${SITE_URL}/flixo-logo.svg`,
     sameAs: [`https://twitter.com/${SITE_TWITTER_HANDLE.replace(/^@/, "")}`],
   };
 }
@@ -47,7 +48,7 @@ export function buildRootWebApplicationSchema() {
       "Flixo brings translation, image, PDF, writing, video, audio and developer tools into one fast, private workspace.",
     applicationCategory: "DeveloperApplication",
     operatingSystem: "All",
-    image: getDefaultOgImageUrl(),
+    image: `${SITE_URL}/flixo-logo.svg`,
     offers: {
       "@type": "Offer",
       price: "0",
