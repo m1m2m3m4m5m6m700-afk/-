@@ -3,7 +3,7 @@ import { allDesktopTools } from "@/lib/desktop-tools";
 import { DesktopTool } from "./desktop-runtime-ui";
 import type { ReadyToolRuntimeDefinition } from "./types";
 
-export const desktopToolRuntimes: ReadyToolRuntimeDefinition[] ReadyToolRuntimeDefinition[] = allDesktopTools.map((spec) => ({
+export const desktopToolRuntimes: ReadyToolRuntimeDefinition[] = allDesktopTools.map((spec) => ({
   toolId: spec.id,
   slug: spec.slug,
   categoryId: spec.categoryId,

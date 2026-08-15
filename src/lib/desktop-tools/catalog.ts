@@ -40,10 +40,10 @@ const toBase64 = (input: string) => { const bytes = new TextEncoder().encode(inp
 const fromBase64 = (input: string) => { const binary = atob(input); return new TextDecoder().decode(Uint8Array.from(binary, (c) => c.charCodeAt(0))); };
 const urlEncode = (input: string) => encodeURIComponent(input);
 const urlDecode = (input: string) => decodeURIComponent(input);
-const htmlEncode = (input: string) => input.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;").replace(/'/g, "&#39;");
-const htmlDecode = (input: string) => input.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '\"').replace(/&#39;/g, "'").replace(/&amp;/g, "&");
+const htmlEncode = (input: string) => input.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+const htmlDecode = (input: string) => input.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&");
 const csvToJson = (input: string) => { const [header, ...rows] = lines(input).filter(Boolean).map((line) => line.split(",")); if (!header) return "[]"; return JSON.stringify(rows.map((row) => Object.fromEntries(header.map((key, i) => [key.trim(), (row[i] ?? "").trim()]))), null, 2); };
-const jsonToCsv = (input: string) => { const value = JSON.parse(input) as Record<string, unknown>[]; if (!Array.isArray(value) || value.length === 0) return ""; const headers = [...new Set(value.flatMap((row) => Object.keys(row)))]; const quote = (item: unknown) => `\"${String(item ?? "").replace(/\"/g, '\"\"')}\"`; return [headers.map(quote).join(","), ...value.map((row) => headers.map((key) => quote(row[key])).join(","))].join("\n"); };
+const jsonToCsv = (input: string) => { const value = JSON.parse(input) as Record<string, unknown>[]; if (!Array.isArray(value) || value.length === 0) return ""; const headers = [...new Set(value.flatMap((row) => Object.keys(row)))]; const quote = (item: unknown) => `"${String(item ?? "").replace(/"/g, '""')}"`; return [headers.map(quote).join(","), ...value.map((row) => headers.map((key) => quote(row[key])).join(","))].join("\n"); };
 const parseNumbers = (input: string) => input.split(/[,\s]+/).filter(Boolean).map(Number);
 const sum = (input: string) => String(parseNumbers(input).reduce((a, b) => a + b, 0));
 const average = (input: string) => { const values = parseNumbers(input); return values.length ? String(values.reduce((a, b) => a + b, 0) / values.length) : "0"; };
@@ -84,7 +84,7 @@ const yamlToJsonBasic = (input: string) => JSON.stringify(Object.fromEntries(lin
 const htmlPretty = (input: string) => input.replace(/></g, ">\n<").split("\n").map((line) => line.trim()).join("\n");
 const sqlUpper = (input: string) => input.replace(/\b(select|from|where|and|or|insert|into|values|update|set|delete|join|left|right|inner|outer|group|by|order|limit|as|on)\b/gi, (m) => m.toUpperCase());
 const jsonSortKeys = (input: string) => { const value = JSON.parse(input) as Record<string, unknown>; return JSON.stringify(Object.fromEntries(Object.keys(value).sort().map((k) => [k, value[k]])), null, 2); };
-const quoteEachLine = (input: string) => lines(input).map((line) => `\"${line.replace(/\"/g, '\"\"')}\"`).join("\n");
+const quoteEachLine = (input: string) => lines(input).map((line) => `"${line.replace(/"/g, '""')}"`).join("\n");
 
 type DesktopToolSpecTuple = readonly [
   name: string,
@@ -201,8 +201,8 @@ const specs: DesktopToolSpecTuple[] = [
   ["GB to MB", "converters", "Convert gigabytes to megabytes.", (input) => String(Number(input) * 1024), "1", "1024"],
   ["Unix Timestamp to ISO", "converters", "Convert a Unix timestamp to ISO time.", (input) => new Date(Number(input) * 1000).toISOString(), "0", "1970-01-01T00:00:00.000Z"],
   ["ISO to Unix Timestamp", "converters", "Convert ISO time to Unix seconds.", (input) => String(Math.floor(new Date(input).getTime() / 1000)), "1970-01-01T00:00:00.000Z", "0"],
-  ["Text to Quoted Lines", "utilities", "Quote each line.", quoteEachLine, "a\nb", '\"a\"\n\"b\"'],
-  ["CSV Quote Lines", "converters", "Quote CSV-like lines safely.", quoteEachLine, "a,b\nc,d", '\"a,b\"\n\"c,d\"'],
+  ["Text to Quoted Lines", "utilities", "Quote each line.", quoteEachLine, "a\nb", '"a"\n"b"'],
+  ["CSV Quote Lines", "converters", "Quote CSV-like lines safely.", quoteEachLine, "a,b\nc,d", '"a,b"\n"c,d"'],
   ["Text Deduplicator", "utilities", "Remove duplicate words while preserving order.", dedupeWords, "a b a c", "a b c"],
   ["Paragraph Counter", "utilities", "Count paragraphs.", (input) => String(input.split(/\n\s*\n/u).filter((p) => p.trim()).length), "a\n\nb", "2"],
   ["Whitespace Character Counter", "utilities", "Count whitespace characters.", (input) => String((input.match(/\s/gu) ?? []).length), "a b", "1"],
