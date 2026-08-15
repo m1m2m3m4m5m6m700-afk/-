@@ -90,6 +90,32 @@ export interface ResolvedPageSeo {
   locale: LocaleCode;
 }
 
+function getLocalizedToolCopy(slug: string, locale: LocaleCode) {
+  if (locale === "en") return null;
+
+  const dict = SEO_DICTIONARIES[locale];
+  const tpl = SEO_TEMPLATES[locale];
+  if (!dict || !tpl) return null;
+
+  const nameKey = `tool.${slug}.name` as keyof Dictionary;
+  const taglineKey = `tool.${slug}.tagline` as keyof Dictionary;
+  const locName = dict[nameKey];
+  const locTagline = dict[taglineKey];
+  const enName = en[nameKey];
+  const enTagline = en[taglineKey];
+
+  if (!locName || locName === enName) return null;
+
+  const hasLocalizedTagline = Boolean(locTagline && locTagline !== enTagline);
+  return {
+    name: locName,
+    title: tpl.title(locName),
+    description: hasLocalizedTagline
+      ? tpl.description(locName, locTagline)
+      : tpl.descriptionFallback(locName),
+  };
+}
+
 export function resolvePageSeo(
   slug?: string,
   customData?: Partial<ToolSeoData>,
@@ -103,27 +129,11 @@ export function resolvePageSeo(
     seoData?.description ||
     "Flixo provides free, private, browser-based online tools for images, text, translation, PDFs, and developer utilities with zero sign-up.";
 
-  if (slug && !customData?.title && locale !== "en") {
-    const dict = SEO_DICTIONARIES[locale];
-    if (dict) {
-      const nameKey = `tool.${slug}.name` as keyof Dictionary;
-      const taglineKey = `tool.${slug}.tagline` as keyof Dictionary;
-      const locName = dict[nameKey];
-      const enName = en[nameKey];
-      const hasLocalizedName = locName && locName !== enName;
-      const locTagline = dict[taglineKey];
-      const enTagline = en[taglineKey];
-      const hasLocalizedTagline = locTagline && locTagline !== enTagline;
-      const tpl = SEO_TEMPLATES[locale];
-      if (hasLocalizedName && tpl) {
-        title = tpl.title(locName);
-        description = hasLocalizedTagline
-          ? tpl.description(locName, locTagline)
-          : tpl.descriptionFallback(locName);
-      } else if (tpl) {
-        title = tpl.homeTitle;
-        description = tpl.homeDescription;
-      }
+  if (slug && !customData?.title) {
+    const localizedCopy = getLocalizedToolCopy(slug, locale);
+    if (localizedCopy) {
+      title = localizedCopy.title;
+      description = localizedCopy.description;
     }
   }
 
@@ -162,7 +172,8 @@ export function buildToolHeadMetadata(
   const seo = resolvePageSeo(slug, overrides, locale);
   const ogLocale = getOgLocale(locale);
   const tool = getToolBySlug(slug);
-  const shortTitle = `${tool?.name ?? slug} | Flixo Tools`;
+  const localizedCopy = getLocalizedToolCopy(slug, locale);
+  const shortTitle = `${localizedCopy?.name ?? tool?.name ?? slug} | Flixo Tools`;
 
   const links = [
     { rel: "icon", href: "/flixo-mark.svg", type: "image/svg+xml" },
