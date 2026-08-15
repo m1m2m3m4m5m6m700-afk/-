@@ -14,11 +14,11 @@ export function Navbar() {
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-5">
         <Link to="/" aria-label="Flixo" className="flex min-w-0 items-center">
           <img
-            src="/flixo-logo.svg"
+            src="/flixo-lockup.svg"
             alt="Flixo AI — All Tools. One Place."
-            className="h-11 w-auto max-w-[170px] object-contain object-left"
-            width="147"
-            height="110"
+            className="h-10 w-auto max-w-[185px] object-contain object-left"
+            width="920"
+            height="240"
             fetchPriority="high"
             decoding="async"
           />
