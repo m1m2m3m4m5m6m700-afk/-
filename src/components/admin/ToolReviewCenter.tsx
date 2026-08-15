@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { BadgeCheck, CheckCircle2, ExternalLink, Search, ShieldCheck } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
@@ -48,7 +48,7 @@ function buildReviewItems(): ReviewItem[] {
 }
 
 export function ToolReviewCenter() {
-  const items = useMemo(buildReviewItems, []);
+  const items = buildReviewItems();
   const [reviews, setReviews] = useState<ReviewMap>({});
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<FilterStatus>("all");
