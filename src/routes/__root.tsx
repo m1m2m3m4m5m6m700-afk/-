@@ -89,7 +89,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
           </button>
           <a
             href="/"
-            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-accent"
           >
             Go home
           </a>
@@ -139,6 +139,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: appCss,
       },
       { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+      { rel: "icon", href: "/flixo-mark.svg", type: "image/svg+xml", sizes: "512x512" },
       { rel: "apple-touch-icon", href: "/flixo-mark.svg" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
@@ -154,13 +155,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ErrorComponent,
 });
 
-/**
- * Derive the active locale from the current location pathname so SSR renders the
- * correct `<html lang/dir>` for localized routes (e.g. `/ar`, `/es`, `/zh-CN`).
- * Falls back to `en` for non-localized routes (no prefix). Client scripts
- * (init-locale.js / I18nProvider) may still refine the attribute after
- * hydration; `suppressHydrationWarning` on `<html>` keeps that safe.
- */
 function useRouteLocale(): LocaleCode {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   return useMemo(() => localeFromPathname(pathname), [pathname]);
@@ -194,7 +188,6 @@ function RootComponent() {
       <ThemeProvider>
         <I18nProvider>
           <AnalyticsProvider>
-            {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
             <Outlet />
           </AnalyticsProvider>
         </I18nProvider>
