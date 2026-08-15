@@ -4,6 +4,7 @@ import { ArrowRight, Lightbulb, CheckCircle2, HelpCircle } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { AIPromptBox } from "./AIPromptBox";
+import { FlexChatBar } from "./FlexChatBar";
 import { UnknownTaskDialog } from "./UnknownTaskDialog";
 import { HeroStats, QuickAccessBar, TrustBar } from "./HomeSignals";
 import { FlixoBrain, type BrainStatus, type BrainProcessResult } from "@/lib/brain";
@@ -83,7 +84,7 @@ export function AITaskInterface({ onRequestTool, onSelectCategory }: AITaskInter
 
   const handleSelectTask = (taskPrompt: string) => {
     setPrompt(taskPrompt);
-    handleExecuteTask(taskPrompt);
+    void handleExecuteTask(taskPrompt);
   };
 
   return (
@@ -96,6 +97,8 @@ export function AITaskInterface({ onRequestTool, onSelectCategory }: AITaskInter
         statusText={localizedStatusText}
         loading={loading}
       />
+
+      <FlexChatBar prompt={prompt} />
 
       <TrustBar />
       <HeroStats />
