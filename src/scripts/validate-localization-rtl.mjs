@@ -29,10 +29,14 @@ for (const locale of expectedLtr) {
   if (localeDirection(locale) !== "ltr") errors.push(`${locale} must be LTR`);
 }
 
-if (!index.includes('root.setAttribute("dir", dir)')) {
+// Validate the actual implementation rather than a variable name used by an older version.
+if (
+  !index.includes('document.documentElement.setAttribute("dir", locale)') &&
+  !index.includes('document.documentElement.setAttribute("dir", dir)')
+) {
   errors.push("I18n provider must apply locale direction to <html dir>.");
 }
-if (!index.includes('root.setAttribute("lang", locale)')) {
+if (!index.includes('document.documentElement.setAttribute("lang", locale)')) {
   errors.push("I18n provider must apply locale language to <html lang>.");
 }
 if (!home.includes("LocalI18nProvider")) errors.push("Localized home route must mount LocalI18nProvider.");
