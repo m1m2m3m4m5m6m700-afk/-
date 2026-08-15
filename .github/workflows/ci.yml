@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   verify:
-    name: Verify (contract · typecheck · lint · SEO · i18n · mega-tools · build)
+    name: Verify (contract · typecheck · lint · SEO · i18n · terminology · mega-tools · build)
     runs-on: ubuntu-latest
     timeout-minutes: 40
 
@@ -53,6 +53,9 @@ jobs:
 
       - name: Validate Google Search implementation
         run: node src/scripts/validate-google-search.mjs
+
+      - name: Validate terminology profiles
+        run: node src/scripts/validate-terminology-profiles.mjs
 
       - name: Validate SEO
         run: npm run validate:seo
