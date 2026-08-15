@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   verify:
-    name: Verify (dependency · contract · typecheck · lint · SEO · i18n · terminology · AI · quality · accessibility · security · desktop-tools · mega-tools · build)
+    name: Verify (integration · dependency · typecheck · lint · SEO · i18n · terminology · AI · quality · accessibility · security · desktop-tools · mega-tools · build)
     runs-on: ubuntu-latest
     timeout-minutes: 40
 
@@ -38,6 +38,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Validate cross-layer integration contract
+        run: npm run validate:integration
 
       - name: Install Chromium for operational tests
         run: npx playwright install --with-deps chromium
