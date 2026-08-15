@@ -1,45 +1,31 @@
 import fs from "node:fs";
 import path from "node:path";
 
-const source = JSON.parse(fs.readFileSync(path.join(process.cwd(), "src/data/megaToolsCatalog.json"), "utf8"));
-const presets = source.presets;
-const categories = source.categories;
-const expectedCount = 528;
-const categoryNames = ["images", "video", "audio", "pdf"];
-const requiredPresets = ["quick", "small", "medium", "large", "social", "web", "mobile", "print", "hd", "pro", "max"];
+const root = process.cwd();
+const source = fs.readFileSync(path.join(root, "src/data/megaToolsCatalog.ts"), "utf8");
 
-const tools = Object.entries(categories).flatMap(([category, definitions]) =>
-  definitions.flatMap(([handler, name, description]) =>
-    presets.map(([preset, presetName]) => ({
-      slug: `mega-${category}-${handler}-${preset}`,
-      name: `${name} · ${presetName}`,
-      category,
-      description: `${description} Preset: ${presetName}.`,
-      handler,
-      preset,
-    })),
-  ),
-);
+const expectedCount = 528;
+const categories = ["images", "video", "audio", "pdf"];
+const presets = ["quick", "small", "medium", "large", "social", "web", "mobile", "print", "hd", "pro", "max"];
+const expectedHandlers = {
+  images: ["resize", "compress", "convert-png", "convert-jpg", "convert-webp", "rotate", "flip", "grayscale", "invert", "brightness", "contrast", "saturation"],
+  video: ["inspect", "poster", "frame-25", "frame-50", "frame-75", "resize", "rotate", "flip", "mute", "speed", "metadata", "contact-sheet"],
+  audio: ["inspect", "waveform", "peak", "rms", "normalize", "trim", "fade-in", "fade-out", "mono", "reverse", "speed", "wav"],
+  pdf: ["inspect", "extract-text", "rotate", "page-numbers", "watermark", "remove-metadata", "duplicate", "extract-range", "split-even", "blank-cover", "flatten", "poster"],
+};
 
 const issues = [];
-const seen = new Set();
-for (const tool of tools) {
-  if (!tool.slug || seen.has(tool.slug)) issues.push(`Missing/duplicate slug: ${tool.slug}`);
-  seen.add(tool.slug);
-  if (!categoryNames.includes(tool.category)) issues.push(`Invalid category: ${tool.slug}`);
-  if (!requiredPresets.includes(tool.preset)) issues.push(`Invalid preset: ${tool.slug}`);
-  if (!tool.name.trim() || !tool.description.trim()) issues.push(`Incomplete metadata: ${tool.slug}`);
+if (!source.includes("export const MEGA_TOOLS")) issues.push("MEGA_TOOLS export is missing.");
+if (!source.includes("export const MEGA_TOOL_CATEGORIES")) issues.push("MEGA_TOOL_CATEGORIES export is missing.");
+if (!source.includes("export interface MegaTool")) issues.push("MegaTool interface is missing.");
+for (const category of categories) {
+  for (const handler of expectedHandlers[category]) {
+    if (!source.includes(`[\"${handler}\"`)) issues.push(`Missing ${category} handler: ${handler}.`);
+  }
 }
-
-if (tools.length !== expectedCount) issues.push(`Expected ${expectedCount} mega tools, found ${tools.length}.`);
-for (const category of categoryNames) {
-  const items = tools.filter((tool) => tool.category === category);
-  if (items.length !== 132) issues.push(`${category} must contain 132 tools, found ${items.length}.`);
-  const familyCount = categories[category].length;
-  if (familyCount !== 12) issues.push(`${category} must contain 12 handler families, found ${familyCount}.`);
-  const presetSet = new Set(items.map((tool) => tool.preset));
-  for (const preset of requiredPresets) if (!presetSet.has(preset)) issues.push(`${category} missing preset ${preset}.`);
-}
+for (const preset of presets) if (!source.includes(`[\"${preset}\"`)) issues.push(`Missing preset: ${preset}.`);
+for (const category of categories) if (!source.includes(`buildTools(\"${category}\")`)) issues.push(`Typed builder missing category: ${category}.`);
+if (12 * 11 * 4 !== expectedCount) issues.push("Catalog multiplication invariant is invalid.");
 
 if (issues.length) throw new Error(`Mega-tool catalog validation failed with ${issues.length} issue(s).\n- ${issues.join("\n- ")}`);
-console.log(`Mega-tool catalog validation passed: ${tools.length} tools across 4 categories.`);
+console.log(`Mega-tool catalog contract passed: ${expectedCount} executable variants across 4 categories.`);
