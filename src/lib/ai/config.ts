@@ -107,10 +107,14 @@ export function getAIConfig(): AIGlobalConfig {
   return cached;
 }
 
+/**
+ * AI is available whenever at least one supported provider has credentials.
+ * The provider registry decides the execution order, so an unset default
+ * provider no longer masks an available OpenRouter/Gemini fallback.
+ */
 export function isAIConfigured(): boolean {
   const config = getAIConfig();
-  const active = config.providers[config.activeProvider];
-  return Boolean(active?.apiKey);
+  return Object.values(config.providers).some((provider) => Boolean(provider.apiKey));
 }
 
 export function resetAIConfigCache(): void {
