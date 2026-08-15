@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-labelledby="title desc">
+  <title id="title">Flixo AI — All Tools. One Place.</title>
+  <desc id="desc">Official Flixo logo with a flowing brush mark, AI circuit emblem, FLIXO wordmark and the tagline All Tools. One Place.</desc>
+  <defs>
+    <linearGradient id="teal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5ffcf0"/>
+      <stop offset="0.48" stop-color="#16d9d2"/>
+      <stop offset="1" stop-color="#1685ff"/>
+    </linearGradient>
+    <linearGradient id="dark" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#122637"/>
+      <stop offset="1" stop-color="#050b12"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="10" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <g filter="url(#glow)">
+    <path d="M505 445c-48-63-43-136 15-203l78-91c25-29 69-16 77 21l17 80 119-91c45-35 107-5 108 51l1 100c1 46-20 83-63 112l-121 83 69 35c31 16 51 48 51 83v36c0 43-35 78-78 78H578c-61 0-106-55-94-115z" fill="url(#dark)" stroke="#6afdf3" stroke-width="6"/>
+    <path d="M568 390c-10-45 4-78 33-108l87-91c13-13 35-7 39 11l9 46-129 122c-29 27-35 67-17 102 18 35 57 56 96 55l92-2c27 0 49-22 49-49v-13c0-14-8-27-21-34l-86-43 92-56c30-18 46-46 45-81l-1-51c0-22-25-34-42-20L699 277c-54 42-78 78-91 113z" fill="url(#teal)" opacity=".95"/>
+    <path d="M420 474c72 0 127 44 170 106-36 57-95 92-168 96-73 4-124-17-150-62 61-20 104-67 148-140z" fill="url(#teal)"/>
+    <circle cx="362" cy="503" r="11" fill="#17d9d2"/>
+    <circle cx="325" cy="556" r="7" fill="#1685ff"/>
+    <circle cx="390" cy="588" r="5" fill="#5ffcf0"/>
+
+    <g transform="translate(710 420)">
+      <rect x="0" y="0" width="170" height="170" rx="34" fill="#08141d" stroke="#21e3dc" stroke-width="6"/>
+      <text x="85" y="105" text-anchor="middle" fill="#55f8ec" font-family="Arial, sans-serif" font-size="62" font-weight="800">AI</text>
+      <g stroke="#21e3dc" stroke-width="5" fill="none" stroke-linecap="round">
+        <path d="M85-35v35"/><path d="M85 170v35"/>
+        <path d="M-35 85h35"/><path d="M170 85h35"/>
+        <path d="M12 12l-30-30"/><path d="M158 12l30-30"/>
+        <path d="M12 158l-30 30"/><path d="M158 158l30 30"/>
+      </g>
+    </g>
+  </g>
+
+  <text x="600" y="700" text-anchor="middle" fill="#f7fbff" font-family="Arial, Helvetica, sans-serif" font-size="142" font-weight="800" letter-spacing="18">FLIXO</text>
+  <path d="M520 629l65 65m0-65l-65 65" stroke="url(#teal)" stroke-width="20" stroke-linecap="round"/>
+  <text x="600" y="790" text-anchor="middle" fill="#a9b8c7" font-family="Arial, Helvetica, sans-serif" font-size="48" font-weight="500" letter-spacing="5">All Tools. <tspan fill="#21e3dc">One Place.</tspan></text>
+</svg>
