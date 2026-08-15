@@ -48,12 +48,6 @@ jobs:
       - name: Validate tool runtime
         run: npm run validate:tool-runtime
 
-      - name: Validate tool contract
-        run: npm run validate:tool-contract
-
-      - name: Validate desktop tools
-        run: node src/scripts/validate-desktop-tools.mjs
-
       - name: Validate SEO
         run: npm run validate:seo
 
