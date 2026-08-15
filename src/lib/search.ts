@@ -1,4 +1,4 @@
-import type { CategoryId } from "@/data/categories";
+import { tools, type Tool } from "@/data/tools";
 
 export type SearchResult<T> = {
   item: T;
@@ -65,6 +65,21 @@ const getSignalScore = (queryToken: string, signals: string[]): number =>
 
 const uniq = (values: string[]) => Array.from(new Set(values.filter(Boolean)));
 
+/**
+ * Canonical public search catalog.
+ *
+ * Only tools that have a real runtime and are marked `ready` are searchable.
+ * Planned and placeholder entries remain in the internal roadmap/catalog, but
+ * they must never be presented as currently usable search results.
+ */
+export const searchableTools: readonly Tool[] = Object.freeze(
+  tools.filter((tool) => tool.status === "ready" && Boolean(tool.slug)),
+);
+
+export const searchableToolSlugs: readonly string[] = Object.freeze(
+  searchableTools.map((tool) => tool.slug as string),
+);
+
 export function searchItems<T>(
   items: T[],
   query: string,
@@ -96,8 +111,27 @@ export function searchItems<T>(
     .slice(0, options.limit ?? 20);
 }
 
-export function searchToolSlugs(query: string, slugs: string[]): SearchResult<string>[] {
-  return searchItems(slugs, query, {
+/** Search the public Flixo tool catalog — never planned/placeholder tools. */
+export function searchFlixoTools(query: string, limit = 20): SearchResult<Tool>[] {
+  return searchItems(searchableTools as Tool[], query, {
+    getSignals: (tool) => [
+      tool.name,
+      tool.description,
+      ...(tool.tags ?? []),
+      tool.slug ?? "",
+    ],
+    limit,
+  });
+}
+
+/**
+ * Backward-compatible slug search, now restricted to the public ready catalog.
+ * A caller cannot accidentally surface a planned/placeholder slug here.
+ */
+export function searchToolSlugs(query: string, slugs: string[] = [...searchableToolSlugs]): SearchResult<string>[] {
+  const allowed = new Set(searchableToolSlugs);
+  const publicSlugs = slugs.filter((slug) => allowed.has(slug));
+  return searchItems(publicSlugs, query, {
     getSignals: (slug) => [slug.replace(/-/g, " ")],
   });
 }
