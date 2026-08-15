@@ -120,11 +120,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content: "Translation, writing, vision and audio tools under a single calm interface.",
       },
       { property: "og:type", content: "website" },
-      { property: "og:image", content: "https://flixoai.vercel.app/flixo-logo.svg" },
+      { property: "og:image", content: "https://flixoai.vercel.app/flixo-official-logo.svg" },
       { property: "og:image:alt", content: "Official Flixo AI logo — All Tools. One Place." },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@FlixoTools" },
-      { name: "twitter:image", content: "https://flixoai.vercel.app/flixo-logo.svg" },
+      { name: "twitter:image", content: "https://flixoai.vercel.app/flixo-official-logo.svg" },
     ],
     links: [
       { rel: "manifest", href: "/manifest.json" },
@@ -178,27 +178,3 @@ function RootShell({ children }: { children: ReactNode }) {
         <script src="/register-sw.js" />
         <JsonLd data={getJsonLdData()} />
       </head>
-      <body>
-        {children}
-        <Scripts />
-      </body>
-    </html>
-  );
-}
-
-function RootComponent() {
-  const { queryClient } = Route.useRouteContext();
-
-  return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <I18nProvider>
-          <AnalyticsProvider>
-            {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-            <Outlet />
-          </AnalyticsProvider>
-        </I18nProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
-  );
-}
