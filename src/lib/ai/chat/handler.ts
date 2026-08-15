@@ -2,13 +2,9 @@
  * Server-only Flex chat handler.
  *
  * Flex uses a free-model fleet behind one endpoint:
- * 1) OpenRouter `openrouter/free` — dynamically selects from the currently
+ * 1) OpenRouter `openrouter/free` — dynamically selects from currently
  *    available free model variants and adapts to request capabilities.
  * 2) Gemini free-tier model as a direct fallback when configured.
- *
- * The browser never sees provider keys. User content is sent only to the
- * selected provider, and to the fallback only when the first provider has a
- * retryable availability/quota failure.
  */
 
 import { getAIConfig, type AIProviderConfig } from "../config";
@@ -38,6 +34,8 @@ const MAX_MESSAGE_CHARS = 4000;
 const MAX_TURNS = 20;
 const MAX_REPLY_CHARS = 4000;
 
+type OpenRouterContent = string | Array<{ type?: string; text?: string }>;
+
 interface GeminiGenerateResponse {
   candidates?: Array<{
     content?: { parts?: Array<{ text?: string }> };
@@ -48,7 +46,7 @@ interface GeminiGenerateResponse {
 
 interface OpenRouterResponse {
   choices?: Array<{
-    message?: { content?: string | Array<{ type?: string; text?: string }> };
+    message?: { content?: OpenRouterContent };
   }>;
   model?: string;
   error?: { message?: string; code?: number };
@@ -70,7 +68,10 @@ function sanitizeContent(content: string): string {
 function jsonResponse(body: ChatSuccessBody | ChatErrorBody, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-store",
+    },
   });
 }
 
@@ -153,13 +154,7 @@ function buildGeminiContents(
   return contents;
 }
 
-function extractOpenRouterText(content: OpenRouterResponse["choices"] extends Array<infer T>
-  ? T extends { message?: infer M }
-    ? M extends { content?: infer C }
-      ? C
-      : never
-    : never
-  : never): string {
+function extractOpenRouterText(content: OpenRouterContent | undefined): string {
   if (typeof content === "string") return content;
   if (!Array.isArray(content)) return "";
   return content.map((part) => part.text ?? "").join("");
@@ -282,8 +277,8 @@ export async function handleChatRequest(request: Request): Promise<Response> {
   const gemini = config.providers.gemini;
   if (!openrouter?.apiKey && !gemini?.apiKey) return notConfiguredResponse();
 
-  const timeout = setTimeout(() => undefined, config.defaultTimeoutMs);
   const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), config.defaultTimeoutMs);
 
   try {
     const providers: Array<{
@@ -316,11 +311,14 @@ export async function handleChatRequest(request: Request): Promise<Response> {
             retryable: false,
           });
         }
+
         lastRetryable = result.retryable;
         if (!result.retryable) break;
       } catch {
         lastRetryable = true;
       }
+
+      if (controller.signal.aborted) break;
     }
 
     return jsonResponse(
