@@ -19,6 +19,7 @@
     "validate:tool-runtime": "node src/scripts/validate-tool-runtime.mjs",
     "generate:seo": "node src/scripts/generate-static-seo.mjs",
     "validate:seo": "node src/scripts/validate-seo.mjs",
+    "validate:route-tree": "node src/scripts/validate-route-tree.mjs",
     "validate:tool-content": "node src/scripts/validate-tool-content.mjs",
     "validate:localization": "node src/scripts/validate-localization.mjs",
     "validate:search-intent": "node src/scripts/validate-search-intent.mjs",
