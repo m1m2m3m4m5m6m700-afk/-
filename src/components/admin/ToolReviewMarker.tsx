@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, Star } from "lucide-react";
+import { BadgeCheck, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getAdminToolReview, setAdminToolReviewed } from "@/lib/admin/rpc/tool-review.rpc";
 
@@ -8,8 +8,9 @@ interface ToolReviewMarkerProps {
 }
 
 /**
- * Owner-only QA marker. It never makes a tool ready and never affects public search.
- * An empty star means the owner has not completed a manual review yet.
+ * Owner-only QA marker.
+ * This intentionally does not use a star: the public star remains reserved for
+ * user participation/feedback in the site's admin-controlled surveys.
  */
 export function ToolReviewMarker({ slug }: ToolReviewMarkerProps) {
   const [visible, setVisible] = useState(false);
@@ -24,7 +25,9 @@ export function ToolReviewMarker({ slug }: ToolReviewMarkerProps) {
       setVisible(true);
       setReviewed(result.review.reviewed);
     });
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [slug]);
 
   if (!visible) return null;
@@ -50,7 +53,7 @@ export function ToolReviewMarker({ slug }: ToolReviewMarkerProps) {
       aria-label={reviewed ? "إلغاء علامة مراجعة الأداة" : "تأكيد مراجعة الأداة"}
       className="shrink-0 gap-1.5 rounded-xl px-2.5 text-xs font-semibold"
     >
-      <Star className={`size-4 ${reviewed ? "fill-current text-primary" : "text-muted-foreground"}`} />
+      <BadgeCheck className={`size-4 ${reviewed ? "text-primary" : "text-muted-foreground"}`} />
       {reviewed && <Check className="size-3.5 text-primary" />}
     </Button>
   );
