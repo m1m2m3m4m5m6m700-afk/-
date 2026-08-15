@@ -66,7 +66,13 @@ const DICTIONARIES: Record<LocaleCode, Dictionary> = { en, ar, es, "zh-CN": zhCN
 export const DEFAULT_LOCALE: LocaleCode = "en";
 export const LOCALE_STORAGE_KEY = "flixo-lang";
 const LOCALE_CODES = new Set<string>(LOCALES.map((l) => l.code));
-const STRICT_DICTIONARY_LOCALES = new Set<LocaleCode>(["ar"]);
+
+/**
+ * Multilingual is a production invariant: every non-English locale must have
+ * an explicit value for every key in the English master dictionary. English is
+ * the only locale allowed to be a source-of-truth fallback.
+ */
+const STRICT_DICTIONARY_LOCALES = new Set<LocaleCode>(LOCALES.filter((l) => l.code !== "en").map((l) => l.code));
 
 export function localeMeta(code: LocaleCode): LocaleMeta { return LOCALES.find((l) => l.code === code) ?? LOCALES[0]; }
 export function isSupportedLocale(code: string | undefined | null): code is LocaleCode { return typeof code === "string" && LOCALE_CODES.has(code); }
@@ -100,7 +106,7 @@ function translateFromDictionary(locale: LocaleCode, dict: Dictionary, key: Tran
   if (STRICT_DICTIONARY_LOCALES.has(locale)) {
     const message = `[${locale}] Missing translation key: ${String(key)}`;
     if (import.meta.env?.DEV) console.error(message);
-    return `ترجمة مفقودة: ${String(key)}`;
+    return `[Missing translation: ${String(key)}]`;
   }
   return interpolate(en[key] ?? key, vars);
 }
