@@ -17,7 +17,7 @@ permissions:
 
 jobs:
   verify:
-    name: Verify (typecheck · lint · SEO · i18n · build)
+    name: Verify (contract · typecheck · lint · SEO · i18n · build)
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -31,6 +31,11 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
 
+      # Dependency-free structural guard. Run before npm ci so workflow/manifest
+      # drift fails immediately instead of surfacing deep inside the pipeline.
+      - name: Validate CI contract
+        run: npm run validate-ci-contract
+
       - name: Install dependencies
         run: npm ci
 
@@ -42,6 +47,12 @@ jobs:
 
       - name: Validate tool runtime
         run: npm run validate:tool-runtime
+
+      - name: Validate tool contract
+        run: npm run validate:tool-contract
+
+      - name: Validate desktop tools
+        run: node src/scripts/validate-desktop-tools.mjs
 
       - name: Validate SEO
         run: npm run validate:seo
