@@ -57,7 +57,6 @@ interface VisitorChatWidgetProps {
 export function VisitorChatWidget({ initialOpen = false, showTrigger = true }: VisitorChatWidgetProps) {
   const { locale } = useI18n();
   const storageKey = `${STORAGE_KEY}:${locale}`;
-  const detailsRef = useRef<HTMLDetailsElement>(null);
   const [open, setOpen] = useState(initialOpen);
   const [messages, setMessages] = useState<ChatMessage[]>(() => loadHistory(storageKey));
   const [input, setInput] = useState("");
@@ -89,12 +88,8 @@ export function VisitorChatWidget({ initialOpen = false, showTrigger = true }: V
     if (open && !loading) inputRef.current?.focus();
   }, [open, loading]);
 
-  const setDetailsOpen = (nextOpen: boolean) => {
-    if (detailsRef.current) detailsRef.current.open = nextOpen;
-    setOpen(nextOpen);
-  };
-
-  const closeChat = () => setDetailsOpen(false);
+  const toggleChat = () => setOpen((current) => !current);
+  const closeChat = () => setOpen(false);
 
   const resetChat = () => {
     setMessages([WELCOME]);
@@ -150,7 +145,7 @@ export function VisitorChatWidget({ initialOpen = false, showTrigger = true }: V
       {showTrigger && (
         <Button
           type="button"
-          onClick={() => setDetailsOpen(!open)}
+          onClick={toggleChat}
           aria-expanded={open}
           aria-controls="flixo-flex-chat-panel"
           aria-label={open ? "Close Flex chat" : "Open Flex chat"}
@@ -160,11 +155,10 @@ export function VisitorChatWidget({ initialOpen = false, showTrigger = true }: V
         </Button>
       )}
 
-      <details
+      <div
         id="flixo-flex-chat-panel"
-        ref={detailsRef}
-        open={open}
-        onToggle={(event) => setOpen(event.currentTarget.open)}
+        hidden={!open}
+        aria-hidden={!open}
       >
         <motion.div
           className="mb-3 flex h-[min(700px,calc(100vh-7rem))] w-[min(420px,calc(100vw-2rem))] flex-col overflow-hidden rounded-3xl border border-border/80 bg-card/95 shadow-2xl backdrop-blur-xl"
@@ -295,7 +289,7 @@ export function VisitorChatWidget({ initialOpen = false, showTrigger = true }: V
             </form>
           </div>
         </motion.div>
-      </details>
+      </div>
     </div>
   );
 }
