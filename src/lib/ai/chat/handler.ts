@@ -57,8 +57,8 @@ function parseTurns(body: ChatRequestBody): { ok:true; turns:ChatTurn[]; locale:
 }
 
 function toOpenRouterMessages(turns:ChatTurn[], locale:string|null) { return [{ role:"system" as const, content:localizedSystemPrompt(locale) }, ...turns.map((turn)=>({ role:turn.role as "user"|"assistant", content:turn.content }))]; }
-function buildGeminiContents(turns:ChatTurn[]):Array<{role:"user"|"model";parts:Array<{text:string}>}>{
-  const contents:Array<{role:"user"|"model";parts:Array<{text:string}>>=[];
+function buildGeminiContents(turns:ChatTurn[]): Array<{role:"user"|"model";parts:Array<{text:string}>}> {
+  const contents: Array<{role:"user"|"model";parts:Array<{text:string}>}> = [];
   for(const turn of turns){ const role=turn.role === "assistant" ? "model" : "user"; const last=contents[contents.length-1]; if(last&&last.role===role) last.parts[0].text += `\n\n${turn.content}`; else contents.push({role,parts:[{text:turn.content}]}); }
   return contents;
 }
@@ -77,9 +77,7 @@ function buildFlixoContext(message:string):string {
   return `[Flixo catalog context]\nCategories:\n${categoryEntries}\nRelevant tools:\n${toolLines}`;
 }
 
-function shouldWebSearch(message:string):boolean {
-  return /(search the web|search online|on the internet|web search|google it|latest|today|tonight|current|recent|news|price today|ابحث|الإنترنت|الانترنت|آخر|اليوم|حاليا|حديث|الأخبار|السعر الآن|الاخبار)/i.test(message);
-}
+function shouldWebSearch(message:string):boolean { return /(search the web|search online|on the internet|web search|google it|latest|today|tonight|current|recent|news|price today|ابحث|الإنترنت|الانترنت|آخر|اليوم|حاليا|حديث|الأخبار|السعر الآن|الاخبار)/i.test(message); }
 
 async function searchWeb(query:string, signal:AbortSignal):Promise<string> {
   try {
@@ -89,10 +87,7 @@ async function searchWeb(query:string, signal:AbortSignal):Promise<string> {
     const data=(await response.json()) as { AbstractText?:string; AbstractURL?:string; Heading?:string; RelatedTopics?:Array<{Text?:string;FirstURL?:string;Topics?:Array<{Text?:string;FirstURL?:string}>}> };
     const lines:string[]=[];
     if(data.AbstractText) lines.push(`- ${data.Heading ?? "Result"}: ${data.AbstractText}${data.AbstractURL ? ` (${data.AbstractURL})` : ""}`);
-    for(const topic of (data.RelatedTopics ?? []).slice(0,6)) {
-      if(topic.Text) lines.push(`- ${topic.Text}${topic.FirstURL ? ` (${topic.FirstURL})` : ""}`);
-      for(const nested of (topic.Topics ?? []).slice(0,2)) if(nested.Text) lines.push(`- ${nested.Text}${nested.FirstURL ? ` (${nested.FirstURL})` : ""}`);
-    }
+    for(const topic of (data.RelatedTopics ?? []).slice(0,6)) { if(topic.Text) lines.push(`- ${topic.Text}${topic.FirstURL ? ` (${topic.FirstURL})` : ""}`); for(const nested of (topic.Topics ?? []).slice(0,2)) if(nested.Text) lines.push(`- ${nested.Text}${nested.FirstURL ? ` (${nested.FirstURL})` : ""}`); }
     return lines.length ? `[Fresh web search results for: ${query}]\n${lines.join("\n")}` : "";
   } catch { return ""; }
 }
@@ -127,22 +122,10 @@ export async function handleChatRequest(request:Request):Promise<Response>{
   const config=getAIConfig(); const openrouter=config.providers.openrouter; const gemini=config.providers.gemini; if(!openrouter?.apiKey&&!gemini?.apiKey) return notConfiguredResponse();
   const controller=new AbortController(); const timeout=setTimeout(()=>controller.abort(),config.defaultTimeoutMs);
   try {
-    const catalog=buildFlixoContext(body.message as string);
-    const fresh=shouldWebSearch(body.message as string) ? await searchWeb(body.message as string,controller.signal) : "";
-    const last=parsed.turns[parsed.turns.length-1];
-    const augmentedTurns=[...parsed.turns.slice(0,-1),{...last,content:[last.content,catalog,fresh].filter(Boolean).join("\n\n")}];
-    const providers:Array<{name:"openrouter"|"gemini";config:AIProviderConfig}>=[];
-    if(openrouter?.apiKey) providers.push({name:"openrouter",config:openrouter}); if(gemini?.apiKey) providers.push({name:"gemini",config:gemini});
+    const catalog=buildFlixoContext(body.message as string); const fresh=shouldWebSearch(body.message as string) ? await searchWeb(body.message as string,controller.signal) : ""; const last=parsed.turns[parsed.turns.length-1]; const augmentedTurns=[...parsed.turns.slice(0,-1),{...last,content:[last.content,catalog,fresh].filter(Boolean).join("\n\n")}];
+    const providers:Array<{name:"openrouter"|"gemini";config:AIProviderConfig}>=[]; if(openrouter?.apiKey) providers.push({name:"openrouter",config:openrouter}); if(gemini?.apiKey) providers.push({name:"gemini",config:gemini});
     let lastRetryable=false;
-    for(const provider of providers){
-      try {
-        const result=provider.name==="openrouter" ? await callOpenRouter(provider.config,augmentedTurns,parsed.locale,controller.signal) : await callGemini(provider.config,augmentedTurns,parsed.locale,controller.signal);
-        if(result.ok) return jsonResponse({reply:result.reply,model:result.model,provider:provider.name});
-        if(result.blocked) return jsonResponse({error:"The AI provider blocked this request with its safety filters.",retryable:false});
-        lastRetryable=result.retryable; if(!result.retryable) break;
-      } catch { lastRetryable=true; }
-      if(controller.signal.aborted) break;
-    }
+    for(const provider of providers){ try { const result=provider.name==="openrouter" ? await callOpenRouter(provider.config,augmentedTurns,parsed.locale,controller.signal) : await callGemini(provider.config,augmentedTurns,parsed.locale,controller.signal); if(result.ok) return jsonResponse({reply:result.reply,model:result.model,provider:provider.name}); if(result.blocked) return jsonResponse({error:"The AI provider blocked this request with its safety filters.",retryable:false}); lastRetryable=result.retryable; if(!result.retryable) break; } catch { lastRetryable=true; } if(controller.signal.aborted) break; }
     return jsonResponse({error:lastRetryable?"Flex's AI providers are temporarily unavailable or rate-limited. Please try again shortly.":"Flex could not generate a response with the configured AI providers.",retryable:lastRetryable});
   } finally { clearTimeout(timeout); }
 }
