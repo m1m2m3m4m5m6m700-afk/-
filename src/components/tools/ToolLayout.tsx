@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { useI18n } from "@/lib/i18n";
 import { ToolSeoSection } from "./ToolSeoSection";
 import { SponsorSection } from "@/components/landing/SponsorSection";
+import { ToolReviewMarker } from "@/components/admin/ToolReviewMarker";
 import { usePageSeo } from "@/lib/usePageSeo";
 
 interface ToolLayoutProps {
@@ -88,9 +89,12 @@ export function ToolLayout({
               <p className="mt-1 text-sm text-muted-foreground">{description}</p>
             </div>
           </div>
-          <span className="shrink-0 rounded-full border border-border bg-card px-3 py-1 text-xs text-muted-foreground">
-            {category}
-          </span>
+          <div className="flex shrink-0 items-center gap-2">
+            {pathSlug && <ToolReviewMarker slug={pathSlug} />}
+            <span className="rounded-full border border-border bg-card px-3 py-1 text-xs text-muted-foreground">
+              {category}
+            </span>
+          </div>
         </header>
 
         <div className="mt-8">{children}</div>
