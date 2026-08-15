@@ -6,7 +6,9 @@ const handler = fs.readFileSync(path.join(root, "src/lib/ai/chat/handler.ts"), "
 const flags = fs.readFileSync(path.join(root, "src/lib/feature-flags.ts"), "utf8");
 const issues = [];
 
-if (!handler.includes("tools.filter((tool)=>tool.status === \"ready\"")) issues.push("Flex catalog context must only use runtime-ready tools.");
+// Keep this contract semantic rather than depending on formatting/minification.
+const hasRuntimeReadyFilter = /tools\s*\.\s*filter\s*\(\s*\(?(?:tool|entry)\)?\s*=>\s*(?:tool|entry)\.status\s*===\s*["']ready["']/.test(handler);
+if (!hasRuntimeReadyFilter) issues.push("Flex catalog context must only use runtime-ready tools.");
 if (!handler.includes("isFeatureEnabled(\"webResearch\")")) issues.push("Web research must be feature-flagged.");
 if (!handler.includes("OPENROUTER_API_KEY") && !handler.includes("GEMINI_API_KEY")) issues.push("Flex must document server-side provider configuration.");
 if (!handler.includes("AbortController")) issues.push("Flex provider calls must have bounded cancellation.");
