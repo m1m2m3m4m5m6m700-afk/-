@@ -26,6 +26,10 @@ function getEnabled(): boolean {
   return stored !== "false";
 }
 
+function isPrivateAdminPath(pathname: string): boolean {
+  return pathname === "/admin" || pathname.startsWith("/admin/");
+}
+
 async function sha256(value: string): Promise<string> {
   const bytes = new TextEncoder().encode(value.trim().toLocaleLowerCase());
   const digest = await crypto.subtle.digest("SHA-256", bytes);
@@ -50,10 +54,11 @@ export class FirstPartyAnalyticsProvider implements AnalyticsProviderInterface {
 
   init(config: AnalyticsConfig): void {
     if (typeof window === "undefined" || !config.enabled || config.firstPartyEnabled === false) return;
-    if (!getEnabled()) return;
+    if (!getEnabled() || isPrivateAdminPath(window.location.pathname)) return;
 
     this.enqueue({ type: "session_start", sessionId: getSessionId(), path: window.location.pathname });
     window.addEventListener("beforeunload", () => {
+      if (isPrivateAdminPath(window.location.pathname)) return;
       const durationMs = Math.max(0, Date.now() - this.currentPathStartedAt);
       this.enqueue({
         type: "session_end",
@@ -76,13 +81,13 @@ export class FirstPartyAnalyticsProvider implements AnalyticsProviderInterface {
   }
 
   trackPageView(path: string): void {
-    if (!getEnabled()) return;
+    if (!getEnabled() || isPrivateAdminPath(path)) return;
     const now = Date.now();
     const pagePath = path || window.location.pathname;
     const durationMs = Math.max(0, now - this.currentPathStartedAt);
     const previousPath = this.previousPath;
 
-    if (previousPath && previousPath !== pagePath) {
+    if (previousPath && previousPath !== pagePath && !isPrivateAdminPath(previousPath)) {
       this.enqueue({
         type: "navigation",
         sessionId: getSessionId(),
@@ -104,7 +109,7 @@ export class FirstPartyAnalyticsProvider implements AnalyticsProviderInterface {
   }
 
   async trackSearch(query: string, resultCount?: number, category?: string): Promise<void> {
-    if (!getEnabled() || !query.trim()) return;
+    if (!getEnabled() || isPrivateAdminPath(window.location.pathname) || !query.trim()) return;
     const queryHash = await sha256(query);
     this.enqueue({
       type: "search",
@@ -118,7 +123,7 @@ export class FirstPartyAnalyticsProvider implements AnalyticsProviderInterface {
   }
 
   trackToolClick(toolId: string, _toolName?: string, category?: string): void {
-    if (!getEnabled()) return;
+    if (!getEnabled() || isPrivateAdminPath(window.location.pathname)) return;
     this.enqueue({
       type: "tool_click",
       sessionId: getSessionId(),
@@ -129,7 +134,7 @@ export class FirstPartyAnalyticsProvider implements AnalyticsProviderInterface {
   }
 
   trackCategoryClick(categoryId: string): void {
-    if (!getEnabled()) return;
+    if (!getEnabled() || isPrivateAdminPath(window.location.pathname)) return;
     this.enqueue({
       type: "category_click",
       sessionId: getSessionId(),
@@ -139,7 +144,7 @@ export class FirstPartyAnalyticsProvider implements AnalyticsProviderInterface {
   }
 
   trackExternalLinkClick(url: string): void {
-    if (!getEnabled()) return;
+    if (!getEnabled() || isPrivateAdminPath(window.location.pathname)) return;
     let origin: string | undefined;
     try {
       origin = new URL(url, window.location.href).origin;
@@ -163,7 +168,7 @@ export class FirstPartyAnalyticsProvider implements AnalyticsProviderInterface {
   }
 
   trackEvent(eventName: string, params?: AnalyticsEventParams): void {
-    if (!getEnabled()) return;
+    if (!getEnabled() || isPrivateAdminPath(window.location.pathname)) return;
     const typeMap: Record<string, FirstPartyAnalyticsEvent["type"]> = {
       page_view: "page_view",
       search: "search",
@@ -195,6 +200,7 @@ export class FirstPartyAnalyticsProvider implements AnalyticsProviderInterface {
   }
 
   private enqueue(event: FirstPartyAnalyticsEvent): void {
+    if (isPrivateAdminPath(event.path ?? "")) return;
     this.queue.push(event);
     if (this.queue.length >= BATCH_SIZE) {
       void this.flush();
