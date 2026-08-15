@@ -1,41 +1,18 @@
-/**
- * Admin authentication configuration — SERVER-ONLY.
- *
- * Reads admin credentials from `process.env`. Never imported by client code.
- * Reached only transitively through `createServerFn` handler bodies
- * (`src/lib/admin/rpc/auth.rpc.ts`), whose handler code is stubbed out of the
- * client bundle by TanStack Start, so neither this module nor any secret
- * ships to the browser.
- *
- * "Completable later" contract (same pattern as the GitHub layer in
- * `src/lib/github/config.ts`):
- * - When either required credential is missing, `isAdminConfigured()` returns
- *   false. Every admin RPC then returns a real `not_configured` failure —
- *   never a fake success, never a stub treated as production, and the admin
- *   routes render a "not configured" state instead of letting anyone in.
- * - Once the operator sets `ADMIN_PASSWORD_HASH` and `ADMIN_SESSION_SECRET`
- *   (server env / `.env`), the same code starts working with zero changes.
- *
- * No credentials are ever logged or serialized into responses.
- */
+/** Server-only admin configuration and persistent first-run owner account. */
+
+import { eq } from "drizzle-orm";
+import { getDb } from "@/lib/server/db/client";
+import { isDbConfigured } from "@/lib/server/db/config";
+import { adminAccounts } from "@/lib/server/db/schema";
 
 export interface AdminConfig {
-  /**
-   * Password hash to verify the admin password against. Verified with
-   * Node's `scrypt` when the value is a hex/base64 raw hash; otherwise a
-   * constant-time raw comparison for a pre-hashed secret the operator chose.
-   * The plaintext password is NEVER stored.
-   */
   passwordHash: string;
-  /**
-   * HMAC key for signing the admin session cookie. Must be a long random
-   * secret, distinct from any other app secret.
-   */
   sessionSecret: string;
+  name?: string;
+  email?: string;
 }
 
 const REQUIRED_VARS = ["ADMIN_PASSWORD_HASH", "ADMIN_SESSION_SECRET"] as const;
-
 let cached: AdminConfig | null = null;
 let cachedMissing: string[] | null = null;
 
@@ -45,53 +22,100 @@ function readEnv(name: string): string | undefined {
   return value && value.trim().length > 0 ? value.trim() : undefined;
 }
 
-function loadConfig(): void {
+function loadEnvConfig(): void {
   if (cached !== null || cachedMissing !== null) return;
-
   const passwordHash = readEnv("ADMIN_PASSWORD_HASH");
   const sessionSecret = readEnv("ADMIN_SESSION_SECRET");
-
   const missing: string[] = [];
-  if (!passwordHash) missing.push("ADMIN_PASSWORD_HASH");
-  if (!sessionSecret) missing.push("ADMIN_SESSION_SECRET");
-
-  if (missing.length > 0) {
+  if (!passwordHash) missing.push(REQUIRED_VARS[0]);
+  if (!sessionSecret) missing.push(REQUIRED_VARS[1]);
+  if (missing.length) {
     cachedMissing = missing;
     cached = null;
     return;
   }
-
-  cached = { passwordHash: passwordHash!, sessionSecret: sessionSecret! };
+  cached = { passwordHash, sessionSecret };
   cachedMissing = [];
 }
 
-/** True only when both admin credentials are present. */
+/** Legacy/env-only sync check retained for code that only supports env auth. */
 export function isAdminConfigured(): boolean {
-  loadConfig();
+  loadEnvConfig();
   return cached !== null;
 }
 
-/** Names of missing required env vars (operator diagnostics; never secrets). */
 export function getMissingAdminConfig(): string[] {
-  loadConfig();
+  loadEnvConfig();
   return cachedMissing ?? [];
 }
 
-/** Resolved config. Throws if not configured — guard with `isAdminConfigured()`. */
 export function getAdminConfig(): AdminConfig {
-  loadConfig();
+  loadEnvConfig();
   if (!cached) {
     throw new Error("Admin auth is not configured. Missing: " + (cachedMissing ?? []).join(", "));
   }
   return cached;
 }
 
-/** HMAC key for signing the admin session cookie. */
+/** Resolves env credentials first, then the persisted first-run owner account. */
+export async function getAdminConfigAsync(): Promise<AdminConfig | null> {
+  loadEnvConfig();
+  if (cached) return cached;
+  if (!isDbConfigured()) return null;
+  try {
+    const [account] = await getDb().select().from(adminAccounts).limit(1);
+    if (!account) return null;
+    return {
+      passwordHash: account.passwordHash,
+      sessionSecret: account.sessionSecret,
+      name: account.name,
+      email: account.email,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function isAdminConfiguredAsync(): Promise<boolean> {
+  return (await getAdminConfigAsync()) !== null;
+}
+
+export async function hasOwnerAccount(): Promise<boolean> {
+  if (!isDbConfigured()) return false;
+  try {
+    const [account] = await getDb().select({ id: adminAccounts.id }).from(adminAccounts).limit(1);
+    return Boolean(account);
+  } catch {
+    return false;
+  }
+}
+
+/** Create the owner exactly once. The DB unique singleton key closes the race. */
+export async function createOwnerAccount(input: {
+  name: string;
+  email: string;
+  passwordHash: string;
+  sessionSecret: string;
+}): Promise<boolean> {
+  if (!isDbConfigured()) return false;
+  try {
+    await getDb().insert(adminAccounts).values({
+      singletonKey: "owner",
+      name: input.name,
+      email: input.email.trim().toLowerCase(),
+      passwordHash: input.passwordHash,
+      sessionSecret: input.sessionSecret,
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function getAdminSessionSecret(): string {
   return getAdminConfig().sessionSecret;
 }
 
-/** Drop the cache — tests / hot reload. */
 export function resetAdminConfigCache(): void {
   cached = null;
   cachedMissing = null;
