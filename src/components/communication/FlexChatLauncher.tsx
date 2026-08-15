@@ -1,10 +1,7 @@
-import { lazy, Suspense, useState } from "react";
+import { useState } from "react";
 import { MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-const VisitorChatWidget = lazy(() =>
-  import("@/components/communication/VisitorChatWidget").then((module) => ({ default: module.VisitorChatWidget })),
-);
+import { VisitorChatWidget } from "@/components/communication/VisitorChatWidget";
 
 export function FlexChatLauncher() {
   const [open, setOpen] = useState(false);
@@ -22,11 +19,7 @@ export function FlexChatLauncher() {
           </Button>
         </div>
       )}
-      {open && (
-        <Suspense fallback={null}>
-          <VisitorChatWidget initialOpen showTrigger={false} />
-        </Suspense>
-      )}
+      {open && <VisitorChatWidget initialOpen showTrigger={false} />}
     </>
   );
 }
