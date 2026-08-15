@@ -3,7 +3,7 @@ import { desc, eq, gte, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/lib/server/db/client";
 import { isDbConfigured } from "@/lib/server/db/config";
-import { analyticsEvents, surveyQuestions, surveyResponses, surveys, type SerializableSurveyConfig, type SurveyAnswers, type SurveyAnswer } from "@/lib/server/db/schema";
+import { analyticsEvents, surveyQuestions, surveyResponses, surveys, type SerializableSurveyConfig, type SurveyAnswers } from "@/lib/server/db/schema";
 import { adminSessionMiddleware } from "../auth/adminSession";
 
 type Aggregate = { key: string; count: number };
