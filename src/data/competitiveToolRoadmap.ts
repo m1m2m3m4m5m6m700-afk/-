@@ -171,4 +171,4 @@ export const competitiveToolRoadmap = [
   ].map(([slug, name, category, priority, purpose]) => ({ slug, name, category, priority, purpose })),
 ] as const;
 
-export const competitiveToolRoadmapFlat: readonly CompetitiveToolCandidate[] = competitiveToolRoadmap.flat();
+export const competitiveToolRoadmapFlat = competitiveToolRoadmap.flat() as readonly CompetitiveToolCandidate[];
