@@ -3,6 +3,7 @@ import { AudioLines, CheckCircle2, FileText, ImageIcon, Search, Video, X } from 
 import { Button } from "@/components/ui/button";
 import { MEGA_TOOLS, MEGA_TOOL_CATEGORIES } from "@/data/megaToolsCatalog.mjs";
 import { runMegaTool } from "@/lib/megaToolsEngineAdapter.mjs";
+import type { MegaTool, MegaToolResult } from "@/types/mega-tools";
 
 const CATEGORY_META = {
   images: { icon: ImageIcon, accept: "image/*", hint: "JPG, PNG, WebP, GIF and common image formats" },
@@ -11,11 +12,8 @@ const CATEGORY_META = {
   pdf: { icon: FileText, accept: "application/pdf,.pdf", hint: "PDF documents" },
 } as const;
 
-type Tool = (typeof MEGA_TOOLS)[number];
-type Result =
-  | { type: "text"; text: string }
-  | { type: "download"; url: string; filename: string }
-  | { type: "video"; element: HTMLVideoElement; keepUrl?: boolean; cleanup?: () => void };
+type Tool = MegaTool;
+type Result = MegaToolResult;
 
 export function MegaToolHub() {
   const [activeCategory, setActiveCategory] = useState<keyof typeof CATEGORY_META>("images");
@@ -35,7 +33,7 @@ export function MegaToolHub() {
   const Icon = meta.icon;
 
   const clearResult = () => {
-    result?.cleanup?.();
+    if (result && "cleanup" in result && typeof result.cleanup === "function") result.cleanup();
     if (result?.type === "download") URL.revokeObjectURL(result.url);
     setResult(null);
   };
@@ -62,7 +60,7 @@ export function MegaToolHub() {
     setError(null);
     clearResult();
     try {
-      setResult(await runMegaTool(selected, file) as Result);
+      setResult(await runMegaTool(selected, file));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "The tool failed to process this file.");
     } finally {
