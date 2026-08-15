@@ -64,10 +64,11 @@ if (!/name:\s*["']robots["']\s*,\s*content:\s*["']noindex, nofollow["']/.test(ad
 // Sitemap discovery must remain explicit and canonical.
 requireText(robots, "Sitemap: https://flixoai.vercel.app/sitemap.xml", "robots/sitemap");
 
-// Strict dictionary architecture must remain available. Arabic is the first
-// promoted locale; later languages are added through the same explicit gate.
-requireText(i18n, "STRICT_DICTIONARY_LOCALES", "strict localization gate");
-requireText(i18n, 'new Set<LocaleCode>(["ar"])', "Arabic strict localization gate");
+// Strict dictionary architecture must remain available. The production
+// invariant is declared by i18n itself: every locale except English is strict.
+requireText(i18n, "export const STRICT_DICTIONARY_LOCALES", "strict localization gate");
+requireText(i18n, 'LOCALES.filter((l) => l.code !== "en").map((l) => l.code)', "strict localization coverage");
+requireText(i18n, "STRICT_DICTIONARY_LOCALES.has(locale)", "strict localization runtime enforcement");
 
 if (errors.length) {
   console.error("Google Search implementation validation FAILED:\n- " + errors.join("\n- "));
