@@ -6,9 +6,27 @@ import { isDbConfigured } from "@/lib/server/db/config";
 import { toolReviews } from "@/lib/server/db/schema";
 import { adminSessionMiddleware } from "../auth/adminSession";
 
+const slugSchema = z.string().min(1).max(160).regex(/^[a-z0-9-]+$/);
+
 function requireAdmin(context: { adminSession?: { role: string } | null }) {
   return Boolean(context.adminSession && context.adminSession.role === "admin");
 }
+
+export const getAdminToolReview = createServerFn({ method: "GET" })
+  .middleware([adminSessionMiddleware])
+  .validator(z.object({ slug: slugSchema }))
+  .handler(async ({ context, data }) => {
+    if (!requireAdmin(context)) return { ok: false as const, kind: "not_authenticated" as const };
+    if (!isDbConfigured()) return { ok: false as const, kind: "not_configured" as const };
+
+    const [row] = await getDb()
+      .select({ slug: toolReviews.slug, reviewed: toolReviews.reviewed, reviewedAt: toolReviews.reviewedAt })
+      .from(toolReviews)
+      .where(eq(toolReviews.slug, data.slug))
+      .limit(1);
+
+    return { ok: true as const, review: row ?? { slug: data.slug, reviewed: false, reviewedAt: null } };
+  });
 
 export const getAdminToolReviews = createServerFn({ method: "GET" })
   .middleware([adminSessionMiddleware])
@@ -28,7 +46,7 @@ export const setAdminToolReviewed = createServerFn({ method: "POST" })
   .middleware([adminSessionMiddleware])
   .validator(
     z.object({
-      slug: z.string().min(1).max(160).regex(/^[a-z0-9-]+$/),
+      slug: slugSchema,
       reviewed: z.boolean(),
     }),
   )
