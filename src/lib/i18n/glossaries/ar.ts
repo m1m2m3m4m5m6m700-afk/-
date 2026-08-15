@@ -1,0 +1,48 @@
+/** Arabic terminology profile for Flixo.
+ * Terms are native UX/SEO terminology, not literal translations.
+ * Evidence is kept so future copy changes can be reviewed against real usage.
+ */
+export const arGlossary = {
+  locale: "ar",
+  terms: {
+    tool: "أداة",
+    tools: "أدوات",
+    workspace: "مساحة عمل",
+    assistant: "مساعد ذكي",
+    translate: "ترجمة",
+    translator: "مترجم",
+    image: "صورة",
+    compress: "ضغط",
+    compressor: "ضاغط",
+    resize: "تغيير الحجم",
+    convert: "تحويل",
+    converter: "محوّل",
+    merge: "دمج",
+    split: "تقسيم",
+    extract: "استخراج",
+    remove: "إزالة",
+    generate: "إنشاء",
+    generator: "مولّد",
+    enhance: "تحسين",
+    crop: "قص",
+    rotate: "تدوير",
+    watermark: "علامة مائية",
+    protect: "حماية",
+    unlock: "فك الحماية",
+    formatter: "منسّق",
+    validator: "مدقّق",
+    viewer: "عارض",
+    reader: "قارئ",
+    checker: "مدقّق",
+    parser: "محلّل",
+    calculator: "حاسبة",
+    search: "بحث",
+    download: "تنزيل",
+    upload: "رفع",
+  },
+  evidence: [
+    "https://translate.google.com/?hl=ar",
+    "https://helpx.adobe.com/mena_ar/acrobat.html",
+    "https://developers.google.com/search/docs/specialty/international/localized-versions?hl=ar",
+  ],
+} as const;
