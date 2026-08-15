@@ -1,18 +1,25 @@
 {
-  "short_name": "Flixo",
-  "name": "Flixo Tools — One Workspace for Every AI Tool & Converter",
+  "short_name": "فليكسو تولس",
+  "name": "فليكسو تولس — أدوات الذكاء الاصطناعي",
   "icons": [
     {
       "src": "/flixo-mark.svg",
       "type": "image/svg+xml",
       "sizes": "512x512",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "512x512",
+      "purpose": "any"
     }
   ],
   "start_url": "/",
+  "scope": "/",
   "background_color": "#07141d",
   "theme_color": "#16d9d2",
   "display": "standalone",
   "orientation": "any",
-  "description": "Flixo brings free AI, PDF, Image, Developer, and Translation tools into one fast, private workspace."
+  "description": "فليكسو تولس يجمع أدوات الذكاء الاصطناعي والتحويل المجانية في مساحة عمل واحدة سريعة وخاصة."
 }
