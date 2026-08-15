@@ -21,6 +21,14 @@ export function trackToolClick(toolId: string, toolName?: string, category?: str
   analytics.trackToolClick(toolId, toolName, category);
 }
 
+export function trackToolStart(toolId: string, category?: string): void {
+  analytics.trackEvent("tool_start", { toolId, category });
+}
+
+export function trackToolComplete(toolId: string, durationMs?: number, category?: string): void {
+  analytics.trackEvent("tool_complete", { toolId, durationMs, category });
+}
+
 export function trackCategoryClick(categoryId: string, categoryName?: string): void {
   analytics.trackCategoryClick(categoryId, categoryName);
 }
