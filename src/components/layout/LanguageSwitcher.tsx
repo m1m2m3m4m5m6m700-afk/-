@@ -8,30 +8,29 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { LOCALES, useI18n, type LocaleCode } from "@/lib/i18n";
 
+function buildLocalizedPath(pathname: string, targetLocale: LocaleCode): string {
+  const segments = pathname.split("/").filter(Boolean);
+  const knownLocale = LOCALES.some((locale) => locale.code === segments[0]) ? segments.shift() : undefined;
+  const targetPrefix = targetLocale === "en" ? "" : `/${targetLocale}`;
+  const rest = segments.length ? `/${segments.join("/")}` : "";
+
+  // `/en` is not a public English route; map it to `/`.
+  if (knownLocale === "en" && !rest) return targetPrefix || "/";
+  return `${targetPrefix}${rest}` || "/";
+}
+
 export function LanguageSwitcher() {
   const { locale, setLocale, t } = useI18n();
   const current = LOCALES.find((l) => l.code === locale) ?? LOCALES[0];
 
   const handleSelectLanguage = (targetCode: LocaleCode) => {
+    if (targetCode === locale) return;
     setLocale(targetCode);
+
     if (typeof window !== "undefined") {
-      const pathname = window.location.pathname;
-      const toolMatch = pathname.match(/^(?:\/(en|ar))?\/tools\/([a-zA-Z0-9_-]+)$/);
-      if (toolMatch && toolMatch[2]) {
-        const slug = toolMatch[2];
-        const targetUrl = `/${targetCode}/tools/${slug}`;
-        setTimeout(() => {
-          window.location.assign(targetUrl);
-        }, 0);
-        return;
-      }
-      if (pathname === "/" || pathname === "/en" || pathname === "/ar") {
-        const targetUrl = `/${targetCode}`;
-        setTimeout(() => {
-          window.location.assign(targetUrl);
-        }, 0);
-        return;
-      }
+      const url = new URL(window.location.href);
+      url.pathname = buildLocalizedPath(url.pathname, targetCode);
+      window.location.assign(url.toString());
     }
   };
 
