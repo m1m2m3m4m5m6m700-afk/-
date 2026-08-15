@@ -49,11 +49,16 @@ function loadHistory(storageKey: string): ChatMessage[] {
   }
 }
 
-export function VisitorChatWidget() {
+interface VisitorChatWidgetProps {
+  initialOpen?: boolean;
+  showTrigger?: boolean;
+}
+
+export function VisitorChatWidget({ initialOpen = false, showTrigger = true }: VisitorChatWidgetProps) {
   const { locale } = useI18n();
   const storageKey = `${STORAGE_KEY}:${locale}`;
   const detailsRef = useRef<HTMLDetailsElement>(null);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initialOpen);
   const [messages, setMessages] = useState<ChatMessage[]>(() => loadHistory(storageKey));
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -141,6 +146,7 @@ export function VisitorChatWidget() {
   return (
     <details
       ref={detailsRef}
+      open={initialOpen}
       onToggle={(event) => setOpen(event.currentTarget.open)}
       className="fixed bottom-5 right-5 z-50"
     >
@@ -274,12 +280,14 @@ export function VisitorChatWidget() {
         </div>
       </motion.div>
 
-      <summary
-        className="group grid size-14 cursor-pointer list-none place-items-center rounded-full border border-primary/20 bg-primary p-0 text-primary-foreground shadow-xl transition hover:bg-primary/90 [&::-webkit-details-marker]:hidden"
-        aria-label={open ? "Close Flex chat" : "Open Flex chat"}
-      >
-        {open ? <ChevronDown className="size-5" /> : <MessageSquare className="size-6 transition-transform group-hover:scale-105" />}
-      </summary>
+      {showTrigger && (
+        <summary
+          className="group grid size-14 cursor-pointer list-none place-items-center rounded-full border border-primary/20 bg-primary p-0 text-primary-foreground shadow-xl transition hover:bg-primary/90 [&::-webkit-details-marker]:hidden"
+          aria-label={open ? "Close Flex chat" : "Open Flex chat"}
+        >
+          {open ? <ChevronDown className="size-5" /> : <MessageSquare className="size-6 transition-transform group-hover:scale-105" />}
+        </summary>
+      )}
     </details>
   );
 }
