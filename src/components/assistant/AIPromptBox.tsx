@@ -1,6 +1,5 @@
 import { useState, useRef, type ChangeEvent, type DragEvent, type KeyboardEvent } from "react";
 import {
-  Sparkles,
   Paperclip,
   Link as LinkIcon,
   Mic,
@@ -11,8 +10,7 @@ import {
   Loader2,
   CheckCircle2,
   HelpCircle,
-  Bot,
-  Send,
+  Sparkles,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Button } from "@/components/ui/button";
@@ -35,11 +33,6 @@ const EXAMPLE_PROMPTS = [
   "Generate source code",
 ];
 
-interface FlexMessage {
-  role: "user" | "assistant";
-  content: string;
-}
-
 interface AIPromptBoxProps {
   prompt: string;
   onPromptChange: (value: string) => void;
@@ -53,12 +46,6 @@ interface AIPromptBoxProps {
   loading: boolean;
 }
 
-const MAX_FLEX_HISTORY = 12;
-
-function appendFlexMessage(messages: FlexMessage[], message: FlexMessage): FlexMessage[] {
-  return [...messages, message].slice(-MAX_FLEX_HISTORY);
-}
-
 export function AIPromptBox({
   prompt,
   onPromptChange,
@@ -70,26 +57,22 @@ export function AIPromptBox({
   const { t, locale } = useI18n();
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const [pastedLink, setPastedLink] = useState<string>("");
-  const [linkPopoverOpen, setLinkPopoverOpen] = useState<boolean>(false);
-  const [tempLink, setTempLink] = useState<string>("");
+  const [linkPopoverOpen, setLinkPopoverOpen] = useState(false);
+  const [tempLink, setTempLink] = useState("");
   const [isDragging, setIsDragging] = useState(false);
-  const [flexMessages, setFlexMessages] = useState<FlexMessage[]>([]);
-  const [flexLoading, setFlexLoading] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setAttachedFile(e.target.files[0]);
-    }
+    if (e.target.files?.[0]) setAttachedFile(e.target.files[0]);
   };
 
   const handleAddLink = () => {
-    if (tempLink.trim()) {
-      setPastedLink(tempLink.trim());
-      setLinkPopoverOpen(false);
-      setTempLink("");
-    }
+    const link = tempLink.trim();
+    if (!link) return;
+    setPastedLink(link);
+    setLinkPopoverOpen(false);
+    setTempLink("");
   };
 
   const handleTriggerSubmit = () => {
@@ -101,46 +84,6 @@ export function AIPromptBox({
         : undefined,
       pastedLink || undefined,
     );
-  };
-
-  const handleAskFlex = async () => {
-    const text = prompt.trim();
-    if (!text || flexLoading) return;
-
-    const nextMessages = appendFlexMessage(flexMessages, { role: "user", content: text });
-    setFlexMessages(nextMessages);
-    setFlexLoading(true);
-
-    try {
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          message: text,
-          history: nextMessages.slice(0, -1),
-        }),
-      });
-
-      const payload = (await response.json()) as { reply?: string; error?: string };
-      const reply =
-        payload.reply?.trim() ||
-        payload.error ||
-        (locale === "ar" ? "لم يتمكن Flex من الإجابة الآن." : "Flex could not answer right now.");
-
-      setFlexMessages((current) => appendFlexMessage(current, { role: "assistant", content: reply }));
-    } catch {
-      setFlexMessages((current) =>
-        appendFlexMessage(current, {
-          role: "assistant",
-          content:
-            locale === "ar"
-              ? "تعذر الاتصال بخدمة Flex حاليًا."
-              : "Flex could not reach the AI service right now.",
-        }),
-      );
-    } finally {
-      setFlexLoading(false);
-    }
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -164,14 +107,13 @@ export function AIPromptBox({
     e.preventDefault();
     setIsDragging(false);
     const file = e.dataTransfer.files?.[0];
-    if (file) {
-      setAttachedFile(file);
-      setPastedLink("");
-    }
+    if (!file) return;
+    setAttachedFile(file);
+    setPastedLink("");
   };
 
   return (
-    <div className="w-full max-w-3xl mx-auto space-y-3">
+    <div className="mx-auto w-full max-w-3xl space-y-3">
       <AnimatePresence mode="wait">
         {status !== "idle" && (
           <motion.div
@@ -189,12 +131,12 @@ export function AIPromptBox({
               ) : status === "ready" ? (
                 <>
                   <CheckCircle2 className="size-3.5 text-emerald-500" />
-                  <span className="text-emerald-500 font-bold">{statusText}</span>
+                  <span className="font-bold text-emerald-500">{statusText}</span>
                 </>
               ) : status === "unknown" ? (
                 <>
                   <HelpCircle className="size-3.5 text-amber-500" />
-                  <span className="text-amber-500 font-bold">{statusText}</span>
+                  <span className="font-bold text-amber-500">{statusText}</span>
                 </>
               ) : (
                 <span className="text-muted-foreground">{statusText}</span>
@@ -213,14 +155,15 @@ export function AIPromptBox({
         onDrop={handleDrop}
       >
         {(attachedFile || pastedLink) && (
-          <div className="flex flex-wrap items-center gap-2 px-3 pt-1 pb-2 border-b border-border/50">
+          <div className="flex flex-wrap items-center gap-2 border-b border-border/50 px-3 pb-2 pt-1">
             {attachedFile && (
-              <span className="inline-flex items-center gap-1.5 rounded-xl bg-primary/10 border border-primary/20 px-2.5 py-1 text-xs font-medium text-primary">
+              <span className="inline-flex items-center gap-1.5 rounded-xl border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
                 <FileText className="size-3.5" />
                 <span className="max-w-[150px] truncate">{attachedFile.name}</span>
                 <button
+                  type="button"
                   onClick={() => setAttachedFile(null)}
-                  className="ms-1 rounded-full p-0.5 hover:bg-primary/20 transition-colors"
+                  className="ms-1 rounded-full p-0.5 transition-colors hover:bg-primary/20"
                 >
                   <X className="size-3" />
                 </button>
@@ -228,38 +171,18 @@ export function AIPromptBox({
             )}
 
             {pastedLink && (
-              <span className="inline-flex items-center gap-1.5 rounded-xl bg-purple-500/10 border border-purple-500/20 px-2.5 py-1 text-xs font-medium text-purple-500">
+              <span className="inline-flex items-center gap-1.5 rounded-xl border border-purple-500/20 bg-purple-500/10 px-2.5 py-1 text-xs font-medium text-purple-500">
                 <Globe className="size-3.5" />
                 <span className="max-w-[150px] truncate">{pastedLink}</span>
                 <button
+                  type="button"
                   onClick={() => setPastedLink("")}
-                  className="ms-1 rounded-full p-0.5 hover:bg-purple-500/20 transition-colors"
+                  className="ms-1 rounded-full p-0.5 transition-colors hover:bg-purple-500/20"
                 >
                   <X className="size-3" />
                 </button>
               </span>
             )}
-          </div>
-        )}
-
-        {flexMessages.length > 0 && (
-          <div className="mb-2 max-h-48 space-y-2 overflow-y-auto border-b border-border/40 px-3 py-2">
-            {flexMessages.slice(-4).map((message, index) => (
-              <div
-                key={`${message.role}-${index}-${message.content.slice(0, 16)}`}
-                className={
-                  message.role === "user"
-                    ? "ms-8 rounded-2xl bg-primary/10 px-3 py-2 text-xs text-foreground"
-                    : "me-8 rounded-2xl border border-primary/10 bg-background/70 px-3 py-2 text-xs leading-relaxed text-muted-foreground"
-                }
-              >
-                <div className="mb-1 flex items-center gap-1.5 font-bold text-foreground">
-                  {message.role === "assistant" ? <Bot className="size-3.5 text-primary" /> : null}
-                  {message.role === "assistant" ? "Flex" : locale === "ar" ? "أنت" : "You"}
-                </div>
-                <div className="whitespace-pre-wrap">{message.content}</div>
-              </div>
-            ))}
           </div>
         )}
 
@@ -272,9 +195,9 @@ export function AIPromptBox({
             value={prompt}
             onChange={(e) => onPromptChange(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={t("brain.input.placeholder")}
+            placeholder={locale === "ar" ? "اكتب ما تريد وسيساعدك Flex في اختيار الأداة المناسبة…" : t("brain.input.placeholder")}
             rows={3}
-            className="w-full resize-none bg-transparent px-2 py-1 text-base md:text-lg outline-none placeholder:text-muted-foreground/60 font-sans"
+            className="w-full resize-none bg-transparent px-2 py-1 font-sans text-base outline-none placeholder:text-muted-foreground/60 md:text-lg"
           />
         </div>
 
@@ -283,9 +206,7 @@ export function AIPromptBox({
             <button
               key={example}
               type="button"
-              onClick={() => {
-                onPromptChange(example);
-              }}
+              onClick={() => onPromptChange(example)}
               className="rounded-2xl border border-border/70 bg-surface/80 px-3 py-2 text-left text-xs font-medium text-muted-foreground transition-all duration-200 hover:border-primary/40 hover:bg-card"
             >
               {example}
@@ -293,7 +214,7 @@ export function AIPromptBox({
           ))}
         </div>
 
-        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-border/40 pt-2 px-1">
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-border/40 px-1 pt-2">
           <div className="flex flex-wrap items-center gap-1">
             <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
 
@@ -312,23 +233,6 @@ export function AIPromptBox({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>{t("brain.input.uploadHint")}</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="rounded-xl px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-surface hover:text-foreground"
-                  >
-                    <FileText className="me-1.5 size-4 text-primary" />
-                    <span>{t("brain.input.dragDrop")}</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{t("brain.input.dragDropHint")}</TooltipContent>
               </Tooltip>
             </TooltipProvider>
 
@@ -352,13 +256,9 @@ export function AIPromptBox({
                       placeholder="https://example.com/file"
                       value={tempLink}
                       onChange={(e) => setTempLink(e.target.value)}
-                      className="text-xs rounded-xl h-8 bg-surface"
+                      className="h-8 rounded-xl bg-surface text-xs"
                     />
-                    <Button
-                      size="sm"
-                      onClick={handleAddLink}
-                      className="rounded-xl h-8 text-xs font-bold"
-                    >
+                    <Button size="sm" onClick={handleAddLink} className="h-8 rounded-xl text-xs font-bold">
                       {t("brain.input.linkAdd")}
                     </Button>
                   </div>
@@ -374,7 +274,7 @@ export function AIPromptBox({
                     variant="ghost"
                     size="sm"
                     disabled
-                    className="rounded-xl px-2.5 py-1.5 text-xs font-medium text-muted-foreground/50 opacity-60 cursor-not-allowed"
+                    className="cursor-not-allowed rounded-xl px-2.5 py-1.5 text-xs font-medium text-muted-foreground/50 opacity-60"
                   >
                     <Mic className="me-1.5 size-4" />
                     <span>{t("brain.input.voice")}</span>
@@ -385,43 +285,25 @@ export function AIPromptBox({
             </TooltipProvider>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => void handleAskFlex()}
-              disabled={flexLoading || !prompt.trim()}
-              className="rounded-2xl border-primary/30 px-4 py-2 text-xs font-bold text-primary hover:bg-primary/10"
-              aria-label="Ask Flex"
-            >
-              {flexLoading ? (
+          <Button
+            type="button"
+            onClick={handleTriggerSubmit}
+            disabled={loading || (!prompt.trim() && !attachedFile && !pastedLink)}
+            className="rounded-2xl bg-primary px-5 py-2 text-xs font-bold shadow-sm transition-all duration-200 hover:bg-primary/90"
+          >
+            {loading ? (
+              <span className="flex items-center gap-1.5">
                 <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Send className="size-4" />
-              )}
-              <span>{locale === "ar" ? "اسأل Flex" : "Ask Flex"}</span>
-            </Button>
-
-            <Button
-              type="button"
-              onClick={handleTriggerSubmit}
-              disabled={loading || (!prompt.trim() && !attachedFile && !pastedLink)}
-              className="rounded-2xl px-4 py-2 text-xs font-bold shadow-sm transition-all duration-200"
-            >
-              {loading ? (
-                <span className="flex items-center gap-1.5">
-                  <Loader2 className="size-4 animate-spin" />
-                  <span>{t("brain.input.processing")}</span>
-                </span>
-              ) : (
-                <span className="flex items-center gap-1.5">
-                  <Sparkles className="size-4" />
-                  <span>{t("brain.input.execute")}</span>
-                  <CornerDownLeft className="size-3 opacity-70 ms-1 hidden sm:inline" />
-                </span>
-              )}
-            </Button>
-          </div>
+                <span>{locale === "ar" ? "Flex يفهم…" : "Flex is understanding…"}</span>
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5">
+                <Sparkles className="size-4" />
+                <span>{locale === "ar" ? "اسأل Flex" : "Ask Flex"}</span>
+                <CornerDownLeft className="ms-1 hidden size-3 opacity-70 sm:inline" />
+              </span>
+            )}
+          </Button>
         </div>
       </div>
     </div>
