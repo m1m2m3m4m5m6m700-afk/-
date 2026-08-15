@@ -1,5 +1,6 @@
 import { AddLineNumbersRuntime } from "./tools/add-line-numbers";
 import { AgeCalculatorRuntime } from "./tools/age-calculator";
+import { ArchiveExtractorRuntime } from "./tools/archive-extractor";
 import { AudioCompressorRuntime } from "./tools/audio-compressor";
 import { AudioConverterRuntime } from "./tools/audio-converter";
 import { AudioCutterRuntime } from "./tools/audio-cutter";
@@ -15,6 +16,7 @@ import { CssMinifierRuntime } from "./tools/css-minifier";
 import { CsvToJsonRuntime } from "./tools/csv-to-json";
 import { CsvViewerRuntime } from "./tools/csv-viewer";
 import { FileHashGeneratorRuntime } from "./tools/file-hash-generator";
+import { FileSplitterRuntime } from "./tools/file-splitter";
 import { FindAndReplaceRuntime } from "./tools/find-and-replace";
 import { GifCompressorRuntime } from "./tools/gif-compressor";
 import { GifMakerRuntime } from "./tools/gif-maker";
@@ -34,6 +36,7 @@ import { MarkdownTableGeneratorRuntime } from "./tools/markdown-table-generator"
 import { MarkdownToPdfRuntime } from "./tools/markdown-to-pdf";
 import { MarkdownToWordRuntime } from "./tools/markdown-to-word";
 import { MetaTagGeneratorRuntime } from "./tools/meta-tag-generator";
+import { MetadataViewerRuntime } from "./tools/metadata-viewer";
 import { PasswordCheckerRuntime } from "./tools/password-checker";
 import { passwordGeneratorRuntime } from "./tools/password-generator";
 import { PdfCropRuntime } from "./tools/pdf-crop";
@@ -74,11 +77,13 @@ import { WordFrequencyRuntime } from "./tools/word-frequency";
 import { XmlFormatterRuntime } from "./tools/xml-formatter";
 import { XmlValidatorRuntime } from "./tools/xml-validator";
 import { YamlFormatterRuntime } from "./tools/yaml-formatter";
+import { ZipCreatorRuntime } from "./tools/zip-creator";
 import type { ReadyToolRuntimeDefinition } from "./types";
 
 export const readyToolRuntimes = [
   AddLineNumbersRuntime,
   AgeCalculatorRuntime,
+  ArchiveExtractorRuntime,
   AudioCompressorRuntime,
   AudioConverterRuntime,
   AudioCutterRuntime,
@@ -94,6 +99,7 @@ export const readyToolRuntimes = [
   CsvToJsonRuntime,
   CsvViewerRuntime,
   FileHashGeneratorRuntime,
+  FileSplitterRuntime,
   FindAndReplaceRuntime,
   GifCompressorRuntime,
   GifMakerRuntime,
@@ -113,6 +119,7 @@ export const readyToolRuntimes = [
   MarkdownToPdfRuntime,
   MarkdownToWordRuntime,
   MetaTagGeneratorRuntime,
+  MetadataViewerRuntime,
   PasswordCheckerRuntime,
   passwordGeneratorRuntime,
   PdfCropRuntime,
@@ -153,6 +160,7 @@ export const readyToolRuntimes = [
   XmlFormatterRuntime,
   XmlValidatorRuntime,
   YamlFormatterRuntime,
+  ZipCreatorRuntime,
 ] as const satisfies readonly ReadyToolRuntimeDefinition[];
 
 export const readyToolRuntimeBySlug = new Map<string, ReadyToolRuntimeDefinition>(
