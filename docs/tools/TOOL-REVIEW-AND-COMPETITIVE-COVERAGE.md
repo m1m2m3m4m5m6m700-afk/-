@@ -7,15 +7,18 @@ Flixo keeps two separate concepts:
 - **Readiness**: an implementation exists, has a real runtime, has a public route, and passes the automated truthfulness/runtime gates.
 - **Manual review**: the owner has personally exercised the tool and checked its real output.
 
-A star is a **manual QA marker only**. A star never promotes an item to `ready`, never changes search visibility, and never replaces automated tests.
+The **public star button is not a manual QA marker**. It remains available to users so they can contribute feedback through the admin-controlled survey system.
+
+The owner's manual review state uses a separate **verification badge** inside the authenticated admin experience.
 
 ## Review semantics
 
-- Empty star = not manually reviewed.
-- Filled star = manually reviewed by the owner.
+- No verification badge = not manually reviewed.
+- Verification badge = manually reviewed by the owner.
 - Review state is stored server-side in `tool_reviews` and is protected by the admin session.
-- Removing a star returns the tool to the unreviewed state.
+- Removing the verification mark returns the tool to the unreviewed state.
 - Newly added tools and roadmap capabilities start unreviewed.
+- Public user stars must never mutate owner review state.
 
 ## Competitive coverage
 
@@ -31,9 +34,10 @@ The public product must continue to obey the real tool registry. Planned, placeh
 4. Open each tool.
 5. Use realistic inputs.
 6. Verify the actual output, download, preview, and error behavior.
-7. Click the empty star only after the manual check passes.
-8. Leave the star empty for anything that needs a fix.
+7. Set the admin verification mark only after the manual check passes.
+8. Leave the tool unverified for anything that needs a fix.
+9. Keep the public star available for user survey participation.
 
 ## Release gate
 
-`npm run validate:tool-review` verifies that review state remains separate from readiness, absent review records are treated as unreviewed, the review mutation is admin-protected, and the review UI exposes the unreviewed state.
+`npm run validate:tool-review` verifies that review state remains separate from readiness, absent review records are treated as unreviewed, the review mutation is admin-protected, and the admin review UI does not repurpose the public survey star.
