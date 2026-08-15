@@ -12,6 +12,10 @@ export const Route = createFileRoute("/survey/$slug")({
 type SurveyPayload = Extract<Awaited<ReturnType<typeof getPublicSurvey>>, { ok: true }>;
 type Answer = string | number | boolean | string[] | null;
 
+type MatrixConfig = { rows: string[]; columns: string[] };
+const stringArray = (value: unknown): string[] => Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+const matrixValues = (config: SurveyPayload["questions"][number]["config"]): MatrixConfig => ({ rows: stringArray(config.rows), columns: stringArray(config.columns) });
+
 function sessionId() {
   const key = "flixo-survey-session";
   const existing = typeof sessionStorage !== "undefined" ? sessionStorage.getItem(key) : null;
@@ -43,16 +47,14 @@ function Question({ question, value, onChange }: { question: SurveyPayload["ques
       return <div className="space-y-2">{current.map((option, index) => <button key={option} type="button" className="flex w-full items-center justify-between rounded-xl border border-primary/30 bg-primary/5 p-3 text-sm" onClick={() => onChange(current.filter((item) => item !== option))}><span>{index + 1}. {option}</span><span className="text-xs text-muted-foreground">إزالة</span></button>)}{remaining.length > 0 && <select className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" value="" onChange={(e) => e.target.value && onChange([...current, e.target.value])}><option value="">أضف عنصرًا للترتيب…</option>{remaining.map((option) => <option key={option}>{option}</option>)}</select>}</div>;
     }
     case "matrix_single": {
-      const rows = Array.isArray(config.rows) ? config.rows.map(String) : [];
-      const columns = Array.isArray(config.columns) ? config.columns.map(String) : [];
+      const { rows, columns } = matrixValues(config);
       const selected = typeof value === "string" ? (() => { try { return JSON.parse(value) as Record<string, string>; } catch { return {}; } })() : {};
-      return <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr><th className="p-2 text-start">البند</th>{columns.map((column) => <th key={column} className="p-2">{column}</th>)}</tr></thead><tbody>{rows.map((row) => <tr key={row} className="border-t border-border/50"><td className="p-2 font-semibold">{row}</td>{columns.map((column) => <td key={column} className="p-2 text-center"><input type="radio" name={`${question.id}-${row}`} checked={selected[row] === column} onChange={() => onChange(JSON.stringify({ ...selected, [row]: column }))} /></td>)}</tr>)}</tbody></table></div>;
+      return <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr><th className="p-2 text-start">البند</th>{columns.map((column: string) => <th key={column} className="p-2">{column}</th>)}</tr></thead><tbody>{rows.map((row: string) => <tr key={row} className="border-t border-border/50"><td className="p-2 font-semibold">{row}</td>{columns.map((column: string) => <td key={column} className="p-2 text-center"><input type="radio" name={`${question.id}-${row}`} checked={selected[row] === column} onChange={() => onChange(JSON.stringify({ ...selected, [row]: column }))} /></td>)}</tr>)}</tbody></table></div>;
     }
     case "matrix_multi": {
-      const rows = Array.isArray(config.rows) ? config.rows.map(String) : [];
-      const columns = Array.isArray(config.columns) ? config.columns.map(String) : [];
+      const { rows, columns } = matrixValues(config);
       const current = Array.isArray(value) ? value : [];
-      return <div className="space-y-3">{rows.map((row) => <div key={row} className="rounded-xl border border-border p-3"><p className="mb-2 text-xs font-semibold">{row}</p><div className="flex flex-wrap gap-3">{columns.map((column) => { const key = `${row}::${column}`; return <label key={key} className="flex items-center gap-1.5 text-xs"><input type="checkbox" checked={current.includes(key)} onChange={(e) => onChange(e.target.checked ? [...current, key] : current.filter((item) => item !== key))} />{column}</label>; })}</div></div>)}</div>;
+      return <div className="space-y-3">{rows.map((row: string) => <div key={row} className="rounded-xl border border-border p-3"><p className="mb-2 text-xs font-semibold">{row}</p><div className="flex flex-wrap gap-3">{columns.map((column: string) => { const key = `${row}::${column}`; return <label key={key} className="flex items-center gap-1.5 text-xs"><input type="checkbox" checked={current.includes(key)} onChange={(e) => onChange(e.target.checked ? [...current, key] : current.filter((item) => item !== key))} />{column}</label>; })}</div></div>)}</div>;
     }
     case "consent": return <label className="flex items-start gap-2 rounded-xl border border-border p-3 text-sm"><input type="checkbox" checked={value === true} onChange={(e) => onChange(e.target.checked)} /><span>{String(config.label ?? "أوافق على المشاركة")}</span></label>;
     case "text": return <input className="w-full rounded-xl border border-border bg-background px-3 py-2" type="text" maxLength={Number(config.maxLength ?? 300)} value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} />;
