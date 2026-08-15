@@ -18,7 +18,7 @@ jobs:
   verify:
     name: Verify (contract · typecheck · lint · SEO · i18n · mega-tools · build)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
 
     steps:
       - name: Checkout
@@ -35,6 +35,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Install Chromium for operational tests
+        run: npx playwright install --with-deps chromium
 
       - name: Production dependency audit
         run: npm run audit:production
@@ -78,6 +81,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Run all 528 operational mega-tool tests
+        run: npx playwright test tests/mega-tools.spec.ts
+
       - name: Upload build artifact
         if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@v4
@@ -85,3 +91,12 @@ jobs:
           name: vercel-build
           path: .vercel/output
           retention-days: 3
+
+      - name: Upload mega-tool browser report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mega-tool-playwright-report
+          path: playwright-report
+          if-no-files-found: ignore
+          retention-days: 7
