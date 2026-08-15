@@ -1,4 +1,4 @@
-import { getAIConfig, type AIProviderConfig } from "../config";
+import { getAIConfig, type AIProviderConfig, type AIProviderId } from "../config";
 import { tools } from "@/data/tools";
 import { categoryById } from "@/data/categories";
 import { isFeatureEnabled } from "@/lib/feature-flags";
@@ -18,6 +18,7 @@ const LOCALE_NAMES: Record<string, string> = { en:"English", ar:"Arabic", es:"Sp
 type OpenRouterContent = string | Array<{ type?: string; text?: string }>;
 interface GeminiGenerateResponse { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>; promptFeedback?: { blockReason?: string }; error?: { message?: string; status?: string } }
 interface OpenRouterResponse { choices?: Array<{ message?: { content?: OpenRouterContent } }>; model?: string; error?: { message?: string; code?: number } }
+interface OpenAIResponse { choices?: Array<{ message?: { content?: string | null } }>; model?: string; error?: { message?: string } }
 
 const SYSTEM_PROMPT = [
   "You are Flex, the general AI assistant inside Flixo.",
@@ -31,7 +32,7 @@ function sanitize(content: string): string { return content.replace(/\u0000/g, "
 function normalizeLocale(value: unknown): string | null { return typeof value === "string" && SUPPORTED_LOCALES.has(value.trim()) ? value.trim() : null; }
 function systemPrompt(locale: string | null): string { return !locale || locale === "en" ? SYSTEM_PROMPT : `${SYSTEM_PROMPT}\nActive interface locale: ${LOCALE_NAMES[locale] ?? locale} (${locale}). Keep the answer in that language unless the user explicitly switches.`; }
 function jsonResponse(body: ChatSuccessBody | ChatErrorBody, status = 200): Response { return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } }); }
-function notConfigured(): Response { return jsonResponse({ error: "Flex is not configured yet. Add OPENROUTER_API_KEY or GEMINI_API_KEY in the server environment.", retryable: false }); }
+function notConfigured(): Response { return jsonResponse({ error: "Flex is not configured yet. Add OPENAI_API_KEY, GEMINI_API_KEY, or OPENROUTER_API_KEY in the server environment.", retryable: false }); }
 
 function parseTurns(body: ChatRequestBody): { ok: true; turns: ChatTurn[]; locale: string | null } | { ok: false; response: Response } {
   const message = sanitize(typeof body.message === "string" ? body.message : "");
@@ -64,7 +65,7 @@ function buildGeminiContents(turns: ChatTurn[]): Array<{ role: "user" | "model";
   return contents;
 }
 
-function buildOpenRouterMessages(turns: ChatTurn[], locale: string | null) {
+function buildOpenAICompatibleMessages(turns: ChatTurn[], locale: string | null) {
   return [{ role: "system" as const, content: systemPrompt(locale) }, ...turns.map((turn) => ({ role: turn.role, content: turn.content }))];
 }
 
@@ -104,10 +105,27 @@ async function searchWeb(query: string, signal: AbortSignal): Promise<string> {
   }
 }
 
+function isRetryableStatus(status: number): boolean { return status === 408 || status === 429 || status >= 500; }
+
+async function callOpenAI(provider: AIProviderConfig, turns: ChatTurn[], locale: string | null, signal: AbortSignal) {
+  if (!provider.apiKey) return { ok: false as const, retryable: false };
+  const response = await fetch(`${provider.baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${provider.apiKey}` },
+    signal,
+    body: JSON.stringify({ model: provider.defaultModel, messages: buildOpenAICompatibleMessages(turns, locale), temperature: 0.6, max_tokens: 1400 }),
+  });
+  if (!response.ok) return { ok: false as const, retryable: isRetryableStatus(response.status) };
+  const data = (await response.json()) as OpenAIResponse;
+  const reply = data.choices?.[0]?.message?.content?.trim() ?? "";
+  if (!reply) return { ok: false as const, retryable: true };
+  return { ok: true as const, reply: reply.slice(0, MAX_REPLY_CHARS), model: data.model ?? provider.defaultModel };
+}
+
 async function callOpenRouter(provider: AIProviderConfig, turns: ChatTurn[], locale: string | null, signal: AbortSignal) {
   if (!provider.apiKey) return { ok: false as const, retryable: false };
-  const response = await fetch(`${provider.baseUrl}/chat/completions`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${provider.apiKey}`, "http-referer": "https://flixoai.vercel.app", "x-title": "Flixo" }, signal, body: JSON.stringify({ model: provider.defaultModel, messages: buildOpenRouterMessages(turns, locale), temperature: 0.6, max_tokens: 1400 }) });
-  if (!response.ok) return { ok: false as const, retryable: response.status === 408 || response.status === 429 || response.status >= 500 };
+  const response = await fetch(`${provider.baseUrl}/chat/completions`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${provider.apiKey}`, "http-referer": "https://flixoai.vercel.app", "x-title": "Flixo" }, signal, body: JSON.stringify({ model: provider.defaultModel, messages: buildOpenAICompatibleMessages(turns, locale), temperature: 0.6, max_tokens: 1400 }) });
+  if (!response.ok) return { ok: false as const, retryable: isRetryableStatus(response.status) };
   const data = (await response.json()) as OpenRouterResponse;
   const reply = typeof data.choices?.[0]?.message?.content === "string" ? data.choices[0].message.content.trim() : Array.isArray(data.choices?.[0]?.message?.content) ? data.choices[0]!.message!.content.map((part) => part.text ?? "").join("").trim() : "";
   if (!reply) return { ok: false as const, retryable: true };
@@ -118,12 +136,23 @@ async function callGemini(provider: AIProviderConfig, turns: ChatTurn[], locale:
   if (!provider.apiKey) return { ok: false as const, retryable: false };
   const url = `${provider.baseUrl}/v1beta/models/${encodeURIComponent(provider.defaultModel)}:generateContent?key=${encodeURIComponent(provider.apiKey)}`;
   const response = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, signal, body: JSON.stringify({ contents: buildGeminiContents(turns), systemInstruction: { parts: [{ text: systemPrompt(locale) }] }, generationConfig: { maxOutputTokens: 1400, temperature: 0.6 } }) });
-  if (!response.ok) return { ok: false as const, retryable: response.status === 408 || response.status === 429 || response.status >= 500 };
+  if (!response.ok) return { ok: false as const, retryable: isRetryableStatus(response.status) };
   const data = (await response.json()) as GeminiGenerateResponse;
   if (data.promptFeedback?.blockReason) return { ok: false as const, retryable: false, blocked: true };
   const reply = data.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("").trim() ?? "";
   if (!reply) return { ok: false as const, retryable: true };
   return { ok: true as const, reply: reply.slice(0, MAX_REPLY_CHARS), model: provider.defaultModel };
+}
+
+async function callProvider(name: AIProviderId, provider: AIProviderConfig, turns: ChatTurn[], locale: string | null, signal: AbortSignal) {
+  if (name === "openai") return callOpenAI(provider, turns, locale, signal);
+  if (name === "gemini") return callGemini(provider, turns, locale, signal);
+  return callOpenRouter(provider, turns, locale, signal);
+}
+
+function configuredProviderOrder(config: ReturnType<typeof getAIConfig>): AIProviderId[] {
+  const order = [config.activeProvider, ...config.fallbackProviders];
+  return [...new Set(order)].filter((id) => Boolean(config.providers[id]?.apiKey));
 }
 
 export async function handleChatRequest(request: Request): Promise<Response> {
@@ -141,9 +170,8 @@ export async function handleChatRequest(request: Request): Promise<Response> {
   const parsed = parseTurns(body);
   if (!parsed.ok) return parsed.response;
   const config = getAIConfig();
-  const openrouter = config.providers.openrouter;
-  const gemini = config.providers.gemini;
-  if (!openrouter?.apiKey && !gemini?.apiKey) return notConfigured();
+  const providerOrder = configuredProviderOrder(config);
+  if (providerOrder.length === 0) return notConfigured();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), config.defaultTimeoutMs);
   try {
@@ -151,14 +179,12 @@ export async function handleChatRequest(request: Request): Promise<Response> {
     const fresh = shouldWebSearch(parsed.turns.at(-1)!.content) ? await searchWeb(parsed.turns.at(-1)!.content, controller.signal) : "";
     const last = parsed.turns.at(-1)!;
     const augmentedTurns = [...parsed.turns.slice(0, -1), { ...last, content: [last.content, catalog, fresh].filter(Boolean).join("\n\n") }];
-    const providers: Array<{ name: "openrouter" | "gemini"; config: AIProviderConfig }> = [];
-    if (openrouter?.apiKey) providers.push({ name: "openrouter", config: openrouter });
-    if (gemini?.apiKey) providers.push({ name: "gemini", config: gemini });
     let retryable = false;
-    for (const provider of providers) {
+    for (const providerId of providerOrder) {
+      const provider = config.providers[providerId];
       try {
-        const result = provider.name === "openrouter" ? await callOpenRouter(provider.config, augmentedTurns, parsed.locale, controller.signal) : await callGemini(provider.config, augmentedTurns, parsed.locale, controller.signal);
-        if (result.ok) return jsonResponse({ reply: result.reply, model: result.model, provider: provider.name });
+        const result = await callProvider(providerId, provider, augmentedTurns, parsed.locale, controller.signal);
+        if (result.ok) return jsonResponse({ reply: result.reply, model: result.model, provider: providerId });
         if ("blocked" in result && result.blocked) return jsonResponse({ error: "The AI provider blocked this request with its safety filters.", retryable: false });
         retryable = result.retryable;
         if (!result.retryable) break;
