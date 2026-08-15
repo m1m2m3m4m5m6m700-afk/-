@@ -146,7 +146,7 @@ export function VisitorChatWidget({ initialOpen = false, showTrigger = true }: V
   return (
     <details
       ref={detailsRef}
-      defaultOpen={initialOpen}
+      open={open}
       onToggle={(event) => setOpen(event.currentTarget.open)}
       className="fixed bottom-5 right-5 z-50"
     >
