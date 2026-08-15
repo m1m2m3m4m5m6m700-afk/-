@@ -2,24 +2,21 @@
  * Provider registry / factory.
  *
  * Server-only. The AI service resolves providers through this module so that
- * adding Gemini or Anthropic later is a one-file change:
- *
- *   1. implement `AIProvider` in `./gemini.ts` (or `./anthropic.ts`),
- *   2. register it here in `PROVIDER_FACTORIES` + `getProvider`.
- *
- * No tool or service code needs to change.
+ * adding a new provider is a one-file registry change.
  */
 
 import { getAIConfig, type AIProviderConfig } from "../config";
 import type { AIProvider } from "./types";
-import { OpenAIProvider } from "./openai";
 import { GeminiProvider } from "./gemini";
+import { OpenAIProvider } from "./openai";
+import { OpenRouterProvider } from "./openrouter";
 
 type ProviderFactory = (config: AIProviderConfig) => AIProvider;
 
 const PROVIDER_FACTORIES: Record<string, ProviderFactory> = {
   openai: (config) => new OpenAIProvider(config),
   gemini: (config) => new GeminiProvider(config),
+  openrouter: (config) => new OpenRouterProvider(config),
 };
 
 const instances = new Map<string, AIProvider>();
@@ -40,12 +37,20 @@ export function getProvider(id: string): AIProvider | undefined {
   return instance;
 }
 
-/** All providers in the configured fallback chain, in order. */
+/**
+ * Resolve the configured chain first, then append any configured providers not
+ * explicitly named. This keeps the free-first path resilient when the default
+ * provider is unset while an OpenRouter/Gemini key is available.
+ */
 export function getProviderChain(): AIProvider[] {
   const config = getAIConfig();
+  const configuredIds = Object.entries(config.providers)
+    .filter(([, provider]) => Boolean(provider.apiKey))
+    .map(([id]) => id);
   const ids = [
     config.activeProvider,
     ...config.fallbackProviders.filter((id) => id !== config.activeProvider),
+    ...configuredIds,
   ];
   const chain: AIProvider[] = [];
   const seen = new Set<string>();
