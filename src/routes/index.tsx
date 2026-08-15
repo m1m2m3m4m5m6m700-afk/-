@@ -1,8 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { AITaskInterface } from "@/components/assistant/AITaskInterface";
-import { CapabilityCards, SupportedFiles } from "@/components/assistant/HomeSignals";
-import { PrimaryToolCategories } from "@/components/landing/PrimaryToolCategories";
+import { CategoryGrid } from "@/components/landing/CategoryGrid";
 import { MegaToolHub } from "@/components/landing/MegaToolHub";
 import { WhyFlixo } from "@/components/landing/WhyFlixo";
 import { FAQ } from "@/components/landing/FAQ";
@@ -26,18 +25,20 @@ function Index() {
   };
 
   return (
-    <SiteLayout onRequestTool={() => handleRequestTool()}>
+    <SiteLayout onRequestTool={() => handleRequestTool()} showFloatingChat={false}>
       <div className="bg-hero-glow">
-        <div className="mx-auto max-w-7xl space-y-14 px-5 py-16 sm:px-6 lg:px-8 lg:py-20">
-          <AITaskInterface onRequestTool={handleRequestTool} />
-          <PrimaryToolCategories />
-          <MegaToolHub />
-          <CapabilityCards />
-          <SupportedFiles />
+        <div className="mx-auto max-w-7xl space-y-14 px-5 py-12 sm:px-6 lg:px-8 lg:py-16">
+          <AITaskInterface />
+          <CategoryGrid />
         </div>
       </div>
 
       <WhyFlixo />
+
+      <div className="mx-auto max-w-7xl px-5 py-8 sm:px-6 lg:px-8">
+        <MegaToolHub />
+      </div>
+
       <FAQ />
 
       <div className="mx-auto max-w-5xl px-5 pb-24 sm:px-6 lg:px-8">
