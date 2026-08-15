@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
-import { ArrowRight, Lightbulb, CheckCircle2, HelpCircle, Bot, Loader2 } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { ArrowRight, Lightbulb, CheckCircle2, Bot, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { AIPromptBox } from "./AIPromptBox";
@@ -23,7 +23,6 @@ interface FlexGuidance {
 }
 
 export function AITaskInterface({ onRequestTool, onSelectCategory }: AITaskInterfaceProps) {
-  const navigate = useNavigate();
   const { t, locale } = useI18n();
   const [prompt, setPrompt] = useState("");
   const [status, setStatus] = useState<BrainStatus>("idle");
@@ -54,10 +53,7 @@ export function AITaskInterface({ onRequestTool, onSelectCategory }: AITaskInter
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          message: inputPrompt,
-          history: [],
-        }),
+        body: JSON.stringify({ message: inputPrompt, history: [] }),
       });
       const payload = (await response.json()) as { reply?: string; error?: string };
       return (
@@ -142,9 +138,7 @@ export function AITaskInterface({ onRequestTool, onSelectCategory }: AITaskInter
                     <Bot className="size-5" />
                   </span>
                   <div>
-                    <span className="block text-[11px] font-bold uppercase tracking-wider text-primary">
-                      Flex
-                    </span>
+                    <span className="block text-[11px] font-bold uppercase tracking-wider text-primary">Flex</span>
                     <h3 className="text-lg font-bold text-foreground">
                       {locale === "ar" ? "وجدت لك الأداة المناسبة" : "I found the right tool for you"}
                     </h3>
@@ -153,9 +147,7 @@ export function AITaskInterface({ onRequestTool, onSelectCategory }: AITaskInter
 
                 <div className="rounded-2xl border border-border/70 bg-card/60 p-4">
                   <p className="text-sm font-bold text-foreground">{result.skill.name}</p>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                    {result.skill.description}
-                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{result.skill.description}</p>
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
                       {t("assistant.result.category")}: {result.skill.categoryName}
@@ -209,9 +201,7 @@ export function AITaskInterface({ onRequestTool, onSelectCategory }: AITaskInter
                     {locale === "ar" ? "إرشاد" : "Guidance"}
                   </span>
                 </div>
-                <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
-                  {flexGuidance.reply}
-                </p>
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">{flexGuidance.reply}</p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Button
                     size="sm"
