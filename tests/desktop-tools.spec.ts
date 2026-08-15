@@ -1,11 +1,12 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Download } from "@playwright/test";
 import JSZip from "jszip";
+import { readFile } from "node:fs/promises";
 
 const makeBytes = (size: number, value = 65) => Buffer.alloc(size, value);
 
-async function downloadSize(downloadPromise: ReturnType<import("@playwright/test").Page["waitForEvent"]>, downloadName?: string) {
+async function downloadPath(downloadPromise: Promise<Download>, expectedName: string) {
   const download = await downloadPromise;
-  if (downloadName) expect(download.suggestedFilename()).toBe(downloadName);
+  expect(download.suggestedFilename()).toBe(expectedName);
   const path = await download.path();
   expect(path).toBeTruthy();
   return path!;
@@ -14,15 +15,15 @@ async function downloadSize(downloadPromise: ReturnType<import("@playwright/test
 test.describe("verified desktop tools", () => {
   test("ZIP Creator creates a readable archive containing selected files", async ({ page }) => {
     await page.goto("/tools/zip-creator");
-    const input = page.locator('input[type="file"]');
-    await input.setInputFiles([
+    await page.locator('input[type="file"]').setInputFiles([
       { name: "alpha.txt", mimeType: "text/plain", buffer: Buffer.from("alpha") },
       { name: "beta.txt", mimeType: "text/plain", buffer: Buffer.from("beta") },
     ]);
-    const downloadPath = await downloadSize(page.waitForEvent("download"), "flixo-files.zip");
-    const zip = await JSZip.loadAsync(await (await import("node:fs/promises")).readFile(downloadPath));
+    const download = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Create ZIP" }).click();
+    const path = await downloadPath(download, "flixo-files.zip");
+    const zip = await JSZip.loadAsync(await readFile(path));
     expect(Object.keys(zip.files).sort()).toEqual(["alpha.txt", "beta.txt"]);
-    await expect(page.getByText("Download ZIP")).toBeVisible();
   });
 
   test("Archive Extractor reads ZIP entries and exposes extracted output", async ({ page }) => {
@@ -31,12 +32,10 @@ test.describe("verified desktop tools", () => {
     const bytes = await zip.generateAsync({ type: "nodebuffer" });
     await page.goto("/tools/archive-extractor");
     await page.locator('input[type="file"]').setInputFiles({ name: "sample.zip", mimeType: "application/zip", buffer: bytes });
-    await expect(page.getByText("hello.txt")).toBeVisible();
+    await expect(page.getByText("hello.txt", { exact: true })).toBeVisible();
     const link = page.getByRole("link", { name: /hello\.txt/ });
-    const href = await link.getAttribute("href");
-    expect(href).toMatch(/^blob:/);
-    const extracted = await link.getAttribute("download");
-    expect(extracted).toBe("hello.txt");
+    expect(await link.getAttribute("href")).toMatch(/^blob:/);
+    expect(await link.getAttribute("download")).toBe("hello.txt");
   });
 
   test("File Splitter produces numbered chunks with exact source coverage", async ({ page }) => {
@@ -44,8 +43,10 @@ test.describe("verified desktop tools", () => {
     await page.goto("/tools/file-splitter");
     await page.locator('input[type="file"]').setInputFiles({ name: "large.bin", mimeType: "application/octet-stream", buffer: source });
     await page.getByLabel("Chunk size").fill("1");
-    const downloadPath = await downloadSize(page.waitForEvent("download"), "large.bin-parts.zip");
-    const zip = await JSZip.loadAsync(await (await import("node:fs/promises")).readFile(downloadPath));
+    const download = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Split file" }).click();
+    const path = await downloadPath(download, "large.bin-parts.zip");
+    const zip = await JSZip.loadAsync(await readFile(path));
     const names = Object.keys(zip.files).sort();
     expect(names).toEqual(["large.bin.part-0001", "large.bin.part-0002", "large.bin.part-0003"]);
     const merged = Buffer.concat(await Promise.all(names.map((name) => zip.files[name].async("nodebuffer"))));
