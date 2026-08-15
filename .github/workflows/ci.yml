@@ -51,6 +51,9 @@ jobs:
       - name: Validate mega-tool catalog
         run: node src/scripts/validate-mega-tools.mjs
 
+      - name: Validate Google Search implementation
+        run: node src/scripts/validate-google-search.mjs
+
       - name: Validate SEO
         run: npm run validate:seo
 
