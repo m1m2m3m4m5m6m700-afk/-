@@ -144,31 +144,27 @@ const DICTIONARIES: Record<LocaleCode, Dictionary> = {
   ms,
 };
 
+/**
+ * Arabic is the first locale promoted to strict dictionary mode.
+ * When Arabic is active, translation lookup NEVER falls back to English.
+ * A missing key is treated as a development error so every newly-added UI
+ * string is forced through src/lib/i18n/locales/ar.ts before it can ship.
+ */
+const STRICT_DICTIONARY_LOCALES = new Set<LocaleCode>(["ar"]);
+
 export const DEFAULT_LOCALE: LocaleCode = "en";
 export const LOCALE_STORAGE_KEY = "flixo-lang";
 
-/** Set of locale codes for O(1) membership checks (exact match, case-sensitive). */
 const LOCALE_CODES = new Set<string>(LOCALES.map((l) => l.code));
 
 export function localeMeta(code: LocaleCode): LocaleMeta {
   return LOCALES.find((l) => l.code === code) ?? LOCALES[0];
 }
 
-/**
- * Determine whether a locale code string is one this app supports. Exact,
- * case-sensitive match — `zh-CN` is not matched by `zh` or `zh-cn`.
- */
 export function isSupportedLocale(code: string | undefined | null): code is LocaleCode {
   return typeof code === "string" && LOCALE_CODES.has(code);
 }
 
-/**
- * Resolve the active locale from a URL pathname for SSR rendering of
- * `<html lang dir>`. English has no prefix (`/`, `/tools/...`); every other
- * locale is served at `/<code>/...`. Only the first path segment is inspected
- * and it must match a known locale exactly, so `zh-CN` is matched but `zh` is
- * not. Falls back to the default locale (English) for non-localized routes.
- */
 export function localeFromPathname(pathname: string): LocaleCode {
   if (!pathname || pathname === "/") return DEFAULT_LOCALE;
   const segments = pathname.split("/").filter(Boolean);
@@ -209,10 +205,8 @@ function detectBrowserLocale(): LocaleCode | null {
   for (const raw of candidates) {
     if (!raw) continue;
     const normalized = raw.toLowerCase();
-    // Exact match first (e.g. "zh-cn" → zh-CN), so script-region tags are honored.
     const exact = LOCALES.find((l) => l.code.toLowerCase() === normalized);
     if (exact) return exact.code;
-    // Then a prefix match on the primary subtag (e.g. "de-AT" → de).
     const primary = normalized.split("-")[0];
     const prefix = LOCALES.find((l) => l.code.toLowerCase() === primary);
     if (prefix) return prefix.code;
@@ -220,10 +214,27 @@ function detectBrowserLocale(): LocaleCode | null {
   return null;
 }
 
+function translateFromDictionary(
+  locale: LocaleCode,
+  dict: Dictionary,
+  key: TranslationKey,
+  vars?: Vars,
+): string {
+  const localized = dict[key];
+  if (localized !== undefined && localized !== "") return interpolate(localized, vars);
+
+  if (STRICT_DICTIONARY_LOCALES.has(locale)) {
+    const message = `[${locale}] Missing translation key: ${key}`;
+    if (import.meta.env?.DEV) console.error(message);
+    return `ترجمة مفقودة: ${String(key)}`;
+  }
+
+  return interpolate(en[key] ?? key, vars);
+}
+
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<LocaleCode>(DEFAULT_LOCALE);
 
-  // Resolve stored choice, else browser language, after hydration.
   useEffect(() => {
     let next: LocaleCode | null = null;
     try {
@@ -254,12 +265,12 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<I18nValue>(() => {
-    const dict = DICTIONARIES[locale] ?? en;
+    const dict = DICTIONARIES[locale];
     return {
       locale,
       dir,
       setLocale,
-      t: (key, vars) => interpolate(dict[key] ?? en[key] ?? key, vars),
+      t: (key, vars) => translateFromDictionary(locale, dict, key, vars),
     };
   }, [locale, dir, setLocale]);
 
@@ -285,12 +296,12 @@ export function LocalI18nProvider({
   }, [locale, dir]);
 
   const value = useMemo<I18nValue>(() => {
-    const dict = DICTIONARIES[locale] ?? en;
+    const dict = DICTIONARIES[locale];
     return {
       locale,
       dir,
       setLocale: parent.setLocale,
-      t: (key, vars) => interpolate(dict[key] ?? en[key] ?? key, vars),
+      t: (key, vars) => translateFromDictionary(locale, dict, key, vars),
     };
   }, [locale, dir, parent.setLocale]);
 
