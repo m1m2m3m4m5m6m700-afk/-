@@ -1,6 +1,5 @@
 /** Server-only admin configuration and persistent first-run owner account. */
 
-import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/server/db/client";
 import { isDbConfigured } from "@/lib/server/db/config";
 import { adminAccounts } from "@/lib/server/db/schema";
@@ -38,7 +37,6 @@ function loadEnvConfig(): void {
   cachedMissing = [];
 }
 
-/** Legacy/env-only sync check retained for code that only supports env auth. */
 export function isAdminConfigured(): boolean {
   loadEnvConfig();
   return cached !== null;
@@ -51,13 +49,10 @@ export function getMissingAdminConfig(): string[] {
 
 export function getAdminConfig(): AdminConfig {
   loadEnvConfig();
-  if (!cached) {
-    throw new Error("Admin auth is not configured. Missing: " + (cachedMissing ?? []).join(", "));
-  }
+  if (!cached) throw new Error("Admin auth is not configured. Missing: " + (cachedMissing ?? []).join(", "));
   return cached;
 }
 
-/** Resolves env credentials first, then the persisted first-run owner account. */
 export async function getAdminConfigAsync(): Promise<AdminConfig | null> {
   loadEnvConfig();
   if (cached) return cached;
@@ -65,12 +60,7 @@ export async function getAdminConfigAsync(): Promise<AdminConfig | null> {
   try {
     const [account] = await getDb().select().from(adminAccounts).limit(1);
     if (!account) return null;
-    return {
-      passwordHash: account.passwordHash,
-      sessionSecret: account.sessionSecret,
-      name: account.name,
-      email: account.email,
-    };
+    return { passwordHash: account.passwordHash, sessionSecret: account.sessionSecret, name: account.name, email: account.email };
   } catch {
     return null;
   }
@@ -90,13 +80,7 @@ export async function hasOwnerAccount(): Promise<boolean> {
   }
 }
 
-/** Create the owner exactly once. The DB unique singleton key closes the race. */
-export async function createOwnerAccount(input: {
-  name: string;
-  email: string;
-  passwordHash: string;
-  sessionSecret: string;
-}): Promise<boolean> {
+export async function createOwnerAccount(input: { name: string; email: string; passwordHash: string; sessionSecret: string }): Promise<boolean> {
   if (!isDbConfigured()) return false;
   try {
     await getDb().insert(adminAccounts).values({
