@@ -1,16 +1,6 @@
-/**
- * Client hook for admin authentication.
- *
- * Thin wrapper around the server RPCs in `./rpc/auth.rpc`. Imports ONLY types +
- * RPC fetchers — no config, no secrets, no server code. Safe for the client
- * bundle (the cookie is HttpOnly and never readable by JS).
- *
- * Mirrors the shape of the GitHub `useGitHub` hook's auth portion.
- */
-
 import { useCallback, useEffect, useState } from "react";
-import { adminLogin, adminLogout, getAdminAuthStatus } from "./rpc/auth.rpc";
-import type { AdminAuthStatus, AdminLoginResult } from "./types";
+import { adminLogin, adminLogout, adminSetup, getAdminAuthStatus } from "./rpc/auth.rpc";
+import type { AdminAuthStatus, AdminLoginResult, AdminSetupResult } from "./types";
 
 export interface UseAdminAuthState {
   loading: boolean;
@@ -20,6 +10,7 @@ export interface UseAdminAuthState {
 
 export interface UseAdminAuthApi extends UseAdminAuthState {
   refreshStatus: () => Promise<void>;
+  setupOwner: (name: string, email: string, password: string) => Promise<boolean>;
   login: (password: string) => Promise<boolean>;
   logout: () => Promise<void>;
 }
@@ -33,52 +24,47 @@ export function useAdminAuth(): UseAdminAuthApi {
     setLoading(true);
     setError(null);
     try {
-      const s = await getAdminAuthStatus();
-      setStatus(s);
+      setStatus(await getAdminAuthStatus());
     } catch {
-      setError("Could not reach the Flixo server.");
+      setError("تعذر الاتصال بخادم Flixo.");
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // Check auth status once on mount (the cookie is HttpOnly, so the server is
-  // the only source of truth for whether the session is valid).
-  useEffect(() => {
-    void refreshStatus();
-  }, [refreshStatus]);
+  useEffect(() => { void refreshStatus(); }, [refreshStatus]);
 
-  const login = useCallback(
-    async (password: string): Promise<boolean> => {
-      setError(null);
-      try {
-        // adminLogin returns a Response (Set-Cookie) on success whose JSON body
-        // is `{ ok: true }`; on failure it returns a plain failure object. The
-        // TanStack client resolves both to a parsed object, so `res.ok` works.
-        const res = (await adminLogin({ data: { password } })) as AdminLoginResult;
-        if (res.ok) {
-          await refreshStatus();
-          return true;
-        }
-        setError(res.message);
-        return false;
-      } catch {
-        setError("Could not sign in.");
-        return false;
-      }
-    },
-    [refreshStatus],
-  );
-
-  const logout = useCallback(async () => {
+  const setupOwner = useCallback(async (name: string, email: string, password: string) => {
     setError(null);
     try {
-      await adminLogout();
+      const res = (await adminSetup({ data: { name, email, password } })) as AdminSetupResult;
+      if (!res.ok) { setError(res.message); return false; }
       await refreshStatus();
+      return true;
     } catch {
-      setError("Could not sign out.");
+      setError("تعذر إنشاء حساب المالك.");
+      return false;
     }
   }, [refreshStatus]);
 
-  return { loading, status, error, refreshStatus, login, logout };
+  const login = useCallback(async (password: string) => {
+    setError(null);
+    try {
+      const res = (await adminLogin({ data: { password } })) as AdminLoginResult;
+      if (res.ok) { await refreshStatus(); return true; }
+      setError(res.message);
+      return false;
+    } catch {
+      setError("تعذر تسجيل الدخول.");
+      return false;
+    }
+  }, [refreshStatus]);
+
+  const logout = useCallback(async () => {
+    setError(null);
+    try { await adminLogout(); await refreshStatus(); }
+    catch { setError("تعذر تسجيل الخروج."); }
+  }, [refreshStatus]);
+
+  return { loading, status, error, refreshStatus, setupOwner, login, logout };
 }
