@@ -26,22 +26,24 @@ test.describe("Flex interactive chat", () => {
     await expect(chat).toHaveAttribute("data-hydrated", "true");
 
     const composer = chat.getByRole("textbox");
+    const sendButton = chat.getByRole("button", { name: "Find a tool" });
     await expect(composer).toBeVisible();
 
     await composer.fill("مرحبا");
-    await expect(chat.getByRole("button", { name: "Find a tool" })).toBeEnabled();
-    await composer.press("Enter");
+    await expect(sendButton).toBeEnabled();
+    await sendButton.click();
 
+    await expect.poll(() => requests.length).toBe(1);
     await expect(chat.getByText("أهلًا! كيف أساعدك؟")).toBeVisible();
-    expect(requests).toHaveLength(1);
     expect(requests[0]?.message).toBe("مرحبا");
     expect(Array.isArray(requests[0]?.history)).toBe(true);
 
     await composer.fill("هل تتذكرني؟");
-    await composer.press("Enter");
+    await expect(sendButton).toBeEnabled();
+    await sendButton.click();
 
+    await expect.poll(() => requests.length).toBe(2);
     await expect(chat.getByText("نعم، أتذكر رسالتك السابقة داخل هذه المحادثة.")).toBeVisible();
-    expect(requests).toHaveLength(2);
 
     const secondHistory = requests[1]?.history;
     expect(secondHistory).toEqual(
@@ -85,6 +87,7 @@ test.describe("Flex interactive chat", () => {
     const quickPrompt = chat.getByRole("button", { name: "It looks like you want to translate text. The AI Translator is ready for you." });
     await expect(quickPrompt).toBeVisible();
     await quickPrompt.click();
+    await expect.poll(() => responseNumber).toBe(1);
     await expect(chat.getByText("mock-reply-1")).toBeVisible();
 
     await chat.getByTitle("New chat").click();
