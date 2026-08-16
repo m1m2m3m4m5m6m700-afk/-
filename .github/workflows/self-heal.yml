@@ -13,6 +13,7 @@ permissions:
   contents: write
   actions: read
   pull-requests: write
+  checks: read
   issues: write
 
 env:
@@ -20,11 +21,13 @@ env:
   FAILED_BRANCH: ${{ github.event.workflow_run.head_branch }}
   SOURCE_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
   SELF_HEAL_MODE: ${{ startsWith(github.event.workflow_run.head_branch, 'test/self-heal-pr-') && 'pr' || 'dry-run' }}
+  SELF_HEAL_MAX_TEST_RUNS_PER_HOUR: "2"
+  SELF_HEAL_ARTIFACT_RETENTION_DAYS: "7"
 
 jobs:
   monitor-and-heal:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
     steps:
       - name: Decide whether healing is required
         id: gate
@@ -40,6 +43,28 @@ jobs:
           else
             echo "should_heal=false" >> "$GITHUB_OUTPUT"
             echo "Self-heal not required; source CI conclusion is $SOURCE_CONCLUSION."
+          fi
+
+      - name: Enforce experimental rate limit
+        if: steps.gate.outputs.should_heal == 'true' && startsWith(env.FAILED_BRANCH, 'test/self-heal-')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          now=$(date +%s)
+          cutoff=$((now - 3600))
+          count=0
+          while IFS= read -r created_at; do
+            [ -z "$created_at" ] && continue
+            ts=$(date -d "$created_at" +%s 2>/dev/null || echo 0)
+            if [ "$ts" -ge "$cutoff" ]; then
+              count=$((count + 1))
+            fi
+          done < <(gh run list --workflow self-heal.yml --limit 20 --json createdAt --jq '.[].createdAt')
+          echo "Self-Heal test runs in the last hour: $count"
+          if [ "$count" -gt "${SELF_HEAL_MAX_TEST_RUNS_PER_HOUR}" ]; then
+            echo "Rate limit reached for experimental self-heal runs; exiting without mutation."
+            exit 0
           fi
 
       - name: Validate failed SHA
@@ -78,6 +103,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
+          cache: npm
 
       - name: Collect and classify failure
         if: steps.gate.outputs.should_heal == 'true'
@@ -154,4 +180,4 @@ jobs:
             .github/self-healing/logs/
             .github/diagnosis-report.json
           if-no-files-found: ignore
-          retention-days: 14
+          retention-days: ${{ env.SELF_HEAL_ARTIFACT_RETENTION_DAYS }}
