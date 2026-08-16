@@ -133,3 +133,16 @@ jobs:
           path: playwright-report
           if-no-files-found: ignore
           retention-days: 7
+
+      - name: Upload diagnostic logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-diagnostics-${{ github.run_id }}
+          path: |
+            ~/.npm/_logs/
+            diagnostics/
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
+          retention-days: 14
