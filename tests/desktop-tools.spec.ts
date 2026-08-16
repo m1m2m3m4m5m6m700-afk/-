@@ -16,15 +16,22 @@ test.describe("verified desktop tools", () => {
   test("ZIP Creator creates a readable archive containing selected files", async ({ page }) => {
     await page.goto("/tools/zip-creator");
     const input = page.locator('input[type="file"]');
-    const downloadPromise = page.waitForEvent("download");
     await input.setInputFiles([
       { name: "alpha.txt", mimeType: "text/plain", buffer: Buffer.from("alpha") },
       { name: "beta.txt", mimeType: "text/plain", buffer: Buffer.from("beta") },
     ]);
-    const downloadPath = await downloadSize(downloadPromise, "flixo-files.zip");
+
+    await page.getByRole("button", { name: "Create ZIP" }).click();
+    const downloadLink = page.getByRole("link", { name: /Download ZIP/i });
+    await expect(downloadLink).toBeVisible();
+
+    const [download] = await Promise.all([
+      page.waitForEvent("download"),
+      downloadLink.click(),
+    ]);
+    const downloadPath = await downloadSize(Promise.resolve(download), "flixo-files.zip");
     const zip = await JSZip.loadAsync(await readFile(downloadPath));
     expect(Object.keys(zip.files).sort()).toEqual(["alpha.txt", "beta.txt"]);
-    await expect(page.getByText("Download ZIP")).toBeVisible();
   });
 
   test("Archive Extractor reads ZIP entries and exposes extracted output", async ({ page }) => {
