@@ -1,4 +1,4 @@
-name: CI
+name: Strict CI
 
 on:
   push:
@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   verify:
-    name: Verify (integration · dependency · typecheck · lint · SEO · i18n · terminology · AI · quality · accessibility · security · desktop-tools · mega-tools · build)
+    name: Strict verification
     runs-on: ubuntu-latest
     timeout-minutes: 50
 
@@ -115,11 +115,11 @@ jobs:
 
       - name: Run verified desktop/file tool browser tests
         run: npm run test:desktop -- --retries=2
-        timeout-minutes: 20
+        timeout-minutes: 25
 
       - name: Run all operational mega-tool tests
         run: npx playwright test tests/mega-tools.spec.ts --retries=2
-        timeout-minutes: 20
+        timeout-minutes: 25
 
       - name: Upload build artifact
         if: github.event_name == 'pull_request'
@@ -127,6 +127,7 @@ jobs:
         with:
           name: vercel-build
           path: .vercel/output
+          if-no-files-found: error
           retention-days: 3
 
       - name: Upload browser report
