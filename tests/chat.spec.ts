@@ -50,7 +50,7 @@ test.describe("Flex interactive chat", () => {
     await secondResponse;
 
     await expect.poll(() => requests.length, { timeout: 10_000 }).toBe(2);
-    await expect(chat.getByText("نعم، أتذكر رسالتي السابقة داخل هذه المحادثة.").or(chat.getByText("نعم، أتذكر رسالتك السابقة داخل هذه المحادثة."))).toBeVisible();
+    await expect(chat.getByText("نعم، أتذكر رسالتك السابقة داخل هذه المحادثة.")).toBeVisible();
 
     const secondHistory = requests[1]?.history;
     expect(secondHistory).toEqual(
@@ -67,6 +67,7 @@ test.describe("Flex interactive chat", () => {
     await expect(reloadedChat.getByText("مرحبا")).toBeVisible();
     await expect(reloadedChat.getByText("أهلًا! كيف أساعدك؟")).toBeVisible();
     await expect(reloadedChat.getByText("هل تتذكرني؟")).toBeVisible();
+    await expect(reloadedChat.getByText("نعم، أتذكر رسالتك السابقة داخل هذه المحادثة.")).toBeVisible();
   });
 
   test("supports quick prompts and a clean new conversation", async ({ page }) => {
@@ -106,7 +107,7 @@ test.describe("Flex interactive chat", () => {
     const newChat = chat.getByTestId("flex-new-chat");
     await expect(newChat).toBeEnabled();
     await newChat.click();
-    await expect(chat.getByText(/suggestion|translate|writing|utility/i).first()).toBeVisible();
+    await expect(chat.getByTestId("flex-empty-state")).toBeVisible();
     await expect(chat.getByText("mock-reply-1")).not.toBeVisible();
   });
 });
