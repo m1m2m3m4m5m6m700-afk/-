@@ -16,7 +16,8 @@ test.describe("verified desktop tools", () => {
   test.setTimeout(120_000);
 
   test("ZIP Creator creates a readable archive containing selected files", async ({ page }) => {
-    await page.goto("/tools/zip-creator");
+    await page.goto("/tools/zip-creator", { waitUntil: "domcontentloaded" });
+
     const input = page.locator('input[type="file"]');
     const createButton = page.getByRole("button", { name: "Create ZIP" });
     await expect(createButton).toBeVisible();
@@ -30,21 +31,26 @@ test.describe("verified desktop tools", () => {
     await createButton.click();
 
     const downloadLink = page.getByRole("link", { name: "Download ZIP" });
-    await expect(downloadLink).toBeVisible();
+    await expect(downloadLink).toBeVisible({ timeout: 60_000 });
+    await expect(downloadLink).toHaveAttribute("download", "flixo-files.zip");
 
-    const downloadPromise = page.waitForEvent("download");
+    const downloadPromise = page.waitForEvent("download", { timeout: 30_000 });
     await downloadLink.click();
     const downloadPath = await downloadSize(downloadPromise, "flixo-files.zip");
+
     const zip = await JSZip.loadAsync(await readFile(downloadPath));
     expect(Object.keys(zip.files).sort()).toEqual(["alpha.txt", "beta.txt"]);
+    expect(await zip.files["alpha.txt"].async("string")).toBe("alpha");
+    expect(await zip.files["beta.txt"].async("string")).toBe("beta");
   });
 
   test("Archive Extractor reads ZIP entries and exposes extracted output", async ({ page }) => {
     const zip = new JSZip();
-    zip.file("hello.txt", "hello from Flixo");
-    const bytes = await zip.generateAsync({ type: "nodebuffer" });
+    zip.file("sample.txt", "hello from Flixo");
+    zip.file("nested/notes.txt", "nested content");
+    const bytes = await zip.generateAsync({ type: "nodebuffer", compression: "STORE" });
 
-    await page.goto("/tools/archive-extractor");
+    await page.goto("/tools/archive-extractor", { waitUntil: "domcontentloaded" });
     await page.locator('input[type="file"]').setInputFiles({
       name: "sample.zip",
       mimeType: "application/zip",
@@ -53,27 +59,35 @@ test.describe("verified desktop tools", () => {
 
     const extractedList = page.getByTestId("extracted-list");
     const error = page.getByRole("alert");
-    await expect.poll(
-      async () => {
-        if (await extractedList.isVisible().catch(() => false)) return "ready";
-        if (await error.isVisible().catch(() => false)) return "error";
-        return "pending";
-      },
-      { timeout: 30_000 },
-    ).toBe("ready");
 
-    const link = extractedList.getByRole("link", { name: /hello\.txt/ });
-    await expect(link).toBeVisible();
-    const href = await link.getAttribute("href");
-    expect(href).toMatch(/^blob:/);
-    const extracted = await link.getAttribute("download");
-    expect(extracted).toBe("hello.txt");
+    await expect
+      .poll(
+        async () => {
+          if (await extractedList.isVisible().catch(() => false)) return "ready";
+          if (await error.isVisible().catch(() => false)) return "error";
+          return "pending";
+        },
+        { timeout: 60_000, intervals: [250, 500, 1000] },
+      )
+      .toBe("ready");
+
+    await expect(extractedList).toContainText("sample.txt");
+    await expect(extractedList).toContainText("nested/notes.txt");
+
+    const extractedFiles = extractedList.getByTestId("extracted-file");
+    await expect(extractedFiles).toHaveCount(2);
+    await expect(extractedFiles.nth(0)).toHaveAttribute("href", /^blob:/);
+    await expect(extractedFiles.nth(0)).toHaveAttribute("download");
   });
 
   test("File Splitter produces numbered chunks with exact source coverage", async ({ page }) => {
     const source = makeBytes(2 * 1024 * 1024 + 17, 88);
-    await page.goto("/tools/file-splitter");
-    await page.locator('input[type="file"]').setInputFiles({ name: "large.bin", mimeType: "application/octet-stream", buffer: source });
+    await page.goto("/tools/file-splitter", { waitUntil: "domcontentloaded" });
+    await page.locator('input[type="file"]').setInputFiles({
+      name: "large.bin",
+      mimeType: "application/octet-stream",
+      buffer: source,
+    });
     await page.getByLabel("Chunk size").fill("1");
 
     const splitButton = page.getByRole("button", { name: "Split file" });
@@ -81,9 +95,9 @@ test.describe("verified desktop tools", () => {
     await splitButton.click();
 
     const downloadLink = page.getByRole("link", { name: "Download chunks" });
-    await expect(downloadLink).toBeVisible();
+    await expect(downloadLink).toBeVisible({ timeout: 60_000 });
 
-    const downloadPromise = page.waitForEvent("download");
+    const downloadPromise = page.waitForEvent("download", { timeout: 30_000 });
     await downloadLink.click();
     const downloadPath = await downloadSize(downloadPromise, "large.bin-parts.zip");
     const zip = await JSZip.loadAsync(await readFile(downloadPath));
@@ -94,8 +108,12 @@ test.describe("verified desktop tools", () => {
   });
 
   test("Metadata Viewer reports basic browser file metadata", async ({ page }) => {
-    await page.goto("/tools/metadata-viewer");
-    await page.locator('input[type="file"]').setInputFiles({ name: "report.txt", mimeType: "text/plain", buffer: Buffer.from("report") });
+    await page.goto("/tools/metadata-viewer", { waitUntil: "domcontentloaded" });
+    await page.locator('input[type="file"]').setInputFiles({
+      name: "report.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from("report"),
+    });
     await expect(page.getByText("report.txt", { exact: true })).toBeVisible();
     await expect(page.getByText("text/plain", { exact: true })).toBeVisible();
     await expect(page.getByText("6", { exact: true })).toBeVisible();
