@@ -1,8 +1,9 @@
 import { expect, test } from "playwright/test";
 
 test.describe("Flex interactive chat", () => {
+  test.setTimeout(60_000);
+
   test("supports multi-turn conversation and session persistence", async ({ page }) => {
-    test.setTimeout(60_000);
     const requests: Array<{ message?: unknown; history?: unknown; locale?: unknown }> = [];
     let responseNumber = 0;
 
@@ -71,7 +72,6 @@ test.describe("Flex interactive chat", () => {
   });
 
   test("supports quick prompts and a clean new conversation", async ({ page }) => {
-    test.setTimeout(60_000);
     let responseNumber = 0;
 
     await page.route("**/api/chat", async (route) => {
@@ -101,6 +101,7 @@ test.describe("Flex interactive chat", () => {
     );
     await quickPrompt.click();
     await quickPromptResponse;
+
     await expect.poll(() => responseNumber, { timeout: 10_000 }).toBe(1);
     await expect(chat.getByText("mock-reply-1")).toBeVisible();
 
