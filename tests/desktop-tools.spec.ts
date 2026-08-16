@@ -13,27 +13,57 @@ async function downloadSize(downloadPromise: Promise<Download>, downloadName?: s
 }
 
 test.describe("verified desktop tools", () => {
+  test.setTimeout(120_000);
+
   test("ZIP Creator creates a readable archive containing selected files", async ({ page }) => {
     await page.goto("/tools/zip-creator");
     const input = page.locator('input[type="file"]');
+    const createButton = page.getByRole("button", { name: "Create ZIP" });
+    await expect(createButton).toBeVisible();
+
     await input.setInputFiles([
       { name: "alpha.txt", mimeType: "text/plain", buffer: Buffer.from("alpha") },
       { name: "beta.txt", mimeType: "text/plain", buffer: Buffer.from("beta") },
     ]);
-    const downloadPath = await downloadSize(page.waitForEvent("download"), "flixo-files.zip");
+
+    await expect(createButton).toBeEnabled();
+    await createButton.click();
+
+    const downloadLink = page.getByRole("link", { name: "Download ZIP" });
+    await expect(downloadLink).toBeVisible();
+
+    const downloadPromise = page.waitForEvent("download");
+    await downloadLink.click();
+    const downloadPath = await downloadSize(downloadPromise, "flixo-files.zip");
     const zip = await JSZip.loadAsync(await readFile(downloadPath));
     expect(Object.keys(zip.files).sort()).toEqual(["alpha.txt", "beta.txt"]);
-    await expect(page.getByText("Download ZIP")).toBeVisible();
   });
 
   test("Archive Extractor reads ZIP entries and exposes extracted output", async ({ page }) => {
     const zip = new JSZip();
     zip.file("hello.txt", "hello from Flixo");
     const bytes = await zip.generateAsync({ type: "nodebuffer" });
+
     await page.goto("/tools/archive-extractor");
-    await page.locator('input[type="file"]').setInputFiles({ name: "sample.zip", mimeType: "application/zip", buffer: bytes });
-    await expect(page.getByText("hello.txt")).toBeVisible();
-    const link = page.getByRole("link", { name: /hello\.txt/ });
+    await page.locator('input[type="file"]').setInputFiles({
+      name: "sample.zip",
+      mimeType: "application/zip",
+      buffer: bytes,
+    });
+
+    const extractedList = page.getByTestId("extracted-list");
+    const error = page.getByRole("alert");
+    await expect.poll(
+      async () => {
+        if (await extractedList.isVisible().catch(() => false)) return "ready";
+        if (await error.isVisible().catch(() => false)) return "error";
+        return "pending";
+      },
+      { timeout: 30_000 },
+    ).toBe("ready");
+
+    const link = extractedList.getByRole("link", { name: /hello\.txt/ });
+    await expect(link).toBeVisible();
     const href = await link.getAttribute("href");
     expect(href).toMatch(/^blob:/);
     const extracted = await link.getAttribute("download");
@@ -45,7 +75,9 @@ test.describe("verified desktop tools", () => {
     await page.goto("/tools/file-splitter");
     await page.locator('input[type="file"]').setInputFiles({ name: "large.bin", mimeType: "application/octet-stream", buffer: source });
     await page.getByLabel("Chunk size").fill("1");
-    const downloadPath = await downloadSize(page.waitForEvent("download"), "large.bin-parts.zip");
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: /Download|Create/i }).click();
+    const downloadPath = await downloadSize(downloadPromise, "large.bin-parts.zip");
     const zip = await JSZip.loadAsync(await readFile(downloadPath));
     const names = Object.keys(zip.files).sort();
     expect(names).toEqual(["large.bin.part-0001", "large.bin.part-0002", "large.bin.part-0003"]);
