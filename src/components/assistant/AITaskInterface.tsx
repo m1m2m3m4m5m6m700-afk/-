@@ -17,11 +17,13 @@ export function AITaskInterface() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
+    setHydrated(true);
     try {
       const stored = JSON.parse(sessionStorage.getItem(storageKey) ?? "[]") as Message[];
       setMessages(Array.isArray(stored) ? stored.slice(-MAX_HISTORY) : []);
@@ -78,7 +80,7 @@ export function AITaskInterface() {
   const suggestions = [t("assistant.suggestion.translation"), t("assistant.suggestion.writing"), t("assistant.suggestion.utilities")];
 
   return (
-    <section className="mx-auto w-full max-w-5xl" aria-label="Flex AI chat">
+    <section className="mx-auto w-full max-w-5xl" aria-label="Flex AI chat" data-hydrated={hydrated ? "true" : "false"}>
       <div className="overflow-hidden rounded-[2rem] border border-border/70 bg-card/80 shadow-lift backdrop-blur-xl">
         <div className="border-b border-border/60 bg-gradient-to-br from-primary/12 via-card to-card px-5 py-5 sm:px-7"><div className="flex items-start justify-between gap-4"><div className="flex items-start gap-3"><div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-sm"><Sparkles className="size-5" /></div><div><p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">{t("assistant.eyebrow")}</p><h1 className="mt-1 text-2xl font-black tracking-tight sm:text-3xl">{t("hero.title")}</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{t("hero.description")}</p></div></div><Button variant="ghost" size="icon" onClick={newChat} className="size-9 rounded-xl" title="New chat"><Plus className="size-4" /></Button></div></div>
         <div className="min-h-60 max-h-[480px] overflow-y-auto px-4 py-5 sm:px-6">
