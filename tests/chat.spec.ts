@@ -26,9 +26,11 @@ test.describe("Flex interactive chat", () => {
     await expect(chat).toBeVisible();
 
     const composer = chat.getByRole("textbox");
+    const sendButton = chat.getByRole("button", { name: "Find a tool" });
     await expect(composer).toBeVisible();
 
     await composer.fill("مرحبا");
+    await expect(sendButton).toBeEnabled();
     await composer.press("Enter");
 
     await expect(chat.getByText("أهلًا! كيف أساعدك؟")).toBeVisible();
@@ -37,9 +39,10 @@ test.describe("Flex interactive chat", () => {
     expect(Array.isArray(requests[0]?.history)).toBe(true);
 
     await composer.fill("هل تتذكرني؟");
+    await expect(sendButton).toBeEnabled();
     await composer.press("Enter");
 
-    await expect(chat.getByText("نعم، أتذكر رسالتك السابقة داخل هذه المحادثة.")).toBeVisible();
+    await expect(chat.getByText("نعم، أتذكر رسالتي السابقة داخل هذه المحادثة.")).toBeVisible();
     expect(requests).toHaveLength(2);
 
     const secondHistory = requests[1]?.history;
@@ -78,6 +81,16 @@ test.describe("Flex interactive chat", () => {
     await page.goto("/");
 
     const chat = page.getByRole("region", { name: "Flex AI chat" });
+    const composer = chat.getByRole("textbox");
+    const sendButton = chat.getByRole("button", { name: "Find a tool" });
+    await expect(composer).toBeVisible();
+
+    // Prove React hydration is complete before interacting with preset buttons.
+    await composer.fill("hydration-check");
+    await expect(sendButton).toBeEnabled();
+    await composer.fill("");
+    await expect(sendButton).toBeDisabled();
+
     const quickPrompt = chat.getByRole("button", { name: "It looks like you want to translate text. The AI Translator is ready for you." });
     await expect(quickPrompt).toBeVisible();
     await quickPrompt.click();
