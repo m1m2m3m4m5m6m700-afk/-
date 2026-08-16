@@ -4,9 +4,11 @@ on:
   workflow_run:
     workflows: ["CI"]
     types: [completed]
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 concurrency:
-  group: self-heal-${{ github.event.workflow_run.id }}
+  group: self-heal-${{ github.event_name }}-${{ github.event.pull_request.head.sha || github.event.workflow_run.id }}
   cancel-in-progress: false
 
 permissions:
@@ -16,21 +18,100 @@ permissions:
   issues: write
 
 env:
-  FAILED_SHA: ${{ github.event.workflow_run.head_sha }}
-  FAILED_BRANCH: ${{ github.event.workflow_run.head_branch }}
-  SOURCE_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
-  SELF_HEAL_MODE: ${{ startsWith(github.event.workflow_run.head_branch, 'test/self-heal-pr-') && 'pr' || 'dry-run' }}
+  REPOSITORY: ${{ github.repository }}
 
 jobs:
   monitor-and-heal:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      - name: Resolve source CI run
+        id: source
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          WORKFLOW_RUN_ID: ${{ github.event.workflow_run.id }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          REPO="${{ github.repository }}"
+          SOURCE_JSON=""
+
+          if [ "$EVENT_NAME" = "workflow_run" ]; then
+            SOURCE_JSON="$(gh api "/repos/$REPO/actions/runs/$WORKFLOW_RUN_ID")"
+          else
+            if [ -z "${PR_HEAD_SHA:-}" ]; then
+              echo "ERROR: pull_request.head.sha is empty" >&2
+              exit 1
+            fi
+
+            echo "Resolving CI run for PR head SHA: $PR_HEAD_SHA"
+            for attempt in $(seq 1 30); do
+              SOURCE_JSON="$(gh api \
+                "/repos/$REPO/actions/workflows/ci.yml/runs?head_sha=$PR_HEAD_SHA&event=pull_request&per_page=20" \
+                | jq -c --arg sha "$PR_HEAD_SHA" '[.workflow_runs[] | select(.head_sha == $sha)] | sort_by(.created_at) | last // empty')"
+
+              if [ -n "$SOURCE_JSON" ] && [ "$SOURCE_JSON" != "null" ]; then
+                STATUS="$(jq -r '.status' <<<"$SOURCE_JSON")"
+                CONCLUSION="$(jq -r '.conclusion // empty' <<<"$SOURCE_JSON")"
+                RUN_ID="$(jq -r '.id' <<<"$SOURCE_JSON")"
+                echo "Found CI run $RUN_ID: status=$STATUS conclusion=${CONCLUSION:-pending}"
+
+                if [ "$STATUS" = "completed" ]; then
+                  break
+                fi
+              else
+                echo "No matching CI run yet (attempt $attempt/30)."
+              fi
+
+              if [ "$attempt" -lt 30 ]; then
+                sleep 15
+              fi
+            done
+          fi
+
+          if [ -z "$SOURCE_JSON" ] || [ "$SOURCE_JSON" = "null" ]; then
+            echo "ERROR: no CI workflow run could be resolved for this event." >&2
+            exit 1
+          fi
+
+          SOURCE_RUN_ID="$(jq -r '.id' <<<"$SOURCE_JSON")"
+          FAILED_SHA="$(jq -r '.head_sha' <<<"$SOURCE_JSON")"
+          FAILED_BRANCH="$(jq -r '.head_branch' <<<"$SOURCE_JSON")"
+          SOURCE_CONCLUSION="$(jq -r '.conclusion // empty' <<<"$SOURCE_JSON")"
+
+          echo "SOURCE_RUN_ID=$SOURCE_RUN_ID" >> "$GITHUB_ENV"
+          echo "FAILED_SHA=$FAILED_SHA" >> "$GITHUB_ENV"
+          echo "FAILED_BRANCH=$FAILED_BRANCH" >> "$GITHUB_ENV"
+          echo "SOURCE_CONCLUSION=$SOURCE_CONCLUSION" >> "$GITHUB_ENV"
+
+          if [[ "$FAILED_BRANCH" == test/self-heal-pr-* ]]; then
+            echo "SELF_HEAL_MODE=pr" >> "$GITHUB_ENV"
+          else
+            echo "SELF_HEAL_MODE=dry-run" >> "$GITHUB_ENV"
+          fi
+
+          echo "$SOURCE_JSON" > source-ci-run.json
+          echo "Resolved source CI run: $SOURCE_RUN_ID"
+          echo "Resolved SHA: $FAILED_SHA"
+          echo "Resolved branch: $FAILED_BRANCH"
+          echo "Resolved conclusion: $SOURCE_CONCLUSION"
+
+      - name: Dump event context
+        if: always()
+        shell: bash
+        env:
+          EVENT_JSON: ${{ toJson(github.event) }}
+        run: |
+          printf '%s\n' "$EVENT_JSON" > workflow_event.json
+          cat workflow_event.json
+
       - name: Decide whether healing is required
         id: gate
         shell: bash
         run: |
-          echo "SOURCE_RUN_ID=${{ github.event.workflow_run.id }}"
+          echo "SOURCE_RUN_ID=$SOURCE_RUN_ID"
           echo "SOURCE_HEAD_SHA=$FAILED_SHA"
           echo "SOURCE_HEAD_BRANCH=$FAILED_BRANCH"
           echo "SOURCE_CONCLUSION=$SOURCE_CONCLUSION"
@@ -47,7 +128,7 @@ jobs:
         shell: bash
         run: |
           if [ -z "$FAILED_SHA" ]; then
-            echo "ERROR: workflow_run.head_sha is empty. Aborting self-heal." >&2
+            echo "ERROR: resolved failed SHA is empty. Aborting self-heal." >&2
             exit 1
           fi
 
@@ -69,7 +150,7 @@ jobs:
           git status --porcelain
           git log -1 --pretty=fuller
           test "$ACTUAL_SHA" = "$FAILED_SHA" || {
-            echo "ERROR: checked-out SHA does not match failed workflow SHA." >&2
+            echo "ERROR: checked-out SHA does not match resolved failed workflow SHA." >&2
             exit 1
           }
 
@@ -83,7 +164,7 @@ jobs:
         if: steps.gate.outputs.should_heal == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_ID: ${{ env.SOURCE_RUN_ID }}
           REPOSITORY: ${{ github.repository }}
         run: node .github/scripts/diagnose.js
 
@@ -91,7 +172,7 @@ jobs:
         if: steps.gate.outputs.should_heal == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_ID: ${{ env.SOURCE_RUN_ID }}
           REPOSITORY: ${{ github.repository }}
           SELF_HEAL_MODE: ${{ env.SELF_HEAL_MODE }}
         run: node .github/scripts/auto-correct.js
@@ -100,8 +181,10 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: self-heal-${{ github.event.workflow_run.id }}
+          name: self-heal-${{ github.run_id }}
           path: |
+            workflow_event.json
+            source-ci-run.json
             .github/self-healing/logs/
             .github/diagnosis-report.json
           if-no-files-found: ignore
