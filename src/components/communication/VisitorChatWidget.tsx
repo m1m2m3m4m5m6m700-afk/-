@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
-import { ArrowUpRight, Bot, MessageSquare, Plus, Send, Sparkles, User, X } from "lucide-react";
+import { ArrowUpRight, Bot, MessageSquare, Plus, Send, Sparkles, User } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,6 @@ type Role = "user" | "assistant";
 type ChatMessage = { id: string; role: Role; content: string };
 
 const STORAGE_KEY = "flixo-flex-chat";
-const PANEL_ID = "flixo-flex-chat-panel";
 const MAX_HISTORY = 20;
 const QUICK_PROMPTS = [
   "What can Flixo do?",
@@ -36,7 +35,6 @@ function createMessage(role: Role, content: string): ChatMessage {
 
 function loadHistory(storageKey: string): ChatMessage[] {
   if (typeof window === "undefined") return [WELCOME];
-
   try {
     const stored = JSON.parse(window.sessionStorage.getItem(storageKey) ?? "null") as ChatMessage[] | null;
     const valid = Array.isArray(stored)
@@ -48,25 +46,15 @@ function loadHistory(storageKey: string): ChatMessage[] {
             item.content.trim().length > 0,
         )
       : [];
-
     return valid.length > 0 ? valid.slice(-MAX_HISTORY) : [WELCOME];
   } catch {
     return [WELCOME];
   }
 }
 
-function isFlexPanelOpen(): boolean {
-  return typeof window !== "undefined" && window.location.hash === `#${PANEL_ID}`;
-}
-
-interface VisitorChatWidgetProps {
-  showTrigger?: boolean;
-}
-
-export function VisitorChatWidget({ showTrigger = true }: VisitorChatWidgetProps) {
+export function VisitorChatWidget() {
   const { locale } = useI18n();
   const storageKey = `${STORAGE_KEY}:${locale}`;
-  const [open, setOpen] = useState(() => isFlexPanelOpen());
   const [messages, setMessages] = useState<ChatMessage[]>(() => loadHistory(storageKey));
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -90,38 +78,22 @@ export function VisitorChatWidget({ showTrigger = true }: VisitorChatWidgetProps
   }, [messages, storageKey]);
 
   useEffect(() => {
-    const syncFromLocation = () => setOpen(isFlexPanelOpen());
-    window.addEventListener("hashchange", syncFromLocation);
-    return () => window.removeEventListener("hashchange", syncFromLocation);
-  }, []);
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, loading]);
 
   useEffect(() => {
-    if (open) {
-      endRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages, loading, open]);
-
-  useEffect(() => {
-    if (open && !loading) {
-      inputRef.current?.focus();
-    }
-  }, [open, loading]);
+    if (!loading) inputRef.current?.focus();
+  }, [loading]);
 
   const resetChat = () => {
     setMessages([WELCOME]);
     setInput("");
     setError(null);
-
     try {
       window.sessionStorage.removeItem(storageKey);
     } catch {
       // Persistence is best-effort.
     }
-  };
-
-  const closeChat = () => {
-    window.history.pushState({}, "", window.location.pathname + window.location.search);
-    setOpen(false);
   };
 
   const sendMessage = async (preset?: string) => {
@@ -141,11 +113,9 @@ export function VisitorChatWidget({ showTrigger = true }: VisitorChatWidgetProps
         body: JSON.stringify({ message: text, history, locale }),
       });
       const data = (await response.json()) as { reply?: string; error?: string };
-
       if (!response.ok || !data.reply) {
         throw new Error(data.error || "Flex could not respond right now.");
       }
-
       setMessages((current) => [...current, createMessage("assistant", data.reply ?? "")].slice(-MAX_HISTORY));
     } catch (err) {
       setError(err instanceof Error ? err.message : "The chat service is temporarily unavailable.");
@@ -167,41 +137,9 @@ export function VisitorChatWidget({ showTrigger = true }: VisitorChatWidgetProps
   };
 
   return (
-    <div className="fixed bottom-5 right-5 z-50">
-      <style>{`
-        #${PANEL_ID} {
-          visibility: hidden;
-          opacity: 0;
-          pointer-events: none;
-          transform: translateY(18px) scale(.96);
-        }
-        #${PANEL_ID}:target {
-          visibility: visible;
-          opacity: 1;
-          pointer-events: auto;
-          transform: translateY(0) scale(1);
-        }
-        #${PANEL_ID} { transition: opacity 160ms ease, transform 160ms ease, visibility 160ms ease; }
-      `}</style>
-
-      {showTrigger && (
-        <a
-          href={`#${PANEL_ID}`}
-          role="button"
-          aria-label="Open Flex chat"
-          className="group flex size-14 items-center justify-center rounded-full border border-primary/20 bg-primary text-primary-foreground shadow-xl transition hover:bg-primary/90"
-        >
-          <MessageSquare className="size-6 transition-transform group-hover:scale-105" />
-        </a>
-      )}
-
-      <div
-        id={PANEL_ID}
-        data-open={open ? "true" : "false"}
-        aria-label="Flex chat panel"
-        className="absolute bottom-16 right-0 mb-3 flex h-[min(700px,calc(100vh-7rem))] w-[min(420px,calc(100vw-2rem))] flex-col overflow-hidden rounded-3xl border border-border/80 bg-card/95 shadow-2xl backdrop-blur-xl"
-      >
-        <header className="flex items-center justify-between border-b border-border/60 bg-gradient-to-r from-primary/10 via-card to-primary/5 px-4 py-3.5">
+    <section aria-label="Flex chat" className="mx-auto w-full max-w-5xl px-5 pb-10 sm:px-6 lg:px-8">
+      <div className="overflow-hidden rounded-3xl border border-border/80 bg-card/95 shadow-2xl backdrop-blur-xl">
+        <header className="flex items-center justify-between border-b border-border/60 bg-gradient-to-r from-primary/10 via-card to-primary/5 px-4 py-3.5 sm:px-6">
           <div className="flex min-w-0 items-center gap-2.5">
             <div className="relative grid size-10 shrink-0 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
               <Sparkles className="size-5" />
@@ -209,7 +147,7 @@ export function VisitorChatWidget({ showTrigger = true }: VisitorChatWidgetProps
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h3 className="truncate text-sm font-bold text-foreground">Flex</h3>
+                <h2 className="truncate text-sm font-bold text-foreground">Flex</h2>
                 <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0 text-[9px] text-emerald-500">
                   AI Chat
                 </Badge>
@@ -217,17 +155,12 @@ export function VisitorChatWidget({ showTrigger = true }: VisitorChatWidgetProps
               <p className="text-[11px] text-muted-foreground">Interactive Flixo assistant · {locale}</p>
             </div>
           </div>
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" onClick={resetChat} className="size-8 rounded-full" title="New chat">
-              <Plus className="size-4" />
-            </Button>
-            <Button variant="ghost" size="icon" onClick={closeChat} className="size-8 rounded-full" title="Close chat">
-              <X className="size-4" />
-            </Button>
-          </div>
+          <Button variant="ghost" size="icon" onClick={resetChat} className="size-8 rounded-full" title="New chat" aria-label="New chat">
+            <Plus className="size-4" />
+          </Button>
         </header>
 
-        <div className="flex-1 overflow-y-auto bg-surface/20 px-3.5 py-4 sm:px-4">
+        <div className="min-h-[360px] max-h-[65vh] overflow-y-auto bg-surface/20 px-3.5 py-4 sm:px-6">
           <div className="space-y-4">
             {messages.map((item) => (
               <div key={item.id} className={cn("flex items-end gap-2", item.role === "user" ? "justify-end" : "justify-start")}>
@@ -300,7 +233,7 @@ export function VisitorChatWidget({ showTrigger = true }: VisitorChatWidgetProps
           </div>
         </div>
 
-        <div className="border-t border-border/60 bg-card/90 p-3">
+        <div className="border-t border-border/60 bg-card/90 p-3 sm:p-4">
           <div className="mb-2 flex items-center justify-between gap-2 px-1 text-[10px] text-muted-foreground">
             <span>Enter to send · Shift+Enter for a new line</span>
             <Link to="/contact" className="inline-flex items-center gap-1 font-medium text-primary hover:underline">
@@ -323,23 +256,13 @@ export function VisitorChatWidget({ showTrigger = true }: VisitorChatWidgetProps
                 <MessageSquare className="size-3.5" />
                 <span>Private session</span>
               </div>
-              <Button type="submit" size="icon" disabled={!input.trim() || loading} className="size-9 rounded-xl" title="Send message">
+              <Button type="submit" size="icon" disabled={!input.trim() || loading} className="size-9 rounded-xl" title="Send message" aria-label="Send message">
                 <Send className="size-4" />
               </Button>
             </div>
           </form>
         </div>
-
-        <a
-          href="#"
-          role="button"
-          aria-label="Close Flex chat"
-          className="sr-only"
-          onClick={closeChat}
-        >
-          Close Flex chat
-        </a>
       </div>
-    </div>
+    </section>
   );
 }
