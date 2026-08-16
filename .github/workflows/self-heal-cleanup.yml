@@ -1,0 +1,70 @@
+name: Self-Heal Auto-Fix Cleanup
+
+on:
+  schedule:
+    - cron: "17 3 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Prune stale auto-fix branches
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          MAX_AGE_DAYS: "30"
+        shell: bash
+        run: |
+          set -euo pipefail
+          now=$(date +%s)
+          cutoff=$((now - MAX_AGE_DAYS * 86400))
+          deleted=0
+          skipped_open_pr=0
+
+          while IFS=$'\t' read -r ref updated_at; do
+            [ -z "${ref:-}" ] && continue
+            branch=${ref#refs/heads/}
+            [[ "$branch" == auto-fix/* ]] || continue
+
+            updated_ts=$(date -d "$updated_at" +%s 2>/dev/null || echo 0)
+            if [ "$updated_ts" -ge "$cutoff" ]; then
+              continue
+            fi
+
+            open_pr_count=$(gh pr list \
+              --repo "$REPOSITORY" \
+              --state open \
+              --head "$branch" \
+              --json number \
+              --jq 'length')
+
+            if [ "$open_pr_count" -gt 0 ]; then
+              echo "Keeping $branch because it has an open PR."
+              skipped_open_pr=$((skipped_open_pr + 1))
+              continue
+            fi
+
+            echo "Deleting stale auto-fix branch: $branch (updated $updated_at)"
+            gh api \
+              --method DELETE \
+              "repos/$REPOSITORY/git/refs/heads/$branch"
+            deleted=$((deleted + 1))
+          done < <(
+            gh api \
+              --paginate \
+              "repos/$REPOSITORY/git/matching-refs/heads/auto-fix/" \
+              --jq '.[] | [.ref, .object.sha] | @tsv' \
+              | while IFS=$'\t' read -r ref sha; do
+                  updated_at=$(gh api "repos/$REPOSITORY/commits/$sha" --jq '.commit.committer.date')
+                  printf '%s\t%s\n' "$ref" "$updated_at"
+                done
+          )
+
+          echo "Deleted stale branches: $deleted" >> "$GITHUB_STEP_SUMMARY"
+          echo "Skipped branches with open PRs: $skipped_open_pr" >> "$GITHUB_STEP_SUMMARY"
