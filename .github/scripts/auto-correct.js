@@ -30,8 +30,8 @@ try {
     const beforeManifest = fs.readFileSync('package.json', 'utf8');
     run('npm', ['install', '--package-lock-only', '--ignore-scripts']);
     if (fs.readFileSync('package.json', 'utf8') !== beforeManifest) throw new Error('lockfile fixer changed package.json; aborting');
-    run('git', ['diff', '--exit-code', '--', 'package.json']);
-    run('git', ['diff', '--quiet', '--', ':!package-lock.json']);
+    const files = execFileSync('git', ['diff', '--name-only'], { encoding: 'utf8' }).trim().split(/\r?\n/).filter(Boolean);
+    if (files.some((file) => file !== 'package-lock.json')) throw new Error(`lockfile fixer touched forbidden paths: ${files.join(', ')}`);
   }
 
   if (strategy === 'lint-fixer') {
@@ -57,6 +57,7 @@ try {
     '## Auto-heal generated PR',
     '',
     `Source CI run: ${runId}`,
+    `Failed SHA: ${report.headSha}`,
     `Strategy: ${strategy}`,
     `Confidence: ${candidates[0].confidence}`,
     '',
@@ -72,11 +73,10 @@ try {
     '```',
   ].join('\n');
 
-  run('gh', ['pr', 'create', '--repo', repo, '--head', branch, '--base', 'main', '--title', `chore(auto): ${strategy} for run ${runId}`, '--body', body]);
-  fs.writeFileSync(`${logDir}/${runId}-decision.json`, JSON.stringify({ decision: 'pr-created', branch, strategy, confidence: candidates[0].confidence, changed }, null, 2));
+  run('gh', ['pr', 'create', '--repo', repo, '--head', branch, '--base', report.baseRef || 'main', '--title', `chore(auto): ${strategy} for run ${runId}`, '--body', body]);
+  fs.writeFileSync(`${logDir}/${runId}-decision.json`, JSON.stringify({ decision: 'pr-created', branch, baseRef: report.baseRef, strategy, confidence: candidates[0].confidence, changed }, null, 2));
 } catch (error) {
   try { run('git', ['reset', '--hard', 'HEAD']); } catch {}
-  try { run('git', ['switch', 'main']); } catch {}
   fs.writeFileSync(`${logDir}/${runId}-decision.json`, JSON.stringify({ decision: 'rollback-escalate', strategy, error: String(error) }, null, 2));
   console.error(error);
   process.exitCode = 0;
