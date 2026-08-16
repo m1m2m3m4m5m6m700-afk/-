@@ -42,7 +42,7 @@ test.describe("Flex interactive chat", () => {
     await expect(sendButton).toBeEnabled();
     await composer.press("Enter");
 
-    await expect(chat.getByText("نعم، أتذكر رسالتي السابقة داخل هذه المحادثة.")).toBeVisible();
+    await expect(chat.getByText("نعم، أتذكر رسالتك السابقة داخل هذه المحادثة.")).toBeVisible();
     expect(requests).toHaveLength(2);
 
     const secondHistory = requests[1]?.history;
