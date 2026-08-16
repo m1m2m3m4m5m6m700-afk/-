@@ -22,7 +22,7 @@ export function SiteLayout({ children, onRequestTool, showFloatingChat = true }:
       <Suspense fallback={null}>
         {analyticsOpen && <AnalyticsDialog open={analyticsOpen} onOpenChange={setAnalyticsOpen} />}
       </Suspense>
-      {showFloatingChat && <VisitorChatWidget initialOpen showTrigger={false} />}
+      {showFloatingChat && <VisitorChatWidget />}
     </div>
   );
 }
