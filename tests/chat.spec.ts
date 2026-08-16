@@ -23,12 +23,13 @@ test.describe("Flex interactive chat", () => {
 
     await page.goto("/");
 
-    const chat = page.getByRole("region", { name: "Flex AI chat" });
+    const chat = page.getByTestId("flex-chat");
     await expect(chat).toHaveAttribute("data-hydrated", "true", { timeout: 30_000 });
 
-    const composer = chat.getByRole("textbox");
-    const sendButton = chat.getByRole("button", { name: "Find a tool" });
+    const composer = chat.getByTestId("flex-composer");
+    const sendButton = chat.getByTestId("flex-send");
     await expect(composer).toBeVisible();
+    await expect(composer).toBeEnabled();
 
     await composer.fill("مرحبا");
     await expect(sendButton).toBeEnabled({ timeout: 10_000 });
@@ -56,7 +57,7 @@ test.describe("Flex interactive chat", () => {
 
     await page.reload();
 
-    const reloadedChat = page.getByRole("region", { name: "Flex AI chat" });
+    const reloadedChat = page.getByTestId("flex-chat");
     await expect(reloadedChat).toHaveAttribute("data-hydrated", "true", { timeout: 30_000 });
     await expect(reloadedChat.getByText("مرحبا")).toBeVisible();
     await expect(reloadedChat.getByText("أهلًا! كيف أساعدك؟")).toBeVisible();
@@ -83,16 +84,17 @@ test.describe("Flex interactive chat", () => {
 
     await page.goto("/");
 
-    const chat = page.getByRole("region", { name: "Flex AI chat" });
+    const chat = page.getByTestId("flex-chat");
     await expect(chat).toHaveAttribute("data-hydrated", "true", { timeout: 30_000 });
 
-    const quickPrompt = chat.getByRole("button", { name: "It looks like you want to translate text. The AI Translator is ready for you." });
+    const quickPrompt = chat.getByTestId("flex-quick-prompt-0");
     await expect(quickPrompt).toBeVisible({ timeout: 10_000 });
+    await expect(quickPrompt).toBeEnabled();
     await quickPrompt.click();
     await expect.poll(() => responseNumber, { timeout: 10_000 }).toBe(1);
     await expect(chat.getByText("mock-reply-1")).toBeVisible();
 
-    await chat.getByTitle("New chat").click();
+    await chat.getByTestId("flex-new-chat").click();
     await expect(chat.getByText("Your suggestion appears here")).toBeVisible();
     await expect(chat.getByText("mock-reply-1")).not.toBeVisible();
   });
