@@ -34,8 +34,24 @@ function writeDecision(data) {
   );
 }
 
+const INTERNAL_ARTIFACTS = new Set([
+  '.github/diagnosis-report.json',
+]);
+const INTERNAL_ARTIFACT_PREFIXES = [
+  '.github/self-healing/logs/',
+];
+
+function isInternalArtifact(file) {
+  return INTERNAL_ARTIFACTS.has(file)
+    || INTERNAL_ARTIFACT_PREFIXES.some((prefix) => file.startsWith(prefix));
+}
+
 function fileListFromStatus() {
-  return capture('git', ['status', '--porcelain']).split(/\r?\n/).filter(Boolean).map((line) => line.slice(3));
+  return capture('git', ['status', '--porcelain'])
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .map((line) => line.slice(3))
+    .filter((file) => !isInternalArtifact(file));
 }
 
 function validateAllowlist(files, strategy) {
@@ -89,7 +105,7 @@ try {
   }
 
   const workingTreeFiles = fileListFromStatus();
-  console.log(`Working tree after fixer: ${JSON.stringify(workingTreeFiles)}`);
+  console.log(`Working tree after fixer (excluding diagnostic artifacts): ${JSON.stringify(workingTreeFiles)}`);
   validateAllowlist(workingTreeFiles, strategy);
   if (!workingTreeFiles.length) throw new Error('Fixer produced no changes');
 
