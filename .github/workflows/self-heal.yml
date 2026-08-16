@@ -15,17 +15,43 @@ permissions:
   pull-requests: write
   issues: write
 
+env:
+  FAILED_SHA: ${{ github.event.workflow_run.head_sha }}
+  FAILED_BRANCH: ${{ github.event.workflow_run.head_branch }}
+
 jobs:
   monitor-and-heal:
     if: ${{ github.event.workflow_run.conclusion == 'failure' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      - name: Validate failed SHA
+        run: |
+          if [ -z "$FAILED_SHA" ]; then
+            echo "ERROR: workflow_run.head_sha is empty. Aborting self-heal." >&2
+            exit 1
+          fi
+          echo "FAILED_SHA=$FAILED_SHA"
+          echo "FAILED_BRANCH=$FAILED_BRANCH"
+
       - name: Checkout failed revision
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ env.FAILED_SHA }}
           fetch-depth: 0
+
+      - name: Verify checkout integrity
+        run: |
+          ACTUAL_SHA="$(git rev-parse HEAD)"
+          echo "EVENT HEAD SHA: $FAILED_SHA"
+          echo "GIT HEAD: $ACTUAL_SHA"
+          echo "GIT BRANCH: $(git rev-parse --abbrev-ref HEAD || true)"
+          git status --porcelain
+          git log -1 --pretty=fuller
+          test "$ACTUAL_SHA" = "$FAILED_SHA" || {
+            echo "ERROR: checked-out SHA does not match failed workflow SHA." >&2
+            exit 1
+          }
 
       - name: Setup Node
         uses: actions/setup-node@v4
