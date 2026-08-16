@@ -19,6 +19,7 @@ env:
   FAILED_SHA: ${{ github.event.workflow_run.head_sha }}
   FAILED_BRANCH: ${{ github.event.workflow_run.head_branch }}
   SOURCE_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+  SELF_HEAL_MODE: ${{ startsWith(github.event.workflow_run.head_branch, 'test/self-heal-pr-') && 'pr' || 'dry-run' }}
 
 jobs:
   monitor-and-heal:
@@ -33,6 +34,7 @@ jobs:
           echo "SOURCE_HEAD_SHA=$FAILED_SHA"
           echo "SOURCE_HEAD_BRANCH=$FAILED_BRANCH"
           echo "SOURCE_CONCLUSION=$SOURCE_CONCLUSION"
+          echo "SELF_HEAL_MODE=$SELF_HEAL_MODE"
           if [ "$SOURCE_CONCLUSION" = "failure" ]; then
             echo "should_heal=true" >> "$GITHUB_OUTPUT"
           else
@@ -91,6 +93,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RUN_ID: ${{ github.event.workflow_run.id }}
           REPOSITORY: ${{ github.repository }}
+          SELF_HEAL_MODE: ${{ env.SELF_HEAL_MODE }}
         run: node .github/scripts/auto-correct.js
 
       - name: Upload self-healing diagnostics
