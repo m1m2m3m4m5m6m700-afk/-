@@ -59,6 +59,47 @@ function validateAllowlist(files, strategy) {
   }
 }
 
+function scanDiffForSecrets(diffText) {
+  const secretPatterns = [
+    /ghp_[A-Za-z0-9_]{20,}/,
+    /github_pat_[A-Za-z0-9_]{20,}/,
+    /sk-[A-Za-z0-9]{20,}/,
+    /AIza[0-9A-Za-z_-]{20,}/,
+    /AKIA[0-9A-Z]{16}/,
+    /xox[baprs]-[0-9A-Za-z-]{10,}/,
+    /-----BEGIN [A-Z ]*PRIVATE KEY-----/,
+    /(?:api[_-]?key|access[_-]?token|secret[_-]?key|password)\s*[:=]\s*["']?[^\s"']{12,}/i,
+  ];
+  return secretPatterns.some((pattern) => pattern.test(diffText));
+}
+
+function finalPrGuard({ changed, stagedDiff, issue }) {
+  const expected = ['package-lock.json'];
+  if (JSON.stringify(changed) !== JSON.stringify(expected)) {
+    throw new Error(`PR guard rejected changed paths: ${JSON.stringify(changed)}`);
+  }
+  if (issue.autoApplyAllowed === true) {
+    throw new Error('PR guard rejected autoApplyAllowed=true; this workflow is PR-only and must remain human-reviewed.');
+  }
+  if (!stagedDiff || stagedDiff.trim().length === 0) {
+    throw new Error('PR guard rejected empty staged diff.');
+  }
+  if (scanDiffForSecrets(stagedDiff)) {
+    throw new Error('PR guard rejected the staged diff because it matches a potential secret pattern.');
+  }
+  writeDecision({
+    decision: 'pr-guard-passed',
+    strategy: issue.recommendedStrategy,
+    confidence: issue.confidence,
+    changed,
+    guard: {
+      allowlist: expected,
+      autoApplyAllowed: issue.autoApplyAllowed === true,
+      secretScan: 'passed',
+    },
+  });
+}
+
 if (!['dry-run', 'pr', 'apply'].includes(mode)) {
   writeDecision({ decision: 'escalate', reason: `Unsupported SELF_HEAL_MODE: ${mode}` });
   console.error(`Self-heal: unsupported mode ${mode}.`);
@@ -112,8 +153,9 @@ try {
   if (!changed.length) throw new Error('Fixer produced no staged changes');
   validateAllowlist(changed, strategy);
 
+  const stagedDiff = capture('git', ['diff', '--cached', '--', ...changed]);
   const diffPath = `${logDir}/${runId}-dryrun.diff`;
-  fs.writeFileSync(diffPath, capture('git', ['diff', '--cached', '--', ...changed]));
+  fs.writeFileSync(diffPath, stagedDiff);
 
   if (mode === 'dry-run') {
     writeDecision({
@@ -133,6 +175,10 @@ try {
     throw new Error('Apply mode requires explicit autoApplyAllowed=true from the diagnosis policy');
   }
 
+  if (mode === 'pr') {
+    finalPrGuard({ changed, stagedDiff, issue });
+  }
+
   run('git', ['config', 'user.name', 'flixo-self-heal']);
   run('git', ['config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com']);
   run('git', ['commit', '-m', `chore(auto-heal): apply ${strategy} for run ${runId}`]);
@@ -148,6 +194,7 @@ try {
     `Rule: ${issue.rule || issue.id}`,
     '',
     '### Governance',
+    '- Final PR guard passed before commit/push.',
     '- Dry-run completed before commit.',
     '- No automatic mutation of src/**.',
     '- No major dependency upgrades.',
