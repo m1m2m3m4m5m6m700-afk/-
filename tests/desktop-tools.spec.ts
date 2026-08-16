@@ -75,7 +75,17 @@ test.describe("verified desktop tools", () => {
     await page.goto("/tools/file-splitter");
     await page.locator('input[type="file"]').setInputFiles({ name: "large.bin", mimeType: "application/octet-stream", buffer: source });
     await page.getByLabel("Chunk size").fill("1");
-    const downloadPath = await downloadSize(page.waitForEvent("download"), "large.bin-parts.zip");
+
+    const splitButton = page.getByRole("button", { name: "Split file" });
+    await expect(splitButton).toBeEnabled();
+    await splitButton.click();
+
+    const downloadLink = page.getByRole("link", { name: "Download chunks" });
+    await expect(downloadLink).toBeVisible();
+
+    const downloadPromise = page.waitForEvent("download");
+    await downloadLink.click();
+    const downloadPath = await downloadSize(downloadPromise, "large.bin-parts.zip");
     const zip = await JSZip.loadAsync(await readFile(downloadPath));
     const names = Object.keys(zip.files).sort();
     expect(names).toEqual(["large.bin.part-0001", "large.bin.part-0002", "large.bin.part-0003"]);
