@@ -22,10 +22,6 @@ test.describe("Flex interactive chat", () => {
 
     await page.goto("/");
 
-    const openButton = page.getByRole("button", { name: "Open Flex chat" });
-    await expect(openButton).toBeVisible();
-    await openButton.click();
-
     const composer = page.getByPlaceholder("Ask Flex anything about Flixo…");
     await expect(composer).toBeVisible();
 
@@ -52,7 +48,6 @@ test.describe("Flex interactive chat", () => {
     );
 
     await page.reload();
-    await page.getByRole("button", { name: "Open Flex chat" }).click();
 
     await expect(page.getByText("مرحبا")).toBeVisible();
     await expect(page.getByText("أهلًا! كيف أساعدك؟")).toBeVisible();
@@ -77,7 +72,6 @@ test.describe("Flex interactive chat", () => {
     });
 
     await page.goto("/");
-    await page.getByRole("button", { name: "Open Flex chat" }).click();
 
     const quickPrompt = page.getByRole("button", { name: "What can Flixo do?" });
     await expect(quickPrompt).toBeVisible();
