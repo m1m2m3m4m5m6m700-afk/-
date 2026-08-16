@@ -30,6 +30,8 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
 
+      # Keep the browser suites on the npm scripts so the integration-contract
+      # validator and the actual CI entry points cannot drift apart.
       - name: Validate CI contract
         run: npm run validate-ci-contract
 
