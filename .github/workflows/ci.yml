@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    branches: [main, phase1-reliability-tool-foundation]
   workflow_dispatch:
 
 concurrency:
