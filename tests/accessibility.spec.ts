@@ -9,7 +9,12 @@ test.describe("public accessibility baseline", () => {
       await expect(page.locator("html")).toHaveAttribute("lang", /.+/);
       await expect(page.locator("html")).toHaveAttribute("dir", /^(ltr|rtl)$/);
 
-      const controls = page.locator("button, input, textarea, select, [role=button]");
+      // Exclude controls explicitly removed from the accessibility tree.
+      // Radix Select creates a hidden native combobox for form support; it is
+      // aria-hidden and therefore should not be required to expose an a11y name.
+      const controls = page.locator(
+        'button:not([aria-hidden="true"]), input:not([aria-hidden="true"]), textarea:not([aria-hidden="true"]), select:not([aria-hidden="true"]), [role=button]:not([aria-hidden="true"]), [role=combobox]:not([aria-hidden="true"])',
+      );
       const count = await controls.count();
       for (let index = 0; index < count; index += 1) {
         const control = controls.nth(index);
