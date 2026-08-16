@@ -1,7 +1,7 @@
 import { lazy, Suspense, useState, type ReactNode } from "react";
 import { Footer } from "./Footer";
 import { Navbar } from "./Navbar";
-import { FlexChatLauncher } from "@/components/communication/FlexChatLauncher";
+import { VisitorChatWidget } from "@/components/communication/VisitorChatWidget";
 
 const AnalyticsDialog = lazy(() => import("@/components/landing/AnalyticsDialog").then((module) => ({ default: module.AnalyticsDialog })));
 
@@ -22,7 +22,7 @@ export function SiteLayout({ children, onRequestTool, showFloatingChat = true }:
       <Suspense fallback={null}>
         {analyticsOpen && <AnalyticsDialog open={analyticsOpen} onOpenChange={setAnalyticsOpen} />}
       </Suspense>
-      {showFloatingChat && <FlexChatLauncher />}
+      {showFloatingChat && <VisitorChatWidget initialOpen showTrigger={false} />}
     </div>
   );
 }
