@@ -17,13 +17,14 @@ interface LanguageSelectProps {
 
 export function LanguageSelect({ value, onChange, label, includeAuto }: LanguageSelectProps) {
   const { t } = useI18n();
+  const name = includeAuto ? "source-language" : "target-language";
 
   return (
     <div className="min-w-0 flex-1">
       <span className="mb-1.5 block text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
         {label}
       </span>
-      <Select value={value} onValueChange={onChange}>
+      <Select value={value} onValueChange={onChange} name={name}>
         <SelectTrigger className="w-full rounded-xl bg-card" aria-label={label}>
           <SelectValue />
         </SelectTrigger>
