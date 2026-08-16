@@ -1,9 +1,9 @@
 import { lazy, Suspense, useState, type ReactNode } from "react";
 import { Footer } from "./Footer";
 import { Navbar } from "./Navbar";
-import { VisitorChatWidget } from "@/components/communication/VisitorChatWidget";
 
 const AnalyticsDialog = lazy(() => import("@/components/landing/AnalyticsDialog").then((module) => ({ default: module.AnalyticsDialog })));
+const FlexChatWidget = lazy(() => import("@/components/communication/VisitorChatWidget").then((module) => ({ default: module.VisitorChatWidget })));
 
 interface SiteLayoutProps {
   children: ReactNode;
@@ -22,7 +22,11 @@ export function SiteLayout({ children, onRequestTool, showFloatingChat = true }:
       <Suspense fallback={null}>
         {analyticsOpen && <AnalyticsDialog open={analyticsOpen} onOpenChange={setAnalyticsOpen} />}
       </Suspense>
-      {showFloatingChat && <VisitorChatWidget />}
+      {showFloatingChat && (
+        <Suspense fallback={null}>
+          <FlexChatWidget />
+        </Suspense>
+      )}
     </div>
   );
 }
