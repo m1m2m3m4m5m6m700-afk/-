@@ -13,6 +13,7 @@ function api(url) {
   return JSON.parse(execFileSync('curl', ['-fsSL', '-H', `Authorization: Bearer ${token}`, '-H', 'Accept: application/vnd.github+json', url], { encoding: 'utf8' }));
 }
 
+const run = api(`https://api.github.com/repos/${repo}/actions/runs/${runId}`);
 const jobs = api(`https://api.github.com/repos/${repo}/actions/runs/${runId}/jobs?per_page=100`).jobs ?? [];
 const logs = [];
 for (const job of jobs) {
@@ -43,10 +44,15 @@ const issues = rules.filter((rule) => rule.regex.test(corpus)).map((rule) => ({
   evidence: corpus.match(rule.regex)?.[0] ?? 'pattern matched',
 }));
 
+const baseRef = run.pull_requests?.[0]?.base?.ref ?? 'main';
 const report = {
   version: 1,
   runId,
   repository: repo,
+  headSha: run.head_sha ?? null,
+  headBranch: run.head_branch ?? null,
+  baseRef,
+  event: run.event ?? null,
   generatedAt: new Date().toISOString(),
   failedJobs: jobs.filter((job) => job.conclusion === 'failure').map((job) => ({ id: job.id, name: job.name })),
   issues,
