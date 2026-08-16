@@ -34,6 +34,20 @@ function writeDecision(data) {
   );
 }
 
+function fileListFromStatus() {
+  return capture('git', ['status', '--porcelain']).split(/\r?\n/).filter(Boolean).map((line) => line.slice(3));
+}
+
+function validateAllowlist(files, strategy) {
+  const valid = strategy === 'lint-fixer'
+    ? (file) => file.startsWith('tests/')
+    : (file) => file === 'package-lock.json';
+  const forbidden = files.filter((file) => !valid(file));
+  if (forbidden.length) {
+    throw new Error(`${strategy} touched forbidden paths: ${forbidden.join(', ')}`);
+  }
+}
+
 if (!['dry-run', 'pr', 'apply'].includes(mode)) {
   writeDecision({ decision: 'escalate', reason: `Unsupported SELF_HEAL_MODE: ${mode}` });
   console.error(`Self-heal: unsupported mode ${mode}.`);
@@ -63,27 +77,25 @@ try {
     if (fs.readFileSync('package.json', 'utf8') !== beforeManifest) {
       throw new Error('lockfile fixer changed package.json; aborting');
     }
-    const files = capture('git', ['diff', '--name-only']).trim().split(/\r?\n/).filter(Boolean);
-    if (files.some((file) => file !== 'package-lock.json')) {
-      throw new Error(`lockfile fixer touched forbidden paths: ${files.join(', ')}`);
-    }
   }
 
   if (strategy === 'lint-fixer') {
     run('npx', ['eslint', 'tests', '--fix']);
-    const files = capture('git', ['diff', '--name-only']).trim().split(/\r?\n/).filter(Boolean);
-    if (files.some((file) => !file.startsWith('tests/'))) {
-      throw new Error(`lint fixer touched forbidden paths: ${files.join(', ')}`);
-    }
   }
 
-  run('git', ['diff', '--check']);
+  const workingTreeFiles = fileListFromStatus();
+  validateAllowlist(workingTreeFiles, strategy);
+  if (!workingTreeFiles.length) throw new Error('Fixer produced no changes');
 
-  const changed = capture('git', ['diff', '--name-only']).trim().split(/\r?\n/).filter(Boolean);
-  if (!changed.length) throw new Error('Fixer produced no changes');
+  run('git', ['add', '--', ...workingTreeFiles]);
+  run('git', ['diff', '--cached', '--check']);
+
+  const changed = capture('git', ['diff', '--cached', '--name-only']).trim().split(/\r?\n/).filter(Boolean);
+  if (!changed.length) throw new Error('Fixer produced no staged changes');
+  validateAllowlist(changed, strategy);
 
   const diffPath = `${logDir}/${runId}-dryrun.diff`;
-  fs.writeFileSync(diffPath, capture('git', ['diff', '--', ...changed]));
+  fs.writeFileSync(diffPath, capture('git', ['diff', '--cached', '--', ...changed]));
 
   if (mode === 'dry-run') {
     writeDecision({
@@ -106,7 +118,6 @@ try {
   // PR mode creates a reviewable PR only after the dry-run mutation passed.
   run('git', ['config', 'user.name', 'flixo-self-heal']);
   run('git', ['config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com']);
-  run('git', ['add', '--', ...changed]);
   run('git', ['commit', '-m', `chore(auto-heal): apply ${strategy} for run ${runId}`]);
   run('git', ['push', '--set-upstream', 'origin', branch]);
 
