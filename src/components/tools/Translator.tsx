@@ -111,13 +111,12 @@ export function Translator() {
           aria-label={t("translator.swap")}
           className="shrink-0 rounded-xl sm:mb-0.5"
         >
-          <ArrowLeftRight className="size-4" />
+          <ArrowLeftRight className="size-4" aria-hidden="true" />
         </Button>
         <LanguageSelect label={t("translator.to")} value={to} onChange={setTo} />
       </div>
 
       <div className="mt-5 grid gap-4 lg:grid-cols-2">
-        {/* Input */}
         <div className="flex flex-col rounded-2xl border border-border bg-background/60">
           <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
             <span className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
@@ -129,6 +128,7 @@ export function Translator() {
                 overLimit ? "font-medium text-destructive" : "text-muted-foreground",
               )}
               dir="ltr"
+              aria-label={`${input.length.toLocaleString()} / ${MAX_CHARS.toLocaleString()} characters`}
             >
               {input.length.toLocaleString()} / {MAX_CHARS.toLocaleString()}
             </span>
@@ -142,7 +142,6 @@ export function Translator() {
           />
         </div>
 
-        {/* Output */}
         <div className="flex flex-col rounded-2xl border border-border bg-surface/60">
           <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
             <span className="min-w-0 truncate text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
@@ -158,22 +157,24 @@ export function Translator() {
                 type="button"
                 onClick={handleDownload}
                 disabled={!output}
+                aria-label="Download translated text as a TXT file"
                 title="Download .txt"
                 className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-card hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
               >
-                <Download className="size-3.5" />
+                <Download className="size-3.5" aria-hidden="true" />
                 <span>Save .txt</span>
               </button>
               <button
                 type="button"
                 onClick={handleCopy}
                 disabled={!output}
+                aria-label={copied ? "Translation copied to clipboard" : "Copy translated text"}
                 className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-card hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
               >
                 {copied ? (
-                  <Check className="size-3.5 text-primary" />
+                  <Check className="size-3.5 text-primary" aria-hidden="true" />
                 ) : (
-                  <Copy className="size-3.5" />
+                  <Copy className="size-3.5" aria-hidden="true" />
                 )}
                 {copied ? t("translator.copied") : t("translator.copy")}
               </button>
@@ -197,7 +198,7 @@ export function Translator() {
           role="alert"
           className="mt-4 flex items-start gap-2.5 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive animate-rise"
         >
-          <AlertCircle className="mt-0.5 size-4 shrink-0" />
+          <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
           <span>{t(errorKey)}</span>
         </div>
       )}
@@ -207,25 +208,27 @@ export function Translator() {
           variant="ghost"
           onClick={handleClear}
           disabled={!input && !output}
+          aria-label={t("translator.clear")}
           className="rounded-xl text-muted-foreground"
         >
-          <Trash2 className="size-4" />
+          <Trash2 className="size-4" aria-hidden="true" />
           {t("translator.clear")}
         </Button>
         <Button
           onClick={handleTranslate}
           disabled={loading || !input.trim() || overLimit}
+          aria-label={loading ? t("translator.translating") : t("translator.translate")}
           size="lg"
           className="rounded-xl shadow-lift"
         >
           {loading ? (
             <>
-              <Loader2 className="size-4 animate-spin" />
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
               {t("translator.translating")}
             </>
           ) : (
             <>
-              <Sparkles className="size-4" />
+              <Sparkles className="size-4" aria-hidden="true" />
               {t("translator.translate")}
             </>
           )}
@@ -253,7 +256,7 @@ function EmptyState() {
   const { t } = useI18n();
   return (
     <div className="flex h-full min-h-48 flex-col items-center justify-center gap-3 text-center">
-      <span className="grid size-12 place-items-center rounded-2xl bg-primary/10 text-primary">
+      <span className="grid size-12 place-items-center rounded-2xl bg-primary/10 text-primary" aria-hidden="true">
         <Languages className="size-5" />
       </span>
       <p className="text-sm font-medium">{t("translator.emptyTitle")}</p>
