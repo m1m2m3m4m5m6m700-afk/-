@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "minimumConfidence": 0.8,
+  "policies": {
+    "srcAutoMutation": false,
+    "majorDependencyAutoMutation": false,
+    "securityAutoMutation": false
+  },
+  "rules": [
+    { "id": "R001", "match": ["ERESOLVE", "lockfile", "package.json"], "strategy": "lockfile-fixer", "autoApply": true },
+    { "id": "R002", "match": ["eslint", "no-control-regex", "no-unused-vars", "prettier"], "strategy": "lint-fixer", "autoApply": true, "scope": ["tests/**"] },
+    { "id": "R003", "match": ["Playwright", "Timeout", "download event"], "strategy": "test-retry-fixer", "autoApply": false },
+    { "id": "R004", "match": ["TS"], "strategy": "typecheck", "autoApply": false },
+    { "id": "R005", "match": ["security", "permission", "vulnerability", "src/"], "strategy": "human-review", "autoApply": false }
+  ]
+}
