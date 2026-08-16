@@ -81,11 +81,13 @@ export function MegaToolHub() {
             </p>
           </div>
           <div className="relative w-full max-w-sm">
-            <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search this section…"
+              aria-label="Search this section"
+              name="mega-tool-search"
               className="h-11 w-full rounded-2xl border border-border bg-background/80 ps-9 pe-4 text-sm outline-none transition focus:border-primary/40"
             />
           </div>
@@ -102,7 +104,7 @@ export function MegaToolHub() {
                 onClick={() => { setActiveCategory(category); setQuery(""); }}
                 className={`flex items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-bold transition ${active ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
               >
-                <Icon className="size-4" />
+                <Icon className="size-4" aria-hidden="true" />
                 {MEGA_TOOL_CATEGORIES[category]}
               </button>
             );
@@ -111,7 +113,7 @@ export function MegaToolHub() {
       </div>
 
       <div className="flex items-center gap-3 px-1">
-        <span className="grid size-10 place-items-center rounded-2xl bg-primary/10 text-primary"><ActiveIcon className="size-5" /></span>
+        <span className="grid size-10 place-items-center rounded-2xl bg-primary/10 text-primary"><ActiveIcon className="size-5" aria-hidden="true" /></span>
         <div>
           <h3 className="font-black">{MEGA_TOOL_CATEGORIES[activeCategory]}</h3>
           <p className="text-xs text-muted-foreground">{tools.length} tools in this section</p>
@@ -145,7 +147,7 @@ export function MegaToolHub() {
                 <h3 className="mt-1 text-2xl font-black">{selected.name}</h3>
                 <p className="mt-2 text-sm text-muted-foreground">{selected.description}</p>
               </div>
-              <Button variant="ghost" size="icon" onClick={closeTool} aria-label="Close tool"><X className="size-5" /></Button>
+              <Button variant="ghost" size="icon" onClick={closeTool} aria-label="Close tool"><X className="size-5" aria-hidden="true" /></Button>
             </div>
 
             <input
@@ -154,6 +156,8 @@ export function MegaToolHub() {
               accept={CATEGORY_META[selected.category].accept}
               className="hidden"
               onChange={(event) => { setFile(event.target.files?.[0] ?? null); clearResult(); setError(null); }}
+              aria-label={`Choose file for ${selected.name}`}
+              name="mega-tool-file"
             />
 
             <button type="button" onClick={() => inputRef.current?.click()} className="mt-6 w-full rounded-2xl border-2 border-dashed border-border bg-muted/30 px-5 py-10 text-center transition hover:border-primary/40">
