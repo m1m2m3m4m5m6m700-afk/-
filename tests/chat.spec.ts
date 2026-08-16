@@ -23,12 +23,13 @@ test.describe("Flex interactive chat", () => {
     await page.goto("/");
 
     const chat = page.getByRole("region", { name: "Flex AI chat" });
-    await expect(chat).toBeVisible();
+    await expect(chat).toHaveAttribute("data-hydrated", "true");
 
     const composer = chat.getByRole("textbox");
     await expect(composer).toBeVisible();
 
     await composer.fill("مرحبا");
+    await expect(chat.getByRole("button", { name: "Find a tool" })).toBeEnabled();
     await composer.press("Enter");
 
     await expect(chat.getByText("أهلًا! كيف أساعدك؟")).toBeVisible();
@@ -53,6 +54,7 @@ test.describe("Flex interactive chat", () => {
     await page.reload();
 
     const reloadedChat = page.getByRole("region", { name: "Flex AI chat" });
+    await expect(reloadedChat).toHaveAttribute("data-hydrated", "true");
     await expect(reloadedChat.getByText("مرحبا")).toBeVisible();
     await expect(reloadedChat.getByText("أهلًا! كيف أساعدك؟")).toBeVisible();
     await expect(reloadedChat.getByText("هل تتذكرني؟")).toBeVisible();
@@ -78,7 +80,7 @@ test.describe("Flex interactive chat", () => {
     await page.goto("/");
 
     const chat = page.getByRole("region", { name: "Flex AI chat" });
-    await expect(chat).toBeVisible();
+    await expect(chat).toHaveAttribute("data-hydrated", "true");
 
     const quickPrompt = chat.getByRole("button", { name: "It looks like you want to translate text. The AI Translator is ready for you." });
     await expect(quickPrompt).toBeVisible();
