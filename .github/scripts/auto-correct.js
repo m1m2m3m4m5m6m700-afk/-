@@ -73,10 +73,15 @@ try {
 
   if (strategy === 'lockfile-fixer') {
     const beforeManifest = fs.readFileSync('package.json', 'utf8');
-    run('npm', ['install', '--package-lock-only', '--ignore-scripts']);
+    console.log(`npm package-lock config before fixer: ${capture('npm', ['config', 'get', 'package-lock']).trim()}`);
+    run('npm', ['install', '--package-lock-only', '--ignore-scripts', '--package-lock=true']);
     if (fs.readFileSync('package.json', 'utf8') !== beforeManifest) {
       throw new Error('lockfile fixer changed package.json; aborting');
     }
+    if (!fs.existsSync('package-lock.json')) {
+      throw new Error('lockfile fixer completed without generating package-lock.json');
+    }
+    console.log(`Generated package-lock.json: ${fs.statSync('package-lock.json').size} bytes`);
   }
 
   if (strategy === 'lint-fixer') {
@@ -84,6 +89,7 @@ try {
   }
 
   const workingTreeFiles = fileListFromStatus();
+  console.log(`Working tree after fixer: ${JSON.stringify(workingTreeFiles)}`);
   validateAllowlist(workingTreeFiles, strategy);
   if (!workingTreeFiles.length) throw new Error('Fixer produced no changes');
 
@@ -91,6 +97,7 @@ try {
   run('git', ['diff', '--cached', '--check']);
 
   const changed = capture('git', ['diff', '--cached', '--name-only']).trim().split(/\r?\n/).filter(Boolean);
+  console.log(`Staged files: ${JSON.stringify(changed)}`);
   if (!changed.length) throw new Error('Fixer produced no staged changes');
   validateAllowlist(changed, strategy);
 
@@ -115,7 +122,6 @@ try {
     throw new Error('Apply mode requires explicit autoApplyAllowed=true from the diagnosis policy');
   }
 
-  // PR mode creates a reviewable PR only after the dry-run mutation passed.
   run('git', ['config', 'user.name', 'flixo-self-heal']);
   run('git', ['config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com']);
   run('git', ['commit', '-m', `chore(auto-heal): apply ${strategy} for run ${runId}`]);
