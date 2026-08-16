@@ -15,14 +15,24 @@ async function downloadSize(downloadPromise: Promise<Download>, downloadName?: s
 test.describe("verified desktop tools", () => {
   test("ZIP Creator creates a readable archive containing selected files", async ({ page }) => {
     await page.goto("/tools/zip-creator");
+
+    // Register the download listener before selecting files because the ZIP tool
+    // may generate the archive immediately after the file selection completes.
+    const downloadPromise = page.waitForEvent("download", { timeout: 60_000 });
     const input = page.locator('input[type="file"]');
     await input.setInputFiles([
       { name: "alpha.txt", mimeType: "text/plain", buffer: Buffer.from("alpha") },
       { name: "beta.txt", mimeType: "text/plain", buffer: Buffer.from("beta") },
     ]);
-    const downloadPath = await downloadSize(page.waitForEvent("download"), "flixo-files.zip");
-    const zip = await JSZip.loadAsync(await readFile(downloadPath));
+
+    const downloadPath = await downloadSize(downloadPromise, "flixo-files.zip");
+    const archive = await readFile(downloadPath);
+    expect(archive.length).toBeGreaterThan(0);
+
+    const zip = await JSZip.loadAsync(archive);
     expect(Object.keys(zip.files).sort()).toEqual(["alpha.txt", "beta.txt"]);
+    expect(await zip.files["alpha.txt"].async("string")).toBe("alpha");
+    expect(await zip.files["beta.txt"].async("string")).toBe("beta");
     await expect(page.getByText("Download ZIP")).toBeVisible();
   });
 
@@ -45,7 +55,9 @@ test.describe("verified desktop tools", () => {
     await page.goto("/tools/file-splitter");
     await page.locator('input[type="file"]').setInputFiles({ name: "large.bin", mimeType: "application/octet-stream", buffer: source });
     await page.getByLabel("Chunk size").fill("1");
-    const downloadPath = await downloadSize(page.waitForEvent("download"), "large.bin-parts.zip");
+    const downloadPromise = page.waitForEvent("download", { timeout: 60_000 });
+    await page.getByRole("button", { name: /Split|Create/i }).click();
+    const downloadPath = await downloadSize(downloadPromise, "large.bin-parts.zip");
     const zip = await JSZip.loadAsync(await readFile(downloadPath));
     const names = Object.keys(zip.files).sort();
     expect(names).toEqual(["large.bin.part-0001", "large.bin.part-0002", "large.bin.part-0003"]);
