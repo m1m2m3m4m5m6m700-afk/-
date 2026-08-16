@@ -87,6 +87,17 @@ jobs:
           REPOSITORY: ${{ github.repository }}
         run: node .github/scripts/diagnose.js
 
+      - name: Prepare debug artifacts
+        if: steps.gate.outputs.should_heal == 'true'
+        shell: bash
+        run: |
+          : > npm.out
+          npm config list --json > npm-config.json 2>/dev/null || echo "{}" > npm-config.json
+          git status --porcelain > git-status-before.txt || true
+          git diff --cached --name-only > git-staged-before.txt || true
+          ls -la package-lock.json > package-lock-ls-before.txt 2>&1 || true
+          stat -c '%s %n' package-lock.json > package-lock-stat-before.txt 2>&1 || true
+
       - name: Attempt safe self-healing
         if: steps.gate.outputs.should_heal == 'true'
         env:
@@ -94,14 +105,50 @@ jobs:
           RUN_ID: ${{ github.event.workflow_run.id }}
           REPOSITORY: ${{ github.repository }}
           SELF_HEAL_MODE: ${{ env.SELF_HEAL_MODE }}
-        run: node .github/scripts/auto-correct.js
+        shell: bash
+        run: |
+          set +e
+          node .github/scripts/auto-correct.js > >(tee npm.out) 2> >(tee -a npm.out >&2)
+          rc=${PIPESTATUS[0]}
+          exit "$rc"
+
+      - name: Finalize debug artifacts
+        if: always()
+        shell: bash
+        run: |
+          git status --porcelain > git-status-after.txt || true
+          git diff --cached --name-only > git-staged-after.txt || true
+          git diff --cached -- package-lock.json > staged-package-lock.diff || true
+          git diff -- package-lock.json > working-package-lock.diff || true
+          ls -la package-lock.json > package-lock-ls.txt 2>&1 || true
+          stat -c '%s %n' package-lock.json > package-lock-stat.txt 2>&1 || true
+          if git rev-parse --verify auto-fix/lockfile-fixer/${{ github.event.workflow_run.id }} >/dev/null 2>&1; then
+            git log -1 --pretty=fuller auto-fix/lockfile-fixer/${{ github.event.workflow_run.id }} > auto-fix-branch-log.txt 2>&1 || true
+          else
+            echo "auto-fix branch not present in this checkout" > auto-fix-branch-log.txt
+          fi
+          git status --porcelain=v1 > git-status-final.txt || true
 
       - name: Upload self-healing diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: self-heal-${{ github.event.workflow_run.id }}
+          name: self-heal-full-artifacts-${{ github.event.workflow_run.id }}
           path: |
+            npm.out
+            npm-config.json
+            git-status-before.txt
+            git-status-after.txt
+            git-staged-before.txt
+            git-staged-after.txt
+            git-status-final.txt
+            package-lock-ls-before.txt
+            package-lock-stat-before.txt
+            package-lock-ls.txt
+            package-lock-stat.txt
+            staged-package-lock.diff
+            working-package-lock.diff
+            auto-fix-branch-log.txt
             .github/self-healing/logs/
             .github/diagnosis-report.json
           if-no-files-found: ignore
