@@ -25,6 +25,7 @@ test.describe("verified desktop tools", () => {
     const downloadLink = page.getByRole("link", { name: /Download ZIP/i });
     await expect(downloadLink).toBeVisible();
 
+    // Keep the browser download as the source-of-truth assertion for the generated ZIP.
     const [download] = await Promise.all([
       page.waitForEvent("download"),
       downloadLink.click(),
