@@ -15,24 +15,70 @@ permissions:
   pull-requests: write
   issues: write
 
+env:
+  FAILED_SHA: ${{ github.event.workflow_run.head_sha }}
+  FAILED_BRANCH: ${{ github.event.workflow_run.head_branch }}
+  SOURCE_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+
 jobs:
   monitor-and-heal:
-    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      - name: Decide whether healing is required
+        id: gate
+        shell: bash
+        run: |
+          echo "SOURCE_RUN_ID=${{ github.event.workflow_run.id }}"
+          echo "SOURCE_HEAD_SHA=$FAILED_SHA"
+          echo "SOURCE_HEAD_BRANCH=$FAILED_BRANCH"
+          echo "SOURCE_CONCLUSION=$SOURCE_CONCLUSION"
+          if [ "$SOURCE_CONCLUSION" = "failure" ]; then
+            echo "should_heal=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_heal=false" >> "$GITHUB_OUTPUT"
+            echo "Self-heal not required; source CI conclusion is $SOURCE_CONCLUSION."
+          fi
+
+      - name: Validate failed SHA
+        if: steps.gate.outputs.should_heal == 'true'
+        shell: bash
+        run: |
+          if [ -z "$FAILED_SHA" ]; then
+            echo "ERROR: workflow_run.head_sha is empty. Aborting self-heal." >&2
+            exit 1
+          fi
+
       - name: Checkout failed revision
+        if: steps.gate.outputs.should_heal == 'true'
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ env.FAILED_SHA }}
           fetch-depth: 0
 
+      - name: Verify checkout integrity
+        if: steps.gate.outputs.should_heal == 'true'
+        shell: bash
+        run: |
+          ACTUAL_SHA="$(git rev-parse HEAD)"
+          echo "EVENT HEAD SHA: $FAILED_SHA"
+          echo "GIT HEAD: $ACTUAL_SHA"
+          echo "GIT BRANCH: $(git rev-parse --abbrev-ref HEAD || true)"
+          git status --porcelain
+          git log -1 --pretty=fuller
+          test "$ACTUAL_SHA" = "$FAILED_SHA" || {
+            echo "ERROR: checked-out SHA does not match failed workflow SHA." >&2
+            exit 1
+          }
+
       - name: Setup Node
+        if: steps.gate.outputs.should_heal == 'true'
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
 
       - name: Collect and classify failure
+        if: steps.gate.outputs.should_heal == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           RUN_ID: ${{ github.event.workflow_run.id }}
@@ -40,6 +86,7 @@ jobs:
         run: node .github/scripts/diagnose.js
 
       - name: Attempt safe self-healing
+        if: steps.gate.outputs.should_heal == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           RUN_ID: ${{ github.event.workflow_run.id }}
