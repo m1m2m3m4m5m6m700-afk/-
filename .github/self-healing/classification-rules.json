@@ -1,16 +1,67 @@
 {
-  "version": 1,
-  "minimumConfidence": 0.8,
+  "version": 2,
+  "minimumConfidence": 0.85,
   "policies": {
     "srcAutoMutation": false,
     "majorDependencyAutoMutation": false,
-    "securityAutoMutation": false
+    "securityAutoMutation": false,
+    "productionAutoMerge": false,
+    "defaultMode": "dry-run"
   },
   "rules": [
-    { "id": "R001", "match": ["ERESOLVE", "lockfile", "package.json"], "strategy": "lockfile-fixer", "autoApply": true },
-    { "id": "R002", "match": ["eslint", "no-control-regex", "no-unused-vars", "prettier"], "strategy": "lint-fixer", "autoApply": true, "scope": ["tests/**"] },
-    { "id": "R003", "match": ["Playwright", "Timeout", "download event"], "strategy": "test-retry-fixer", "autoApply": false },
-    { "id": "R004", "match": ["TS"], "strategy": "typecheck", "autoApply": false },
-    { "id": "R005", "match": ["security", "permission", "vulnerability", "src/"], "strategy": "human-review", "autoApply": false }
+    {
+      "id": "R001",
+      "match": ["ERESOLVE", "lockfile", "package.json"],
+      "strategy": "lockfile-fixer",
+      "autoApply": false,
+      "minConfidence": 0.85,
+      "evidenceRequiredFrom": ["setup-node", "npm ci", "checkout-filesystem"]
+    },
+    {
+      "id": "R010",
+      "match": ["package-lock.json missing", "ENOENT package-lock.json", "npm install error", "ERESOLVE", "ERR_PNPM"],
+      "strategy": "lockfile-fixer",
+      "autoApply": false,
+      "minConfidence": 0.85,
+      "evidenceRequiredFrom": ["setup-node", "npm ci", "checkout-filesystem"],
+      "notes": "Candidate for safe dry-run only; auto-apply requires repeated evidence from at least two prior matching runs."
+    },
+    {
+      "id": "R002",
+      "match": ["eslint", "no-control-regex", "no-unused-vars", "prettier"],
+      "strategy": "lint-fixer",
+      "autoApply": false,
+      "scope": ["tests/**"],
+      "minConfidence": 0.85
+    },
+    {
+      "id": "R003",
+      "match": ["Playwright", "Timeout", "download event"],
+      "strategy": "test-retry-fixer",
+      "autoApply": false,
+      "minConfidence": 0.9
+    },
+    {
+      "id": "R004",
+      "match": ["TS"],
+      "strategy": "typecheck",
+      "autoApply": false,
+      "minConfidence": 0.95
+    },
+    {
+      "id": "R005",
+      "match": ["permission denied", "EACCES", "EPERM", "security", "vulnerability", "src/"],
+      "strategy": "human-review",
+      "autoApply": false,
+      "minConfidence": 0.95,
+      "notes": "Ignore generic GITHUB_TOKEN permission summaries; only concrete permission/security failures count as evidence."
+    },
+    {
+      "id": "R006",
+      "match": ["setup-node failed", "Node version resolution failed"],
+      "strategy": "environment-review",
+      "autoApply": false,
+      "minConfidence": 0.9
+    }
   ]
 }
