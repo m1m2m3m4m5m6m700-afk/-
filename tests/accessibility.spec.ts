@@ -9,7 +9,11 @@ test.describe("public accessibility baseline", () => {
       await expect(page.locator("html")).toHaveAttribute("lang", /.+/);
       await expect(page.locator("html")).toHaveAttribute("dir", /^(ltr|rtl)$/);
 
-      const controls = page.locator("button, input, textarea, select, [role=button]");
+      // Check user-facing controls only. Component libraries such as Radix may
+      // render intentionally hidden native controls to support form semantics.
+      const controls = page.locator(
+        'button:not([aria-hidden="true"]), input:not([aria-hidden="true"]), textarea:not([aria-hidden="true"]), select:not([aria-hidden="true"]), [role="button"]:not([aria-hidden="true"])',
+      );
       const count = await controls.count();
       for (let index = 0; index < count; index += 1) {
         const control = controls.nth(index);
