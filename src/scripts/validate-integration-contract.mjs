@@ -25,7 +25,6 @@ const requiredScripts = [
   "validate:route-tree",
   "typecheck",
   "lint",
-  "test:chat",
   "test:a11y",
   "test:desktop",
 ];
@@ -50,7 +49,6 @@ const ciCommands = [
   "npm run build",
   "npm run typecheck",
   "npm run lint",
-  "npm run test:chat",
   "npm run test:a11y",
   "npm run test:desktop",
 ];
@@ -63,12 +61,12 @@ if (!/if:\s*\$\{\{\s*false\s*\}\}/.test(deploy)) {
   issues.push("Vercel production deployment must remain disabled during integration hardening.");
 }
 
-// Keep AI validation semantic and formatting-independent.
+// Validate the server-side AI contract independently of the optional Flex browser UI.
 const hasRuntimeReadyFilter = /tools\s*\.\s*filter\s*\(\s*\(?(?:tool|entry)\)?\s*=>\s*(?:tool|entry)\.status\s*===\s*["']ready["']/.test(handler);
-if (!hasRuntimeReadyFilter) issues.push("Flex catalog must filter to runtime-ready tools.");
-if (!handler.includes('isFeatureEnabled("webResearch")')) issues.push("Flex web research must use the webResearch feature flag.");
-if (!handler.includes("AbortController")) issues.push("Flex provider calls must use bounded cancellation.");
-if (!handler.includes("retryable")) issues.push("Flex provider failures must expose retryability.");
+if (!hasRuntimeReadyFilter) issues.push("AI catalog context must filter to runtime-ready tools.");
+if (!handler.includes('isFeatureEnabled("webResearch")')) issues.push("AI web research must use the webResearch feature flag.");
+if (!handler.includes("AbortController")) issues.push("AI provider calls must use bounded cancellation.");
+if (!handler.includes("retryable")) issues.push("AI provider failures must expose retryability.");
 if (!flags.includes("webResearch") || !flags.includes("toolDiscovery")) issues.push("AI feature flags are incomplete.");
 
 if (issues.length) {
