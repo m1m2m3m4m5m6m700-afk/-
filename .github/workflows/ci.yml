@@ -20,7 +20,7 @@ jobs:
   verify:
     name: Strict verification
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    timeout-minutes: 70
 
     steps:
       - name: Checkout
@@ -121,9 +121,9 @@ jobs:
         run: npm run test:desktop -- --retries=2
         timeout-minutes: 25
 
-      - name: Run all operational mega-tool tests
-        run: npx playwright test tests/mega-tools.spec.ts --retries=2
-        timeout-minutes: 25
+      - name: Run all operational mega-tool tests in parallel batches
+        run: npx playwright test tests/mega-tools-part*.spec.ts --workers=4 --retries=2
+        timeout-minutes: 60
 
       - name: Upload build artifact
         if: github.event_name == 'pull_request'
