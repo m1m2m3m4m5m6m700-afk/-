@@ -32,3 +32,19 @@ export class BrowserEdgeRuntime implements EdgeRuntime {
     return executor(input, { ...context, capability: this.capability });
   }
 }
+
+export class EdgeCompatibleRuntime implements EdgeRuntime {
+  readonly capability = "edge" as const;
+
+  supportsWasm(): boolean {
+    return typeof WebAssembly !== "undefined";
+  }
+
+  execute<Input, Output>(
+    executor: ToolExecutor<Input, Output>,
+    input: Input,
+    context: Omit<RuntimeContext, "capability"> = {},
+  ): Promise<Output> {
+    return executor(input, { ...context, capability: this.capability });
+  }
+}
