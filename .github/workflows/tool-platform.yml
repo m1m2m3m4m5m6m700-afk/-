@@ -49,5 +49,5 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Validate desktop regression contract
-        run: node src/scripts/validate-tool-platform-regression.mjs
+      - name: Validate desktop tool contract
+        run: node src/scripts/validate-desktop-tool-contract.mjs
