@@ -3,20 +3,18 @@ name: CI
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
   workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: read
 
 jobs:
   verify:
-    name: Verify (integration · dependency · typecheck · lint · SEO · i18n · terminology · AI · quality · accessibility · security · desktop-tools · mega-tools · build)
+    name: Full Verification (release/main)
     runs-on: ubuntu-latest
     timeout-minutes: 40
 
