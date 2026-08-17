@@ -32,12 +32,12 @@ function sanitize(content: string): string { return content.replace(/\u0000/g, "
 function normalizeLocale(value: unknown): string | null { return typeof value === "string" && SUPPORTED_LOCALES.has(value.trim()) ? value.trim() : null; }
 function systemPrompt(locale: string | null): string { return !locale || locale === "en" ? SYSTEM_PROMPT : `${SYSTEM_PROMPT}\nActive interface locale: ${LOCALE_NAMES[locale] ?? locale} (${locale}). Keep the answer in that language unless the user explicitly switches.`; }
 function jsonResponse(body: ChatSuccessBody | ChatErrorBody, status = 200): Response { return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } }); }
-function notConfigured(): Response { return jsonResponse({ error: "Flex is not configured yet. Add OPENAI_API_KEY, GEMINI_API_KEY, or OPENROUTER_API_KEY in the server environment.", retryable: false }); }
+function notConfigured(): Response { return jsonResponse({ error: "Flex is not configured yet. Add OPENAI_API_KEY, GEMINI_API_KEY, or OPENROUTER_API_KEY in the server environment.", retryable: false }, 503); }
 
 function parseTurns(body: ChatRequestBody): { ok: true; turns: ChatTurn[]; locale: string | null } | { ok: false; response: Response } {
   const message = sanitize(typeof body.message === "string" ? body.message : "");
-  if (!message) return { ok: false, response: jsonResponse({ error: "Please send a message to start the conversation.", retryable: false }) };
-  if (message.length > MAX_MESSAGE_CHARS) return { ok: false, response: jsonResponse({ error: `Message is too long (max ${MAX_MESSAGE_CHARS} characters).`, retryable: false }) };
+  if (!message) return { ok: false, response: jsonResponse({ error: "Please send a message to start the conversation.", retryable: false }, 400) };
+  if (message.length > MAX_MESSAGE_CHARS) return { ok: false, response: jsonResponse({ error: `Message is too long (max ${MAX_MESSAGE_CHARS} characters).`, retryable: false }, 413) };
   const turns: ChatTurn[] = [];
   if (Array.isArray(body.history)) {
     for (const entry of body.history) {
@@ -45,7 +45,7 @@ function parseTurns(body: ChatRequestBody): { ok: true; turns: ChatTurn[]; local
       const value = entry as Partial<ChatTurn>;
       if ((value.role === "user" || value.role === "assistant") && typeof value.content === "string") {
         const content = sanitize(value.content);
-        if (content) turns.push({ role: value.role, content });
+        if (content) turns.push({ role: value.role, content: content.slice(0, MAX_MESSAGE_CHARS) });
       }
     }
     if (turns.length > MAX_TURNS) turns.splice(0, turns.length - MAX_TURNS);
@@ -108,39 +108,39 @@ async function searchWeb(query: string, signal: AbortSignal): Promise<string> {
 function isRetryableStatus(status: number): boolean { return status === 408 || status === 429 || status >= 500; }
 
 async function callOpenAI(provider: AIProviderConfig, turns: ChatTurn[], locale: string | null, signal: AbortSignal) {
-  if (!provider.apiKey) return { ok: false as const, retryable: false };
+  if (!provider.apiKey) return { ok: false as const, retryable: false, reason: "not_configured" as const };
   const response = await fetch(`${provider.baseUrl}/chat/completions`, {
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${provider.apiKey}` },
     signal,
     body: JSON.stringify({ model: provider.defaultModel, messages: buildOpenAICompatibleMessages(turns, locale), temperature: 0.6, max_tokens: 1400 }),
   });
-  if (!response.ok) return { ok: false as const, retryable: isRetryableStatus(response.status) };
+  if (!response.ok) return { ok: false as const, retryable: isRetryableStatus(response.status), reason: `http_${response.status}` };
   const data = (await response.json()) as OpenAIResponse;
   const reply = data.choices?.[0]?.message?.content?.trim() ?? "";
-  if (!reply) return { ok: false as const, retryable: true };
+  if (!reply) return { ok: false as const, retryable: true, reason: "empty_response" as const };
   return { ok: true as const, reply: reply.slice(0, MAX_REPLY_CHARS), model: data.model ?? provider.defaultModel };
 }
 
 async function callOpenRouter(provider: AIProviderConfig, turns: ChatTurn[], locale: string | null, signal: AbortSignal) {
-  if (!provider.apiKey) return { ok: false as const, retryable: false };
+  if (!provider.apiKey) return { ok: false as const, retryable: false, reason: "not_configured" as const };
   const response = await fetch(`${provider.baseUrl}/chat/completions`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${provider.apiKey}`, "http-referer": "https://flixoai.vercel.app", "x-title": "Flixo" }, signal, body: JSON.stringify({ model: provider.defaultModel, messages: buildOpenAICompatibleMessages(turns, locale), temperature: 0.6, max_tokens: 1400 }) });
-  if (!response.ok) return { ok: false as const, retryable: isRetryableStatus(response.status) };
+  if (!response.ok) return { ok: false as const, retryable: isRetryableStatus(response.status), reason: `http_${response.status}` };
   const data = (await response.json()) as OpenRouterResponse;
   const reply = typeof data.choices?.[0]?.message?.content === "string" ? data.choices[0].message.content.trim() : Array.isArray(data.choices?.[0]?.message?.content) ? data.choices[0]!.message!.content.map((part) => part.text ?? "").join("").trim() : "";
-  if (!reply) return { ok: false as const, retryable: true };
+  if (!reply) return { ok: false as const, retryable: true, reason: "empty_response" as const };
   return { ok: true as const, reply: reply.slice(0, MAX_REPLY_CHARS), model: data.model ?? provider.defaultModel };
 }
 
 async function callGemini(provider: AIProviderConfig, turns: ChatTurn[], locale: string | null, signal: AbortSignal) {
-  if (!provider.apiKey) return { ok: false as const, retryable: false };
+  if (!provider.apiKey) return { ok: false as const, retryable: false, reason: "not_configured" as const };
   const url = `${provider.baseUrl}/v1beta/models/${encodeURIComponent(provider.defaultModel)}:generateContent?key=${encodeURIComponent(provider.apiKey)}`;
   const response = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, signal, body: JSON.stringify({ contents: buildGeminiContents(turns), systemInstruction: { parts: [{ text: systemPrompt(locale) }] }, generationConfig: { maxOutputTokens: 1400, temperature: 0.6 } }) });
-  if (!response.ok) return { ok: false as const, retryable: isRetryableStatus(response.status) };
+  if (!response.ok) return { ok: false as const, retryable: isRetryableStatus(response.status), reason: `http_${response.status}` };
   const data = (await response.json()) as GeminiGenerateResponse;
-  if (data.promptFeedback?.blockReason) return { ok: false as const, retryable: false, blocked: true };
+  if (data.promptFeedback?.blockReason) return { ok: false as const, retryable: false, blocked: true, reason: "blocked" as const };
   const reply = data.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("").trim() ?? "";
-  if (!reply) return { ok: false as const, retryable: true };
+  if (!reply) return { ok: false as const, retryable: true, reason: "empty_response" as const };
   return { ok: true as const, reply: reply.slice(0, MAX_REPLY_CHARS), model: provider.defaultModel };
 }
 
@@ -155,6 +155,12 @@ function configuredProviderOrder(config: ReturnType<typeof getAIConfig>): AIProv
   return [...new Set(order)].filter((id) => Boolean(config.providers[id]?.apiKey));
 }
 
+function timeoutSignal(timeoutMs: number): { signal: AbortSignal; cleanup: () => void } {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  return { signal: controller.signal, cleanup: () => clearTimeout(timer) };
+}
+
 export async function handleChatRequest(request: Request): Promise<Response> {
   if (request.method !== "POST") return new Response("Method Not Allowed", { status: 405, headers: { allow: "POST" } });
   const contentLength = Number(request.headers.get("content-length"));
@@ -165,36 +171,55 @@ export async function handleChatRequest(request: Request): Promise<Response> {
     if (rawBody.length > MAX_REQUEST_BODY_CHARS) return jsonResponse({ error: "Request payload is too large.", retryable: false }, 413);
     body = JSON.parse(rawBody) as ChatRequestBody;
   } catch {
-    return jsonResponse({ error: "Invalid JSON body. Expected { message, history, locale }.", retryable: false });
+    return jsonResponse({ error: "Invalid JSON body. Expected { message, history, locale }.", retryable: false }, 400);
   }
+
   const parsed = parseTurns(body);
   if (!parsed.ok) return parsed.response;
   const config = getAIConfig();
   const providerOrder = configuredProviderOrder(config);
   if (providerOrder.length === 0) return notConfigured();
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), config.defaultTimeoutMs);
-  try {
-    const catalog = buildCatalogContext(parsed.turns.at(-1)!.content);
-    const fresh = shouldWebSearch(parsed.turns.at(-1)!.content) ? await searchWeb(parsed.turns.at(-1)!.content, controller.signal) : "";
-    const last = parsed.turns.at(-1)!;
-    const augmentedTurns = [...parsed.turns.slice(0, -1), { ...last, content: [last.content, catalog, fresh].filter(Boolean).join("\n\n") }];
-    let retryable = false;
-    for (const providerId of providerOrder) {
-      const provider = config.providers[providerId];
-      try {
-        const result = await callProvider(providerId, provider, augmentedTurns, parsed.locale, controller.signal);
-        if (result.ok) return jsonResponse({ reply: result.reply, model: result.model, provider: providerId });
-        if ("blocked" in result && result.blocked) return jsonResponse({ error: "The AI provider blocked this request with its safety filters.", retryable: false });
-        retryable = result.retryable;
-        if (!result.retryable) break;
-      } catch {
-        retryable = true;
-      }
-      if (controller.signal.aborted) break;
+
+  const catalog = buildCatalogContext(parsed.turns.at(-1)!.content);
+  let fresh = "";
+  if (shouldWebSearch(parsed.turns.at(-1)!.content)) {
+    const searchTimeout = timeoutSignal(Math.min(config.defaultTimeoutMs, 5000));
+    try {
+      fresh = await searchWeb(parsed.turns.at(-1)!.content, searchTimeout.signal);
+    } finally {
+      searchTimeout.cleanup();
     }
-    return jsonResponse({ error: retryable ? "Flex's AI providers are temporarily unavailable or rate-limited. Please try again shortly." : "Flex could not generate a response with the configured AI providers.", retryable });
-  } finally {
-    clearTimeout(timeout);
   }
+
+  const last = parsed.turns.at(-1)!;
+  const augmentedTurns = [...parsed.turns.slice(0, -1), { ...last, content: [last.content, catalog, fresh].filter(Boolean).join("\n\n") }];
+  let retryable = false;
+  let blocked = false;
+
+  for (const providerId of providerOrder) {
+    const provider = config.providers[providerId];
+    const call = timeoutSignal(config.defaultTimeoutMs);
+    try {
+      const result = await callProvider(providerId, provider, augmentedTurns, parsed.locale, call.signal);
+      if (result.ok) return jsonResponse({ reply: result.reply, model: result.model, provider: providerId });
+      blocked ||= "blocked" in result && result.blocked === true;
+      retryable ||= result.retryable;
+    } catch (error) {
+      retryable = true;
+      if (!(error instanceof DOMException && error.name === "AbortError")) console.error(error);
+    } finally {
+      call.cleanup();
+    }
+  }
+
+  if (blocked && !retryable) return jsonResponse({ error: "The AI providers blocked this request with their safety filters.", retryable: false }, 400);
+  return jsonResponse(
+    {
+      error: retryable
+        ? "Flex's AI providers are temporarily unavailable or rate-limited. Please try again shortly."
+        : "Flex could not generate a response with the configured AI providers.",
+      retryable,
+    },
+    retryable ? 503 : 502,
+  );
 }
