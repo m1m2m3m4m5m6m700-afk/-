@@ -11,7 +11,7 @@ on:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -177,7 +177,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 35
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         batch: [1, 2, 3, 4, 5, 6]
 
