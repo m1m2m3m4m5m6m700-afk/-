@@ -14,38 +14,40 @@ permissions:
 
 jobs:
   foundation:
-    name: Tool Platform Foundation
+    name: Strict Project Foundation
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Strict project contract
-        run: npm run validate:project-contract
-      - name: Architecture and platform contract
-        run: node src/scripts/validate-tool-platform.mjs
-      - name: Lifecycle contract
-        run: node src/scripts/validate-tool-platform-lifecycle.mjs
-      - name: Build and generate route tree
-        run: npm run build
-      - name: Typecheck against generated route tree
-        run: npm run typecheck
-      - name: Lint
-        run: npm run lint
+      - name: Strict verification foundation
+        run: npm run verify:foundation
+      - name: Performance budget
+        run: npm run validate:performance
+      - name: Upload diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: foundation-diagnostics
+          path: |
+            playwright-report
+            test-results
+            .output
+          if-no-files-found: ignore
 
   desktop-contract:
-    name: Desktop Tool Verification
+    name: Strict Desktop Verification
     needs: foundation
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -53,7 +55,18 @@ jobs:
         run: npm ci
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
-      - name: Validate desktop verification contract
-        run: node src/scripts/validate-tool-platform-regression.mjs
-      - name: Run real desktop verification tests
-        run: npm run test:desktop
+      - name: Verification contract
+        run: npm run validate:tool-platform-regression
+      - name: Test quality and isolation
+        run: npm run validate:test-quality && npm run validate:flaky-isolation && npm run validate:failure-quality
+      - name: Real desktop verification with repeatability
+        run: npm run test:desktop:flaky
+      - name: Upload Playwright diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-verification-diagnostics
+          path: |
+            playwright-report
+            test-results
+          if-no-files-found: ignore
