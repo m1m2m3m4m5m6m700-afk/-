@@ -4,6 +4,7 @@ import { MEGA_TOOLS } from "../../src/data/megaToolsCatalog";
 
 const BATCH_COUNT = 6;
 const BATCH_SIZE = Math.ceil(MEGA_TOOLS.length / BATCH_COUNT);
+const VARIANT_TIMEOUT_MS = 30_000;
 
 type MegaVariant = (typeof MEGA_TOOLS)[number];
 
@@ -112,36 +113,49 @@ export async function prepareMegaToolPage(page: Page) {
 }
 
 export async function runMegaToolVariant(page: Page, variant: MegaVariant): Promise<MegaRunResult> {
+  const label = `${variant.slug} [${variant.category}/${variant.handler}/${variant.preset}]`;
   try {
-    const outcome = await page.evaluate(async (definition) => {
-      const { runMegaTool } = await import("/src/lib/megaToolsEngine.ts");
-      const fixtures = (window as unknown as { __flixoMegaFixtures: Record<string, File> }).__flixoMegaFixtures;
-      const fixture = fixtures[definition.category];
-      if (!fixture) throw new Error(`Missing fixture for ${definition.category}`);
+    const outcome = await page.evaluate(async ({ definition, timeoutMs }) => {
+      const run = async () => {
+        const { runMegaTool } = await import("/src/lib/megaToolsEngine.ts");
+        const fixtures = (window as unknown as { __flixoMegaFixtures: Record<string, File> }).__flixoMegaFixtures;
+        const fixture = fixtures[definition.category];
+        if (!fixture) throw new Error(`Missing fixture for ${definition.category}`);
 
-      const result = await runMegaTool(definition, fixture);
-      if (result.type === "text") {
-        if (!result.text.trim()) throw new Error("Tool returned empty text.");
-        return { success: true, type: result.type };
+        const result = await runMegaTool(definition, fixture);
+        if (result.type === "text") {
+          if (!result.text.trim()) throw new Error("Tool returned empty text.");
+          return { success: true, type: result.type };
+        }
+        if (result.type === "download") {
+          if (!result.filename || !result.url) throw new Error("Tool returned an invalid download result.");
+          URL.revokeObjectURL(result.url);
+          return { success: true, type: result.type };
+        }
+        if (result.type === "video") {
+          if (result.element.tagName !== "VIDEO") throw new Error("Tool returned an invalid video result.");
+          result.cleanup();
+          return { success: true, type: result.type };
+        }
+        throw new Error("Unknown result type.");
+      };
+
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      try {
+        return await Promise.race([
+          run(),
+          new Promise<never>((_, reject) => {
+            timer = setTimeout(() => reject(new Error(`Variant timed out after ${timeoutMs}ms.`)), timeoutMs);
+          }),
+        ]);
+      } finally {
+        if (timer) clearTimeout(timer);
       }
-      if (result.type === "download") {
-        if (!result.filename || !result.url) throw new Error("Tool returned an invalid download result.");
-        URL.revokeObjectURL(result.url);
-        return { success: true, type: result.type };
-      }
-      if (result.type === "video") {
-        if (result.element.tagName !== "VIDEO") throw new Error("Tool returned an invalid video result.");
-        result.cleanup();
-        return { success: true, type: result.type };
-      }
-      throw new Error("Unknown result type.");
-    }, variant);
+    }, { definition: variant, timeoutMs: VARIANT_TIMEOUT_MS });
 
     return outcome;
   } catch (error) {
-    return {
-      success: false,
-      reason: error instanceof Error ? error.message : String(error),
-    };
+    const reason = error instanceof Error ? error.message : String(error);
+    return { success: false, reason: `${label}: ${reason}` };
   }
 }
