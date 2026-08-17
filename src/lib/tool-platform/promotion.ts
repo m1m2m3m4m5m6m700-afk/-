@@ -1,4 +1,4 @@
-import type { PublicToolRegistration, ToolLifecycleState } from "./types";
+import type { PublicToolRegistration, ToolLifecycleState, ToolTestCheck } from "./types";
 
 const promotionOrder: readonly ToolLifecycleState[] = [
   "draft",
@@ -17,6 +17,13 @@ export const canPromote = (
   return currentIndex >= 0 && targetIndex === currentIndex + 1;
 };
 
+const requiredVerificationChecks: readonly ToolTestCheck[] = [
+  "render",
+  "interaction",
+  "output",
+  "error",
+];
+
 export const assertPublicRegistration = (registration: PublicToolRegistration): void => {
   const { manifest, test } = registration;
 
@@ -29,7 +36,10 @@ export const assertPublicRegistration = (registration: PublicToolRegistration): 
   if (test.route !== `/tools/${manifest.slug}`) {
     throw new Error(`Test route does not match manifest: ${manifest.id}`);
   }
-  if (test.requiredChecks.length === 0) {
-    throw new Error(`Public tool must have regression checks: ${manifest.id}`);
+
+  for (const requiredCheck of requiredVerificationChecks) {
+    if (!test.requiredChecks.includes(requiredCheck)) {
+      throw new Error(`Public tool is missing strict verification check ${requiredCheck}: ${manifest.id}`);
+    }
   }
 };
