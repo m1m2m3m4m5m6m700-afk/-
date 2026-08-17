@@ -117,6 +117,8 @@ function buildTools<const T extends MegaToolCategory>(category: T) {
 const REMOVED_NON_WORKING_VARIANTS = new Set([
   "mega-video-inspect-quick",
   "mega-video-frame-75-quick",
+  "mega-video-inspect-small",
+  "mega-video-frame-75-medium",
 ]);
 
 export const MEGA_TOOLS = Object.freeze([
