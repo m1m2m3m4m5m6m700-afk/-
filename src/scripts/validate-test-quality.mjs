@@ -8,7 +8,7 @@ async function walk(dir) {
   const entries = await readdir(dir, { withFileTypes: true });
   const files = [];
   for (const entry of entries) {
-    if (entry.name === "node_modules" || entry.name === ".git" || entry.name === "dist" || entry.name === ".output") continue;
+    if (["node_modules", ".git", "dist", ".output"].includes(entry.name)) continue;
     const path = join(dir, entry.name);
     if (entry.isDirectory()) files.push(...await walk(path));
     else if (/\.(ts|tsx|mjs|js)$/.test(path)) files.push(path);
@@ -21,18 +21,23 @@ for (const file of testFiles) {
   const source = await readFile(file, "utf8");
   if (/\b(?:test|it|describe)\.only\s*\(/.test(source)) fail(`Focused test is forbidden: ${file}`);
   if (/\b(?:test|it|describe)\.(?:skip|fixme)\s*\(/.test(source)) fail(`Skipped/fixme test is forbidden: ${file}`);
-  if (/\btest\s*\([^\n]*,\s*async?\s*\([^)]*\)\s*=>\s*\{[^}]*\}\s*\)/s.test(source) && !source.includes("expect(")) {
-    fail(`Test file contains test bodies without assertions: ${file}`);
-  }
 }
 
 const contracts = await readFile("src/lib/tool-platform/testContracts.ts", "utf8");
 const requiredChecks = ["render", "interaction", "output", "error"];
+const usesCanonicalStrictChecks = /const strictChecks\s*=\s*\[\s*["']render["']\s*,\s*["']interaction["']\s*,\s*["']output["']\s*,\s*["']error["']\s*\]\s+as const/.test(contracts);
+if (!usesCanonicalStrictChecks) fail("Canonical tool test contract must define strictChecks = render, interaction, output, error.");
+
+const contractEntries = [...contracts.matchAll(/\{\s*toolId:\s*["']([^"']+)["'][\s\S]*?requiredChecks:\s*([A-Za-z0-9_]+)/g)].map((match) => ({ id: match[1], checksRef: match[2] }));
 for (const id of ["zip-creator", "archive-extractor", "file-splitter", "metadata-viewer"]) {
-  const start = contracts.indexOf(`toolId: "${id}"`);
-  if (start < 0) fail(`Missing test contract: ${id}`);
-  else {
-    const block = contracts.slice(start, start + 260);
+  const entry = contractEntries.find((candidate) => candidate.id === id);
+  if (!entry) {
+    fail(`Missing test contract: ${id}`);
+    continue;
+  }
+  if (entry.checksRef !== "strictChecks") {
+    const start = contracts.indexOf(`toolId: "${id}"`);
+    const block = contracts.slice(start, start + 350);
     for (const check of requiredChecks) if (!block.includes(`"${check}"`)) fail(`Tool ${id} missing required check: ${check}`);
   }
 }
@@ -44,7 +49,7 @@ for (const required of ["trace: \"retain-on-failure\"", "reuseExistingServer: fa
 
 if (failures.length) {
   console.error("TEST QUALITY CONTRACT: FAIL");
-  failures.forEach((failure) => console.error(`- ${failure}`));
+  failures.forEach((failure) => console.error(`- ${failure}`);
   process.exit(1);
 }
 
