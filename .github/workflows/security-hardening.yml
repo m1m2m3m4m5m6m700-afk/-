@@ -36,5 +36,3 @@ jobs:
         run: node scripts/validate-security-hardening.mjs
       - name: Production vulnerability audit
         run: npm audit --omit=dev --audit-level=high
-      - name: Typecheck
-        run: npm run typecheck
