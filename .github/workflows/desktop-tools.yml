@@ -1,0 +1,45 @@
+name: Desktop Tools Verification
+
+on:
+  push:
+    branches: [desktop-tools]
+  pull_request:
+    branches: [desktop-tools]
+  workflow_dispatch:
+
+concurrency:
+  group: desktop-tools-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  verify-desktop-tools:
+    name: Verify Desktop Tools
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Run desktop tool regression suite
+        run: npm run test:desktop -- --workers=1 --retries=0
