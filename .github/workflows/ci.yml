@@ -119,10 +119,6 @@ jobs:
         run: npm run test:desktop -- --retries=2
         timeout-minutes: 25
 
-      - name: Mega-tools smoke gate
-        run: npx playwright test tests/mega-tools-smoke.spec.ts --workers=1 --retries=0
-        timeout-minutes: 10
-
       - name: Upload foundation browser report
         if: always()
         uses: actions/upload-artifact@v6
@@ -132,9 +128,49 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  mega-tools-smoke:
+    name: Mega-tools Smoke Gate
+    needs: foundation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Validate mega-tool catalog
+        run: node src/scripts/validate-mega-tools.mjs
+
+      - name: Run Mega-tools smoke gate
+        run: npx playwright test tests/mega-tools-smoke.spec.ts --workers=1 --retries=0
+        timeout-minutes: 10
+
+      - name: Upload smoke report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: mega-tools-smoke-${{ github.run_id }}
+          path: |
+            playwright-report
+            test-results/mega-tools-report.json
+          if-no-files-found: ignore
+          retention-days: 14
+
   mega-tools:
     name: Mega-tools batch ${{ matrix.batch }}
-    needs: foundation
+    needs: mega-tools-smoke
     runs-on: ubuntu-latest
     timeout-minutes: 35
     strategy:
