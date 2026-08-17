@@ -36,6 +36,6 @@ test.describe("Phase 2 runtime contracts", () => {
     await expect(queue.dequeue()).resolves.toMatchObject({ payload: { tool: "high" } });
     await expect(queue.dequeue()).resolves.toMatchObject({ payload: { tool: "normal" } });
     await expect(queue.dequeue()).resolves.toMatchObject({ payload: { tool: "background" } });
-    expect(queue.size()).toBe(0);
+    await expect(queue.size()).resolves.toBe(0);
   });
 });
