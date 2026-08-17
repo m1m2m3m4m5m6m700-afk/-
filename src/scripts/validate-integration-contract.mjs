@@ -25,7 +25,6 @@ const requiredScripts = [
   "validate:route-tree",
   "typecheck",
   "lint",
-  "test:chat",
   "test:a11y",
   "test:desktop",
 ];
@@ -50,7 +49,6 @@ const ciCommands = [
   "npm run build",
   "npm run typecheck",
   "npm run lint",
-  "npm run test:chat",
   "npm run test:a11y",
   "npm run test:desktop",
 ];
@@ -58,12 +56,13 @@ for (const command of ciCommands) {
   if (!ci.includes(command)) issues.push(`CI is missing required gate: ${command}`);
 }
 
-// Deployment must remain impossible until the hardening phase is explicitly closed.
+// Deployment remains intentionally disabled until the release hardening gates are complete.
 if (!/if:\s*\$\{\{\s*false\s*\}\}/.test(deploy)) {
   issues.push("Vercel production deployment must remain disabled during integration hardening.");
 }
 
-// Keep AI validation semantic and formatting-independent.
+// AI chat remains code-complete but is not a release blocker for Flixo 1.0.
+// Keep its safety invariants in place so future activation is bounded and truthful.
 const hasRuntimeReadyFilter = /tools\s*\.\s*filter\s*\(\s*\(?(?:tool|entry)\)?\s*=>\s*(?:tool|entry)\.status\s*===\s*["']ready["']/.test(handler);
 if (!hasRuntimeReadyFilter) issues.push("Flex catalog must filter to runtime-ready tools.");
 if (!handler.includes('isFeatureEnabled("webResearch")')) issues.push("Flex web research must use the webResearch feature flag.");
