@@ -44,7 +44,7 @@ jobs:
     name: Strict Desktop Verification
     needs: foundation
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -59,6 +59,8 @@ jobs:
         run: npm run validate:tool-platform-regression
       - name: Test quality and isolation
         run: npm run validate:test-quality && npm run validate:flaky-isolation && npm run validate:failure-quality
+      - name: Mutation testing
+        run: npm run test:mutation
       - name: Real desktop verification with repeatability
         run: npm run test:desktop:flaky
       - name: Upload Playwright diagnostics
