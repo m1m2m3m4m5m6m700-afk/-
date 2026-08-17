@@ -12,7 +12,7 @@ on:
         required: false
         default: ''
 
-tconcurrency:
+concurrency:
   group: flixo-staging
   cancel-in-progress: false
 
