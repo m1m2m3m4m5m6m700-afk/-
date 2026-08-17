@@ -9,7 +9,7 @@ on:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -134,7 +134,18 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-      - name: Upload diagnostic logs on failure
+      - name: Upload Playwright failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-failure-evidence-${{ github.run_id }}
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload CI diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -142,7 +153,5 @@ jobs:
           path: |
             ~/.npm/_logs/
             diagnostics/
-            test-results/
-            playwright-report/
           if-no-files-found: ignore
           retention-days: 14
