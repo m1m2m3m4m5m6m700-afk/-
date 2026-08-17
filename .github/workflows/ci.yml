@@ -121,9 +121,22 @@ jobs:
         run: npm run test:desktop -- --retries=2
         timeout-minutes: 25
 
+      - name: Mega-tools smoke tests
+        run: npx playwright test tests/mega-tools-smoke.spec.ts --workers=1 --retries=0
+        timeout-minutes: 10
+
       - name: Run all operational mega-tool tests in parallel batches
         run: npx playwright test tests/mega-tools-part*.spec.ts --workers=6 --retries=2
         timeout-minutes: 60
+
+      - name: Upload unified Mega-tools report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: mega-tools-report-${{ github.run_id }}
+          path: test-results/mega-tools-report.json
+          if-no-files-found: ignore
+          retention-days: 14
 
       - name: Upload build artifact
         if: github.event_name == 'pull_request'
