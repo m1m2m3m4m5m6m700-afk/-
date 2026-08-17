@@ -6,6 +6,7 @@ const issues = [];
 
 const files = {
   types: "src/lib/tool-platform/types.ts",
+  manifest: "src/lib/tool-platform/manifest.ts",
   registry: "src/lib/tool-platform/registry.ts",
   publicRegistry: "src/lib/tool-platform/public-registry.ts",
   promotion: "src/lib/tool-platform/promotion.ts",
@@ -24,8 +25,12 @@ if (!/publicToolRegistrations:\s*readonly PublicToolRegistration\[\]\s*=\s*\[\]/
   issues.push("Public registration extension point must start empty on the clean baseline.");
 }
 
-if (!/readyToolRuntimes\s*=\s*\[\]/.test(publicRuntimeSource)) {
-  issues.push("Legacy runtime registry must remain empty on the clean baseline.");
+if (!/publicToolRegistrations/.test(publicRuntimeSource)) {
+  issues.push("Compatibility runtime registry must derive from publicToolRegistrations.");
+}
+
+if (/from\s+["']\.\/tools\//.test(publicRuntimeSource)) {
+  issues.push("Compatibility runtime registry must not import legacy runtime files directly.");
 }
 
 const legacyRuntimeDir = path.join(root, "src/lib/tool-runtime/tools");
@@ -54,4 +59,5 @@ if (issues.length) {
 console.log("Tool platform architecture: PASS");
 console.log("Public registrations: 0");
 console.log("Legacy runtime source: preserved");
+console.log("Public runtime registry: adapter only");
 console.log("Platform contracts: isolated from legacy catalog");
