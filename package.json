@@ -17,6 +17,7 @@
     "validate:test-quality": "node src/scripts/validate-test-quality.mjs",
     "test:property-fuzz": "node src/scripts/test-property-fuzz.mjs",
     "test:fault-injection": "node src/scripts/test-fault-injection.mjs",
+    "test:mutation": "node src/scripts/test-mutation.mjs",
     "validate:security-strict": "node src/scripts/strict-security.mjs",
     "validate:flaky-isolation": "node src/scripts/strict-flaky-isolation.mjs",
     "validate:failure-quality": "node src/scripts/strict-failure-quality.mjs",
