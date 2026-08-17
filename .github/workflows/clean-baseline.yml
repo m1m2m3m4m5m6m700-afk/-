@@ -1,0 +1,45 @@
+name: Clean Baseline
+
+on:
+  push:
+    branches: [clean-baseline]
+  pull_request:
+    branches: [clean-baseline, main]
+  workflow_dispatch:
+
+concurrency:
+  group: clean-baseline-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  baseline:
+    name: Baseline typecheck, lint and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate clean public registry
+        run: node scripts/validate-clean-baseline.mjs
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
