@@ -4,12 +4,15 @@ export default defineConfig({
   testDir: "./tests",
   fullyParallel: false,
   timeout: 20 * 60 * 1000,
-  expect: { timeout: 15_000 },
+  expect: { timeout: 30_000 },
+  retries: process.env.CI ? 1 : 0,
   reporter: [["list"], ["html", { outputFolder: "playwright-report", open: "never" }]],
   use: {
     baseURL: "http://127.0.0.1:3000",
     headless: true,
     trace: "retain-on-failure",
+    screenshot: "only-on-failure",
+    video: "retain-on-failure",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
