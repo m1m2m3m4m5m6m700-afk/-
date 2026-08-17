@@ -1,0 +1,88 @@
+name: Mega-tools Extended Nightly
+
+on:
+  schedule:
+    - cron: "47 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mega-tools-extended-nightly
+  cancel-in-progress: false
+
+jobs:
+  gates:
+    name: Stress and Security gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Validate catalog
+        run: node src/scripts/validate-mega-tools.mjs
+
+      - name: Security Gate
+        run: npx playwright test tests/mega-tools-security.spec.ts --workers=1 --retries=0
+        timeout-minutes: 10
+
+      - name: Stress Gate
+        run: npx playwright test tests/mega-tools-stress.spec.ts --workers=1 --retries=0
+        timeout-minutes: 20
+
+      - name: Upload gate reports
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: mega-tools-extended-gates-${{ github.run_id }}
+          path: |
+            playwright-report
+            test-results/mega-tools-report.json
+            test-results/mega-tools-analysis.json
+          if-no-files-found: ignore
+          retention-days: 30
+
+  analyze:
+    name: Failure pattern analysis
+    needs: gates
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Analyze local reports when available
+        run: node scripts/analyze-mega-tools-report.mjs
+
+      - name: Upload analysis
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: mega-tools-failure-analysis-${{ github.run_id }}
+          path: test-results/mega-tools-analysis.json
+          if-no-files-found: ignore
+          retention-days: 90
