@@ -68,6 +68,9 @@ jobs:
       - name: Validate security contract
         run: npm run validate:security
 
+      - name: Validate security hardening
+        run: node scripts/validate-security-hardening.mjs
+
       - name: Validate mega-tool catalog
         run: node src/scripts/validate-mega-tools.mjs
 
@@ -75,7 +78,7 @@ jobs:
         run: node src/scripts/validate-google-search.mjs
 
       - name: Validate terminology profiles
-        run: node src/scripts/validate-terminology-profiles.mjs
+        run: npm run validate:terminology-profiles
 
       - name: Validate SEO
         run: npm run validate:seo
