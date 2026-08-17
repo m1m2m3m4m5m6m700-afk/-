@@ -1,0 +1,30 @@
+name: Tool Platform
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: tool-platform-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  foundation:
+    name: Tool Platform Foundation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Step 1 architecture contract
+        run: node src/scripts/validate-tool-platform-step1.mjs
+      - name: Typecheck
+        run: npm run typecheck
