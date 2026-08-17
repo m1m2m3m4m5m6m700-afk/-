@@ -44,7 +44,7 @@ jobs:
         run: npx playwright test tests/mega-tools-stress.spec.ts --workers=1 --retries=0
         timeout-minutes: 20
 
-      - name: Upload gate reports
+      - name: Upload gate evidence
         if: always()
         uses: actions/upload-artifact@v6
         with:
@@ -52,7 +52,6 @@ jobs:
           path: |
             playwright-report
             test-results/mega-tools-report.json
-            test-results/mega-tools-analysis.json
           if-no-files-found: ignore
           retention-days: 30
 
@@ -75,7 +74,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Analyze local reports when available
+      - name: Download gate evidence
+        uses: actions/download-artifact@v6
+        with:
+          name: mega-tools-extended-gates-${{ github.run_id }}
+          path: test-results
+
+      - name: Analyze reports
         run: node scripts/analyze-mega-tools-report.mjs
 
       - name: Upload analysis
