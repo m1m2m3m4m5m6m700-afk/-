@@ -1,6 +1,8 @@
+import type { ToolCategoryId } from "./categories";
+
+export type { ToolCategoryId } from "./categories";
 export type ToolId = string;
 export type ToolSlug = string;
-export type ToolCategoryId = string;
 
 export type ToolLifecycleState =
   | "draft"
@@ -11,6 +13,7 @@ export type ToolLifecycleState =
 
 export type ToolInputKind = "file" | "files" | "text" | "url" | "none";
 export type ToolOutputKind = "download" | "preview" | "text" | "none";
+export type ToolTestCheck = "render" | "interaction" | "output" | "error";
 
 export interface ToolCapabilities {
   readonly input: ToolInputKind;
@@ -31,7 +34,7 @@ export interface ToolManifest {
 export interface ToolTestContract {
   readonly toolId: ToolId;
   readonly route: string;
-  readonly requiredChecks: readonly ("render" | "interaction" | "output" | "error")[];
+  readonly requiredChecks: readonly ToolTestCheck[];
 }
 
 export interface PublicToolRegistration {
