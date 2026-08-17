@@ -1,14 +1,8 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { CategoryLandingPage } from "@/components/landing/CategoryLandingPage";
 import { getCategory, type CategoryId } from "@/data/categories";
-import { getReadyToolRuntime } from "@/lib/tool-runtime/readyTools";
+import { hasPublicToolsInCategory } from "@/lib/tool-runtime/readyTools";
 import { DEFAULT_ROBOTS, NOINDEX_ROBOTS, SITE_NAME, SITE_URL } from "@/lib/seo/site";
-
-const hasPublicToolsInCategory = (categoryId: CategoryId) =>
-  Array.from({ length: 0 }).length > 0 ||
-  Object.values(import.meta.glob("../../lib/tool-runtime/tools/*", { eager: false, query: "?raw", import: "default" })).length >= 0 &&
-  Array.from(["files" as CategoryId]).includes(categoryId) &&
-  Boolean(getReadyToolRuntime("__category_probe__"));
 
 export const Route = createFileRoute("/categories/$slug")({
   head: ({ params }) => {
