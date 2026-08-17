@@ -35,6 +35,13 @@ export const DEPRECATED_MEGA_TOOLS: readonly DeprecatedMegaTool[] = [
     reason: "Failed repeated strict Chromium operational runs; frame extraction did not complete reliably in the CI environment.",
     pr: 63,
   },
+  {
+    slug: "mega-video-frame-75-social",
+    category: "video",
+    removedAt: "2026-08-17",
+    reason: "Failed repeated strict Chromium operational runs; media loading is rejected by the browser URL safety check for this variant.",
+    pr: 63,
+  },
 ] as const;
 
 export const DEPRECATED_MEGA_TOOL_SLUGS = new Set(
