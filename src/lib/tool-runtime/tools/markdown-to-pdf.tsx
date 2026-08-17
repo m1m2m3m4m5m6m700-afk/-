@@ -28,9 +28,7 @@ function MarkdownToPdfTool() {
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
       const margin = 48;
-      const tempEl = document.createElement("div");
-      tempEl.innerHTML = html;
-      doc.setFontSize(12);
+      const parsed = new DOMParser().parseFromString(html, "text/html");
       let y = margin + 16;
       doc.setFont("helvetica", "bold");
       doc.setFontSize(20);
@@ -59,7 +57,7 @@ function MarkdownToPdfTool() {
         }
       };
 
-      for (const node of Array.from(tempEl.childNodes)) {
+      for (const node of Array.from(parsed.body.childNodes)) {
         if (node.nodeType !== 1) {
           const txt = (node.textContent || "").trim();
           if (txt) writeLine(txt);
