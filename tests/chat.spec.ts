@@ -5,6 +5,7 @@ test.describe("Flex interactive chat", () => {
 
   test("supports multi-turn conversation and session persistence", async ({ page }) => {
     const requests: Array<{ message?: unknown; history?: unknown; locale?: unknown }> = [];
+    let resolveResponse: (() => void) | undefined;
 
     await page.route("**/api/chat**", async (route) => {
       const request = route.request();
@@ -18,6 +19,7 @@ test.describe("Flex interactive chat", () => {
           provider: "test",
         }),
       });
+      resolveResponse?.();
     });
 
     await page.goto("/");
@@ -26,12 +28,14 @@ test.describe("Flex interactive chat", () => {
     await expect(chat).toHaveAttribute("data-chat-ready", "true");
 
     const composer = chat.getByRole("textbox");
+    const submitButton = chat.locator('button[type="submit"]');
     const aiMessages = chat.locator('[data-testid="chat-message"][data-sender="assistant"]');
     const allMessages = chat.locator('[data-testid="chat-message"]');
 
-    const firstResponse = page.waitForResponse((response) => response.url().includes("/api/chat") && response.status() === 200);
     await composer.fill("مرحبا");
-    await composer.press("Enter");
+    await expect(submitButton).toBeEnabled();
+    const firstResponse = new Promise<void>((resolve) => { resolveResponse = resolve; });
+    await submitButton.click();
     await firstResponse;
 
     await expect(aiMessages).toHaveCount(1, { timeout: 15_000 });
@@ -40,9 +44,10 @@ test.describe("Flex interactive chat", () => {
     expect(requests[0]?.message).toBe("مرحبا");
     expect(Array.isArray(requests[0]?.history)).toBe(true);
 
-    const secondResponse = page.waitForResponse((response) => response.url().includes("/api/chat") && response.status() === 200);
     await composer.fill("هل تتذكرني؟");
-    await composer.press("Enter");
+    await expect(submitButton).toBeEnabled();
+    const secondResponse = new Promise<void>((resolve) => { resolveResponse = resolve; });
+    await submitButton.click();
     await secondResponse;
 
     await expect(aiMessages).toHaveCount(2, { timeout: 15_000 });
@@ -68,6 +73,8 @@ test.describe("Flex interactive chat", () => {
   });
 
   test("supports quick prompts and a clean new conversation", async ({ page }) => {
+    let resolveResponse: (() => void) | undefined;
+
     await page.route("**/api/chat**", async (route) => {
       await route.fulfill({
         status: 200,
@@ -78,6 +85,7 @@ test.describe("Flex interactive chat", () => {
           provider: "test",
         }),
       });
+      resolveResponse?.();
     });
 
     await page.goto("/");
@@ -89,9 +97,9 @@ test.describe("Flex interactive chat", () => {
     await expect(quickPrompt).toBeVisible();
     await expect(quickPrompt).not.toHaveText("");
 
-    const response = page.waitForResponse((res) => res.url().includes("/api/chat") && res.status() === 200);
+    const responseHandled = new Promise<void>((resolve) => { resolveResponse = resolve; });
     await quickPrompt.click();
-    await response;
+    await responseHandled;
 
     const aiMessages = chat.locator('[data-testid="chat-message"][data-sender="assistant"]');
     await expect(aiMessages).toHaveCount(1, { timeout: 15_000 });
