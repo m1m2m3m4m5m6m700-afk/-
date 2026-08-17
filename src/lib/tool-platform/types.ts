@@ -1,3 +1,6 @@
+import type { ComponentType } from "react";
+import type { LucideIcon } from "lucide-react";
+
 export type ToolLifecycleState =
   | "draft"
   | "implemented"
@@ -36,13 +39,12 @@ export interface ToolManifest {
   readonly testModule: string;
 }
 
-export interface ToolRuntimeContext {
-  readonly manifest: ToolManifest;
-}
-
 export interface ToolRuntimeDefinition {
   readonly manifest: ToolManifest;
-  readonly mount: (context: ToolRuntimeContext) => unknown;
+  readonly icon: LucideIcon;
+  readonly component: ComponentType;
+  readonly layoutDescription: string;
+  readonly seoOverride?: Record<string, string | undefined>;
 }
 
 export interface ToolPromotionEvidence {
