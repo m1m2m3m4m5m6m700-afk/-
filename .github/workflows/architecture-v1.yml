@@ -1,0 +1,32 @@
+name: Architecture V1
+
+on:
+  push:
+    branches: [architecture-v1]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: architecture-v1-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  step-1:
+    name: Step 1 - manifest contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: node scripts/test-platform-step-1.mjs
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run build
