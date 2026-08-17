@@ -3,7 +3,6 @@ import { useEffect } from "react";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { ToolLayout } from "@/components/tools/ToolLayout";
 import { getReadyToolRuntime } from "@/lib/tool-runtime/readyTools";
-import { tools } from "@/data/tools";
 import { getVerifiedDesktopTool } from "@/lib/desktop-tools/verifiedCatalog";
 import { trackPageView } from "@/lib/analytics";
 import { useI18n } from "@/lib/i18n";
@@ -28,8 +27,11 @@ function ToolSlugRoute() {
     trackPageView(`/tools/${slug}`);
   }, [slug]);
 
-  const toolRecord = tools.find((tool) => tool.slug === slug || tool.id === slug) ?? getVerifiedDesktopTool(slug);
-  if (!runtime || !toolRecord || toolRecord.status !== "ready") throw notFound();
+  // Desktop branch rule: public tool pages resolve exclusively through the
+  // verified desktop catalog + promoted runtime registry. The legacy catalog
+  // is intentionally not consulted for public availability.
+  const toolRecord = getVerifiedDesktopTool(slug);
+  if (!runtime || !toolRecord) throw notFound();
 
   const ToolComponent = runtime.component;
   const description = runtime.layoutDescriptionKey
