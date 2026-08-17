@@ -8,7 +8,7 @@ on:
 
 concurrency:
   group: ci-fast-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -70,114 +70,8 @@ jobs:
         timeout-minutes: 3
         run: npm run lint
 
-  chat:
-    name: Fast Chat
-    needs: foundation
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-      - name: Install dependencies
-        timeout-minutes: 5
-        run: npm ci
-      - name: Cache Playwright browsers
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-playwright-
-      - name: Install Chromium
-        timeout-minutes: 3
-        run: npx playwright install --with-deps chromium
-      - name: Run chat tests
-        timeout-minutes: 3
-        run: npx playwright test tests/chat.spec.ts --workers=1 --retries=0
-
-  accessibility:
-    name: Fast Accessibility
-    needs: foundation
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-      - name: Install dependencies
-        timeout-minutes: 5
-        run: npm ci
-      - name: Cache Playwright browsers
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-playwright-
-      - name: Install Chromium
-        timeout-minutes: 3
-        run: npx playwright install --with-deps chromium
-      - name: Run accessibility tests
-        timeout-minutes: 3
-        run: npx playwright test tests/accessibility.spec.ts --workers=1 --retries=0
-
-  desktop:
-    name: Fast Desktop
-    needs: foundation
-    runs-on: ubuntu-latest
-    timeout-minutes: 7
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-      - name: Install dependencies
-        timeout-minutes: 5
-        run: npm ci
-      - name: Cache Playwright browsers
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-playwright-
-      - name: Install Chromium
-        timeout-minutes: 3
-        run: npx playwright install --with-deps chromium
-      - name: Run desktop tests
-        timeout-minutes: 5
-        run: npx playwright test tests/desktop-tools.spec.ts --workers=1 --retries=0
-
-  mega:
-    name: Fast Mega-tools
-    needs: foundation
-    runs-on: ubuntu-latest
-    timeout-minutes: 9
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-      - name: Install dependencies
-        timeout-minutes: 5
-        run: npm ci
-      - name: Cache Playwright browsers
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-playwright-
-      - name: Install Chromium
-        timeout-minutes: 3
-        run: npx playwright install --with-deps chromium
-      - name: Run mega-tools tests
-        timeout-minutes: 7
-        run: npx playwright test tests/mega-tools.spec.ts --workers=1 --retries=0
+      - name: Fast-path summary
+        if: always()
+        run: |
+          echo "CI Fast intentionally covers foundation checks only."
+          echo "Full browser/regression coverage remains in CI."
