@@ -1,13 +1,12 @@
 import type { LucideIcon } from "lucide-react";
 import type { ComponentType } from "react";
-import type { CategoryId } from "@/data/categories";
+import type { ToolId, ToolSlug, ToolCategoryId } from "@/lib/tool-platform/types";
 import type { ToolSeoData } from "@/data/toolSeo";
-import type { Tool } from "@/data/tools";
 
 export interface ReadyToolRuntimeDefinition {
-  toolId: Tool["id"];
-  slug: string;
-  categoryId: CategoryId;
+  toolId: ToolId;
+  slug: ToolSlug;
+  categoryId: ToolCategoryId;
   icon: LucideIcon;
   component: ComponentType;
   seoOverride?: Partial<ToolSeoData>;
