@@ -16,15 +16,36 @@ jobs:
   foundation:
     name: Tool Platform Foundation
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
           cache: npm
-      - run: npm ci
-      - name: Architecture and manifest contract
+      - name: Install dependencies
+        run: npm ci
+      - name: Architecture and platform contract
         run: node src/scripts/validate-tool-platform.mjs
       - name: Typecheck
         run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
+
+  desktop-contract:
+    name: Desktop Regression Contract
+    needs: foundation
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Validate desktop regression contract
+        run: node src/scripts/validate-tool-platform-regression.mjs
