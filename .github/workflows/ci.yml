@@ -122,7 +122,7 @@ jobs:
         timeout-minutes: 25
 
       - name: Run all operational mega-tool tests in parallel batches
-        run: npx playwright test tests/mega-tools-part*.spec.ts --workers=4 --retries=2
+        run: npx playwright test tests/mega-tools-part*.spec.ts --workers=6 --retries=2
         timeout-minutes: 60
 
       - name: Upload build artifact
