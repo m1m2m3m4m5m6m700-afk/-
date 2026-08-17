@@ -4,6 +4,7 @@ import { ToolLayout } from "@/components/tools/ToolLayout";
 import { useI18n } from "@/lib/i18n";
 import { resolveCategoryName, resolveToolName } from "@/lib/i18n/keys";
 import { buildToolHeadMetadata } from "@/lib/seo/toolPageMetadata";
+import { getReadyToolRuntime } from "./readyTools";
 import type { ReadyToolRuntimeDefinition } from "./types";
 
 export const createReadyToolHead = (definition: ReadyToolRuntimeDefinition) => () =>
@@ -16,36 +17,40 @@ function HiddenToolNotice() {
       <div className="mx-auto max-w-4xl px-5 py-20 text-center">
         <h1 className="text-3xl font-bold text-foreground">{t("toolPage.notFound.title")}</h1>
         <p className="mt-4 text-muted-foreground">{t("toolPage.notFound.description")}</p>
-        <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-          <Link to="/" className="rounded-xl border border-border px-4 py-3 text-sm font-semibold text-primary hover:bg-primary/10">
-            {t("toolPage.notFound.backHome")}
-          </Link>
-        </div>
+        <Link to="/" className="mt-8 inline-flex rounded-xl border border-border px-4 py-3 text-sm font-semibold text-primary hover:bg-primary/10">
+          {t("toolPage.notFound.backHome")}
+        </Link>
       </div>
     </SiteLayout>
   );
 }
 
+/**
+ * Shared renderer for explicit tool routes.
+ *
+ * The route file may remain in the repository for rollback, but a tool is not
+ * public unless the exact runtime is promoted in readyTools.ts.
+ */
 export function renderReadyToolPage(definition: ReadyToolRuntimeDefinition) {
   const ToolPage = () => {
     const { t } = useI18n();
+    const publicRuntime = getReadyToolRuntime(definition.slug);
 
-    // The runtime registry is the authoritative public gate. Legacy catalog
-    // status may still say planned/placeholder while a tool is being promoted.
-    // A route can only exist for a runtime that was explicitly registered.
-    const ToolComponent = definition.component;
-    const description = definition.layoutDescriptionKey
-      ? t(definition.layoutDescriptionKey as never)
-      : definition.layoutDescription;
+    if (!publicRuntime) return <HiddenToolNotice />;
+
+    const ToolComponent = publicRuntime.component;
+    const description = publicRuntime.layoutDescriptionKey
+      ? t(publicRuntime.layoutDescriptionKey as never)
+      : publicRuntime.layoutDescription;
 
     return (
       <SiteLayout>
         <ToolLayout
-          icon={definition.icon}
-          name={resolveToolName(definition.toolId, t)}
+          icon={publicRuntime.icon}
+          name={resolveToolName(publicRuntime.toolId, t)}
           description={description}
-          category={resolveCategoryName(definition.categoryId, t)}
-          slug={definition.slug}
+          category={resolveCategoryName(publicRuntime.categoryId, t)}
+          slug={publicRuntime.slug}
         >
           <ToolComponent />
         </ToolLayout>
@@ -53,7 +58,7 @@ export function renderReadyToolPage(definition: ReadyToolRuntimeDefinition) {
     );
   };
 
-  ToolPage.displayName = `${definition.toolId.replace(/(^|-)(\w)/g, (_, p1, p2) => p2.toUpperCase())}Page`;
+  ToolPage.displayName = `${definition.toolId.replace(/(^|-)(\w)/g, (_, _prefix, letter) => letter.toUpperCase())}Page`;
 
   return ToolPage;
 }
