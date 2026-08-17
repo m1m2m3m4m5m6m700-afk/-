@@ -29,12 +29,12 @@ jobs:
         run: node src/scripts/validate-tool-platform.mjs
       - name: Lifecycle contract
         run: node src/scripts/validate-tool-platform-lifecycle.mjs
-      - name: Typecheck
+      - name: Build and generate route tree
+        run: npm run build
+      - name: Typecheck against generated route tree
         run: npm run typecheck
       - name: Lint
         run: npm run lint
-      - name: Build
-        run: npm run build
 
   desktop-contract:
     name: Desktop Regression Contract
