@@ -1,9 +1,11 @@
+import { assertToolManifest } from "./manifest";
 import type { ToolManifest } from "./types";
 
 const manifests = new Map<string, ToolManifest>();
 const publicSlugs = new Set<string>();
 
 export function registerToolManifest(manifest: ToolManifest): void {
+  assertToolManifest(manifest);
   if (manifests.has(manifest.id)) {
     throw new Error(`Tool manifest already registered: ${manifest.id}`);
   }
@@ -14,6 +16,7 @@ export function registerToolManifest(manifest: ToolManifest): void {
 }
 
 export function registerPublicTool(manifest: ToolManifest): void {
+  assertToolManifest(manifest);
   if (manifest.lifecycle !== "public") {
     throw new Error(`Only public manifests may be exposed: ${manifest.id}`);
   }
