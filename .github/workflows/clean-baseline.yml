@@ -32,6 +32,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Validate platform architecture
+        run: npm run validate:tool-platform
+
       - name: Validate promotion contract
         run: node scripts/validate-clean-baseline.mjs
 
@@ -46,3 +49,6 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Verify layered baseline command
+        run: npm run test:tool
