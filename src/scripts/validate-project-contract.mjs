@@ -1,3 +1,4 @@
+// Strict project gate: architecture, CI, and tool verification contracts must agree.
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -44,6 +45,8 @@ for (const script of [
   "validate:tool-platform-boundaries",
   "validate:tool-platform-regression",
   "validate:route-tree",
+  "typecheck",
+  "lint",
   "test:desktop",
   "test:desktop:flaky",
 ]) if (!scripts[script]) fail(`Missing required npm script: ${script}`);
@@ -61,7 +64,7 @@ for (const required of [
   "playwright-report",
   "test-results",
 ]) if (!workflow.includes(required)) fail(`Tool Platform CI is missing required gate/diagnostic: ${required}`);
-if (!workflow.includes("actions/checkout@v5") || !workflow.includes("actions/setup-node@v5")) fail("CI actions must use the current v5 runtime actions.");
+if (!workflow.includes("actions/checkout@v5") || !workflow.includes("actions/setup-node@v5")) fail("CI actions must use checkout@v5 and setup-node@v5.");
 if (!workflow.includes("playwright install --with-deps chromium")) fail("Desktop CI must install a real Chromium browser.");
 
 const runtimeTypes = await read("src/lib/tool-runtime/types.ts");
@@ -73,8 +76,7 @@ if (!runtimeTypes) fail("Runtime type contract is missing.");
 
 const forbiddenLegacyImport = /@\/data\/(tools|categories)|from ["']\.\.\/.*data\/(tools|categories)/;
 for (const file of [...platformFiles, ...runtimeFiles, ...routeFiles.filter((file) => file.includes("tools"))]) {
-  const source = await read(file);
-  if (forbiddenLegacyImport.test(source)) fail(`Legacy catalog import leaked into protected surface: ${file}`);
+  if (forbiddenLegacyImport.test(await read(file))) fail(`Legacy catalog import leaked into protected surface: ${file}`);
 }
 
 const placeholderPattern = /existing catalog entries unchanged|TODO\s*:|planned-only placeholder|throw new Error\(["']Not implemented/i;
@@ -94,6 +96,7 @@ const registryPath = "src/lib/tool-platform/publicDesktopTools.ts";
 const registry = await read(registryPath);
 const registryExportCount = (registry.match(/export const publicToolRegistrations\b/g) ?? []).length;
 if (registryExportCount !== 1) fail(`Expected exactly one publicToolRegistrations export in ${registryPath}; found ${registryExportCount}.`);
+
 const candidates = await walk("src/lib", (p) => /\.(ts|tsx)$/.test(p));
 let registrationExportFiles = 0;
 for (const file of candidates) {
@@ -112,13 +115,16 @@ for (const { id, lifecycle } of registrations) {
 }
 
 const contracts = await read("src/lib/tool-platform/testContracts.ts");
-const usesStrictChecks = contracts.includes("const strictChecks = [\"render\", \"interaction\", \"output\", \"error\"] as const") || contracts.includes("const strictChecks = ['render', 'interaction', 'output', 'error'] as const");
+const strictChecks = /const\s+strictChecks\s*=\s*\[[\s\"']*render[\s\"',]+interaction[\s\"',]+output[\s\"',]+error[\s\"']*\]\s+as const/;
+const usesStrictChecks = strictChecks.test(contracts);
 for (const { id } of registrations) {
   const start = contracts.indexOf(`toolId: "${id}"`);
   if (start < 0) fail(`Missing verification contract for public tool: ${id}`);
   else if (!usesStrictChecks) {
     const block = contracts.slice(start, start + 500);
-    for (const check of ["render", "interaction", "output", "error"]) if (!block.includes(`"${check}"`)) fail(`Tool ${id} is missing strict verification check: ${check}`);
+    for (const check of ["render", "interaction", "output", "error"]) {
+      if (!block.includes(`"${check}"`)) fail(`Tool ${id} is missing strict verification check: ${check}`);
+    }
   }
 }
 
