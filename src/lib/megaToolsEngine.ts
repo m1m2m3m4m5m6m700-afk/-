@@ -23,7 +23,9 @@ const SPEED: Record<MegaToolPreset, number> = {
 };
 
 function baseName(name: string): string { return name.replace(/\.[^.]+$/, ""); }
-function downloadResult(blob: Blob, filename: string): MegaToolDownloadResult { return { type: "download", url: URL.createObjectURL(blob), filename }; }
+function downloadResult(blob: Blob, filename: string): MegaToolDownloadResult {
+  return { type: "download", url: URL.createObjectURL(blob), filename };
+}
 function blobFromBytes(bytes: Uint8Array, type: string): Blob {
   const owned = new ArrayBuffer(bytes.byteLength);
   new Uint8Array(owned).set(bytes);
@@ -31,10 +33,17 @@ function blobFromBytes(bytes: Uint8Array, type: string): Blob {
 }
 function waitFor(target: EventTarget, event: string, timeoutMs = 20000): Promise<void> {
   return new Promise((resolve, reject) => {
+    let timer = 0;
     const onEvent = () => { cleanup(); resolve(); };
-    const cleanup = () => { window.clearTimeout(timer); target.removeEventListener(event, onEvent); };
+    const cleanup = () => {
+      window.clearTimeout(timer);
+      target.removeEventListener(event, onEvent);
+    };
     target.addEventListener(event, onEvent, { once: true });
-    const timer = window.setTimeout(() => { cleanup(); reject(new Error(`Timed out waiting for ${event}.`)); }, timeoutMs);
+    timer = window.setTimeout(() => {
+      cleanup();
+      reject(new Error(`Timed out waiting for ${event}.`));
+    }, timeoutMs);
   });
 }
 
@@ -70,18 +79,52 @@ async function imageTool(file: File, tool: MegaTool): Promise<MegaToolResult> {
 
 async function loadVideo(file: File): Promise<{ video: HTMLVideoElement; url: string }> {
   if (!file.type.startsWith("video/")) throw new Error("Please select a valid video file.");
-  const url = URL.createObjectURL(file); const video = document.createElement("video");
-  video.preload = "metadata"; video.muted = true; video.playsInline = true; video.src = url;
+  const url = URL.createObjectURL(file);
+  const video = document.createElement("video");
+  video.preload = "auto";
+  video.muted = true;
+  video.playsInline = true;
+  video.src = url;
+  video.load();
+
   try {
     if (video.readyState >= HTMLMediaElement.HAVE_METADATA) return { video, url };
-    await waitFor(video, "loadedmetadata"); return { video, url };
-  } catch (error) { URL.revokeObjectURL(url); throw error; }
+
+    await new Promise<void>((resolve, reject) => {
+      let timer = 0;
+      const cleanup = () => {
+        window.clearTimeout(timer);
+        video.removeEventListener("loadedmetadata", onLoadedMetadata);
+        video.removeEventListener("error", onError);
+      };
+      const onLoadedMetadata = () => { cleanup(); resolve(); };
+      const onError = () => {
+        const mediaError = video.error;
+        cleanup();
+        reject(new Error(mediaError?.message || "The browser could not load this video."));
+      };
+      video.addEventListener("loadedmetadata", onLoadedMetadata, { once: true });
+      video.addEventListener("error", onError, { once: true });
+      timer = window.setTimeout(() => {
+        cleanup();
+        reject(new Error("Timed out waiting for video metadata."));
+      }, 20000);
+    });
+    return { video, url };
+  } catch (error) {
+    URL.revokeObjectURL(url);
+    throw error;
+  }
 }
+
 async function seekVideo(video: HTMLVideoElement, seconds: number): Promise<void> {
   const position = Number.isFinite(video.duration) ? Math.max(0, Math.min(video.duration, seconds)) : 0;
   if (Math.abs(video.currentTime - position) < 0.001) return;
-  video.currentTime = position; await waitFor(video, "seeked");
+  video.currentTime = position;
+  if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) return;
+  await waitFor(video, "seeked");
 }
+
 async function videoTool(file: File, tool: MegaTool): Promise<MegaToolResult> {
   const { video, url } = await loadVideo(file);
   try {
