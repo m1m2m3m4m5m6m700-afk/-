@@ -25,8 +25,8 @@ export function getCountry(request: Request): string | null {
 export function getDevice(request: Request): string | null {
   const ua = request.headers.get("user-agent");
   if (!ua) return null;
-  if (/mobile|android|iphone|ipad/i.test(ua)) return "mobile";
   if (/tablet|ipad/i.test(ua)) return "tablet";
+  if (/mobile|android|iphone/i.test(ua)) return "mobile";
   return "desktop";
 }
 
