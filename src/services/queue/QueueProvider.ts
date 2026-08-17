@@ -11,7 +11,7 @@ export type QueueJob<T> = {
 export interface QueueProvider<T> {
   enqueue(payload: T, options?: { id?: string; priority?: QueuePriority; maxAttempts?: number }): Promise<string>;
   dequeue(): Promise<QueueJob<T> | null>;
-  size(): number;
+  size(): Promise<number>;
 }
 
 const PRIORITY_WEIGHT: Record<QueuePriority, number> = {
@@ -44,7 +44,7 @@ export class MemoryPriorityQueue<T> implements QueueProvider<T> {
     return this.jobs.shift() ?? null;
   }
 
-  size(): number {
+  async size(): Promise<number> {
     return this.jobs.length;
   }
 }
