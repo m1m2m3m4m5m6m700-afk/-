@@ -1,0 +1,79 @@
+name: Restore From Backup
+
+on:
+  workflow_dispatch:
+    inputs:
+      artifact_id:
+        description: GitHub Actions artifact ID of a flixo-backup-* artifact
+        required: true
+      target_branch:
+        description: Branch name to create from the verified backup
+        required: true
+        default: restore/verified-backup
+      confirm:
+        description: Type RESTORE to confirm branch restoration
+        required: true
+        default: RESTORE
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: restore-from-backup
+  cancel-in-progress: false
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Confirm restore
+        if: ${{ inputs.confirm != 'RESTORE' }}
+        run: |
+          echo "Restore confirmation is required."
+          exit 1
+
+      - name: Download backup artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir backup
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${GITHUB_REPOSITORY}/actions/artifacts/${{ inputs.artifact_id }}/zip" \
+            > backup/archive.zip
+          unzip -q backup/archive.zip -d backup/files
+
+      - name: Verify backup integrity
+        working-directory: backup/files
+        run: |
+          sha256sum --check ./*.sha256
+          git bundle verify ./*.bundle
+          test -s ./*.commit
+
+      - name: Extract repository from bundle
+        run: |
+          mkdir restored
+          bundle=$(find backup/files -name '*.bundle' -print -quit)
+          git clone "$bundle" restored
+          cd restored
+          git fsck --full
+
+      - name: Create restore branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd restored
+          git checkout -b "${{ inputs.target_branch }}"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push --set-upstream origin "${{ inputs.target_branch }}"
+
+      - name: Summary
+        run: |
+          {
+            echo "## Backup restore completed"
+            echo "- Artifact: ${{ inputs.artifact_id }}"
+            echo "- Branch: ${{ inputs.target_branch }}"
+            echo "- Main was not overwritten automatically."
+          } >> "$GITHUB_STEP_SUMMARY"
