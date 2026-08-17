@@ -27,6 +27,8 @@ jobs:
         run: npm ci
       - name: Architecture and platform contract
         run: node src/scripts/validate-tool-platform.mjs
+      - name: Lifecycle contract
+        run: node src/scripts/validate-tool-platform-lifecycle.mjs
       - name: Typecheck
         run: npm run typecheck
       - name: Lint
