@@ -22,6 +22,10 @@ export function getVariantsBatch(batch: number): readonly MegaVariant[] {
   return MEGA_TOOLS.slice(start, Math.min(start + BATCH_SIZE, MEGA_TOOLS.length));
 }
 
+function writeText(view: DataView, offset: number, value: string) {
+  [...value].forEach((char, index) => view.setUint8(offset + index, char.charCodeAt(0)));
+}
+
 export async function prepareMegaToolPage(page: Page) {
   await page.goto("/", { waitUntil: "domcontentloaded" });
   await page.waitForLoadState("networkidle");
@@ -33,10 +37,6 @@ export async function prepareMegaToolPage(page: Page) {
   const pdfBase64 = Buffer.from(await pdfDocument.save()).toString("base64");
 
   await page.evaluate(async (pdfBase64Value) => {
-    const writeText = (view: DataView, offset: number, value: string) => {
-      [...value].forEach((char, index) => view.setUint8(offset + index, char.charCodeAt(0)));
-    };
-
     const imageCanvas = document.createElement("canvas");
     imageCanvas.width = 64;
     imageCanvas.height = 48;
@@ -114,6 +114,9 @@ export async function prepareMegaToolPage(page: Page) {
 
 export async function runMegaToolVariant(page: Page, variant: MegaVariant): Promise<MegaRunResult> {
   const label = `${variant.slug} [${variant.category}/${variant.handler}/${variant.preset}]`;
+  const startedAt = Date.now();
+  console.info(`[mega-tool] START ${label}`);
+
   try {
     const outcome = await page.evaluate(async ({ definition, timeoutMs }) => {
       const run = async () => {
@@ -153,9 +156,11 @@ export async function runMegaToolVariant(page: Page, variant: MegaVariant): Prom
       }
     }, { definition: variant, timeoutMs: VARIANT_TIMEOUT_MS });
 
+    console.info(`[mega-tool] PASS ${label} (${Date.now() - startedAt}ms)`);
     return outcome;
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
+    console.error(`[mega-tool] FAIL ${label} (${Date.now() - startedAt}ms): ${reason}`);
     return { success: false, reason: `${label}: ${reason}` };
   }
 }
