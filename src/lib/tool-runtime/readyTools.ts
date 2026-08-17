@@ -4,10 +4,7 @@ import { publicToolRegistrations } from "@/lib/tool-platform/public-registry";
 
 /**
  * Compatibility adapter only.
- *
- * The Tool Platform public registry is the single source of truth. This file
- * exists so existing route code can continue using the legacy runtime shape
- * while the platform migration proceeds without touching legacy tools.
+ * The Tool Platform public registry is the single source of truth.
  */
 export const readyToolRuntimes = publicToolRegistrations.map(({ manifest, runtime }) => ({
   toolId: manifest.id as ReadyToolRuntimeDefinition["toolId"],
@@ -16,7 +13,7 @@ export const readyToolRuntimes = publicToolRegistrations.map(({ manifest, runtim
   icon: runtime.icon,
   component: runtime.component,
   layoutDescription: runtime.layoutDescription,
-  seoOverride: runtime.seoOverride,
+  seoOverride: runtime.seoOverride as ReadyToolRuntimeDefinition["seoOverride"],
 })) satisfies readonly ReadyToolRuntimeDefinition[];
 
 export type PublicToolSlug = (typeof readyToolRuntimes)[number]["slug"];
