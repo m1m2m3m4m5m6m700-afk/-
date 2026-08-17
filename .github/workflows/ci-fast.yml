@@ -150,9 +150,9 @@ jobs:
       - name: Install Chromium
         timeout-minutes: 3
         run: npx playwright install --with-deps chromium
-      - name: Run desktop tests
+      - name: Run desktop regression tests
         timeout-minutes: 5
-        run: npx playwright test tests/desktop-tools.spec.ts --workers=1 --retries=0
+        run: npx playwright test tests/desktop-tools-regression.spec.ts --workers=1 --retries=0
 
   mega:
     name: Fast Mega-tools
