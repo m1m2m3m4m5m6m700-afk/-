@@ -7,6 +7,7 @@ on:
       - "src/services/runtime/**"
       - "src/services/cache/**"
       - "src/services/queue/**"
+      - "scripts/validate-phase2-contract.mjs"
       - "tests/phase2-runtime-smoke.spec.ts"
       - ".github/workflows/phase2-contract-smoke.yml"
   workflow_dispatch:
@@ -34,6 +35,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Validate Phase 2 contracts
+        run: node scripts/validate-phase2-contract.mjs
 
       - name: Typecheck
         run: npm run typecheck
