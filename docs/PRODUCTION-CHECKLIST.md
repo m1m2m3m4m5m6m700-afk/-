@@ -2,12 +2,19 @@
 
 This is the release contract. A release is not production-ready until every required gate is green.
 
+## Release scope
+
+- Release candidates contain only production-facing fixes, validated tool work, or explicitly approved infrastructure changes.
+- New tools stay out of the public catalog until their runtime, SEO, localization, accessibility, security, and regression evidence is complete.
+- Open issues are triaged into critical, production, improvement, future, duplicate, or not-planned before release.
+
 ## Reliability
 
 - `npm ci` succeeds from a clean checkout.
 - Dependency manifest and lockfile are identical at the root contract level.
 - Production dependency audit has no high/critical blocking findings.
 - Build and generated route tree validate successfully.
+- `main` is green before production deployment.
 
 ## Tool quality
 
@@ -15,6 +22,13 @@ This is the release contract. A release is not production-ready until every requ
 - Manual review is recorded separately from user ratings.
 - Tool runtime/output tests are green.
 - Regression evidence exists before a tool is promoted or featured.
+
+## Performance
+
+- Heavy tool dependencies are loaded only when the relevant tool is used.
+- Browser-only processing libraries are not included in the initial application shell unless required by the route.
+- Production pages are checked for LCP, INP, CLS, and excessive JavaScript payloads.
+- File-processing tools release temporary object URLs and other browser resources on completion/unmount.
 
 ## Localization
 
@@ -29,6 +43,14 @@ This is the release contract. A release is not production-ready until every requ
 - Interactive controls expose accessible names.
 - No horizontal overflow at the tested viewport.
 - RTL/LTR direction is applied at the document root.
+
+## SEO
+
+- Every public tool page has a unique title and description.
+- Canonical URLs are stable and locale-aware.
+- Open Graph/Twitter metadata resolves to production assets.
+- `sitemap.xml` and `robots.txt` are valid and expose only indexable routes.
+- JSON-LD describes the actual page/tool and does not claim unsupported features.
 
 ## Security
 
