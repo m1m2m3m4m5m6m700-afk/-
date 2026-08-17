@@ -1,0 +1,31 @@
+name: Architecture Step
+
+on:
+  push:
+    branches: [architecture-v1]
+  pull_request:
+    branches: [architecture-v1]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: architecture-v1-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  step-0:
+    name: Step 0 - baseline toolchain
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run build
