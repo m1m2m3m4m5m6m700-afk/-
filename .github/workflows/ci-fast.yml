@@ -70,6 +70,34 @@ jobs:
         timeout-minutes: 3
         run: npm run lint
 
+  verified:
+    name: Verified Tools
+    needs: foundation
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install dependencies
+        timeout-minutes: 5
+        run: npm ci
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+      - name: Install Chromium
+        timeout-minutes: 3
+        run: npx playwright install --with-deps chromium
+      - name: Run verified tool promotion tests
+        timeout-minutes: 5
+        run: npm run test:verified-tools -- --workers=1 --retries=0
+
   chat:
     name: Fast Chat
     needs: foundation
