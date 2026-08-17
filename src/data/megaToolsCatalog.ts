@@ -1,3 +1,5 @@
+import deprecatedTools from "./deprecated-tools.json";
+
 export const PRESETS = [
   ["quick", "Quick"],
   ["small", "Small"],
@@ -114,18 +116,13 @@ function buildTools<const T extends MegaToolCategory>(category: T) {
   );
 }
 
-const REMOVED_NON_WORKING_VARIANTS = new Set([
-  "mega-video-inspect-quick",
-  "mega-video-frame-75-quick",
-  "mega-video-inspect-small",
-  "mega-video-frame-75-medium",
-]);
+const DEPRECATED_SLUGS = new Set(deprecatedTools.map((entry) => entry.slug));
 
 export const MEGA_TOOLS = Object.freeze([
   ...buildTools("images"),
   ...buildTools("video"),
   ...buildTools("audio"),
   ...buildTools("pdf"),
-].filter((tool) => !REMOVED_NON_WORKING_VARIANTS.has(tool.slug))) as readonly MegaTool[];
+].filter((tool) => !DEPRECATED_SLUGS.has(tool.slug))) as readonly MegaTool[];
 
 export const MEGA_TOOL_COUNT = MEGA_TOOLS.length;
