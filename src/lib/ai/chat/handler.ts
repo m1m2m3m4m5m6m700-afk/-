@@ -1,3 +1,4 @@
+/* eslint-disable no-control-regex -- sanitize removes NUL bytes from untrusted chat input. */
 import { getAIConfig, type AIProviderConfig, type AIProviderId } from "../config";
 import { tools } from "@/data/tools";
 import { categoryById } from "@/data/categories";
@@ -28,7 +29,7 @@ const SYSTEM_PROMPT = [
   "Use supplied Flixo catalog and web-search context accurately.",
 ].join(" ");
 
-function sanitize(content: string): string { return content.replace(/\u0000/g, "").replace(/\r/g, "").trim(); }
+function sanitize(content: string): string { return content.replace(/\r/g, "").replace(/\u0000/g, "").trim(); }
 function normalizeLocale(value: unknown): string | null { return typeof value === "string" && SUPPORTED_LOCALES.has(value.trim()) ? value.trim() : null; }
 function systemPrompt(locale: string | null): string { return !locale || locale === "en" ? SYSTEM_PROMPT : `${SYSTEM_PROMPT}\nActive interface locale: ${LOCALE_NAMES[locale] ?? locale} (${locale}). Keep the answer in that language unless the user explicitly switches.`; }
 function jsonResponse(body: ChatSuccessBody | ChatErrorBody, status = 200): Response { return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } }); }
@@ -65,28 +66,18 @@ function buildGeminiContents(turns: ChatTurn[]): Array<{ role: "user" | "model";
   return contents;
 }
 
-function buildOpenAICompatibleMessages(turns: ChatTurn[], locale: string | null) {
-  return [{ role: "system" as const, content: systemPrompt(locale) }, ...turns.map((turn) => ({ role: turn.role, content: turn.content }))];
-}
+function buildOpenAICompatibleMessages(turns: ChatTurn[], locale: string | null) { return [{ role: "system" as const, content: systemPrompt(locale) }, ...turns.map((turn) => ({ role: turn.role, content: turn.content }))]; }
 
 function buildCatalogContext(message: string): string {
   const query = message.toLowerCase();
   const categories = [...categoryById.values()].map((c) => `${c.name}: ${c.description}`).join("\n");
   const words = query.split(/[^\p{L}\p{N}]+/u).filter((word) => word.length >= 3);
-  const matches = tools
-    .filter((tool) => tool.status === "ready" && Boolean(tool.slug))
-    .map((tool) => ({ tool, score: words.reduce((sum, word) => sum + (`${tool.name} ${tool.description} ${tool.slug}`.toLowerCase().includes(word) ? 1 : 0), 0) }))
-    .filter((entry) => entry.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 8);
+  const matches = tools.filter((tool) => tool.status === "ready" && Boolean(tool.slug)).map((tool) => ({ tool, score: words.reduce((sum, word) => sum + (`${tool.name} ${tool.description} ${tool.slug}`.toLowerCase().includes(word) ? 1 : 0), 0) })).filter((entry) => entry.score > 0).sort((a, b) => b.score - a.score).slice(0, 8);
   const lines = matches.length ? matches.map(({ tool }) => `- ${tool.name} (${tool.slug}) — ${tool.description}`).join("\n") : "No close runtime-ready tool match found.";
   return `[Flixo catalog context]\nCategories:\n${categories}\nRelevant runtime-ready tools:\n${lines}`;
 }
 
-function shouldWebSearch(message: string): boolean {
-  if (!isFeatureEnabled("webResearch")) return false;
-  return /(search the web|search online|on the internet|web search|google it|latest|today|current|recent|news|price today|ابحث|الإنترنت|الانترنت|آخر|اليوم|حاليا|حديث|الأخبار|السعر الآن|الاخبار)/i.test(message);
-}
+function shouldWebSearch(message: string): boolean { if (!isFeatureEnabled("webResearch")) return false; return /(search the web|search online|on the internet|web search|google it|latest|today|current|recent|news|price today|ابحث|الإنترنت|الانترنت|آخر|اليوم|حاليا|حديث|الأخبار|السعر الآن|الاخبار)/i.test(message); }
 
 async function searchWeb(query: string, signal: AbortSignal): Promise<string> {
   try {
@@ -100,21 +91,14 @@ async function searchWeb(query: string, signal: AbortSignal): Promise<string> {
       for (const nested of (topic.Topics ?? []).slice(0, 2)) if (nested.Text) lines.push(`- ${nested.Text}${nested.FirstURL ? ` (${nested.FirstURL})` : ""}`);
     }
     return lines.length ? `[Fresh web search results for: ${query}]\n${lines.join("\n")}` : "";
-  } catch {
-    return "";
-  }
+  } catch { return ""; }
 }
 
 function isRetryableStatus(status: number): boolean { return status === 408 || status === 429 || status >= 500; }
 
 async function callOpenAI(provider: AIProviderConfig, turns: ChatTurn[], locale: string | null, signal: AbortSignal) {
   if (!provider.apiKey) return { ok: false as const, retryable: false };
-  const response = await fetch(`${provider.baseUrl}/chat/completions`, {
-    method: "POST",
-    headers: { "content-type": "application/json", authorization: `Bearer ${provider.apiKey}` },
-    signal,
-    body: JSON.stringify({ model: provider.defaultModel, messages: buildOpenAICompatibleMessages(turns, locale), temperature: 0.6, max_tokens: 1400 }),
-  });
+  const response = await fetch(`${provider.baseUrl}/chat/completions`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${provider.apiKey}` }, signal, body: JSON.stringify({ model: provider.defaultModel, messages: buildOpenAICompatibleMessages(turns, locale), temperature: 0.6, max_tokens: 1400 }) });
   if (!response.ok) return { ok: false as const, retryable: isRetryableStatus(response.status) };
   const data = (await response.json()) as OpenAIResponse;
   const reply = data.choices?.[0]?.message?.content?.trim() ?? "";
@@ -144,29 +128,15 @@ async function callGemini(provider: AIProviderConfig, turns: ChatTurn[], locale:
   return { ok: true as const, reply: reply.slice(0, MAX_REPLY_CHARS), model: provider.defaultModel };
 }
 
-async function callProvider(name: AIProviderId, provider: AIProviderConfig, turns: ChatTurn[], locale: string | null, signal: AbortSignal) {
-  if (name === "openai") return callOpenAI(provider, turns, locale, signal);
-  if (name === "gemini") return callGemini(provider, turns, locale, signal);
-  return callOpenRouter(provider, turns, locale, signal);
-}
-
-function configuredProviderOrder(config: ReturnType<typeof getAIConfig>): AIProviderId[] {
-  const order = [config.activeProvider, ...config.fallbackProviders];
-  return [...new Set(order)].filter((id) => Boolean(config.providers[id]?.apiKey));
-}
+async function callProvider(name: AIProviderId, provider: AIProviderConfig, turns: ChatTurn[], locale: string | null, signal: AbortSignal) { if (name === "openai") return callOpenAI(provider, turns, locale, signal); if (name === "gemini") return callGemini(provider, turns, locale, signal); return callOpenRouter(provider, turns, locale, signal); }
+function configuredProviderOrder(config: ReturnType<typeof getAIConfig>): AIProviderId[] { const order = [config.activeProvider, ...config.fallbackProviders]; return [...new Set(order)].filter((id) => Boolean(config.providers[id]?.apiKey)); }
 
 export async function handleChatRequest(request: Request): Promise<Response> {
   if (request.method !== "POST") return new Response("Method Not Allowed", { status: 405, headers: { allow: "POST" } });
   const contentLength = Number(request.headers.get("content-length"));
   if (Number.isFinite(contentLength) && contentLength > MAX_REQUEST_BODY_CHARS) return jsonResponse({ error: "Request payload is too large.", retryable: false }, 413);
   let body: ChatRequestBody;
-  try {
-    const rawBody = await request.text();
-    if (rawBody.length > MAX_REQUEST_BODY_CHARS) return jsonResponse({ error: "Request payload is too large.", retryable: false }, 413);
-    body = JSON.parse(rawBody) as ChatRequestBody;
-  } catch {
-    return jsonResponse({ error: "Invalid JSON body. Expected { message, history, locale }.", retryable: false });
-  }
+  try { const rawBody = await request.text(); if (rawBody.length > MAX_REQUEST_BODY_CHARS) return jsonResponse({ error: "Request payload is too large.", retryable: false }, 413); body = JSON.parse(rawBody) as ChatRequestBody; } catch { return jsonResponse({ error: "Invalid JSON body. Expected { message, history, locale }.", retryable: false }); }
   const parsed = parseTurns(body);
   if (!parsed.ok) return parsed.response;
   const config = getAIConfig();
@@ -188,13 +158,9 @@ export async function handleChatRequest(request: Request): Promise<Response> {
         if ("blocked" in result && result.blocked) return jsonResponse({ error: "The AI provider blocked this request with its safety filters.", retryable: false });
         retryable = result.retryable;
         if (!result.retryable) break;
-      } catch {
-        retryable = true;
-      }
+      } catch { retryable = true; }
       if (controller.signal.aborted) break;
     }
     return jsonResponse({ error: retryable ? "Flex's AI providers are temporarily unavailable or rate-limited. Please try again shortly." : "Flex could not generate a response with the configured AI providers.", retryable });
-  } finally {
-    clearTimeout(timeout);
-  }
+  } finally { clearTimeout(timeout); }
 }
