@@ -30,10 +30,12 @@ const scripts = packageJson.scripts ?? {};
 const requiredScripts = [
   "verify:foundation",
   "verify:tool",
+  "verify:project",
   "validate:tool-platform",
   "validate:tool-platform-lifecycle",
   "validate:tool-platform-boundaries",
   "validate:tool-platform-regression",
+  "validate:project-contract",
   "validate:route-tree",
   "test:desktop",
 ];
@@ -43,27 +45,27 @@ const lockfile = await read("package-lock.json");
 if (!lockfile.includes('"lockfileVersion": 3')) fail("package-lock.json must use lockfileVersion 3.");
 
 const workflow = await read(".github/workflows/tool-platform.yml");
-for (const required of ["npm ci", "npm run build", "npm run typecheck", "npm run lint", "npm run test:desktop"]) {
+for (const required of ["npm ci", "npm run validate:project-contract", "npm run build", "npm run typecheck", "npm run lint", "npm run test:desktop"]) {
   if (!workflow.includes(required)) fail(`Tool Platform CI is missing required gate: ${required}`);
 }
 if (!workflow.includes("playwright install --with-deps chromium")) fail("Desktop CI must install a real Chromium browser.");
 
 const runtimeTypes = await read("src/lib/tool-runtime/types.ts");
-const routeFile = await read("src/routes/tools/$slug.tsx");
 const platformFiles = await walk("src/lib/tool-platform", (p) => /\.(ts|tsx|mjs)$/.test(p));
 const runtimeFiles = await walk("src/lib/tool-runtime", (p) => /\.(ts|tsx|mjs)$/.test(p));
 const routeFiles = await walk("src/routes", (p) => /\.(ts|tsx)$/.test(p));
+const testFiles = await walk("tests", (p) => /\.(ts|tsx|mjs)$/.test(p));
+
+if (!runtimeTypes) fail("Runtime type contract is missing.");
 
 const forbiddenLegacyImport = /@\/data\/(tools|categories)|from ["']\.\.\/.*data\/(tools|categories)/;
 for (const file of [...platformFiles, ...runtimeFiles]) {
   const source = await read(file);
   if (forbiddenLegacyImport.test(source)) fail(`Legacy catalog import leaked into platform/runtime: ${file}`);
 }
-
-const publicRoutes = routeFiles.filter((file) => file.includes("tools") || file.includes("admin"));
-for (const file of publicRoutes) {
+for (const file of routeFiles.filter((file) => file.includes("tools"))) {
   const source = await read(file);
-  if (forbiddenLegacyImport.test(source) && file.includes("tools")) fail(`Legacy catalog import leaked into tool route: ${file}`);
+  if (forbiddenLegacyImport.test(source)) fail(`Legacy catalog import leaked into tool route: ${file}`);
 }
 
 const placeholderPattern = /existing catalog entries unchanged|TODO\s*:|planned-only placeholder|throw new Error\(["']Not implemented/i;
@@ -75,6 +77,12 @@ for (const root of ["src/lib/tool-platform", "src/lib/tool-runtime", "src/routes
   }
 }
 
+for (const file of testFiles) {
+  const source = await read(file);
+  if (/\b(?:test|it|describe)\.only\s*\(/.test(source)) fail(`Focused test is forbidden in CI: ${file}`);
+  if (/\b(?:test|it|describe)\.(?:skip|fixme)\s*\(/.test(source)) fail(`Skipped/fixme test is forbidden in CI: ${file}`);
+}
+
 const registry = await read("src/lib/tool-platform/publicDesktopTools.ts");
 const tests = await read("tests/desktop-tools.spec.ts");
 const registrations = [...registry.matchAll(/id:\s*["']([^"']+)["'][\s\S]*?lifecycle:\s*["']([^"']+)["']/g)].map((m) => ({ id: m[1], lifecycle: m[2] }));
@@ -83,7 +91,7 @@ for (const { id, lifecycle } of registrations) {
   if (lifecycle !== "public") fail(`Public registry entry ${id} has invalid lifecycle: ${lifecycle}`);
   const route = `/tools/${id}`;
   if (!tests.includes(route)) fail(`Missing E2E route assertion for public tool: ${id}`);
-  const block = tests.slice(Math.max(0, tests.indexOf(`"${id}`) - 800), tests.indexOf(`"${id}`) + 2500);
+  const block = tests.slice(Math.max(0, tests.indexOf(`"${id}`) - 1000), tests.indexOf(`"${id}`) + 3500);
   if (!block.includes("expect(")) fail(`Public tool ${id} has no explicit result assertions in E2E coverage.`);
 }
 
@@ -92,23 +100,20 @@ for (const { id } of registrations) {
   const start = contracts.indexOf(`toolId: "${id}"`);
   if (start < 0) fail(`Missing verification contract for public tool: ${id}`);
   else {
-    const block = contracts.slice(start, start + 250);
+    const block = contracts.slice(start, start + 300);
     for (const check of ["render", "interaction", "output", "error"]) {
       if (!block.includes(`"${check}"`)) fail(`Tool ${id} is missing strict verification check: ${check}`);
     }
   }
 }
 
-const duplicateRegistryPattern = /public.*registry/i;
 const registryCandidates = await walk("src/lib", (p) => /\.(ts|tsx)$/.test(p));
-const registryFiles = [];
+const duplicateRegistryFiles = [];
 for (const file of registryCandidates) {
   const source = await read(file);
-  if (duplicateRegistryPattern.test(source) && source.includes("publicToolRegistrations")) registryFiles.push(file);
+  if (source.includes("publicToolRegistrations") && file !== "src/lib/tool-platform/index.ts") duplicateRegistryFiles.push(file);
 }
-if (registryFiles.length !== 1 || registryFiles[0] !== "src/lib/tool-platform/index.ts" && registryFiles.length > 1) {
-  if (registryFiles.length > 1) fail(`Multiple public tool registries detected: ${registryFiles.join(", ")}`);
-}
+if (duplicateRegistryFiles.length) fail(`Multiple public tool registries detected: ${duplicateRegistryFiles.join(", ")}`);
 
 if (failures.length) {
   console.error("STRICT PROJECT CONTRACT: FAIL");
