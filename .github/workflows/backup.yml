@@ -1,0 +1,74 @@
+name: Repository Backup
+
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: repo-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Create repository bundle
+        run: |
+          git bundle create flixo-${GITHUB_SHA}.bundle --all
+          sha256sum flixo-${GITHUB_SHA}.bundle > flixo-${GITHUB_SHA}.sha256
+          git rev-parse HEAD > flixo-${GITHUB_SHA}.commit
+
+      - name: Verify repository bundle
+        run: |
+          sha256sum --check flixo-${GITHUB_SHA}.sha256
+          git bundle verify flixo-${GITHUB_SHA}.bundle
+
+      - name: Create backup manifest
+        run: |
+          cat > backup-manifest.json <<EOF
+          {
+            "repository": "${GITHUB_REPOSITORY}",
+            "commit": "${GITHUB_SHA}",
+            "ref": "${GITHUB_REF_NAME}",
+            "createdAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "integrityFile": "flixo-${GITHUB_SHA}.sha256"
+          }
+          EOF
+
+      - name: Upload backup
+        uses: actions/upload-artifact@v6
+        with:
+          name: flixo-backup-${{ github.run_id }}
+          path: |
+            flixo-${{ github.sha }}.bundle
+            flixo-${{ github.sha }}.sha256
+            flixo-${{ github.sha }}.commit
+            backup-manifest.json
+          retention-days: 30
+
+      - name: Keep latest seven backups
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --paginate \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${GITHUB_REPOSITORY}/actions/artifacts?per_page=100" \
+            --jq '.artifacts[] | select(.name | startswith("flixo-backup-")) | [.id, .created_at] | @tsv' \
+            | sort -k2 -r \
+            | tail -n +8 \
+            | cut -f1 \
+            | while read -r artifact_id; do
+                [ -z "$artifact_id" ] && continue
+                gh api --method DELETE "/repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}"
+              done
