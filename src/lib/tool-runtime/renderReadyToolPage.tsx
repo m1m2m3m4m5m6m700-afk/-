@@ -29,8 +29,15 @@ function HiddenToolNotice() {
 export function renderReadyToolPage(definition: ReadyToolRuntimeDefinition) {
   const ToolPage = () => {
     const { t } = useI18n();
-    const tool = getToolBySlug(definition.slug) ?? getVerifiedDesktopTool(definition.slug);
-    if (tool && tool.status !== "ready") return <HiddenToolNotice />;
+    const tool = getToolBySlug(definition.slug);
+    const verifiedDesktopTool = getVerifiedDesktopTool(definition.slug);
+
+    // Verified desktop tools have dedicated runtime implementations even when
+    // their legacy catalog entry is still marked "planned". The dedicated
+    // runtime is authoritative for these routes, so do not hide the page merely
+    // because the generic catalog has not been promoted to "ready" yet.
+    if (tool && tool.status !== "ready" && !verifiedDesktopTool) return <HiddenToolNotice />;
+    if (!tool && !verifiedDesktopTool) return <HiddenToolNotice />;
 
     const ToolComponent = definition.component;
     const description = definition.layoutDescriptionKey
