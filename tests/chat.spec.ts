@@ -5,7 +5,6 @@ test.describe("Flex interactive chat", () => {
 
   test("supports multi-turn conversation and session persistence", async ({ page }) => {
     const requests: Array<{ message?: unknown; history?: unknown; locale?: unknown }> = [];
-    let resolveResponse: (() => void) | undefined;
 
     await page.route("**/api/chat**", async (route) => {
       const request = route.request();
@@ -13,20 +12,14 @@ test.describe("Flex interactive chat", () => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({
-          reply: "deterministic test reply",
-          model: "playwright-mock",
-          provider: "test",
-        }),
+        body: JSON.stringify({ reply: "deterministic test reply", model: "playwright-mock", provider: "test" }),
       });
-      resolveResponse?.();
     });
 
     await page.goto("/");
 
     const chat = page.getByTestId("flex-chat");
     await expect(chat).toHaveAttribute("data-chat-ready", "true");
-
     const composer = chat.getByRole("textbox");
     const submitButton = chat.locator('button[type="submit"]');
     const aiMessages = chat.locator('[data-testid="chat-message"][data-sender="assistant"]');
@@ -34,9 +27,10 @@ test.describe("Flex interactive chat", () => {
 
     await composer.fill("مرحبا");
     await expect(submitButton).toBeEnabled();
-    const firstResponse = new Promise<void>((resolve) => { resolveResponse = resolve; });
-    await submitButton.click();
-    await firstResponse;
+    await Promise.all([
+      page.waitForResponse((res) => res.url().includes("/api/chat") && res.status() === 200),
+      submitButton.click(),
+    ]);
 
     await expect(aiMessages).toHaveCount(1, { timeout: 15_000 });
     await expect(aiMessages.first()).not.toHaveText("");
@@ -46,9 +40,10 @@ test.describe("Flex interactive chat", () => {
 
     await composer.fill("هل تتذكرني؟");
     await expect(submitButton).toBeEnabled();
-    const secondResponse = new Promise<void>((resolve) => { resolveResponse = resolve; });
-    await submitButton.click();
-    await secondResponse;
+    await Promise.all([
+      page.waitForResponse((res) => res.url().includes("/api/chat") && res.status() === 200),
+      submitButton.click(),
+    ]);
 
     await expect(aiMessages).toHaveCount(2, { timeout: 15_000 });
     await expect(aiMessages.nth(1)).not.toHaveText("");
@@ -73,33 +68,26 @@ test.describe("Flex interactive chat", () => {
   });
 
   test("supports quick prompts and a clean new conversation", async ({ page }) => {
-    let resolveResponse: (() => void) | undefined;
-
     await page.route("**/api/chat**", async (route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({
-          reply: "deterministic quick-prompt reply",
-          model: "playwright-mock",
-          provider: "test",
-        }),
+        body: JSON.stringify({ reply: "deterministic quick-prompt reply", model: "playwright-mock", provider: "test" }),
       });
-      resolveResponse?.();
     });
 
     await page.goto("/");
 
     const chat = page.getByTestId("flex-chat");
     await expect(chat).toHaveAttribute("data-chat-ready", "true");
-
     const quickPrompt = chat.getByTestId("chat-quick-prompt").first();
     await expect(quickPrompt).toBeVisible();
     await expect(quickPrompt).not.toHaveText("");
 
-    const responseHandled = new Promise<void>((resolve) => { resolveResponse = resolve; });
-    await quickPrompt.click();
-    await responseHandled;
+    await Promise.all([
+      page.waitForResponse((res) => res.url().includes("/api/chat") && res.status() === 200),
+      quickPrompt.click(),
+    ]);
 
     const aiMessages = chat.locator('[data-testid="chat-message"][data-sender="assistant"]');
     await expect(aiMessages).toHaveCount(1, { timeout: 15_000 });
