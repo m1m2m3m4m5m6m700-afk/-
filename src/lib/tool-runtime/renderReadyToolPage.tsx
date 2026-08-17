@@ -4,8 +4,6 @@ import { ToolLayout } from "@/components/tools/ToolLayout";
 import { useI18n } from "@/lib/i18n";
 import { resolveCategoryName, resolveToolName } from "@/lib/i18n/keys";
 import { buildToolHeadMetadata } from "@/lib/seo/toolPageMetadata";
-import { getToolBySlug } from "@/data/tools";
-import { getVerifiedDesktopTool } from "@/lib/desktop-tools/verifiedCatalog";
 import type { ReadyToolRuntimeDefinition } from "./types";
 
 export const createReadyToolHead = (definition: ReadyToolRuntimeDefinition) => () =>
@@ -19,7 +17,9 @@ function HiddenToolNotice() {
         <h1 className="text-3xl font-bold text-foreground">{t("toolPage.notFound.title")}</h1>
         <p className="mt-4 text-muted-foreground">{t("toolPage.notFound.description")}</p>
         <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-          <Link to="/" className="rounded-xl border border-border px-4 py-3 text-sm font-semibold text-primary hover:bg-primary/10">{t("toolPage.notFound.backHome")}</Link>
+          <Link to="/" className="rounded-xl border border-border px-4 py-3 text-sm font-semibold text-primary hover:bg-primary/10">
+            {t("toolPage.notFound.backHome")}
+          </Link>
         </div>
       </div>
     </SiteLayout>
@@ -29,9 +29,10 @@ function HiddenToolNotice() {
 export function renderReadyToolPage(definition: ReadyToolRuntimeDefinition) {
   const ToolPage = () => {
     const { t } = useI18n();
-    const tool = getToolBySlug(definition.slug) ?? getVerifiedDesktopTool(definition.slug);
-    if (tool && tool.status !== "ready") return <HiddenToolNotice />;
 
+    // The runtime registry is the authoritative public gate. Legacy catalog
+    // status may still say planned/placeholder while a tool is being promoted.
+    // A route can only exist for a runtime that was explicitly registered.
     const ToolComponent = definition.component;
     const description = definition.layoutDescriptionKey
       ? t(definition.layoutDescriptionKey as never)
