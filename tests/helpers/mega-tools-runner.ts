@@ -21,10 +21,6 @@ export function getVariantsBatch(batch: number): readonly MegaVariant[] {
   return MEGA_TOOLS.slice(start, Math.min(start + BATCH_SIZE, MEGA_TOOLS.length));
 }
 
-function writeText(view: DataView, offset: number, value: string) {
-  [...value].forEach((char, index) => view.setUint8(offset + index, char.charCodeAt(0)));
-}
-
 export async function prepareMegaToolPage(page: Page) {
   await page.goto("/", { waitUntil: "domcontentloaded" });
   await page.waitForLoadState("networkidle");
@@ -36,6 +32,10 @@ export async function prepareMegaToolPage(page: Page) {
   const pdfBase64 = Buffer.from(await pdfDocument.save()).toString("base64");
 
   await page.evaluate(async (pdfBase64Value) => {
+    const writeText = (view: DataView, offset: number, value: string) => {
+      [...value].forEach((char, index) => view.setUint8(offset + index, char.charCodeAt(0)));
+    };
+
     const imageCanvas = document.createElement("canvas");
     imageCanvas.width = 64;
     imageCanvas.height = 48;
@@ -46,7 +46,10 @@ export async function prepareMegaToolPage(page: Page) {
     imageContext.fillStyle = "white";
     imageContext.fillRect(16, 12, 32, 24);
     const imageBlob = await new Promise<Blob>((resolve, reject) => {
-      imageCanvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("Image fixture failed."))), "image/png");
+      imageCanvas.toBlob(
+        (blob) => (blob ? resolve(blob) : reject(new Error("Image fixture failed."))),
+        "image/png",
+      );
     });
 
     const sampleRate = 16000;
