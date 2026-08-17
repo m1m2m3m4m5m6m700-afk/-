@@ -1,0 +1,97 @@
+name: Flixo Staging Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Git ref to deploy
+        required: true
+        default: fix/ci-chat-null-regex-20260816
+      smoke_url:
+        description: Optional URL to smoke-test after deployment
+        required: false
+        default: ''
+
+tconcurrency:
+  group: flixo-staging
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify ref before staging deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run validate-ci-contract
+      - run: npm run validate:dependencies
+      - run: node src/scripts/validate-mega-tools.mjs
+      - run: npm run build
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run test:chat -- --retries=2
+      - run: npm run test:a11y -- --retries=2
+      - run: npm run test:desktop -- --retries=2
+      - run: npx playwright test tests/mega-tools-smoke.spec.ts --workers=1 --retries=0
+
+  deploy:
+    name: Deploy staging preview
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+      - name: Pull preview environment
+        run: vercel pull --yes --environment=preview --token="${{ secrets.VERCEL_TOKEN }}"
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      - name: Build preview
+        run: vercel build --token="${{ secrets.VERCEL_TOKEN }}"
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      - name: Deploy preview
+        id: deploy
+        run: echo "url=$(vercel deploy --prebuilt --token=\"${{ secrets.VERCEL_TOKEN }}\")" >> "$GITHUB_OUTPUT"
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      - name: Smoke-test deployed preview
+        env:
+          DEPLOY_URL: ${{ steps.deploy.outputs.url }}
+          OPTIONAL_URL: ${{ inputs.smoke_url }}
+        run: |
+          URL="${OPTIONAL_URL:-$DEPLOY_URL}"
+          test -n "$URL"
+          curl --fail --silent --show-error --location --max-time 30 "$URL/"
+          curl --fail --silent --show-error --location --max-time 30 "$URL/robots.txt"
+          curl --fail --silent --show-error --location --max-time 30 "$URL/sitemap.xml"
+      - name: Write deployment summary
+        env:
+          DEPLOY_URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          {
+            echo "## Staging deployment"
+            echo "- Ref: ${{ inputs.ref }}"
+            echo "- Preview: $DEPLOY_URL"
+          } >> "$GITHUB_STEP_SUMMARY"
