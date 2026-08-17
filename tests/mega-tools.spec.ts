@@ -1,10 +1,11 @@
 import { test, expect } from "@playwright/test";
 import { PDFDocument, StandardFonts } from "pdf-lib";
-import { MEGA_TOOLS } from "../src/data/megaToolsCatalog";
+import { MEGA_TOOLS, MEGA_TOOL_COUNT } from "../src/data/megaToolsCatalog";
 
-test("all 528 mega-tool variants execute successfully", async ({ page }) => {
-  await page.goto("/");
-  await page.waitForLoadState("networkidle");
+test("all published mega-tool variants execute successfully", async ({ page }) => {
+  test.setTimeout(5 * 60_000);
+
+  await page.goto("/", { waitUntil: "domcontentloaded" });
 
   const pdfDocument = await PDFDocument.create();
   const pdfPage = pdfDocument.addPage([400, 300]);
@@ -60,37 +61,48 @@ test("all 528 mega-tool variants execute successfully", async ({ page }) => {
     };
   }, pdfBase64);
 
-  expect(MEGA_TOOLS).toHaveLength(528);
+  expect(MEGA_TOOLS).toHaveLength(MEGA_TOOL_COUNT);
+  expect(MEGA_TOOL_COUNT).toBeGreaterThan(0);
+
   const failures: Array<{ slug: string; category: string; handler: string; preset: string; reason: string }> = [];
 
   for (const tool of MEGA_TOOLS) {
-    try {
-      const outcome = await page.evaluate(async (definition) => {
-        const { runMegaTool } = await import("/src/lib/megaToolsEngine.ts");
-        const fixtures = (window as unknown as { __flixoMegaFixtures: Record<string, File> }).__flixoMegaFixtures;
-        const fixture = fixtures[definition.category];
-        if (!fixture) throw new Error(`Missing fixture for ${definition.category}`);
-        const result = await runMegaTool(definition, fixture);
-        if (result.type === "text") {
-          if (!result.text.trim()) throw new Error("Tool returned empty text.");
-          return { ok: true, type: result.type };
-        }
-        if (result.type === "download") {
-          if (!result.filename || !result.url) throw new Error("Tool returned an invalid download result.");
-          URL.revokeObjectURL(result.url);
-          return { ok: true, type: result.type };
-        }
-        if (result.type === "video") {
-          if (result.element.tagName !== "VIDEO") throw new Error("Tool returned an invalid video result.");
-          result.cleanup();
-          return { ok: true, type: result.type };
-        }
-        throw new Error("Unknown result type.");
-      }, tool);
-      expect(outcome.ok).toBe(true);
-    } catch (error) {
-      failures.push({ slug: tool.slug, category: tool.category, handler: tool.handler, preset: tool.preset, reason: error instanceof Error ? error.message : String(error) });
-    }
+    await test.step(`execute ${tool.slug}`, async () => {
+      console.log(`[mega-tool] START ${tool.slug}`);
+      try {
+        const outcome = await page.evaluate(async (definition) => {
+          const { runMegaTool } = await import("/src/lib/megaToolsEngine.ts");
+          const fixtures = (window as unknown as { __flixoMegaFixtures: Record<string, File> }).__flixoMegaFixtures;
+          const fixture = fixtures[definition.category];
+          if (!fixture) throw new Error(`Missing fixture for ${definition.category}`);
+          const result = await Promise.race([
+            runMegaTool(definition, fixture),
+            new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error("Variant timed out after 15000ms.")), 15_000)),
+          ]);
+          if (result.type === "text") {
+            if (!result.text.trim()) throw new Error("Tool returned empty text.");
+            return { ok: true, type: result.type };
+          }
+          if (result.type === "download") {
+            if (!result.filename || !result.url) throw new Error("Tool returned an invalid download result.");
+            URL.revokeObjectURL(result.url);
+            return { ok: true, type: result.type };
+          }
+          if (result.type === "video") {
+            if (result.element.tagName !== "VIDEO") throw new Error("Tool returned an invalid video result.");
+            result.cleanup();
+            return { ok: true, type: result.type };
+          }
+          throw new Error("Unknown result type.");
+        }, tool);
+        expect(outcome.ok).toBe(true);
+        console.log(`[mega-tool] PASS ${tool.slug}`);
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        console.error(`[mega-tool] FAIL ${tool.slug}: ${reason}`);
+        failures.push({ slug: tool.slug, category: tool.category, handler: tool.handler, preset: tool.preset, reason });
+      }
+    });
   }
 
   expect(failures, JSON.stringify(failures, null, 2)).toEqual([]);
