@@ -1,0 +1,45 @@
+name: Flixo Rollback Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Optional Vercel deployment URL or ID to rollback to
+        required: false
+        default: ''
+      reason:
+        description: Rollback reason
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flixo-production-rollback
+  cancel-in-progress: false
+
+jobs:
+  rollback:
+    name: Rollback production
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+    timeout-minutes: 10
+    steps:
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+      - name: Rollback to target deployment
+        if: ${{ inputs.target != '' }}
+        run: vercel rollback "${{ inputs.target }}" --token="${{ secrets.VERCEL_TOKEN }}"
+      - name: Rollback to previous production deployment
+        if: ${{ inputs.target == '' }}
+        run: vercel rollback --token="${{ secrets.VERCEL_TOKEN }}"
+      - name: Summary
+        env:
+          REASON: ${{ inputs.reason }}
+        run: |
+          {
+            echo "## Production rollback"
+            echo "- Reason: $REASON"
+            echo "- Target: ${{ inputs.target || 'previous production deployment' }}"
+          } >> "$GITHUB_STEP_SUMMARY"
