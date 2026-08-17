@@ -100,6 +100,10 @@ export interface MegaTool {
   readonly preset: MegaToolPreset;
 }
 
+export const DEPRECATED_MEGA_TOOL_SLUGS = new Set<string>([
+  "mega-video-frame-75-social",
+]);
+
 function buildTools<const T extends MegaToolCategory>(category: T) {
   const definitions = HANDLERS_BY_CATEGORY[category];
   return definitions.flatMap(([handler, name, description]) =>
@@ -119,6 +123,6 @@ export const MEGA_TOOLS = Object.freeze([
   ...buildTools("video"),
   ...buildTools("audio"),
   ...buildTools("pdf"),
-]) as readonly MegaTool[];
+].filter((tool) => !DEPRECATED_MEGA_TOOL_SLUGS.has(tool.slug))) as readonly MegaTool[];
 
 export const MEGA_TOOL_COUNT = MEGA_TOOLS.length;
