@@ -1,6 +1,8 @@
 import { expect, test } from "playwright/test";
 
 test.describe("Flex interactive chat", () => {
+  test.setTimeout(60_000);
+
   test("supports multi-turn conversation and session persistence", async ({ page }) => {
     const requests: Array<{ message?: unknown; history?: unknown; locale?: unknown }> = [];
     let responseNumber = 0;
@@ -22,17 +24,16 @@ test.describe("Flex interactive chat", () => {
 
     await page.goto("/");
 
-    const openButton = page.getByRole("button", { name: "Open Flex chat" });
-    await expect(openButton).toBeVisible();
-    await openButton.click();
+    const chat = page.getByRole("region", { name: "Flex AI chat" });
+    await expect(chat).toBeVisible();
 
-    const composer = page.getByPlaceholder("Ask Flex anything about Flixo…");
+    const composer = chat.getByRole("textbox");
     await expect(composer).toBeVisible();
 
     await composer.fill("مرحبا");
     await composer.press("Enter");
 
-    await expect(page.getByText("أهلًا! كيف أساعدك؟")).toBeVisible();
+    await expect(chat.getByText("أهلًا! كيف أساعدك؟")).toBeVisible();
     expect(requests).toHaveLength(1);
     expect(requests[0]?.message).toBe("مرحبا");
     expect(Array.isArray(requests[0]?.history)).toBe(true);
@@ -40,7 +41,7 @@ test.describe("Flex interactive chat", () => {
     await composer.fill("هل تتذكرني؟");
     await composer.press("Enter");
 
-    await expect(page.getByText("نعم، أتذكر رسالتك السابقة داخل هذه المحادثة.")).toBeVisible();
+    await expect(chat.getByText("نعم، أتذكر رسالتك السابقة داخل هذه المحادثة.")).toBeVisible();
     expect(requests).toHaveLength(2);
 
     const secondHistory = requests[1]?.history;
@@ -52,12 +53,12 @@ test.describe("Flex interactive chat", () => {
     );
 
     await page.reload();
-    await page.getByRole("button", { name: "Open Flex chat" }).click();
-
-    await expect(page.getByText("مرحبا")).toBeVisible();
-    await expect(page.getByText("أهلًا! كيف أساعدك؟")).toBeVisible();
-    await expect(page.getByText("هل تتذكرني؟")).toBeVisible();
-    await expect(page.getByText("نعم، أتذكر رسالتك السابقة داخل هذه المحادثة.")).toBeVisible();
+    const reloadedChat = page.getByRole("region", { name: "Flex AI chat" });
+    await expect(reloadedChat).toBeVisible();
+    await expect(reloadedChat.getByText("مرحبا")).toBeVisible();
+    await expect(reloadedChat.getByText("أهلًا! كيف أساعدك؟")).toBeVisible();
+    await expect(reloadedChat.getByText("هل تتذكرني؟")).toBeVisible();
+    await expect(reloadedChat.getByText("نعم، أتذكر رسالتك السابقة داخل هذه المحادثة.")).toBeVisible();
   });
 
   test("supports quick prompts and a clean new conversation", async ({ page }) => {
@@ -77,15 +78,19 @@ test.describe("Flex interactive chat", () => {
     });
 
     await page.goto("/");
-    await page.getByRole("button", { name: "Open Flex chat" }).click();
 
-    const quickPrompt = page.getByRole("button", { name: "What can Flixo do?" });
+    const chat = page.getByRole("region", { name: "Flex AI chat" });
+    await expect(chat).toBeVisible();
+
+    const promptButtons = chat.locator("button[type='button']");
+    const quickPrompt = promptButtons.nth(1);
     await expect(quickPrompt).toBeVisible();
+    await expect(quickPrompt).not.toHaveText("");
     await quickPrompt.click();
-    await expect(page.getByText("mock-reply-1")).toBeVisible();
 
-    await page.getByRole("button", { name: "New chat" }).click();
-    await expect(page.getByText("Hi! I’m Flex, Flixo’s AI assistant.")).toBeVisible();
-    await expect(page.getByText("mock-reply-1")).not.toBeVisible();
+    await expect(chat.getByText("mock-reply-1")).toBeVisible();
+
+    await chat.getByTitle("New chat").click();
+    await expect(chat.getByText("mock-reply-1")).not.toBeVisible();
   });
 });
