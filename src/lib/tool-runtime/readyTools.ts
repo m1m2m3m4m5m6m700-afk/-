@@ -1,29 +1,21 @@
-import { Base64ConverterRuntime } from "./tools/base64-converter";
-import { CaseConverterRuntime } from "./tools/case-converter";
-import { JsonFormatterRuntime } from "./tools/json-formatter";
-import { TextCompareRuntime } from "./tools/text-compare";
-import { TimestampConverterRuntime } from "./tools/timestamp-converter";
-import { UrlEncoderRuntime } from "./tools/url-encoder";
-import { UuidGeneratorRuntime } from "./tools/uuid-generator";
-import { WordCounterRuntime } from "./tools/word-counter";
+import { ArchiveExtractorRuntime } from "./tools/archive-extractor";
+import { FileSplitterRuntime } from "./tools/file-splitter";
+import { MetadataViewerRuntime } from "./tools/metadata-viewer";
+import { ZipCreatorRuntime } from "./tools/zip-creator";
 import type { ReadyToolRuntimeDefinition } from "./types";
 
 /**
- * Public tool registry.
+ * Public desktop/file tool registry.
  *
- * A runtime is publishable only after its dedicated browser regression test
- * passes. Legacy runtimes remain in the repository but are intentionally not
- * reachable from the public tool route until they are promoted here.
+ * Only browser-local desktop tools are published in this phase.
+ * A runtime becomes public only after its dedicated regression test passes.
+ * Legacy runtimes remain isolated until explicitly promoted.
  */
 export const readyToolRuntimes = [
-  WordCounterRuntime,
-  JsonFormatterRuntime,
-  Base64ConverterRuntime,
-  UuidGeneratorRuntime,
-  UrlEncoderRuntime,
-  CaseConverterRuntime,
-  TimestampConverterRuntime,
-  TextCompareRuntime,
+  ZipCreatorRuntime,
+  ArchiveExtractorRuntime,
+  FileSplitterRuntime,
+  MetadataViewerRuntime,
 ] as const satisfies readonly ReadyToolRuntimeDefinition[];
 
 export const readyToolRuntimeBySlug = new Map<string, ReadyToolRuntimeDefinition>(
