@@ -1,0 +1,65 @@
+name: Mega-tools Staging Gate
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch or commit to validate before publication"
+        required: true
+        default: "main"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mega-tools-staging-${{ inputs.ref }}
+  cancel-in-progress: true
+
+jobs:
+  staging:
+    name: Validate candidate catalog
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout candidate
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate catalog contract
+        run: node src/scripts/validate-mega-tools.mjs
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Smoke Gate
+        run: npx playwright test tests/mega-tools-smoke.spec.ts --workers=1 --retries=0
+        timeout-minutes: 10
+
+      - name: Functional sample
+        run: npx playwright test tests/mega-tools-part1.spec.ts --workers=1 --retries=0
+        timeout-minutes: 25
+
+      - name: Build candidate
+        run: npm run build
+
+      - name: Upload staging evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: mega-tools-staging-${{ github.run_id }}
+          path: |
+            playwright-report
+            test-results/mega-tools-report.json
+          if-no-files-found: ignore
+          retention-days: 30
