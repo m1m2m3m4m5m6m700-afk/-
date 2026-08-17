@@ -3,20 +3,18 @@ name: CI
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
   workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: read
 
 jobs:
   verify:
-    name: Verify (integration · dependency · typecheck · lint · SEO · i18n · terminology · AI · quality · accessibility · security · desktop-tools · mega-tools · build)
+    name: Full CI verification
     runs-on: ubuntu-latest
     timeout-minutes: 40
 
@@ -31,98 +29,136 @@ jobs:
           cache: npm
 
       - name: Validate CI contract
+        timeout-minutes: 1
         run: npm run validate-ci-contract
 
       - name: Validate dependency contract
+        timeout-minutes: 1
         run: npm run validate:dependencies
 
       - name: Install dependencies
+        timeout-minutes: 5
         run: npm ci
 
       - name: Validate cross-layer integration contract
+        timeout-minutes: 1
         run: npm run validate:integration
 
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
       - name: Install Chromium for operational tests
+        timeout-minutes: 10
         run: npx playwright install --with-deps chromium
 
       - name: Production dependency audit
+        timeout-minutes: 2
         run: npm run audit:production
 
       - name: Validate registry
+        timeout-minutes: 1
         run: npm run validate:registry
 
       - name: Validate tool runtime
+        timeout-minutes: 1
         run: npm run validate:tool-runtime
 
       - name: Validate tool quality publication contract
+        timeout-minutes: 1
         run: npm run validate:tool-quality
 
       - name: Validate AI contract
+        timeout-minutes: 1
         run: npm run validate:ai
 
       - name: Validate accessibility contract
+        timeout-minutes: 1
         run: npm run validate:accessibility
 
       - name: Validate security contract
+        timeout-minutes: 1
         run: npm run validate:security
 
       - name: Validate mega-tool catalog
+        timeout-minutes: 1
         run: node src/scripts/validate-mega-tools.mjs
 
       - name: Validate Google Search implementation
+        timeout-minutes: 1
         run: node src/scripts/validate-google-search.mjs
 
       - name: Validate terminology profiles
+        timeout-minutes: 1
         run: node src/scripts/validate-terminology-profiles.mjs
 
       - name: Validate SEO
+        timeout-minutes: 1
         run: npm run validate:seo
 
       - name: Validate tool content
+        timeout-minutes: 1
         run: npm run validate:tool-content
 
       - name: Validate localization
+        timeout-minutes: 1
         run: npm run validate:localization
 
       - name: Validate localized pages and dictionaries
+        timeout-minutes: 1
         run: node src/scripts/validate-localization-pages.mjs
 
       - name: Report localization health
+        timeout-minutes: 1
         run: node src/scripts/report-localization-health.mjs
 
       - name: Validate RTL localization contract
+        timeout-minutes: 1
         run: node src/scripts/validate-localization-rtl.mjs
 
       - name: Build and generate route tree
+        timeout-minutes: 5
         run: npm run build
 
       - name: Validate generated route tree
+        timeout-minutes: 1
         run: npm run validate:route-tree
 
       - name: Typecheck
+        timeout-minutes: 3
         run: npm run typecheck
 
       - name: Lint
+        timeout-minutes: 3
         run: npm run lint
 
       - name: Run Flex chat browser tests
-        run: npm run test:chat
+        timeout-minutes: 5
+        run: npm run test:chat -- --workers=1 --retries=0
 
       - name: Run accessibility browser tests
-        run: npm run test:a11y
+        timeout-minutes: 5
+        run: npm run test:a11y -- --workers=1 --retries=0
 
       - name: Run verified desktop/file tool browser tests
-        run: npm run test:desktop
+        timeout-minutes: 7
+        run: npm run test:desktop -- --workers=1 --retries=0
 
       - name: Run all operational mega-tool tests
-        run: npx playwright test tests/mega-tools.spec.ts
+        timeout-minutes: 9
+        run: npx playwright test tests/mega-tools.spec.ts --workers=1 --retries=0
 
       - name: Upload build artifact
-        if: github.event_name == 'pull_request'
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: vercel-build
           path: .vercel/output
+          if-no-files-found: ignore
           retention-days: 3
 
       - name: Upload browser report
