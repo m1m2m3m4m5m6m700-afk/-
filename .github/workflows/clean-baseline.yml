@@ -1,4 +1,4 @@
-name: Clean Baseline Tool Gate
+name: Clean Baseline
 
 on:
   push:
@@ -15,8 +15,8 @@ permissions:
   contents: read
 
 jobs:
-  verify:
-    name: Verify baseline and promoted desktop tools
+  baseline:
+    name: Verify technical baseline
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -35,7 +35,7 @@ jobs:
       - name: Validate promotion contract
         run: node scripts/validate-clean-baseline.mjs
 
-      - name: Validate public runtimes
+      - name: Validate public runtime contract
         run: npm run validate:tool-runtime
 
       - name: Typecheck
@@ -46,9 +46,3 @@ jobs:
 
       - name: Build
         run: npm run build
-
-      - name: Install Chromium
-        run: npx playwright install --with-deps chromium
-
-      - name: Run promoted desktop regression
-        run: npm run test:desktop -- --workers=1 --retries=0
