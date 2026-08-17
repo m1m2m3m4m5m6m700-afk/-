@@ -103,7 +103,13 @@ export function Translator() {
   return (
     <div className="rounded-3xl border border-border bg-card/80 p-4 shadow-soft backdrop-blur md:p-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-        <LanguageSelect label={t("translator.from")} value={from} onChange={setFrom} includeAuto />
+        <LanguageSelect
+          name="source-language"
+          label={t("translator.from")}
+          value={from}
+          onChange={setFrom}
+          includeAuto
+        />
         <Button
           variant="outline"
           size="icon"
@@ -114,7 +120,12 @@ export function Translator() {
         >
           <ArrowLeftRight className="size-4" aria-hidden="true" />
         </Button>
-        <LanguageSelect label={t("translator.to")} value={to} onChange={setTo} />
+        <LanguageSelect
+          name="target-language"
+          label={t("translator.to")}
+          value={to}
+          onChange={setTo}
+        />
       </div>
 
       <div className="mt-5 grid gap-4 lg:grid-cols-2">
