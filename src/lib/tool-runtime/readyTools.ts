@@ -1,3 +1,4 @@
+import type { CategoryId } from "@/data/categories";
 import type { ReadyToolRuntimeDefinition } from "./types";
 
 /**
@@ -17,3 +18,6 @@ export const getReadyToolRuntime = (slug: string): ReadyToolRuntimeDefinition | 
   readyToolRuntimeBySlug.get(slug);
 
 export const VERIFIED_TOOL_SLUGS = Object.freeze([] as string[]);
+
+export const hasPublicToolsInCategory = (categoryId: CategoryId): boolean =>
+  readyToolRuntimes.some((runtime) => runtime.categoryId === categoryId);
