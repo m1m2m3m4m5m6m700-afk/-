@@ -4,7 +4,8 @@ import { MEGA_TOOLS, MEGA_TOOL_COUNT } from "../../src/data/megaToolsCatalog";
 
 const BATCH_COUNT = 6;
 const BATCH_SIZE = Math.ceil(MEGA_TOOL_COUNT / BATCH_COUNT);
-const VARIANT_TIMEOUT_MS = 30_000;
+const DEFAULT_VARIANT_TIMEOUT_MS = 15_000;
+const VIDEO_VARIANT_TIMEOUT_MS = 30_000;
 
 type MegaVariant = (typeof MEGA_TOOLS)[number];
 
@@ -13,6 +14,10 @@ type MegaRunResult = {
   type?: string;
   reason?: string;
 };
+
+function getVariantTimeoutMs(variant: MegaVariant): number {
+  return variant.category === "video" ? VIDEO_VARIANT_TIMEOUT_MS : DEFAULT_VARIANT_TIMEOUT_MS;
+}
 
 function validateCatalog(): void {
   if (MEGA_TOOL_COUNT !== MEGA_TOOLS.length) {
@@ -138,7 +143,8 @@ export async function runMegaToolVariant(page: Page, variant: MegaVariant): Prom
   validateInput(variant);
   const label = `${variant.slug} [${variant.category}/${variant.handler}/${variant.preset}]`;
   const startedAt = Date.now();
-  console.info(`[mega-tool] START ${label}`);
+  const timeoutMs = getVariantTimeoutMs(variant);
+  console.info(`[mega-tool] START ${label} timeout=${timeoutMs}ms`);
 
   try {
     const outcome = await page.evaluate(
@@ -179,7 +185,7 @@ export async function runMegaToolVariant(page: Page, variant: MegaVariant): Prom
           if (timer) clearTimeout(timer);
         }
       },
-      { definition: variant, timeoutMs: VARIANT_TIMEOUT_MS },
+      { definition: variant, timeoutMs },
     );
 
     console.info(`[mega-tool] PASS ${label} (${Date.now() - startedAt}ms)`);
