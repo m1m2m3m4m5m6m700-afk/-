@@ -1,0 +1,58 @@
+name: Phase 2 Contract Smoke
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/services/runtime/**"
+      - "src/services/cache/**"
+      - "src/services/queue/**"
+      - "scripts/validate-phase2-contract.mjs"
+      - "tests/phase2-runtime-smoke.spec.ts"
+      - ".github/workflows/phase2-contract-smoke.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: phase2-smoke-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  contract-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate Phase 2 contracts
+        run: node scripts/validate-phase2-contract.mjs
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint -- --max-warnings 0
+
+      - name: Run Phase 2 contract smoke
+        run: npx playwright test tests/phase2-runtime-smoke.spec.ts --workers=1 --retries=0
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: phase2-contract-smoke-${{ github.run_id }}
+          path: playwright-report
+          if-no-files-found: ignore
+          retention-days: 14
