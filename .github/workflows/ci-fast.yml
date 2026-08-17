@@ -73,5 +73,5 @@ jobs:
       - name: Fast-path summary
         if: always()
         run: |
-          echo "CI Fast intentionally covers foundation checks only."
+          echo "CI Fast covers foundation checks only; stale runs are cancelled."
           echo "Full browser/regression coverage remains in CI."
