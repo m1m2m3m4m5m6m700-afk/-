@@ -4,7 +4,7 @@ on:
   push:
     branches: [desktop-tools]
   pull_request:
-    branches: [desktop-tools]
+    branches: [main, desktop-tools]
   workflow_dispatch:
 
 concurrency:
