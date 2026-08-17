@@ -25,21 +25,20 @@ for (const file of testFiles) {
 
 const contracts = await readFile("src/lib/tool-platform/testContracts.ts", "utf8");
 const requiredChecks = ["render", "interaction", "output", "error"];
-const usesCanonicalStrictChecks = /const strictChecks\s*=\s*\[\s*["']render["']\s*,\s*["']interaction["']\s*,\s*["']output["']\s*,\s*["']error["']\s*\]\s+as const/.test(contracts);
-if (!usesCanonicalStrictChecks) fail("Canonical tool test contract must define strictChecks = render, interaction, output, error.");
+const strictChecksMatch = contracts.match(/const\s+strictChecks\s*=\s*\[([^\]]+)\]\s+as const/);
+if (!strictChecksMatch) {
+  fail("Canonical tool test contract must define strictChecks as a readonly tuple.");
+} else {
+  const strictChecks = strictChecksMatch[1].match(/["']([^"']+)["']/g)?.map((value) => value.slice(1, -1)) ?? [];
+  for (const check of requiredChecks) if (!strictChecks.includes(check)) fail(`Canonical strictChecks is missing required check: ${check}`);
+  if (strictChecks.length !== requiredChecks.length) fail(`Canonical strictChecks must contain exactly: ${requiredChecks.join(", ")}`);
+}
 
 const contractEntries = [...contracts.matchAll(/\{\s*toolId:\s*["']([^"']+)["'][\s\S]*?requiredChecks:\s*([A-Za-z0-9_]+)/g)].map((match) => ({ id: match[1], checksRef: match[2] }));
 for (const id of ["zip-creator", "archive-extractor", "file-splitter", "metadata-viewer"]) {
   const entry = contractEntries.find((candidate) => candidate.id === id);
-  if (!entry) {
-    fail(`Missing test contract: ${id}`);
-    continue;
-  }
-  if (entry.checksRef !== "strictChecks") {
-    const start = contracts.indexOf(`toolId: "${id}"`);
-    const block = contracts.slice(start, start + 350);
-    for (const check of requiredChecks) if (!block.includes(`"${check}"`)) fail(`Tool ${id} missing required check: ${check}`);
-  }
+  if (!entry) fail(`Missing test contract: ${id}`);
+  else if (entry.checksRef !== "strictChecks") fail(`Tool ${id} must use canonical strictChecks; found ${entry.checksRef}.`);
 }
 
 const playwright = await readFile("playwright.config.ts", "utf8");
@@ -49,7 +48,7 @@ for (const required of ["trace: \"retain-on-failure\"", "reuseExistingServer: fa
 
 if (failures.length) {
   console.error("TEST QUALITY CONTRACT: FAIL");
-  failures.forEach((failure) => console.error(`- ${failure}`);
+  failures.forEach((failure) => console.error(`- ${failure}`));
   process.exit(1);
 }
 
