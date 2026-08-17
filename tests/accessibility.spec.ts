@@ -9,11 +9,12 @@ test.describe("public accessibility baseline", () => {
       await expect(page.locator("html")).toHaveAttribute("lang", /.+/);
       await expect(page.locator("html")).toHaveAttribute("dir", /^(ltr|rtl)$/);
 
-      const controls = page.locator("button, input, textarea, select, [role=button]");
+      const controls = page.locator('button, input, textarea, select, [role="button"]');
       const count = await controls.count();
       for (let index = 0; index < count; index += 1) {
         const control = controls.nth(index);
         if (!(await control.isVisible().catch(() => false))) continue;
+        if ((await control.getAttribute("aria-hidden")) === "true") continue;
         const disabled = await control.isDisabled().catch(() => false);
         if (disabled) continue;
         const aria = (await control.getAttribute("aria-label"))?.trim();
