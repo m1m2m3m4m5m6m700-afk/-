@@ -1,0 +1,43 @@
+name: Flixo Promote Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      deployment:
+        description: Validated Vercel preview deployment URL or ID
+        required: true
+      canary_url:
+        description: Optional canary URL to smoke-test before promotion
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flixo-production-promotion
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    name: Promote validated canary to production
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+    timeout-minutes: 15
+    steps:
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+      - name: Canary smoke test
+        if: ${{ inputs.canary_url != '' }}
+        env:
+          CANARY_URL: ${{ inputs.canary_url }}
+        run: |
+          curl --fail --silent --show-error --location --max-time 30 "$CANARY_URL/"
+          curl --fail --silent --show-error --location --max-time 30 "$CANARY_URL/robots.txt"
+          curl --fail --silent --show-error --location --max-time 30 "$CANARY_URL/sitemap.xml"
+      - name: Promote deployment
+        run: vercel promote "${{ inputs.deployment }}" --token="${{ secrets.VERCEL_TOKEN }}"
+      - name: Summary
+        run: |
+          echo "Production promotion completed for ${{ inputs.deployment }}" >> "$GITHUB_STEP_SUMMARY"
