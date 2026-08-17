@@ -1,20 +1,10 @@
 import type { Tool } from "@/data/tools";
 
-/** Publicly promoted desktop tools only. */
-export const verifiedDesktopTools: Tool[] = [
-  {
-    id: "zip-creator",
-    name: "ZIP Creator",
-    categoryId: "files",
-    description: "Create a ZIP archive from multiple files directly in the browser.",
-    status: "ready",
-    tags: ["zip", "archive", "files", "compress"],
-    slug: "zip-creator",
-  },
-];
+/** Publicly promoted desktop tools only. Legacy tools remain preserved but unpromoted. */
+export const verifiedDesktopTools: Tool[] = [];
 
-export const verifiedDesktopToolById = new Map(verifiedDesktopTools.map((tool) => [tool.id, tool]));
-export const verifiedDesktopToolBySlug = new Map(verifiedDesktopTools.map((tool) => [tool.slug!, tool]));
+export const verifiedDesktopToolById = new Map<string, Tool>();
+export const verifiedDesktopToolBySlug = new Map<string, Tool>();
 
 export function getVerifiedDesktopTool(slugOrId: string): Tool | undefined {
   return verifiedDesktopToolBySlug.get(slugOrId) ?? verifiedDesktopToolById.get(slugOrId);
