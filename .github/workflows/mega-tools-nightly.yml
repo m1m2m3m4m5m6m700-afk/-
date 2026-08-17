@@ -1,0 +1,93 @@
+name: Mega-tools Nightly
+
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mega-tools-nightly
+  cancel-in-progress: false
+
+jobs:
+  catalog:
+    name: Catalog and smoke gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate catalog contract
+        run: node src/scripts/validate-mega-tools.mjs
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run smoke gate
+        run: npx playwright test tests/mega-tools-smoke.spec.ts --workers=1 --retries=0
+        timeout-minutes: 10
+
+      - name: Upload smoke artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: mega-tools-nightly-smoke-${{ github.run_id }}
+          path: |
+            playwright-report
+            test-results/mega-tools-report.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+  full:
+    name: Full Mega-tools batch ${{ matrix.batch }}
+    needs: catalog
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        batch: [1, 2, 3, 4, 5, 6]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run batch ${{ matrix.batch }}
+        run: npx playwright test tests/mega-tools-part${{ matrix.batch }}.spec.ts --workers=1 --retries=2
+        timeout-minutes: 30
+
+      - name: Upload batch artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: mega-tools-nightly-batch-${{ matrix.batch }}-${{ github.run_id }}
+          path: |
+            playwright-report
+            test-results/mega-tools-report.json
+          if-no-files-found: ignore
+          retention-days: 14
