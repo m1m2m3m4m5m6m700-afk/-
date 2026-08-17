@@ -1,73 +1,52 @@
 import type { PublicToolRegistration } from "./types";
+import { publicToolTestContracts } from "./testContracts";
 
-const publicDesktopTools: readonly PublicToolRegistration[] = [
+const manifestData = [
   {
-    manifest: {
-      id: "zip-creator",
-      slug: "zip-creator",
-      name: "ZIP Creator",
-      category: "files",
-      description: "Create a standard ZIP archive from multiple local files in your browser.",
-      lifecycle: "public",
-      capabilities: { input: "files", output: "download", localOnly: true },
-    },
-    test: {
-      toolId: "zip-creator",
-      route: "/tools/zip-creator",
-      requiredChecks: ["render", "interaction", "output"],
-    },
+    id: "zip-creator",
+    slug: "zip-creator",
+    name: "ZIP Creator",
+    category: "files",
+    description: "Create a standard ZIP archive from multiple local files in your browser.",
+    lifecycle: "public" as const,
+    capabilities: { input: "files" as const, output: "download" as const, localOnly: true },
   },
   {
-    manifest: {
-      id: "archive-extractor",
-      slug: "archive-extractor",
-      name: "Archive Extractor",
-      category: "files",
-      description: "Open ZIP archives and extract individual files directly in the browser.",
-      lifecycle: "public",
-      capabilities: { input: "file", output: "download", localOnly: true },
-    },
-    test: {
-      toolId: "archive-extractor",
-      route: "/tools/archive-extractor",
-      requiredChecks: ["render", "interaction", "output"],
-    },
+    id: "archive-extractor",
+    slug: "archive-extractor",
+    name: "Archive Extractor",
+    category: "files",
+    description: "Open ZIP archives and extract individual files directly in the browser.",
+    lifecycle: "public" as const,
+    capabilities: { input: "file" as const, output: "download" as const, localOnly: true },
   },
   {
-    manifest: {
-      id: "file-splitter",
-      slug: "file-splitter",
-      name: "File Splitter",
-      category: "files",
-      description: "Split large local files into numbered chunks and download them as a ZIP archive.",
-      lifecycle: "public",
-      capabilities: { input: "file", output: "download", localOnly: true },
-    },
-    test: {
-      toolId: "file-splitter",
-      route: "/tools/file-splitter",
-      requiredChecks: ["render", "interaction", "output"],
-    },
+    id: "file-splitter",
+    slug: "file-splitter",
+    name: "File Splitter",
+    category: "files",
+    description: "Split large local files into numbered chunks and download them as a ZIP archive.",
+    lifecycle: "public" as const,
+    capabilities: { input: "file" as const, output: "download" as const, localOnly: true },
   },
   {
-    manifest: {
-      id: "metadata-viewer",
-      slug: "metadata-viewer",
-      name: "Metadata Viewer",
-      category: "files",
-      description: "Inspect basic local file metadata without uploading the file to a server.",
-      lifecycle: "public",
-      capabilities: { input: "file", output: "preview", localOnly: true },
-    },
-    test: {
-      toolId: "metadata-viewer",
-      route: "/tools/metadata-viewer",
-      requiredChecks: ["render", "interaction", "output"],
-    },
+    id: "metadata-viewer",
+    slug: "metadata-viewer",
+    name: "Metadata Viewer",
+    category: "files",
+    description: "Inspect basic local file metadata without uploading the file to a server.",
+    lifecycle: "public" as const,
+    capabilities: { input: "file" as const, output: "preview" as const, localOnly: true },
   },
-];
+] as const;
 
-export const publicToolRegistrations = Object.freeze(publicDesktopTools);
+export const publicToolRegistrations: readonly PublicToolRegistration[] = Object.freeze(
+  manifestData.map((manifest) => {
+    const test = publicToolTestContracts.find((entry) => entry.toolId === manifest.id);
+    if (!test) throw new Error(`Missing test contract: ${manifest.id}`);
+    return Object.freeze({ manifest, test });
+  }),
+);
 
 export const getPublicToolRegistration = (toolId: string): PublicToolRegistration | undefined =>
   publicToolRegistrations.find((entry) => entry.manifest.id === toolId);
