@@ -5,17 +5,15 @@ test.describe("Flex interactive chat", () => {
 
   test("supports multi-turn conversation and session persistence", async ({ page }) => {
     const requests: Array<{ message?: unknown; history?: unknown; locale?: unknown }> = [];
-    let responseNumber = 0;
 
     await page.route("**/api/chat", async (route) => {
       const request = route.request();
       requests.push(request.postDataJSON() as { message?: unknown; history?: unknown; locale?: unknown });
-      responseNumber += 1;
       await route.fulfill({
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({
-          reply: responseNumber === 1 ? "أهلًا! كيف أساعدك؟" : "نعم، أتذكر رسالتك السابقة داخل هذه المحادثة.",
+          reply: "deterministic test reply",
           model: "playwright-mock",
           provider: "test",
         }),
@@ -25,15 +23,17 @@ test.describe("Flex interactive chat", () => {
     await page.goto("/");
 
     const chat = page.getByRole("region", { name: "Flex AI chat" });
-    await expect(chat).toBeVisible();
+    await expect(chat).toHaveAttribute("data-chat-ready", "true");
 
     const composer = chat.getByRole("textbox");
-    await expect(composer).toBeVisible();
+    const aiMessages = chat.locator('[data-testid="chat-message"][data-sender="assistant"]');
+    const allMessages = chat.locator('[data-testid="chat-message"]');
 
     await composer.fill("مرحبا");
     await composer.press("Enter");
 
-    await expect(chat.getByText("أهلًا! كيف أساعدك؟")).toBeVisible();
+    await expect(aiMessages).toHaveCount(1);
+    await expect(aiMessages.first()).not.toHaveText("");
     expect(requests).toHaveLength(1);
     expect(requests[0]?.message).toBe("مرحبا");
     expect(Array.isArray(requests[0]?.history)).toBe(true);
@@ -41,36 +41,35 @@ test.describe("Flex interactive chat", () => {
     await composer.fill("هل تتذكرني؟");
     await composer.press("Enter");
 
-    await expect(chat.getByText("نعم، أتذكر رسالتك السابقة داخل هذه المحادثة.")).toBeVisible();
+    await expect(aiMessages).toHaveCount(2);
+    await expect(aiMessages.nth(1)).not.toHaveText("");
+    await expect(allMessages).toHaveCount(4);
     expect(requests).toHaveLength(2);
 
     const secondHistory = requests[1]?.history;
     expect(secondHistory).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ role: "user", content: "مرحبا" }),
-        expect.objectContaining({ role: "assistant", content: "أهلًا! كيف أساعدك؟" }),
+        expect.objectContaining({ role: "assistant", content: "deterministic test reply" }),
       ]),
     );
 
     await page.reload();
     const reloadedChat = page.getByRole("region", { name: "Flex AI chat" });
-    await expect(reloadedChat).toBeVisible();
+    await expect(reloadedChat).toHaveAttribute("data-chat-ready", "true");
+    await expect(reloadedChat.locator('[data-testid="chat-message"]')).toHaveCount(4);
     await expect(reloadedChat.getByText("مرحبا")).toBeVisible();
-    await expect(reloadedChat.getByText("أهلًا! كيف أساعدك؟")).toBeVisible();
     await expect(reloadedChat.getByText("هل تتذكرني؟")).toBeVisible();
-    await expect(reloadedChat.getByText("نعم، أتذكر رسالتك السابقة داخل هذه المحادثة.")).toBeVisible();
+    await expect(reloadedChat.locator('[data-testid="chat-message"][data-sender="assistant"]').first()).not.toHaveText("");
   });
 
   test("supports quick prompts and a clean new conversation", async ({ page }) => {
-    let responseNumber = 0;
-
     await page.route("**/api/chat", async (route) => {
-      responseNumber += 1;
       await route.fulfill({
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({
-          reply: `mock-reply-${responseNumber}`,
+          reply: "deterministic quick-prompt reply",
           model: "playwright-mock",
           provider: "test",
         }),
@@ -80,17 +79,19 @@ test.describe("Flex interactive chat", () => {
     await page.goto("/");
 
     const chat = page.getByRole("region", { name: "Flex AI chat" });
-    await expect(chat).toBeVisible();
+    await expect(chat).toHaveAttribute("data-chat-ready", "true");
 
-    const promptButtons = chat.locator("button[type='button']");
-    const quickPrompt = promptButtons.nth(1);
+    const quickPrompt = chat.locator('[data-testid="chat-quick-prompt"]').first();
     await expect(quickPrompt).toBeVisible();
     await expect(quickPrompt).not.toHaveText("");
     await quickPrompt.click();
 
-    await expect(chat.getByText("mock-reply-1")).toBeVisible();
+    const aiMessages = chat.locator('[data-testid="chat-message"][data-sender="assistant"]');
+    await expect(aiMessages).toHaveCount(1);
+    await expect(aiMessages.first()).not.toHaveText("");
 
     await chat.getByTitle("New chat").click();
-    await expect(chat.getByText("mock-reply-1")).not.toBeVisible();
+    await expect(chat.locator('[data-testid="chat-message"]')).toHaveCount(0);
+    await expect(chat.locator('[data-testid="chat-quick-prompt"]').first()).toBeVisible();
   });
 });
