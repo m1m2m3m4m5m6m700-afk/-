@@ -24,7 +24,7 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - name: Step 1 architecture contract
-        run: node src/scripts/validate-tool-platform-step1.mjs
+      - name: Architecture and manifest contract
+        run: node src/scripts/validate-tool-platform.mjs
       - name: Typecheck
         run: npm run typecheck
