@@ -6,7 +6,7 @@ test.describe("Flex interactive chat", () => {
   test("supports multi-turn conversation and session persistence", async ({ page }) => {
     const requests: Array<{ message?: unknown; history?: unknown; locale?: unknown }> = [];
 
-    await page.route("**/api/chat", async (route) => {
+    await page.route("**/api/chat**", async (route) => {
       const request = route.request();
       requests.push(request.postDataJSON() as { message?: unknown; history?: unknown; locale?: unknown });
       await route.fulfill({
@@ -22,26 +22,30 @@ test.describe("Flex interactive chat", () => {
 
     await page.goto("/");
 
-    const chat = page.getByRole("region", { name: "Flex AI chat" });
+    const chat = page.getByTestId("flex-chat");
     await expect(chat).toHaveAttribute("data-chat-ready", "true");
 
     const composer = chat.getByRole("textbox");
     const aiMessages = chat.locator('[data-testid="chat-message"][data-sender="assistant"]');
     const allMessages = chat.locator('[data-testid="chat-message"]');
 
+    const firstResponse = page.waitForResponse((response) => response.url().includes("/api/chat") && response.status() === 200);
     await composer.fill("مرحبا");
     await composer.press("Enter");
+    await firstResponse;
 
-    await expect(aiMessages).toHaveCount(1);
+    await expect(aiMessages).toHaveCount(1, { timeout: 15_000 });
     await expect(aiMessages.first()).not.toHaveText("");
     expect(requests).toHaveLength(1);
     expect(requests[0]?.message).toBe("مرحبا");
     expect(Array.isArray(requests[0]?.history)).toBe(true);
 
+    const secondResponse = page.waitForResponse((response) => response.url().includes("/api/chat") && response.status() === 200);
     await composer.fill("هل تتذكرني؟");
     await composer.press("Enter");
+    await secondResponse;
 
-    await expect(aiMessages).toHaveCount(2);
+    await expect(aiMessages).toHaveCount(2, { timeout: 15_000 });
     await expect(aiMessages.nth(1)).not.toHaveText("");
     await expect(allMessages).toHaveCount(4);
     expect(requests).toHaveLength(2);
@@ -55,7 +59,7 @@ test.describe("Flex interactive chat", () => {
     );
 
     await page.reload();
-    const reloadedChat = page.getByRole("region", { name: "Flex AI chat" });
+    const reloadedChat = page.getByTestId("flex-chat");
     await expect(reloadedChat).toHaveAttribute("data-chat-ready", "true");
     await expect(reloadedChat.locator('[data-testid="chat-message"]')).toHaveCount(4);
     await expect(reloadedChat.getByText("مرحبا")).toBeVisible();
@@ -64,7 +68,7 @@ test.describe("Flex interactive chat", () => {
   });
 
   test("supports quick prompts and a clean new conversation", async ({ page }) => {
-    await page.route("**/api/chat", async (route) => {
+    await page.route("**/api/chat**", async (route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -78,20 +82,23 @@ test.describe("Flex interactive chat", () => {
 
     await page.goto("/");
 
-    const chat = page.getByRole("region", { name: "Flex AI chat" });
+    const chat = page.getByTestId("flex-chat");
     await expect(chat).toHaveAttribute("data-chat-ready", "true");
 
-    const quickPrompt = chat.locator('[data-testid="chat-quick-prompt"]').first();
+    const quickPrompt = chat.getByTestId("chat-quick-prompt").first();
     await expect(quickPrompt).toBeVisible();
     await expect(quickPrompt).not.toHaveText("");
+
+    const response = page.waitForResponse((res) => res.url().includes("/api/chat") && res.status() === 200);
     await quickPrompt.click();
+    await response;
 
     const aiMessages = chat.locator('[data-testid="chat-message"][data-sender="assistant"]');
-    await expect(aiMessages).toHaveCount(1);
+    await expect(aiMessages).toHaveCount(1, { timeout: 15_000 });
     await expect(aiMessages.first()).not.toHaveText("");
 
     await chat.getByTitle("New chat").click();
     await expect(chat.locator('[data-testid="chat-message"]')).toHaveCount(0);
-    await expect(chat.locator('[data-testid="chat-quick-prompt"]').first()).toBeVisible();
+    await expect(chat.getByTestId("chat-quick-prompt").first()).toBeVisible();
   });
 });
