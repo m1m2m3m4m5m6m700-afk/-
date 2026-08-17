@@ -2,38 +2,89 @@
 
 ## Goal
 
-The repository is maintained in two layers:
+Flixo uses a promotion-first tool platform. Legacy code is preserved, but it cannot become public implicitly.
 
-- **Legacy layer:** existing tool source, routes, data, and tests. Never delete these files merely to make the new system green.
-- **Public layer:** only explicitly promoted runtimes are available to users.
+## Layers
 
-## Public entry point
+```text
+Legacy source
+    |
+    v
+Tool Platform Contract
+    |
+    +-- Manifest
+    +-- Runtime contract
+    +-- Test contract
+    +-- Promotion state
+    |
+    v
+Public Tool Registry
+    |
+    v
+Compatibility adapters / routes
+```
 
-`src/lib/tool-runtime/readyTools.ts` is the single public runtime registry.
+### 1. Legacy layer
 
-A tool is not public because it appears in `src/data/tools.ts`, because a route file exists, or because an old runtime exists in `src/lib/tool-runtime/tools/`.
+Existing source under `src/data/`, `src/lib/tool-runtime/tools/`, old routes, and old tests is retained for rollback and migration. It is not a public source of truth.
 
-A tool becomes public only when its runtime is explicitly imported and registered in `readyToolRuntimes`.
+### 2. Tool Platform layer
 
-## Promotion requirements
+`src/lib/tool-platform/` is the only new extension API. It contains:
 
-A future tool promotion must provide:
+- `types.ts` — stable manifest, capability, runtime, and evidence contracts.
+- `manifest.ts` — structural manifest validation.
+- `registry.ts` — duplicate-safe in-memory registry primitives.
+- `promotion.ts` — lifecycle transitions and the public evidence gate.
+- `test-contract.ts` — reusable behavioral test contract.
+- `public-registry.ts` — the single public registration point.
+- `index.ts` — stable import surface for future tools.
 
-1. A real runtime implementation.
-2. A matching public route.
-3. A verified catalog entry.
-4. A browser regression test for the real user flow.
-5. Passing `validate:tool-runtime`.
-6. Passing typecheck, lint, and build.
+The platform does not import `src/data/tools.ts`.
 
-## Isolation rule
+### 3. Compatibility layer
 
-Legacy runtimes are intentionally ignored by the public runtime validator until promoted. This prevents old or dead tools from blocking development of new tools.
+`src/lib/tool-runtime/readyTools.ts` is an adapter for existing route code. It derives its contents from `publicToolRegistrations`; it must not import legacy runtime modules directly.
+
+## Lifecycle
+
+```text
+draft -> implemented -> tested -> verified -> public
+```
+
+Transitions are sequential. A public promotion requires evidence for implementation, route, test, runtime contract, typecheck, lint, and build.
+
+## Manifest requirements
+
+Every future tool manifest must declare:
+
+- stable `id` and `slug`
+- category
+- version
+- lifecycle state
+- input/output capabilities
+- local-only behavior
+- optional limits
+- runtime module
+- route module
+- test module
+
+## Testing layers
+
+- `verify:baseline` validates the technical platform and does not execute legacy product suites.
+- `verify:tool` validates the platform, typecheck/lint/build, and the promoted tool regression suite.
+- `verify:full` runs the historical full suite and production audit.
+
+Tool browser tests live under `tests/tools/` and use `playwright.tools.config.ts`. The runner exits successfully when no tools are promoted yet.
+
+## Promotion rule
+
+A future tool must be added as one atomic promotion unit: manifest + runtime + route + browser regression. It is not considered public until the promotion evidence is complete and the tool is registered in `publicToolRegistrations`.
 
 ## Rollback
 
-The legacy source remains intact. To revert a promotion, remove only the promoted runtime/catalog/route registration from the new layer; do not delete the legacy implementation.
+To roll back a promoted tool, remove its public registration and promotion unit. Do not delete legacy source. The `legacy-tools-archive` branch is the preservation point for the original repository state.
 
 ## Current baseline
 
-The `clean-baseline` branch intentionally exposes **zero public tools**. This is expected. It is the stable technical foundation on which tools are promoted one at a time.
+The `clean-baseline` branch intentionally exposes **zero public tools**. That is a successful architecture state, not an incomplete product state.
