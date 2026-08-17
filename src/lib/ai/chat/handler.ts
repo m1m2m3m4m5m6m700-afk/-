@@ -1,4 +1,3 @@
-/* eslint-disable no-control-regex -- sanitize removes NUL bytes from untrusted chat input. */
 import { getAIConfig, type AIProviderConfig, type AIProviderId } from "../config";
 import { tools } from "@/data/tools";
 import { categoryById } from "@/data/categories";
@@ -29,7 +28,7 @@ const SYSTEM_PROMPT = [
   "Use supplied Flixo catalog and web-search context accurately.",
 ].join(" ");
 
-function sanitize(content: string): string { return content.replace(/\r/g, "").replace(/\u0000/g, "").trim(); }
+function sanitize(content: string): string { return content.replace(/\r/g, "").split("\u0000").join("").trim(); }
 function normalizeLocale(value: unknown): string | null { return typeof value === "string" && SUPPORTED_LOCALES.has(value.trim()) ? value.trim() : null; }
 function systemPrompt(locale: string | null): string { return !locale || locale === "en" ? SYSTEM_PROMPT : `${SYSTEM_PROMPT}\nActive interface locale: ${LOCALE_NAMES[locale] ?? locale} (${locale}). Keep the answer in that language unless the user explicitly switches.`; }
 function jsonResponse(body: ChatSuccessBody | ChatErrorBody, status = 200): Response { return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } }); }
