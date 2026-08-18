@@ -3,8 +3,8 @@ name: Release Certification
 on:
   workflow_run:
     workflows:
-      - Verification Matrix
       - Tool Platform
+      - Tool Release Candidate
     types: [completed]
 
 concurrency:
