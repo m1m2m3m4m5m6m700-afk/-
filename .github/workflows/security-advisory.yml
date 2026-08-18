@@ -1,0 +1,102 @@
+name: Security Advisory
+
+on:
+  push:
+    branches: [develop]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+concurrency:
+  group: security-advisory-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  secrets:
+    name: Secrets scan (advisory)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+      - name: Scan repository sources
+        run: node scripts/scan-secrets.mjs > secrets-scan.json
+      - name: Publish secrets report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-secrets-report
+          path: secrets-scan.json
+          if-no-files-found: ignore
+
+  sast:
+    name: SAST (advisory)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Run Semgrep
+        continue-on-error: true
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: p/default
+      - name: SAST note
+        run: echo "SAST is advisory until false-positive baselines are established."
+
+  supply-chain:
+    name: Supply-chain inventory (advisory)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Production audit evidence
+        run: npm audit --omit=dev --json > npm-audit.json || true
+      - name: Dependency inventory
+        run: npm ls --all --json > npm-tree.json || true
+      - name: Publish supply-chain evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-supply-chain-report
+          path: |
+            npm-audit.json
+            npm-tree.json
+          if-no-files-found: ignore
+
+  mutation-report:
+    name: Mutation evidence (advisory)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Run mutation gate and preserve report
+        shell: bash
+        run: |
+          set +e
+          npm run test:mutation > mutation-report.txt 2>&1
+          code=$?
+          printf '{"exitCode":%s,"timestamp":"%s"}\n' "$code" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > mutation-report.json
+          cat mutation-report.txt
+          exit 0
+      - name: Publish mutation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-evidence
+          path: |
+            mutation-report.txt
+            mutation-report.json
+          if-no-files-found: ignore
