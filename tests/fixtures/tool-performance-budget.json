@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "default": {
+    "pageLoadMs": 2500,
+    "operationMs": 10000
+  },
+  "tools": {
+    "zip-creator": { "pageLoadMs": 2500, "operationMs": 5000 },
+    "archive-extractor": { "pageLoadMs": 2500, "operationMs": 10000 },
+    "file-splitter": { "pageLoadMs": 2500, "operationMs": 15000 },
+    "metadata-viewer": { "pageLoadMs": 2500, "operationMs": 2500 }
+  }
+}
