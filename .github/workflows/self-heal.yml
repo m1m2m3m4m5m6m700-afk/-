@@ -1,183 +1,72 @@
 name: Self Heal Monitor
 
 on:
-  workflow_run:
-    workflows: ["CI"]
-    types: [completed]
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: "Failed CI workflow run ID to diagnose"
+        required: true
+        type: string
+      failed_sha:
+        description: "Exact failed CI commit SHA"
+        required: true
+        type: string
 
 concurrency:
-  group: self-heal-${{ github.event.workflow_run.id }}
+  group: self-heal-manual-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
-  contents: write
+  contents: read
   actions: read
-  pull-requests: write
+  pull-requests: read
   checks: read
-  issues: write
-
-env:
-  FAILED_SHA: ${{ github.event.workflow_run.head_sha }}
-  FAILED_BRANCH: ${{ github.event.workflow_run.head_branch }}
-  SOURCE_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
-  SELF_HEAL_MODE: ${{ startsWith(github.event.workflow_run.head_branch, 'test/self-heal-pr-') && 'pr' || 'dry-run' }}
-  SELF_HEAL_MAX_TEST_RUNS_PER_HOUR: "2"
-  SELF_HEAL_ARTIFACT_RETENTION_DAYS: "7"
 
 jobs:
-  monitor-and-heal:
+  diagnose-only:
+    name: Manual CI Failure Diagnosis
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      RUN_ID: ${{ inputs.source_run_id }}
+      FAILED_SHA: ${{ inputs.failed_sha }}
+      REPOSITORY: ${{ github.repository }}
     steps:
-      - name: Decide whether healing is required
-        id: gate
+      - name: Validate inputs
         shell: bash
         run: |
-          echo "SOURCE_RUN_ID=${{ github.event.workflow_run.id }}"
-          echo "SOURCE_HEAD_SHA=$FAILED_SHA"
-          echo "SOURCE_HEAD_BRANCH=$FAILED_BRANCH"
-          echo "SOURCE_CONCLUSION=$SOURCE_CONCLUSION"
-          echo "SELF_HEAL_MODE=$SELF_HEAL_MODE"
-          if [ "$SOURCE_CONCLUSION" = "failure" ]; then
-            echo "should_heal=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "should_heal=false" >> "$GITHUB_OUTPUT"
-            echo "Self-heal not required; source CI conclusion is $SOURCE_CONCLUSION."
-          fi
-
-      - name: Enforce experimental rate limit
-        if: steps.gate.outputs.should_heal == 'true' && startsWith(env.FAILED_BRANCH, 'test/self-heal-')
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          now=$(date +%s)
-          cutoff=$((now - 3600))
-          count=0
-          while IFS= read -r created_at; do
-            [ -z "$created_at" ] && continue
-            ts=$(date -d "$created_at" +%s 2>/dev/null || echo 0)
-            if [ "$ts" -ge "$cutoff" ]; then
-              count=$((count + 1))
-            fi
-          done < <(gh run list --workflow self-heal.yml --limit 20 --json createdAt --jq '.[].createdAt')
-          echo "Self-Heal test runs in the last hour: $count"
-          if [ "$count" -gt "${SELF_HEAL_MAX_TEST_RUNS_PER_HOUR}" ]; then
-            echo "Rate limit reached for experimental self-heal runs; exiting without mutation."
-            exit 0
-          fi
-
-      - name: Validate failed SHA
-        if: steps.gate.outputs.should_heal == 'true'
-        shell: bash
-        run: |
-          if [ -z "$FAILED_SHA" ]; then
-            echo "ERROR: workflow_run.head_sha is empty. Aborting self-heal." >&2
-            exit 1
-          fi
+          test -n "$RUN_ID"
+          test -n "$FAILED_SHA"
+          echo "Manual self-heal is diagnosis-only. No repository mutation is permitted."
 
       - name: Checkout failed revision
-        if: steps.gate.outputs.should_heal == 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
-          ref: ${{ env.FAILED_SHA }}
+          ref: ${{ inputs.failed_sha }}
           fetch-depth: 0
 
       - name: Verify checkout integrity
-        if: steps.gate.outputs.should_heal == 'true'
         shell: bash
         run: |
           ACTUAL_SHA="$(git rev-parse HEAD)"
-          echo "EVENT HEAD SHA: $FAILED_SHA"
-          echo "GIT HEAD: $ACTUAL_SHA"
-          echo "GIT BRANCH: $(git rev-parse --abbrev-ref HEAD || true)"
-          git status --porcelain
-          git log -1 --pretty=fuller
           test "$ACTUAL_SHA" = "$FAILED_SHA" || {
-            echo "ERROR: checked-out SHA does not match failed workflow SHA." >&2
+            echo "ERROR: checked-out SHA does not match supplied failed SHA." >&2
             exit 1
           }
+          git log -1 --pretty=fuller
 
-      - name: Setup Node
-        if: steps.gate.outputs.should_heal == 'true'
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-
-      - name: Collect and classify failure
-        if: steps.gate.outputs.should_heal == 'true'
+      - name: Diagnose failed CI run
         env:
           GH_TOKEN: ${{ github.token }}
-          RUN_ID: ${{ github.event.workflow_run.id }}
-          REPOSITORY: ${{ github.repository }}
         run: node .github/scripts/diagnose.js
 
-      - name: Prepare debug artifacts
-        if: steps.gate.outputs.should_heal == 'true'
-        env:
-          DEBUG_DIR: ${{ runner.temp }}/self-heal-debug-${{ github.event.workflow_run.id }}
-        shell: bash
-        run: |
-          umask 077
-          mkdir -p "$DEBUG_DIR"
-          : > "$DEBUG_DIR/npm.out"
-          npm config list --json > "$DEBUG_DIR/npm-config.json" 2>/dev/null || echo "{}" > "$DEBUG_DIR/npm-config.json"
-          git status --porcelain > "$DEBUG_DIR/git-status-before.txt" || true
-          git diff --cached --name-only > "$DEBUG_DIR/git-staged-before.txt" || true
-          ls -la package-lock.json > "$DEBUG_DIR/package-lock-ls-before.txt" 2>&1 || true
-          stat -c '%s %n' package-lock.json > "$DEBUG_DIR/package-lock-stat-before.txt" 2>&1 || true
-
-      - name: Attempt safe self-healing
-        if: steps.gate.outputs.should_heal == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RUN_ID: ${{ github.event.workflow_run.id }}
-          REPOSITORY: ${{ github.repository }}
-          SELF_HEAL_MODE: ${{ env.SELF_HEAL_MODE }}
-          DEBUG_DIR: ${{ runner.temp }}/self-heal-debug-${{ github.event.workflow_run.id }}
-        shell: bash
-        run: |
-          set +e
-          mkdir -p "$DEBUG_DIR"
-          node .github/scripts/auto-correct.js > >(tee "$DEBUG_DIR/npm.out") 2> >(tee -a "$DEBUG_DIR/npm.out" >&2)
-          rc=${PIPESTATUS[0]}
-          exit "$rc"
-
-      - name: Finalize debug artifacts
-        if: always()
-        env:
-          DEBUG_DIR: ${{ runner.temp }}/self-heal-debug-${{ github.event.workflow_run.id }}
-        shell: bash
-        run: |
-          umask 077
-          mkdir -p "$DEBUG_DIR"
-          git status --porcelain > "$DEBUG_DIR/git-status-after.txt" || true
-          git diff --cached --name-only > "$DEBUG_DIR/git-staged-after.txt" || true
-          git diff --cached -- package-lock.json > "$DEBUG_DIR/staged-package-lock.diff" || true
-          git diff -- package-lock.json > "$DEBUG_DIR/working-package-lock.diff" || true
-          ls -la package-lock.json > "$DEBUG_DIR/package-lock-ls.txt" 2>&1 || true
-          stat -c '%s %n' package-lock.json > "$DEBUG_DIR/package-lock-stat.txt" 2>&1 || true
-          if git rev-parse --verify auto-fix/lockfile-fixer/${{ github.event.workflow_run.id }} >/dev/null 2>&1; then
-            git log -1 --pretty=fuller auto-fix/lockfile-fixer/${{ github.event.workflow_run.id }} > "$DEBUG_DIR/auto-fix-branch-log.txt" 2>&1 || true
-          else
-            echo "auto-fix branch not present in this checkout" > "$DEBUG_DIR/auto-fix-branch-log.txt"
-          fi
-          git status --porcelain=v1 > "$DEBUG_DIR/git-status-final.txt" || true
-          if [ -f ".github/self-healing/logs/${{ github.event.workflow_run.id }}-dryrun.diff" ]; then
-            cp ".github/self-healing/logs/${{ github.event.workflow_run.id }}-dryrun.diff" "$DEBUG_DIR/dryrun.diff"
-          else
-            : > "$DEBUG_DIR/dryrun.diff"
-          fi
-
-      - name: Upload self-healing diagnostics
+      - name: Upload diagnosis report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: self-heal-full-artifacts-${{ github.event.workflow_run.id }}
+          name: self-heal-diagnosis-${{ inputs.source_run_id }}
           path: |
-            ${{ runner.temp }}/self-heal-debug-${{ github.event.workflow_run.id }}/
-            .github/self-healing/logs/
             .github/diagnosis-report.json
+            .github/self-healing/logs/
           if-no-files-found: ignore
-          retention-days: ${{ env.SELF_HEAL_ARTIFACT_RETENTION_DAYS }}
+          retention-days: 14
