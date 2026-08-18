@@ -42,13 +42,14 @@ test.describe("tool invariants", () => {
     await page.goto("/tools/file-splitter");
     await expect(page.locator('[data-hydrated="true"]')).toHaveCount(1);
 
-    const source = Buffer.alloc(4097, 0x5a);
+    const chunkSizeBytes = 2048;
+    const source = Buffer.alloc(chunkSizeBytes * 2 + 1, 0x5a);
     await page.locator('input[type="file"]').setInputFiles({
       name: "invariant.bin",
       mimeType: "application/octet-stream",
       buffer: source,
     });
-    await page.getByLabel("Chunk size").fill("2048");
+    await page.getByLabel("Chunk size").fill(String(chunkSizeBytes / (1024 * 1024)));
     await page.getByRole("button", { name: "Split file" }).click();
 
     const link = page.getByRole("link", { name: "Download chunks" });
@@ -60,7 +61,9 @@ test.describe("tool invariants", () => {
     expect(path).toBeTruthy();
 
     const zip = await JSZip.loadAsync(await readFile(path!));
-    const names = Object.keys(zip.files).sort();
+    const names = Object.keys(zip.files)
+      .filter((name) => !zip.files[name].dir)
+      .sort();
     expect(names).toHaveLength(3);
     const reconstructed = Buffer.concat(
       await Promise.all(names.map((name) => zip.files[name].async("nodebuffer"))),
