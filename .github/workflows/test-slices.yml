@@ -1,0 +1,83 @@
+name: Test Slices
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+concurrency:
+  group: test-slices-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  test-slice:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: integration
+            command: npm run validate:integration
+          - name: registry
+            command: npm run validate:registry
+          - name: tool-runtime
+            command: npm run validate:tool-runtime
+          - name: search-catalog
+            command: npm run validate:search-catalog
+          - name: seo
+            command: npm run validate:seo
+          - name: tool-content
+            command: npm run validate:tool-content
+          - name: localization
+            command: npm run validate:localization
+          - name: search-intent
+            command: npm run validate:search-intent
+          - name: tool-content-localization
+            command: npm run validate:tool-content-localization
+          - name: terminology
+            command: npm run validate:terminology-profiles
+          - name: localization-agent
+            command: npm run validate:localization-agent
+          - name: pdf-catalog
+            command: npm run validate:pdf-catalog
+          - name: tool-review
+            command: npm run validate:tool-review
+          - name: tool-quality
+            command: npm run validate:tool-quality
+          - name: ai-contract
+            command: npm run validate:ai
+          - name: accessibility
+            command: npm run validate:accessibility
+          - name: security
+            command: npm run validate:security
+          - name: truthfulness
+            command: npm run test:truthfulness
+          - name: typecheck
+            command: npm run typecheck
+          - name: lint
+            command: npm run lint
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Lockfile integrity
+        run: node scripts/validate-lockfile.mjs
+      - name: Run isolated diagnostic slice
+        run: ${{ matrix.command }}
+      - name: Lockfile unchanged
+        if: success()
+        run: git diff --exit-code -- package.json package-lock.json
