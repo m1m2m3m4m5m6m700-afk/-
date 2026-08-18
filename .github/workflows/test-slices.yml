@@ -120,12 +120,19 @@ jobs:
           node-version-file: ${{ env.NODE_VERSION_FILE }}
           cache: npm
       - run: npm ci
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
       - run: npx playwright install --with-deps chromium
       - name: Run repeated desktop regression
         run: npm run test:desktop:flaky
       - name: Record edge coverage
         if: always()
-        run: echo "Desktop edge coverage: ZIP bytes, invalid archives, multi-MB splitting, one-byte splitting, metadata correctness, repeatability."
+        run: echo "Desktop edge coverage: public tool smoke, invalid inputs, repeatability, and boundary cases."
 
   lighthouse:
     name: Lighthouse performance and UX audit (advisory)
