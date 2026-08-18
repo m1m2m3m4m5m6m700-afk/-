@@ -44,6 +44,8 @@ jobs:
             command: npm run build
           - name: Production audit
             command: npm run audit:production
+          - name: Deployment health
+            command: node scripts/validate-deployment-health.mjs
     steps:
       - uses: actions/checkout@v5
         with:
@@ -57,6 +59,11 @@ jobs:
       - name: Lockfile integrity before tests
         run: node scripts/validate-lockfile.mjs
       - name: Run verification slice
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: ${{ matrix.command }}
       - name: Lockfile unchanged after verification
         if: success()
