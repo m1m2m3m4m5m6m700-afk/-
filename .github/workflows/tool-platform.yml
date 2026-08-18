@@ -25,12 +25,18 @@ jobs:
         run: node scripts/validate-ci-contract.mjs
       - name: Validate self-heal process contract
         run: node scripts/validate-self-heal-contract.mjs
+      - name: Validate PR discipline policy
+        run: node scripts/validate-pr-discipline.mjs
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Lockfile integrity
+        run: node scripts/validate-lockfile.mjs
+      - name: Lockfile unchanged after install
+        run: git diff --exit-code -- package.json package-lock.json
       - name: Strict verification foundation
         run: npm run verify:foundation
       - name: Dependency contract
