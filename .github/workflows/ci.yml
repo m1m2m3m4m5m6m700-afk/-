@@ -3,129 +3,52 @@ name: CI
 on:
   push:
     branches: [main]
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "public/**"
+      - "package.json"
+      - "package-lock.json"
+      - "vite.config.ts"
+      - "tsconfig*.json"
+      - ".nvmrc"
+      - ".github/workflows/**"
   workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
   verify:
-    name: Full Verification (release/main)
+    name: Full Verification (main)
     runs-on: ubuntu-latest
     timeout-minutes: 40
-
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-
       - name: Setup Node
         uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
           cache: npm
-
       - name: Validate CI contract
         run: npm run validate-ci-contract
-
       - name: Validate dependency contract
         run: npm run validate:dependencies
-
       - name: Install dependencies
         run: npm ci
-
-      - name: Validate cross-layer integration contract
-        run: npm run validate:integration
-
-      - name: Install Chromium for operational tests
-        run: npx playwright install --with-deps chromium
-
+      - name: Lockfile unchanged after install
+        run: git diff --exit-code -- package.json package-lock.json
       - name: Production dependency audit
         run: npm run audit:production
-
-      - name: Validate registry
-        run: npm run validate:registry
-
-      - name: Validate tool runtime
-        run: npm run validate:tool-runtime
-
-      - name: Validate tool quality publication contract
-        run: npm run validate:tool-quality
-
-      - name: Validate AI contract
-        run: npm run validate:ai
-
-      - name: Validate accessibility contract
-        run: npm run validate:accessibility
-
-      - name: Validate security contract
-        run: npm run validate:security
-
-      - name: Validate mega-tool catalog
-        run: node src/scripts/validate-mega-tools.mjs
-
-      - name: Validate Google Search implementation
-        run: node src/scripts/validate-google-search.mjs
-
-      - name: Validate terminology profiles
-        run: node src/scripts/validate-terminology-profiles.mjs
-
-      - name: Validate SEO
-        run: npm run validate:seo
-
-      - name: Validate tool content
-        run: npm run validate:tool-content
-
-      - name: Validate localization
-        run: npm run validate:localization
-
-      - name: Validate localized pages and dictionaries
-        run: node src/scripts/validate-localization-pages.mjs
-
-      - name: Report localization health
-        run: node src/scripts/report-localization-health.mjs
-
-      - name: Validate RTL localization contract
-        run: node src/scripts/validate-localization-rtl.mjs
-
-      - name: Build and generate route tree
-        run: npm run build
-
-      - name: Validate generated route tree
-        run: npm run validate:route-tree
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Run Flex chat browser tests
-        run: npm run test:chat
-
-      - name: Run accessibility browser tests
-        run: npm run test:a11y
-
-      - name: Run verified desktop/file tool browser tests
-        run: npm run test:desktop
-
-      - name: Verify desktop evidence
-        run: node src/scripts/validate-verification-evidence.mjs
-
-      - name: Run all operational mega-tool tests
-        run: npx playwright test tests/mega-tools.spec.ts
-
-      - name: Upload build artifact
-        if: github.event_name == 'pull_request'
-        uses: actions/upload-artifact@v4
-        with:
-          name: vercel-build
-          path: .vercel/output
-          retention-days: 3
-
+      - name: Install Chromium for operational tests
+        run: npx playwright install --with-deps chromium
+      - name: Run canonical test gate
+        run: npm test
       - name: Upload browser report
         if: always()
         uses: actions/upload-artifact@v4
@@ -134,8 +57,7 @@ jobs:
           path: playwright-report
           if-no-files-found: ignore
           retention-days: 7
-
-      - name: Upload diagnostic logs on failure
+      - name: Upload diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
