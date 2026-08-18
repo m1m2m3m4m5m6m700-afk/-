@@ -16,6 +16,12 @@ async function downloadSize(downloadPromise: Promise<Download>, downloadName?: s
   return path!;
 }
 
+async function downloadToolLink(page: Page, locator: ReturnType<Page["getByRole"]>, expectedName: string) {
+  const downloadPromise = page.waitForEvent("download", { timeout: 60_000 });
+  await locator.click();
+  return downloadSize(downloadPromise, expectedName);
+}
+
 test.describe("verified desktop tools", () => {
   test("ZIP Creator returns the exact expected archive and rejects empty input", async ({ page }) => {
     await page.goto("/tools/zip-creator");
@@ -25,7 +31,6 @@ test.describe("verified desktop tools", () => {
     await expect(createButton).toBeDisabled();
     await expect(page.getByText("Download ZIP")).toHaveCount(0);
 
-    const downloadPromise = page.waitForEvent("download", { timeout: 60_000 });
     const input = page.locator('input[type="file"]');
     await input.setInputFiles([
       { name: "alpha.txt", mimeType: "text/plain", buffer: Buffer.from("alpha") },
@@ -34,19 +39,34 @@ test.describe("verified desktop tools", () => {
     await expect(createButton).toBeEnabled();
     await createButton.click();
 
-    const downloadPath = await downloadSize(downloadPromise, "flixo-files.zip");
-    const archive = await readFile(downloadPath);
+    const downloadLink = page.getByRole("link", { name: "Download ZIP" });
+    await expect(downloadLink).toBeVisible();
+    await expect(downloadLink).toHaveAttribute("download", "flixo-files.zip");
+    const href = await downloadLink.getAttribute("href");
+    expect(href).toMatch(/^blob:/);
+
+    const archive = await page.evaluate(async (url) => {
+      const response = await fetch(url);
+      return Array.from(new Uint8Array(await response.arrayBuffer()));
+    }, href);
     expect(archive.length).toBeGreaterThan(0);
 
-    const zip = await JSZip.loadAsync(archive);
+    const zip = await JSZip.loadAsync(Buffer.from(archive));
     expect(Object.keys(zip.files).sort()).toEqual(["alpha.txt", "beta.txt"]);
     expect(await zip.files["alpha.txt"].async("string")).toBe("alpha");
     expect(await zip.files["beta.txt"].async("string")).toBe("beta");
-    await expect(page.getByText("Download ZIP")).toBeVisible();
 
-    const secondDownloadPromise = page.waitForEvent("download", { timeout: 60_000 });
+    const downloadPath = await downloadToolLink(page, downloadLink, "flixo-files.zip");
+    const downloadedArchive = await readFile(downloadPath);
+    const downloadedZip = await JSZip.loadAsync(downloadedArchive);
+    expect(Object.keys(downloadedZip.files).sort()).toEqual(["alpha.txt", "beta.txt"]);
+    expect(await downloadedZip.files["alpha.txt"].async("string")).toBe("alpha");
+    expect(await downloadedZip.files["beta.txt"].async("string")).toBe("beta");
+
     await createButton.click();
-    const secondDownloadPath = await downloadSize(secondDownloadPromise, "flixo-files.zip");
+    const secondDownloadLink = page.getByRole("link", { name: "Download ZIP" });
+    await expect(secondDownloadLink).toBeVisible();
+    const secondDownloadPath = await downloadToolLink(page, secondDownloadLink, "flixo-files.zip");
     const secondZip = await JSZip.loadAsync(await readFile(secondDownloadPath));
     expect(Object.keys(secondZip.files).sort()).toEqual(["alpha.txt", "beta.txt"]);
     expect(await secondZip.files["alpha.txt"].async("string")).toBe("alpha");
@@ -64,7 +84,7 @@ test.describe("verified desktop tools", () => {
       buffer: Buffer.from("not a zip archive"),
     });
     await expect(page.getByText("The selected file is not a valid ZIP archive.", { exact: true })).toBeVisible();
-    await expect(page.getByRole("link")).toHaveCount(0);
+    await expect(page.locator('a[download]')).toHaveCount(0);
 
     const zip = new JSZip();
     zip.file("hello.txt", "hello from Flixo");
@@ -76,8 +96,8 @@ test.describe("verified desktop tools", () => {
     await expect(page.getByText("nested/world.txt")).toBeVisible();
 
     for (const [name, expected] of [["hello.txt", "hello from Flixo"], ["nested/world.txt", "exact nested bytes"]] as const) {
-      const link = page.getByRole("link", { name: new RegExp(name.replaceAll("/", "\\/")) });
-      await expect(link).toHaveAttribute("download", name.split("/").pop()!);
+      const link = page.locator(`a[download="${name.split("/").pop()!}"]`).filter({ hasText: name });
+      await expect(link).toHaveCount(1);
       const href = await link.getAttribute("href");
       expect(href).toMatch(/^blob:/);
       const actual = await page.evaluate(async (url) => {
@@ -94,24 +114,43 @@ test.describe("verified desktop tools", () => {
     await waitForToolHydration(page);
     await page.locator('input[type="file"]').setInputFiles({ name: "large.bin", mimeType: "application/octet-stream", buffer: source });
     await page.getByLabel("Chunk size").fill("1");
-    const downloadPromise = page.waitForEvent("download", { timeout: 60_000 });
     await page.getByRole("button", { name: "Split file" }).click();
-    const downloadPath = await downloadSize(downloadPromise, "large.bin-parts.zip");
-    const zip = await JSZip.loadAsync(await readFile(downloadPath));
+
+    const downloadLink = page.getByRole("link", { name: "Download chunks" });
+    await expect(downloadLink).toBeVisible();
+    await expect(downloadLink).toHaveAttribute("download", "large.bin-parts.zip");
+    const href = await downloadLink.getAttribute("href");
+    expect(href).toMatch(/^blob:/);
+
+    const archive = await page.evaluate(async (url) => {
+      const response = await fetch(url);
+      return Array.from(new Uint8Array(await response.arrayBuffer()));
+    }, href);
+    const zip = await JSZip.loadAsync(Buffer.from(archive));
     const names = Object.keys(zip.files).sort();
     expect(names).toEqual(["large.bin.part-0001", "large.bin.part-0002", "large.bin.part-0003"]);
     const merged = Buffer.concat(await Promise.all(names.map((name) => zip.files[name].async("nodebuffer"))));
     expect(merged.equals(source)).toBe(true);
+
+    const downloadPath = await downloadToolLink(page, downloadLink, "large.bin-parts.zip");
+    expect((await JSZip.loadAsync(await readFile(downloadPath))).files["large.bin.part-0001"]).toBeTruthy();
 
     await page.reload();
     await waitForToolHydration(page);
     const oneByte = Buffer.from([0xab]);
     await page.locator('input[type="file"]').setInputFiles({ name: "one.bin", mimeType: "application/octet-stream", buffer: oneByte });
     await page.getByLabel("Chunk size").fill("1");
-    const oneByteDownload = page.waitForEvent("download", { timeout: 60_000 });
     await page.getByRole("button", { name: "Split file" }).click();
-    const oneBytePath = await downloadSize(oneByteDownload, "one.bin-parts.zip");
-    const oneByteZip = await JSZip.loadAsync(await readFile(oneBytePath));
+
+    const oneByteDownloadLink = page.getByRole("link", { name: "Download chunks" });
+    await expect(oneByteDownloadLink).toBeVisible();
+    const oneByteHref = await oneByteDownloadLink.getAttribute("href");
+    expect(oneByteHref).toMatch(/^blob:/);
+    const oneByteArchive = await page.evaluate(async (url) => {
+      const response = await fetch(url);
+      return Array.from(new Uint8Array(await response.arrayBuffer()));
+    }, oneByteHref);
+    const oneByteZip = await JSZip.loadAsync(Buffer.from(oneByteArchive));
     expect(Object.keys(oneByteZip.files)).toEqual(["one.bin.part-0001"]);
     expect(Buffer.from(await oneByteZip.files["one.bin.part-0001"].async("nodebuffer")).equals(oneByte)).toBe(true);
   });
