@@ -68,11 +68,11 @@ jobs:
       - name: Real desktop verification with repeatability
         run: npm run test:desktop:flaky
       - name: Tool invariants and golden fixtures
-        run: npx playwright test tests/tool-invariants.spec.ts --project=chromium --repeat-each=2
+        run: npx playwright test tests/tool-invariants.spec.ts --project=chromium --repeat-each=2 --output=tool-invariant-results
       - name: Verify evidence output contract
         run: |
-          test -d test-results/evidence
-          count=$(find test-results/evidence -maxdepth 1 -type f -name '*.json' | wc -l)
+          test -d verification-evidence
+          count=$(find verification-evidence -maxdepth 1 -type f -name '*.json' | wc -l)
           test "$count" -ge 4
       - name: Strict verification evidence
         run: node src/scripts/validate-verification-evidence.mjs
@@ -81,7 +81,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: verification-evidence-${{ github.run_id }}
-          path: test-results/evidence/*.json
+          path: verification-evidence/*.json
           if-no-files-found: error
           retention-days: 14
       - name: Upload Playwright diagnostics
@@ -92,4 +92,5 @@ jobs:
           path: |
             playwright-report
             test-results
+            tool-invariant-results
           if-no-files-found: ignore
