@@ -43,7 +43,7 @@ const api = async (path) => {
   return response.json();
 };
 
-const requiredWorkflows = ["Verification Matrix", "Tool Platform"];
+const requiredWorkflows = ["Tool Platform", "Tool Release Candidate"];
 const workflowList = await api(`/repos/${owner}/${repo}/actions/workflows`);
 const resolved = requiredWorkflows.map((name) => {
   const match = workflowList.workflows.find((workflow) => workflow.name === name);
