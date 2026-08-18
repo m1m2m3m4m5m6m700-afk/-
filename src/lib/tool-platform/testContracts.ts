@@ -21,8 +21,8 @@ export const certificationRequirements: ToolCertificationRequirements = Object.f
 });
 
 export const publicToolTestContracts: readonly ToolTestContract[] = [
-  { toolId: "zip-creator", route: "/tools/zip-creator", requiredChecks: strictChecks },
-  { toolId: "archive-extractor", route: "/tools/archive-extractor", requiredChecks: strictChecks },
-  { toolId: "file-splitter", route: "/tools/file-splitter", requiredChecks: strictChecks },
-  { toolId: "metadata-viewer", route: "/tools/metadata-viewer", requiredChecks: strictChecks },
+  { toolId: "image-compressor", route: "/tools/image-compressor", requiredChecks: strictChecks },
+  { toolId: "image-enhancer", route: "/tools/image-enhancer", requiredChecks: strictChecks },
+  { toolId: "video-compressor", route: "/tools/video-compressor", requiredChecks: strictChecks },
+  { toolId: "video-trimmer", route: "/tools/video-trimmer", requiredChecks: strictChecks },
 ];
