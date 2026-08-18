@@ -11,8 +11,8 @@ on:
     - cron: "37 2 * * 3"
 
 concurrency:
-  group: test-slices-${{ github.event.pull_request.head.sha || github.sha }}
-  cancel-in-progress: false
+  group: test-slices-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -109,7 +109,7 @@ jobs:
 
   edge-regression:
     name: Repeated desktop edge regression (advisory)
-    if: ${{ github.event_name != 'schedule' || github.ref == 'refs/heads/develop' }}
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     continue-on-error: true
@@ -145,6 +145,7 @@ jobs:
 
   localization-agent-advisory:
     name: Localization agent roadmap audit (advisory)
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     continue-on-error: true
@@ -163,6 +164,7 @@ jobs:
 
   pdf-catalog-advisory:
     name: PDF mega catalog roadmap audit (advisory)
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     continue-on-error: true
