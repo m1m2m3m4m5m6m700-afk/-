@@ -3,6 +3,7 @@
   "framework": null,
   "buildCommand": "vite build",
   "installCommand": "npm install",
+  "ignoreCommand": "node scripts/vercel-ignore-build.mjs",
   "devCommand": "vite --host 0.0.0.0 --port 3000",
   "headers": [
     {
