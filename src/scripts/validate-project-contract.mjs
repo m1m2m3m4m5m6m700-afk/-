@@ -115,17 +115,36 @@ for (const { id, lifecycle } of registrations) {
 }
 
 const contracts = await read("src/lib/tool-platform/testContracts.ts");
-const strictChecks = /const\s+strictChecks\s*=\s*\[[\s\"']*render[\s\"',]+interaction[\s\"',]+output[\s\"',]+error[\s\"']*\]\s+as const/;
-const usesStrictChecks = strictChecks.test(contracts);
+const requiredChecks = [
+  "render",
+  "interaction",
+  "output",
+  "error",
+  "security",
+  "performance",
+  "mutation",
+  "invariant",
+  "evidence",
+];
 for (const { id } of registrations) {
   const start = contracts.indexOf(`toolId: "${id}"`);
-  if (start < 0) fail(`Missing verification contract for public tool: ${id}`);
-  else if (!usesStrictChecks) {
-    const block = contracts.slice(start, start + 500);
-    for (const check of ["render", "interaction", "output", "error"]) {
-      if (!block.includes(`"${check}"`)) fail(`Tool ${id} is missing strict verification check: ${check}`);
-    }
+  if (start < 0) {
+    fail(`Missing verification contract for public tool: ${id}`);
+    continue;
   }
+  const block = contracts.slice(start, start + 800);
+  for (const check of requiredChecks) {
+    if (!block.includes(`"${check}"`)) fail(`Tool ${id} is missing strict verification check: ${check}`);
+  }
+}
+
+for (const required of [
+  'level: "certified"',
+  "requiredEvidence: true",
+  "regressionLocked: true",
+  'dataProcessing: "local-only"',
+]) {
+  if (!contracts.includes(required)) fail(`Certification contract is missing required rule: ${required}`);
 }
 
 if (failures.length) {
