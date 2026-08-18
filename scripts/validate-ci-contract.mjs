@@ -35,6 +35,24 @@ function readText(file) {
   }
 }
 
+function extractWorkflowEnv(workflow) {
+  const env = {};
+  const envMatch = workflow.match(/^env:\n((?:  [A-Z0-9_]+:\s*[^\n]+\n?)*)/m);
+  if (!envMatch) return env;
+
+  for (const line of envMatch[1].split("\n")) {
+    const match = line.match(/^  ([A-Z0-9_]+):\s*(.+?)\s*$/);
+    if (match) env[match[1]] = match[2].replace(/^['"]|['"]$/g, "");
+  }
+  return env;
+}
+
+function resolveWorkflowValue(value, workflowEnv) {
+  const expression = value.match(/^\$\{\{\s*env\.([A-Z0-9_]+)\s*\}\}$/);
+  if (!expression) return value;
+  return workflowEnv[expression[1]] ?? value;
+}
+
 const pkg = readJson(packagePath);
 const scripts = pkg?.scripts ?? {};
 
@@ -69,6 +87,7 @@ if (!fs.existsSync(workflowsDir)) {
   for (const workflowFile of workflowFiles) {
     const workflow = readText(workflowFile);
     const relativeWorkflow = path.relative(root, workflowFile);
+    const workflowEnv = extractWorkflowEnv(workflow);
 
     for (const match of workflow.matchAll(/\bnpm\s+run\s+([A-Za-z0-9:_-]+)/g)) {
       const scriptName = match[1];
@@ -85,9 +104,10 @@ if (!fs.existsSync(workflowsDir)) {
     }
 
     for (const match of workflow.matchAll(/node-version-file:\s*([^\s#]+)/g)) {
-      const versionFile = match[1].trim();
+      const rawVersionFile = match[1].trim();
+      const versionFile = resolveWorkflowValue(rawVersionFile, workflowEnv);
       if (!fs.existsSync(path.join(root, versionFile))) {
-        failures.push(`${relativeWorkflow}: node-version-file ${versionFile} does not exist`);
+        failures.push(`${relativeWorkflow}: node-version-file ${rawVersionFile} resolved to ${versionFile}, which does not exist`);
       }
     }
   }
