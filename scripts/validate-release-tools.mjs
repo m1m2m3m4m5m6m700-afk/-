@@ -4,7 +4,7 @@ import path from "node:path";
 const root = process.cwd();
 const manifestPath = path.join(root, "src/lib/tool-platform/publicDesktopTools.ts");
 const readyToolsPath = path.join(root, "src/lib/tool-runtime/readyTools.ts");
-const smokeSpecPath = path.join(root, "tests/relaunched-tools.spec.ts");
+const smokeSpecPath = path.join(root, "tests/desktop-tools.spec.ts");
 const contentFile = path.join(root, "src/data/toolContent.ts");
 const seoFile = path.join(root, "src/data/toolSeo.ts");
 const dynamicRouteFile = path.join(root, "src/routes/tools/$slug.tsx");
