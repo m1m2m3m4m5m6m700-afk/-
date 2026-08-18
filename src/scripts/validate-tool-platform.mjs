@@ -10,8 +10,16 @@ const manifests = await readFile("src/lib/tool-platform/publicDesktopTools.ts", 
 const contracts = await readFile("src/lib/tool-platform/testContracts.ts", "utf8");
 const promotion = await readFile("src/lib/tool-platform/promotion.ts", "utf8");
 const types = await readFile("src/lib/tool-platform/types.ts", "utf8");
+const schemas = await readFile("src/lib/tool-platform/schemas.ts", "utf8");
 
-for (const id of ["zip-creator", "archive-extractor", "file-splitter", "metadata-viewer"]) {
+const publicTools = [
+  "image-compressor",
+  "image-enhancer",
+  "video-compressor",
+  "video-trimmer",
+];
+
+for (const id of publicTools) {
   if (!runtime.includes(id)) throw new Error(`Runtime missing: ${id}`);
   if (!manifests.includes(id)) throw new Error(`Manifest missing: ${id}`);
   if (!contracts.includes(id)) throw new Error(`Test contract missing: ${id}`);
@@ -33,12 +41,29 @@ for (const required of [
   }
 }
 
+for (const schemaExport of [
+  "toolCategoryIdSchema",
+  "toolLifecycleStateSchema",
+  "toolBaseManifestSchema",
+  "toolTestContractSchema",
+  "toolCertificationRequirementsSchema",
+  "toolManifestSchema",
+]) {
+  if (!schemas.includes(`export const ${schemaExport}`)) {
+    throw new Error(`Tool schema contract missing: ${schemaExport}`);
+  }
+}
+
 for (const state of ["draft", "implemented", "verified", "public", "deprecated"]) {
-  if (!types.includes(`"${state}"`)) throw new Error(`Lifecycle state missing: ${state}`);
+  if (!types.includes(`"${state}"`) || !schemas.includes(`"${state}"`)) {
+    throw new Error(`Lifecycle state missing from type/schema: ${state}`);
+  }
 }
 
 for (const check of ["security", "performance", "mutation", "invariant", "evidence"]) {
-  if (!contracts.includes(`"${check}"`)) throw new Error(`Certification check missing: ${check}`);
+  if (!contracts.includes(`"${check}"`) || !schemas.includes(`"${check}"`)) {
+    throw new Error(`Certification check missing from contract/schema: ${check}`);
+  }
 }
 
 if (!contracts.includes('level: "certified"')) throw new Error("Public certification level is not strict.");
@@ -46,4 +71,4 @@ if (!contracts.includes("requiredEvidence: true")) throw new Error("Evidence req
 if (!contracts.includes("regressionLocked: true")) throw new Error("Regression lock is not strict.");
 if (!contracts.includes('dataProcessing: "local-only"')) throw new Error("Local-only data policy is not strict.");
 
-console.log("Tool Platform architecture + certification contract: PASS");
+console.log("Tool Platform architecture + certification + schema contract: PASS");
