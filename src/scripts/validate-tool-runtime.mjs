@@ -51,81 +51,80 @@ function hasFakeSetTimeout(source) {
   return false;
 }
 
-if (!fs.existsSync(runtimeDir)) {
-  throw new Error(`Runtime directory does not exist: ${runtimeDir}`);
-}
+if (!fs.existsSync(runtimeDir)) throw new Error(`Runtime directory does not exist: ${runtimeDir}`);
+if (!fs.existsSync(readyToolsRegistryPath)) throw new Error("Canonical readyTools.ts registry is missing.");
 
 const readyToolsRegistrySource = fs.readFileSync(readyToolsRegistryPath, "utf8");
-const runtimeFiles = fs
-  .readdirSync(runtimeDir)
-  .filter((file) => file.endsWith(".ts") || file.endsWith(".tsx"))
-  .sort();
-
 const issues = [];
-const runtimeEntries = [];
 
-for (const file of runtimeFiles) {
-  const source = fs.readFileSync(path.join(runtimeDir, file), "utf8");
-  const slugMatch = source.match(/slug:\s*"([^"]+)"/);
-  const toolIdMatch = source.match(/toolId:\s*"([^"]+)"/);
-
-  if (!slugMatch) issues.push(`Runtime file ${file} is missing a slug.`);
-  if (!toolIdMatch) issues.push(`Runtime file ${file} is missing a toolId.`);
-  if (!slugMatch || !toolIdMatch) continue;
-
-  const slug = slugMatch[1];
-  const toolId = toolIdMatch[1];
-  runtimeEntries.push({ file, slug, toolId, source });
-
-  if (!/component:\s*[A-Za-z0-9_]+/.test(source))
-    issues.push(`Runtime ${file} is missing a component definition.`);
-  if (!/categoryId:\s*"[^"]+"/.test(source))
-    issues.push(`Runtime ${file} is missing a categoryId.`);
-  if (!/layoutDescription:\s*"[^"]+"/.test(source))
-    issues.push(`Runtime ${file} is missing a non-empty layoutDescription.`);
-  if (!fs.existsSync(path.join(routeDir, `${slug}.tsx`)))
-    issues.push(`Runtime ${file} is missing route file src/routes/tools/${slug}.tsx.`);
-
-  for (const signature of FAKE_SIGNATURES) {
-    if (source.includes(signature))
-      issues.push(`Runtime ${file} contains fake implementation signature: "${signature}".`);
-  }
-  if (hasFakeSetTimeout(source))
-    issues.push(`Runtime ${file} uses setTimeout to fabricate processing output — not a real implementation.`);
-
-  const importPattern = new RegExp(`from\\s+"./tools/${slug}"`);
-  if (!importPattern.test(readyToolsRegistrySource))
-    issues.push(`Runtime ${file} is not imported by src/lib/tool-runtime/readyTools.ts.`);
-}
-
-recordDuplicates(runtimeEntries.map((entry) => entry.slug), "runtime slug", issues);
-recordDuplicates(runtimeEntries.map((entry) => entry.toolId), "runtime tool id", issues);
+const importEntries = [
+  ...readyToolsRegistrySource.matchAll(
+    /import\s*\{\s*([A-Za-z0-9_]+Runtime)\s*\}\s*from\s*"\.\/tools\/([^"]+)";/g,
+  ),
+].map((match) => ({ symbol: match[1], slug: match[2] }));
 
 const registryMatch = readyToolsRegistrySource.match(
   /export const readyToolRuntimes = \[([\s\S]*?)\] as const satisfies readonly ReadyToolRuntimeDefinition\[\];/,
 );
-if (!registryMatch) {
-  issues.push("readyTools.ts is missing the canonical readyToolRuntimes array.");
-} else {
-  const registeredNames = [...registryMatch[1].matchAll(/\b([A-Za-z0-9_]+Runtime)\b/g)].map((match) => match[1]);
-  const importedNames = [...readyToolsRegistrySource.matchAll(/import \{\s*([A-Za-z0-9_]+Runtime)\s*\} from "\.\/tools\/([^"]+)";/g)].map((match) => match[1]);
-  recordDuplicates(registeredNames, "registered runtime symbol", issues);
-  const registeredFiles = importedNames.map(([, file]) => file).sort();
-  const runtimeFileSlugs = runtimeEntries.map((entry) => entry.slug).sort();
-  for (const file of registeredFiles) {
-    if (!runtimeFileSlugs.includes(file)) issues.push(`readyTools.ts imports missing runtime file ${file}.`);
+if (!registryMatch) issues.push("readyTools.ts is missing the canonical readyToolRuntimes array.");
+
+const registeredSymbols = registryMatch
+  ? [...registryMatch[1].matchAll(/\b([A-Za-z0-9_]+Runtime)\b/g)].map((match) => match[1])
+  : [];
+
+recordDuplicates(importEntries.map((entry) => entry.symbol), "runtime import symbol", issues);
+recordDuplicates(importEntries.map((entry) => entry.slug), "runtime import slug", issues);
+recordDuplicates(registeredSymbols, "registered runtime symbol", issues);
+
+const registeredSlugs = new Set(importEntries.map((entry) => entry.slug));
+const registeredSymbolsSet = new Set(importEntries.map((entry) => entry.symbol));
+
+for (const entry of importEntries) {
+  const runtimeFile = path.join(runtimeDir, `${entry.slug}.tsx`);
+  if (!fs.existsSync(runtimeFile)) {
+    issues.push(`readyTools.ts imports missing runtime file ${entry.slug}.tsx.`);
+    continue;
   }
-  for (const slug of runtimeFileSlugs) {
-    if (!registeredFiles.includes(slug)) issues.push(`Runtime ${slug} exists but is not registered in readyTools.ts.`);
+
+  const source = fs.readFileSync(runtimeFile, "utf8");
+  const slugMatch = source.match(/slug:\s*"([^"]+)"/);
+  const toolIdMatch = source.match(/toolId:\s*"([^"]+)"/);
+
+  if (!slugMatch) issues.push(`Runtime ${entry.slug}.tsx is missing a slug.`);
+  else if (slugMatch[1] !== entry.slug) issues.push(`Runtime ${entry.slug}.tsx declares slug ${slugMatch[1]}, expected ${entry.slug}.`);
+  if (!toolIdMatch) issues.push(`Runtime ${entry.slug}.tsx is missing a toolId.`);
+
+  if (!/component:\s*[A-Za-z0-9_]+/.test(source)) issues.push(`Runtime ${entry.slug}.tsx is missing a component definition.`);
+  if (!/categoryId:\s*"[^"]+"/.test(source)) issues.push(`Runtime ${entry.slug}.tsx is missing a categoryId.`);
+  if (!/layoutDescription:\s*"[^"]+"/.test(source)) issues.push(`Runtime ${entry.slug}.tsx is missing a non-empty layoutDescription.`);
+  if (!fs.existsSync(path.join(routeDir, `${entry.slug}.tsx`))) issues.push(`Runtime ${entry.slug}.tsx is missing route file src/routes/tools/${entry.slug}.tsx.`);
+
+  for (const signature of FAKE_SIGNATURES) {
+    if (source.includes(signature)) issues.push(`Runtime ${entry.slug}.tsx contains fake implementation signature: "${signature}".`);
   }
-  if (registeredNames.length !== runtimeEntries.length)
-    issues.push(`readyTools.ts registers ${registeredNames.length} runtimes, but ${runtimeEntries.length} runtime files exist.`);
+  if (hasFakeSetTimeout(source)) issues.push(`Runtime ${entry.slug}.tsx uses setTimeout to fabricate processing output — not a real implementation.`);
+
+  const exportedRuntimePattern = new RegExp(`export const ${entry.symbol}\\s*:`);
+  if (!exportedRuntimePattern.test(source)) issues.push(`Runtime ${entry.slug}.tsx does not export ${entry.symbol}.`);
 }
 
-if (runtimeEntries.length === 0) issues.push("No runtime implementations were found.");
+for (const symbol of registeredSymbols) {
+  if (!registeredSymbolsSet.has(symbol)) issues.push(`Runtime ${symbol} is registered but has no matching import.`);
+}
+
+for (const entry of importEntries) {
+  const used = registryMatch?.[1].match(new RegExp(`\\b${entry.symbol}\\b`));
+  if (!used) issues.push(`Imported runtime ${entry.symbol} is not present in readyToolRuntimes.`);
+}
+
+if (registeredSymbols.length !== importEntries.length) {
+  issues.push(`readyTools.ts registers ${registeredSymbols.length} runtimes, but declares ${importEntries.length} runtime imports.`);
+}
+
+if (registeredSlugs.size === 0) issues.push("No public runtime implementations are registered.");
 
 if (issues.length > 0) {
   throw new Error(`Tool runtime validation failed with ${issues.length} issue(s).\n- ${issues.join("\n- ")}`);
 }
 
-console.log(`Tool runtime validation passed: ${runtimeEntries.length} canonical public runtimes.`);
+console.log(`Tool runtime validation passed: ${registeredSlugs.size} canonical public runtimes.`);
