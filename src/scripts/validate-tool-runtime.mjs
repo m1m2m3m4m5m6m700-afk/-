@@ -4,6 +4,7 @@ import path from "node:path";
 const root = process.cwd();
 const toolsSource = fs.readFileSync(path.join(root, "src/data/tools.ts"), "utf8");
 const desktopCatalogSource = fs.readFileSync(path.join(root, "src/lib/desktop-tools/verifiedCatalog.ts"), "utf8");
+const readyToolsRegistrySource = fs.readFileSync(path.join(root, "src/lib/tool-runtime/readyTools.ts"), "utf8");
 const runtimeDir = path.join(root, "src/lib/tool-runtime/tools");
 const routeDir = path.join(root, "src/routes/tools");
 
@@ -74,7 +75,22 @@ for (const verified of verifiedDesktopTools) if (!publicCatalog.some((tool) => t
 const readyTools = publicCatalog.filter((tool) => tool.status === "ready");
 const readyIds = new Set(readyTools.map((tool) => tool.id));
 const readySlugs = new Set(readyTools.map((tool) => tool.slug));
-const runtimeFiles = fs.readdirSync(runtimeDir).filter((file) => file.endsWith(".ts") || file.endsWith(".tsx")).sort();
+
+const registeredRuntimeSlugs = [...readyToolsRegistrySource.matchAll(/from\s+"\.\/tools\/([^"]+)"/g)].map((match) => match[1]);
+recordDuplicates(registeredRuntimeSlugs, "registered runtime slug", issues);
+const runtimeFilesByBaseName = new Map(
+  fs.readdirSync(runtimeDir)
+    .filter((file) => file.endsWith(".ts") || file.endsWith(".tsx"))
+    .map((file) => [file.replace(/\.(?:ts|tsx)$/, ""), file]),
+);
+const runtimeFiles = registeredRuntimeSlugs
+  .map((slug) => runtimeFilesByBaseName.get(slug))
+  .filter(Boolean)
+  .sort();
+for (const slug of registeredRuntimeSlugs) {
+  if (!runtimeFilesByBaseName.has(slug)) issues.push(`Registered public runtime ${slug} is missing a source file under src/lib/tool-runtime/tools/.`);
+}
+
 const runtimeEntries = [];
 
 for (const file of runtimeFiles) {
@@ -87,27 +103,26 @@ for (const file of runtimeFiles) {
   const slug = slugMatch[1];
   const toolId = toolIdMatch[1];
   runtimeEntries.push({ file, slug, toolId, source });
-  if (!readyIds.has(toolId)) issues.push(`Runtime ${file} belongs to non-ready tool ${toolId}. Only ready tools may have a runtime.`);
-  if (!readySlugs.has(slug)) issues.push(`Runtime ${file} uses slug ${slug} which is not a ready tool slug.`);
+  if (!readyIds.has(toolId)) issues.push(`Registered runtime ${file} belongs to non-ready tool ${toolId}. Only ready tools may be public runtimes.`);
+  if (!readySlugs.has(slug)) issues.push(`Registered runtime ${file} uses slug ${slug} which is not a ready tool slug.`);
   if (!fs.existsSync(path.join(routeDir, `${slug}.tsx`))) issues.push(`Ready tool runtime ${slug} is missing route file src/routes/tools/${slug}.tsx.`);
   for (const signature of FAKE_SIGNATURES) if (source.includes(signature)) issues.push(`Runtime ${file} contains fake implementation signature: "${signature}".`);
   if (hasFakeSetTimeout(source)) issues.push(`Runtime ${file} uses setTimeout to fabricate processing output — not a real implementation.`);
 }
 
-recordDuplicates(runtimeEntries.map((entry) => entry.slug), "runtime slug", issues);
-recordDuplicates(runtimeEntries.map((entry) => entry.toolId), "runtime tool id", issues);
+recordDuplicates(runtimeEntries.map((entry) => entry.slug), "public runtime slug", issues);
+recordDuplicates(runtimeEntries.map((entry) => entry.toolId), "public runtime tool id", issues);
 for (const tool of readyTools) {
   const matches = runtimeEntries.filter((runtime) => runtime.toolId === tool.id);
-  if (matches.length === 0) issues.push(`Ready tool ${tool.id} is missing a runtime definition.`);
-  else if (matches.length > 1) issues.push(`Ready tool ${tool.id} has ${matches.length} runtime definitions.`);
+  if (matches.length === 0) issues.push(`Ready tool ${tool.id} is missing a registered runtime definition.`);
+  else if (matches.length > 1) issues.push(`Ready tool ${tool.id} has ${matches.length} registered runtime definitions.`);
   else if (matches[0].slug !== tool.slug) issues.push(`Runtime definition for ${tool.id} has slug ${matches[0].slug}, expected ${tool.slug}.`);
 }
 
-const readyToolsRegistrySource = fs.readFileSync(path.join(root, "src/lib/tool-runtime/readyTools.ts"), "utf8");
 for (const entry of runtimeEntries) {
   const importPattern = new RegExp(`from\\s+"./tools/${entry.slug}"`);
   if (!importPattern.test(readyToolsRegistrySource)) issues.push(`Runtime ${entry.file} is not imported by src/lib/tool-runtime/readyTools.ts.`);
 }
 
 if (issues.length > 0) throw new Error(`Tool runtime validation failed with ${issues.length} issue(s).\n- ${issues.join("\n- ")}`);
-console.log(`Tool runtime validation passed: ${runtimeEntries.length} runtimes for ${readyTools.length} public-ready tools (${verifiedDesktopTools.length} verified desktop extensions).`);
+console.log(`Tool runtime validation passed: ${runtimeEntries.length} public runtimes for ${readyTools.length} public-ready tools; ${Math.max(0, runtimeFilesByBaseName.size - runtimeEntries.length)} non-public legacy runtime file(s) remain unregistered.`);
