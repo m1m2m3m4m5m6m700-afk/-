@@ -1,6 +1,6 @@
 import type { ToolCertificationRequirements, ToolTestCheck, ToolTestContract } from "./types";
 
-const strictChecks: readonly ToolTestCheck[] = [
+const strictChecks = [
   "render",
   "interaction",
   "output",
@@ -10,7 +10,7 @@ const strictChecks: readonly ToolTestCheck[] = [
   "mutation",
   "invariant",
   "evidence",
-];
+] as const satisfies readonly ToolTestCheck[];
 
 export const certificationRequirements: ToolCertificationRequirements = Object.freeze({
   level: "certified",
