@@ -23,6 +23,8 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Validate CI contract before install
         run: node scripts/validate-ci-contract.mjs
+      - name: Validate self-heal process contract
+        run: node scripts/validate-self-heal-contract.mjs
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
