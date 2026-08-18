@@ -1,4 +1,5 @@
 import type { ToolCertificationRequirements, ToolTestCheck, ToolTestContract } from "./types";
+import { toolTestContractSchema } from "./schemas";
 
 const strictChecks = [
   "render",
@@ -20,9 +21,13 @@ export const certificationRequirements: ToolCertificationRequirements = Object.f
   dataProcessing: "local-only",
 });
 
-export const publicToolTestContracts: readonly ToolTestContract[] = [
+const rawPublicToolTestContracts = [
   { toolId: "image-compressor", route: "/tools/image-compressor", requiredChecks: strictChecks },
   { toolId: "image-enhancer", route: "/tools/image-enhancer", requiredChecks: strictChecks },
   { toolId: "video-compressor", route: "/tools/video-compressor", requiredChecks: strictChecks },
   { toolId: "video-trimmer", route: "/tools/video-trimmer", requiredChecks: strictChecks },
-];
+] as const satisfies readonly ToolTestContract[];
+
+export const publicToolTestContracts: readonly ToolTestContract[] = Object.freeze(
+  rawPublicToolTestContracts.map((contract) => toolTestContractSchema.parse(contract)),
+);
