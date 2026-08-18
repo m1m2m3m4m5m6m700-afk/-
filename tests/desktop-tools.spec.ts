@@ -1,10 +1,10 @@
-import { test, expect, type Download } from "playwright/test";
+import { test, expect, type Download, type Page } from "playwright/test";
 import JSZip from "jszip";
 import { readFile } from "node:fs/promises";
 
 const makeBytes = (size: number, value = 65) => Buffer.alloc(size, value);
 
-async function waitForToolHydration(page: Parameters<Parameters<typeof test>[1]>[0]["page"]) {
+async function waitForToolHydration(page: Page) {
   await expect(page.locator('[data-hydrated="true"]')).toHaveCount(1, { timeout: 30_000 });
 }
 
