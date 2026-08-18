@@ -81,7 +81,7 @@ jobs:
         run: |
           test -d test-results/evidence
           count=$(find test-results/evidence -maxdepth 1 -type f -name '*.json' | wc -l)
-          test "$count" -ge 4
+          test "$count" -ge 5
           rm -rf verification-evidence
           mkdir -p verification-evidence
           cp test-results/evidence/*.json verification-evidence/
@@ -93,7 +93,7 @@ jobs:
           count=$(find verification-evidence -maxdepth 1 -type f -name '*.json' | wc -l)
           echo "Preserved verification evidence files: $count"
           find verification-evidence -maxdepth 1 -type f -name '*.json' -print | sort
-          test "$count" -ge 4
+          test "$count" -ge 5
       - name: Strict verification evidence
         run: node src/scripts/validate-verification-evidence.mjs
       - name: Upload verification evidence
