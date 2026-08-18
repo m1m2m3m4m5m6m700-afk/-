@@ -1,0 +1,120 @@
+name: Tool Platform
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+concurrency:
+  group: tool-platform-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  foundation:
+    name: Strict Project Foundation
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Validate CI contract before install
+        run: node scripts/validate-ci-contract.mjs
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Strict verification foundation
+        run: npm run verify:foundation
+      - name: Dependency contract
+        run: npm run validate:dependencies
+      - name: Performance budget
+        run: npm run validate:performance
+      - name: Upload diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: foundation-diagnostics
+          path: |
+            npm-debug.log
+            .logs
+          if-no-files-found: ignore
+
+  desktop:
+    name: Strict Desktop Verification
+    needs: foundation
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Validate public tool quarantine contract
+        run: node src/scripts/validate-tool-quarantine.mjs
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Verification contract
+        run: npm run validate:tool-platform-regression
+      - name: Test quality and isolation
+        run: npm run validate:test-quality && npm run validate:flaky-isolation && npm run validate:failure-quality
+      - name: Mutation testing
+        run: npm run test:mutation
+      - name: Real desktop verification with repeatability
+        run: npm run test:desktop:flaky
+      - name: Archive Extractor security contract
+        run: npx playwright test tests/archive-extractor.security.spec.ts --project=chromium --repeat-each=3 --output=archive-security-results
+      - name: File Splitter boundary contract
+        run: npx playwright test tests/file-splitter.contract.spec.ts --project=chromium --repeat-each=3 --output=file-splitter-contract-results
+      - name: Metadata Viewer contract
+        run: npx playwright test tests/metadata-viewer.contract.spec.ts --project=chromium --repeat-each=3 --output=metadata-viewer-contract-results
+      - name: Preserve verification evidence
+        run: |
+          test -d test-results/evidence
+          count=$(find test-results/evidence -maxdepth 1 -type f -name '*.json' | wc -l)
+          test "$count" -ge 5
+          rm -rf verification-evidence
+          mkdir -p verification-evidence
+          cp test-results/evidence/*.json verification-evidence/
+      - name: Tool invariants and golden fixtures
+        run: npx playwright test tests/tool-invariants.spec.ts --project=chromium --repeat-each=2 --output=tool-invariant-results
+      - name: Verify evidence output contract
+        run: |
+          test -d verification-evidence
+          count=$(find verification-evidence -maxdepth 1 -type f -name '*.json' | wc -l)
+          echo "Preserved verification evidence files: $count"
+          find verification-evidence -maxdepth 1 -type f -name '*.json' -print | sort
+          test "$count" -ge 5
+      - name: Strict verification evidence
+        run: node src/scripts/validate-verification-evidence.mjs
+      - name: Upload verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verification-evidence-${{ github.run_id }}
+          path: verification-evidence/*.json
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload Playwright diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-verification-diagnostics
+          path: |
+            playwright-report
+            test-results
+            archive-security-results
+            file-splitter-contract-results
+            metadata-viewer-contract-results
+            tool-invariant-results
+          if-no-files-found: ignore
