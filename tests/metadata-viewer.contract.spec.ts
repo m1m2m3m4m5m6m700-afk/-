@@ -47,6 +47,7 @@ test.describe("Metadata Viewer contract", () => {
     await expect(page.locator("dl")).toHaveCount(0);
 
     const source = Buffer.from("report");
+    const beforeUpload = Date.now();
     await input.setInputFiles({
       name: "REPORT.TXT",
       mimeType: "text/plain",
@@ -75,28 +76,37 @@ test.describe("Metadata Viewer contract", () => {
     expect(actual.type).toBe(expectedShape.type);
     expect(actual.size).toBe(expectedShape.size);
     expect(actual.extension).toBe(expectedShape.extension);
-    expect(Number.isNaN(Date.parse(actual.modified))).toBe(false);
+
+    const parsedModified = Date.parse(actual.modified);
+    expect(Number.isNaN(parsedModified)).toBe(false);
+    expect(Math.abs(parsedModified - beforeUpload)).toBeLessThan(5 * 60 * 1000);
 
     const metadataText = await page.locator("body").innerText();
     expect(metadataText).not.toContain("undefined");
     expect(metadataText).not.toContain("NaN");
     expect(metadataText).not.toContain("Unknown");
 
-    const expected = {
+    const expectedFingerprintValue = {
       ...expectedShape,
       modifiedIsValidDate: true,
     };
-    const actualFingerprint = fingerprint({
-      ...actual,
-      modifiedIsValidDate: Number.isNaN(Date.parse(actual.modified)) === false,
-    });
+    const actualFingerprintValue = {
+      name: actual.name,
+      type: actual.type,
+      size: actual.size,
+      extension: actual.extension,
+      modifiedIsValidDate: Number.isNaN(parsedModified) === false,
+    };
+    const expectedFingerprint = fingerprint(expectedFingerprintValue);
+    const actualFingerprint = fingerprint(actualFingerprintValue);
+
     await writeEvidence(testInfo, {
       toolId: "metadata-viewer",
       inputFingerprint: createHash("sha256").update(source).digest("hex"),
-      expectedFingerprint: fingerprint(expected),
+      expectedFingerprint,
       actualFingerprint,
     });
 
-    expect(actualFingerprint).toBe(fingerprint(expected));
+    expect(actualFingerprint).toBe(expectedFingerprint);
   });
 });
