@@ -7,6 +7,8 @@ on:
   push:
     branches: [develop]
   workflow_dispatch:
+  schedule:
+    - cron: "37 2 * * 3"
 
 concurrency:
   group: test-slices-${{ github.event.pull_request.head.sha || github.sha }}
@@ -81,3 +83,45 @@ jobs:
       - name: Lockfile unchanged
         if: success()
         run: git diff --exit-code -- package.json package-lock.json
+
+  edge-regression:
+    name: Repeated desktop edge regression (advisory)
+    if: ${{ github.event_name != 'schedule' || github.ref == 'refs/heads/develop' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Run repeated desktop regression
+        run: npm run test:desktop:flaky
+      - name: Record edge coverage
+        if: always()
+        run: |
+          echo "Desktop edge coverage includes exact ZIP bytes, invalid archives, multi-MB splitting, one-byte splitting, metadata correctness, and repeatability."
+
+  lighthouse:
+    name: Lighthouse performance and UX audit (advisory)
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Build application
+        run: npm run build
+      - name: Run Lighthouse CI
+        run: npx @lhci/cli@0.15.1 autorun
