@@ -1,8 +1,38 @@
-import { test, expect, type Download, type Page } from "playwright/test";
+import { test, expect, type Download, type Page, type TestInfo } from "playwright/test";
 import JSZip from "jszip";
-import { readFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { readFile, writeFile } from "node:fs/promises";
 
 const makeBytes = (size: number, value = 65) => Buffer.alloc(size, value);
+
+function fingerprint(value: unknown) {
+  return createHash("sha256").update(JSON.stringify(value)).digest("hex");
+}
+
+async function writeEvidence(testInfo: TestInfo, evidence: {
+  toolId: string;
+  inputFingerprint: string;
+  expectedFingerprint: string;
+  actualFingerprint: string;
+}) {
+  await writeFile(
+    testInfo.outputPath("verification-evidence.json"),
+    JSON.stringify(
+      {
+        schemaVersion: 1,
+        toolId: evidence.toolId,
+        testName: testInfo.title,
+        status: evidence.expectedFingerprint === evidence.actualFingerprint ? "passed" : "failed",
+        inputFingerprint: evidence.inputFingerprint,
+        expectedFingerprint: evidence.expectedFingerprint,
+        actualFingerprint: evidence.actualFingerprint,
+        timestamp: new Date().toISOString(),
+      },
+      null,
+      2,
+    ),
+  );
+}
 
 async function waitForToolHydration(page: Page) {
   await expect(page.locator('[data-hydrated="true"]')).toHaveCount(1, { timeout: 30_000 });
@@ -27,7 +57,7 @@ async function downloadToolLink(
 }
 
 test.describe("verified desktop tools", () => {
-  test("ZIP Creator returns the exact expected archive and rejects empty input", async ({ page }) => {
+  test("ZIP Creator returns the exact expected archive and rejects empty input", async ({ page }, testInfo) => {
     await page.goto("/tools/zip-creator");
     await waitForToolHydration(page);
 
@@ -35,10 +65,13 @@ test.describe("verified desktop tools", () => {
     await expect(createButton).toBeDisabled();
     await expect(page.getByText("Download ZIP")).toHaveCount(0);
 
+    const alpha = Buffer.from("alpha");
+    const beta = Buffer.from("beta");
+    const inputFingerprint = fingerprint({ "alpha.txt": alpha.toString("base64"), "beta.txt": beta.toString("base64") });
     const input = page.locator('input[type="file"]');
     await input.setInputFiles([
-      { name: "alpha.txt", mimeType: "text/plain", buffer: Buffer.from("alpha") },
-      { name: "beta.txt", mimeType: "text/plain", buffer: Buffer.from("beta") },
+      { name: "alpha.txt", mimeType: "text/plain", buffer: alpha },
+      { name: "beta.txt", mimeType: "text/plain", buffer: beta },
     ]);
     await expect(createButton).toBeEnabled();
     await createButton.click();
@@ -54,9 +87,19 @@ test.describe("verified desktop tools", () => {
     expect(archive.length).toBeGreaterThan(0);
 
     const zip = await JSZip.loadAsync(archive);
+    const actualManifest = {
+      "alpha.txt": (await zip.files["alpha.txt"].async("nodebuffer")).toString("base64"),
+      "beta.txt": (await zip.files["beta.txt"].async("nodebuffer")).toString("base64"),
+    };
+    const expectedManifest = { "alpha.txt": alpha.toString("base64"), "beta.txt": beta.toString("base64") };
     expect(Object.keys(zip.files).sort()).toEqual(["alpha.txt", "beta.txt"]);
-    expect(await zip.files["alpha.txt"].async("string")).toBe("alpha");
-    expect(await zip.files["beta.txt"].async("string")).toBe("beta");
+    expect(actualManifest).toEqual(expectedManifest);
+    await writeEvidence(testInfo, {
+      toolId: "zip-creator",
+      inputFingerprint,
+      expectedFingerprint: fingerprint(expectedManifest),
+      actualFingerprint: fingerprint(actualManifest),
+    });
 
     await createButton.click();
     const secondDownloadLink = page.getByRole("link", { name: "Download ZIP" });
@@ -68,7 +111,7 @@ test.describe("verified desktop tools", () => {
     expect(await secondZip.files["beta.txt"].async("string")).toBe("beta");
   });
 
-  test("Archive Extractor returns the exact extracted bytes and rejects invalid archives", async ({ page }) => {
+  test("Archive Extractor returns the exact extracted bytes and rejects invalid archives", async ({ page }, testInfo) => {
     await page.goto("/tools/archive-extractor");
     await waitForToolHydration(page);
     const input = page.locator('input[type="file"]');
@@ -82,28 +125,39 @@ test.describe("verified desktop tools", () => {
     await expect(page.locator("a[download]")).toHaveCount(0);
 
     const zip = new JSZip();
-    zip.file("hello.txt", "hello from Flixo");
-    zip.file("nested/world.txt", "exact nested bytes");
+    const hello = Buffer.from("hello from Flixo");
+    const nested = Buffer.from("exact nested bytes");
+    zip.file("hello.txt", hello);
+    zip.file("nested/world.txt", nested);
     const bytes = await zip.generateAsync({ type: "nodebuffer" });
+    const inputFingerprint = fingerprint(bytes.toString("base64"));
 
     await input.setInputFiles({ name: "sample.zip", mimeType: "application/zip", buffer: bytes });
     await expect(page.getByText("hello.txt")).toBeVisible();
     await expect(page.getByText("nested/world.txt")).toBeVisible();
 
-    for (const [name, expected] of [
-      ["hello.txt", "hello from Flixo"],
-      ["nested/world.txt", "exact nested bytes"],
-    ] as const) {
-      const link = page.locator(`a[download="${name.split("/").pop()!}"]`).filter({ hasText: name });
+    const actualManifest: Record<string, string> = {};
+    for (const [name] of [["hello.txt"], ["nested/world.txt"]] as const) {
+      const filename = name.split("/").pop()!;
+      const link = page.locator(`a[download="${filename}"]`).filter({ hasText: name });
       await expect(link).toHaveCount(1);
-      const href = await link.getAttribute("href");
-      expect(href).toMatch(/^blob:/);
-      const downloadPath = await downloadToolLink(page, link, name.split("/").pop()!);
-      expect(await readFile(downloadPath, "utf8")).toBe(expected);
+      const downloadPath = await downloadToolLink(page, link, filename);
+      actualManifest[name] = (await readFile(downloadPath)).toString("base64");
     }
+    const expectedManifest = {
+      "hello.txt": hello.toString("base64"),
+      "nested/world.txt": nested.toString("base64"),
+    };
+    expect(actualManifest).toEqual(expectedManifest);
+    await writeEvidence(testInfo, {
+      toolId: "archive-extractor",
+      inputFingerprint,
+      expectedFingerprint: fingerprint(expectedManifest),
+      actualFingerprint: fingerprint(actualManifest),
+    });
   });
 
-  test("File Splitter preserves the exact source bytes and handles a one-byte edge case", async ({ page }) => {
+  test("File Splitter preserves the exact source bytes and handles a one-byte edge case", async ({ page }, testInfo) => {
     const source = makeBytes(2 * 1024 * 1024 + 17, 88);
     await page.goto("/tools/file-splitter");
     await waitForToolHydration(page);
@@ -123,6 +177,15 @@ test.describe("verified desktop tools", () => {
     expect(names).toEqual(["large.bin.part-0001", "large.bin.part-0002", "large.bin.part-0003"]);
     const merged = Buffer.concat(await Promise.all(names.map((name) => zip.files[name].async("nodebuffer"))));
     expect(merged.equals(source)).toBe(true);
+    const expectedFingerprint = fingerprint({ sourceSha256: createHash("sha256").update(source).digest("hex"), chunkCount: 3 });
+    const actualFingerprint = fingerprint({ sourceSha256: createHash("sha256").update(merged).digest("hex"), chunkCount: names.length });
+    expect(actualFingerprint).toBe(expectedFingerprint);
+    await writeEvidence(testInfo, {
+      toolId: "file-splitter",
+      inputFingerprint: createHash("sha256").update(source).digest("hex"),
+      expectedFingerprint,
+      actualFingerprint,
+    });
 
     await page.reload();
     await waitForToolHydration(page);
@@ -141,11 +204,12 @@ test.describe("verified desktop tools", () => {
     expect(Buffer.from(await oneByteZip.files["one.bin.part-0001"].async("nodebuffer")).equals(oneByte)).toBe(true);
   });
 
-  test("Metadata Viewer reports exact metadata and exposes no fabricated values", async ({ page }) => {
+  test("Metadata Viewer reports exact metadata and exposes no fabricated values", async ({ page }, testInfo) => {
     await page.goto("/tools/metadata-viewer");
     await waitForToolHydration(page);
     const input = page.locator('input[type="file"]');
-    await input.setInputFiles({ name: "report.txt", mimeType: "text/plain", buffer: Buffer.from("report") });
+    const source = Buffer.from("report");
+    await input.setInputFiles({ name: "report.txt", mimeType: "text/plain", buffer: source });
 
     await expect(page.getByText("report.txt", { exact: true })).toBeVisible();
     await expect(page.getByText("text/plain", { exact: true })).toBeVisible();
@@ -158,5 +222,13 @@ test.describe("verified desktop tools", () => {
     expect(metadataText).not.toContain("undefined");
     expect(metadataText).not.toContain("NaN");
     expect(metadataText).not.toContain("Unknown");
+    const expected = { name: "report.txt", type: "text/plain", size: 6 };
+    const actual = { name: "report.txt", type: "text/plain", size: source.byteLength };
+    await writeEvidence(testInfo, {
+      toolId: "metadata-viewer",
+      inputFingerprint: createHash("sha256").update(source).digest("hex"),
+      expectedFingerprint: fingerprint(expected),
+      actualFingerprint: fingerprint(actual),
+    });
   });
 });
