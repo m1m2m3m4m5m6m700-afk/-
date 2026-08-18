@@ -34,8 +34,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: tool-release-candidate-${{ github.event.pull_request.head.sha || github.sha }}
-  cancel-in-progress: false
+  group: tool-release-candidate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   release-tools:
@@ -64,6 +64,14 @@ jobs:
         run: |
           mkdir -p .artifacts/release-tools
           node scripts/validate-release-tools.mjs | tee .artifacts/release-tools/preflight.txt
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
 
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
