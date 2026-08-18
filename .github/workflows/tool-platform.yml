@@ -18,6 +18,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Validate CI contract before install
         run: node scripts/validate-ci-contract.mjs
       - uses: actions/setup-node@v5
@@ -49,6 +51,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Validate public tool quarantine contract
         run: node src/scripts/validate-tool-quarantine.mjs
       - uses: actions/setup-node@v5
