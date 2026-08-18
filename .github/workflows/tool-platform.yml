@@ -71,6 +71,8 @@ jobs:
         run: npm run test:mutation
       - name: Real desktop verification with repeatability
         run: npm run test:desktop:flaky
+      - name: Archive Extractor security contract
+        run: npx playwright test tests/archive-extractor.security.spec.ts --project=chromium --repeat-each=3
       - name: Preserve verification evidence
         run: |
           test -d test-results/evidence
