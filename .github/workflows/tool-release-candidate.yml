@@ -12,6 +12,7 @@ on:
       - "src/routes/**"
       - "tests/**"
       - "scripts/validate-release-tools.mjs"
+      - "scripts/validate-package-lock-contract.mjs"
       - "package.json"
       - "package-lock.json"
       - ".nvmrc"
@@ -26,6 +27,7 @@ on:
       - "src/routes/**"
       - "tests/**"
       - "scripts/validate-release-tools.mjs"
+      - "scripts/validate-package-lock-contract.mjs"
       - "package.json"
       - "package-lock.json"
       - ".nvmrc"
@@ -47,6 +49,9 @@ jobs:
         uses: actions/checkout@v5
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Validate package/lock contract before install
+        run: node scripts/validate-package-lock-contract.mjs
 
       - name: Setup Node
         uses: actions/setup-node@v5
