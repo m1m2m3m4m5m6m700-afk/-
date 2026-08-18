@@ -116,10 +116,15 @@ const registrations = [...manifestSection.matchAll(/\{([\s\S]*?)\n\s*\},/g)]
   }))
   .filter((entry) => entry.id && entry.slug && entry.lifecycle);
 
+const routeAssertions = new Set([
+  ...[...tests.matchAll(/openTool\(page,\s*["']([^"']+)["']\)/g)].map((match) => match[1]),
+  ...[...tests.matchAll(/page\.goto\(\s*["']\/tools\/([^"']+)["']/g)].map((match) => match[1]),
+]);
+
 if (registrations.length === 0) fail("Public desktop registry contains no registrations.");
 for (const { id, slug, lifecycle } of registrations) {
   if (lifecycle !== "public") fail(`Public registry entry ${id} has invalid lifecycle: ${lifecycle}`);
-  if (!tests.includes(`/tools/${slug}`)) fail(`Missing E2E route assertion for public tool: ${id} (${slug})`);
+  if (!routeAssertions.has(slug)) fail(`Missing E2E route assertion for public tool: ${id} (${slug})`);
 }
 if (!tests.includes("expect(")) fail("No result assertions found in desktop E2E coverage.");
 
