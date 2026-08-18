@@ -24,6 +24,8 @@ for (const required of [
   "ToolManifest",
   "ToolLifecycleState",
   "ToolTestContract",
+  "ToolCertificationLevel",
+  "ToolCertificationRequirements",
   "assertPublicRegistration",
 ]) {
   if (![types, promotion].some((source) => source.includes(required))) {
@@ -35,4 +37,13 @@ for (const state of ["draft", "implemented", "verified", "public", "deprecated"]
   if (!types.includes(`"${state}"`)) throw new Error(`Lifecycle state missing: ${state}`);
 }
 
-console.log("Tool Platform architecture contract: PASS");
+for (const check of ["security", "performance", "mutation", "invariant", "evidence"]) {
+  if (!contracts.includes(`"${check}"`)) throw new Error(`Certification check missing: ${check}`);
+}
+
+if (!contracts.includes('level: "certified"')) throw new Error("Public certification level is not strict.");
+if (!contracts.includes("requiredEvidence: true")) throw new Error("Evidence requirement is not strict.");
+if (!contracts.includes("regressionLocked: true")) throw new Error("Regression lock is not strict.");
+if (!contracts.includes('dataProcessing: "local-only"')) throw new Error("Local-only data policy is not strict.");
+
+console.log("Tool Platform architecture + certification contract: PASS");
