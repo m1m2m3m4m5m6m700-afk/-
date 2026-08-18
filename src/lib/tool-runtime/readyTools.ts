@@ -1,22 +1,20 @@
 import { getPublicToolRegistration } from "@/lib/tool-platform/publicDesktopTools";
 import { assertPublicRegistration } from "@/lib/tool-platform/promotion";
-import { ArchiveExtractorRuntime } from "./tools/archive-extractor";
-import { FileSplitterRuntime } from "./tools/file-splitter";
-import { MetadataViewerRuntime } from "./tools/metadata-viewer";
-import { ZipCreatorRuntime } from "./tools/zip-creator";
+import { imageCompressorRuntime } from "./tools/image-compressor";
+import { imageEnhancerRuntime } from "./tools/image-enhancer";
+import { VideoCompressorRuntime } from "./tools/video-compressor";
+import { VideoTrimmerRuntime } from "./tools/video-trimmer";
 import type { ReadyToolRuntimeDefinition } from "./types";
 
 /**
- * Runtime bindings for the tools that are currently public.
- *
+ * Runtime bindings for the tools currently public.
  * Identity, lifecycle, and regression requirements are owned by the Tool Platform.
- * This file only binds those approved identities to React implementations.
  */
 export const readyToolRuntimes = [
-  ZipCreatorRuntime,
-  ArchiveExtractorRuntime,
-  FileSplitterRuntime,
-  MetadataViewerRuntime,
+  imageCompressorRuntime,
+  imageEnhancerRuntime,
+  VideoCompressorRuntime,
+  VideoTrimmerRuntime,
 ] as const satisfies readonly ReadyToolRuntimeDefinition[];
 
 for (const runtime of readyToolRuntimes) {
