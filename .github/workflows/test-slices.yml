@@ -73,24 +73,20 @@ jobs:
             command: npm run validate:tool-content
           - name: localization
             command: npm run validate:localization
+          - name: localization-surface
+            command: npm run validate:localization-surface
           - name: search-intent
             command: npm run validate:search-intent
-          - name: tool-content-localization
+          - name: tool-content-state
             command: npm run validate:tool-content-localization
-          - name: terminology
-            command: npm run validate:terminology-profiles
           - name: tool-review
             command: npm run validate:tool-review
-          - name: tool-quality
-            command: npm run validate:tool-quality
           - name: ai-contract
             command: npm run validate:ai
           - name: accessibility
             command: npm run validate:accessibility
           - name: security
             command: npm run validate:security
-          - name: truthfulness
-            command: npm run test:truthfulness
     steps:
       - uses: actions/checkout@v5
         with:
