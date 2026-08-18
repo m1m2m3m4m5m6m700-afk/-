@@ -16,7 +16,7 @@ async function writeEvidence(testInfo: TestInfo, evidence: {
   expectedFingerprint: string;
   actualFingerprint: string;
 }) {
-  const evidenceDir = path.resolve("test-results", "evidence");
+  const evidenceDir = path.resolve(".artifacts", "verification-evidence");
   await mkdir(evidenceDir, { recursive: true });
   await writeFile(
     path.join(evidenceDir, `${evidence.toolId}.json`),
