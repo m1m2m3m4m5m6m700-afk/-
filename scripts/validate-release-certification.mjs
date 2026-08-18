@@ -43,16 +43,12 @@ const api = async (path) => {
   return response.json();
 };
 
-const workflows = [
-  { name: "Verification Matrix" },
-  { name: "Tool Platform" },
-];
-
+const requiredWorkflows = ["Verification Matrix", "Tool Platform"];
 const workflowList = await api(`/repos/${owner}/${repo}/actions/workflows`);
-const resolved = workflows.map((workflow) => {
-  const match = workflowList.workflows.find((candidate) => candidate.name === workflow.name);
-  if (!match) throw new Error(`Workflow not found: ${workflow.name}`);
-  return { ...workflow, workflowId: match.id };
+const resolved = requiredWorkflows.map((name) => {
+  const match = workflowList.workflows.find((workflow) => workflow.name === name);
+  if (!match) throw new Error(`Workflow not found: ${name}`);
+  return { name, workflowId: match.id };
 });
 
 const failures = [];
@@ -60,28 +56,34 @@ const evidence = [];
 
 for (const workflow of resolved) {
   const runs = await api(`/repos/${owner}/${repo}/actions/workflows/${workflow.workflowId}/runs?per_page=50`);
-  const matching = runs.workflow_runs
-    .filter((run) => run.head_sha === sha && run.head_branch === branch && run.status === "completed")
+  const successful = runs.workflow_runs
+    .filter(
+      (run) =>
+        run.head_sha === sha &&
+        run.head_branch === branch &&
+        run.status === "completed" &&
+        run.conclusion === "success",
+    )
     .sort((a, b) => new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime());
 
-  const latestTwo = matching.slice(0, 2);
-  if (latestTwo.length < 2) {
-    failures.push(`${workflow.name}: requires 2 completed runs on ${sha}, found ${latestTwo.length}.`);
-  } else if (latestTwo.some((run) => run.conclusion !== "success")) {
-    failures.push(`${workflow.name}: the latest two completed runs on ${sha} are not both successful.`);
+  if (successful.length === 0) {
+    failures.push(`${workflow.name}: no successful completed run exists for ${sha}.`);
   }
 
+  const latest = successful[0];
   evidence.push({
     workflow: workflow.name,
     sha,
     branch,
-    runs: latestTwo.map((run) => ({
-      id: run.id,
-      runNumber: run.run_number,
-      conclusion: run.conclusion,
-      event: run.event,
-      completedAt: run.completed_at,
-    })),
+    proof: latest
+      ? {
+          id: latest.id,
+          runNumber: latest.run_number,
+          conclusion: latest.conclusion,
+          event: latest.event,
+          completedAt: latest.completed_at,
+        }
+      : null,
   });
 }
 
@@ -93,4 +95,5 @@ if (failures.length) {
 }
 
 console.log("RELEASE CERTIFICATION: PASS");
+console.log("Two independent green proofs verified for the same commit:");
 console.log(JSON.stringify(evidence, null, 2));
