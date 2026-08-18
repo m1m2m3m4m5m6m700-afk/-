@@ -4,6 +4,10 @@ import { readFile } from "node:fs/promises";
 
 const makeBytes = (size: number, value = 65) => Buffer.alloc(size, value);
 
+async function waitForToolHydration(page: Parameters<Parameters<typeof test>[1]>[0]["page"]) {
+  await expect(page.locator('[data-hydrated="true"]')).toHaveCount(1, { timeout: 30_000 });
+}
+
 async function downloadSize(downloadPromise: Promise<Download>, downloadName?: string) {
   const download = await downloadPromise;
   if (downloadName) expect(download.suggestedFilename()).toBe(downloadName);
@@ -15,6 +19,7 @@ async function downloadSize(downloadPromise: Promise<Download>, downloadName?: s
 test.describe("verified desktop tools", () => {
   test("ZIP Creator returns the exact expected archive and rejects empty input", async ({ page }) => {
     await page.goto("/tools/zip-creator");
+    await waitForToolHydration(page);
 
     const createButton = page.getByRole("button", { name: "Create ZIP" });
     await expect(createButton).toBeDisabled();
@@ -50,6 +55,7 @@ test.describe("verified desktop tools", () => {
 
   test("Archive Extractor returns the exact extracted bytes and rejects invalid archives", async ({ page }) => {
     await page.goto("/tools/archive-extractor");
+    await waitForToolHydration(page);
     const input = page.locator('input[type="file"]');
 
     await input.setInputFiles({
@@ -57,7 +63,7 @@ test.describe("verified desktop tools", () => {
       mimeType: "application/zip",
       buffer: Buffer.from("not a zip archive"),
     });
-    await expect(page.getByText(/not a valid ZIP archive|Corrupted zip/)).toBeVisible();
+    await expect(page.getByText("The selected file is not a valid ZIP archive.", { exact: true })).toBeVisible();
     await expect(page.getByRole("link")).toHaveCount(0);
 
     const zip = new JSZip();
@@ -85,10 +91,11 @@ test.describe("verified desktop tools", () => {
   test("File Splitter preserves the exact source bytes and handles a one-byte edge case", async ({ page }) => {
     const source = makeBytes(2 * 1024 * 1024 + 17, 88);
     await page.goto("/tools/file-splitter");
+    await waitForToolHydration(page);
     await page.locator('input[type="file"]').setInputFiles({ name: "large.bin", mimeType: "application/octet-stream", buffer: source });
     await page.getByLabel("Chunk size").fill("1");
     const downloadPromise = page.waitForEvent("download", { timeout: 60_000 });
-    await page.getByRole("button", { name: /Split|Create/i }).click();
+    await page.getByRole("button", { name: "Split file" }).click();
     const downloadPath = await downloadSize(downloadPromise, "large.bin-parts.zip");
     const zip = await JSZip.loadAsync(await readFile(downloadPath));
     const names = Object.keys(zip.files).sort();
@@ -97,11 +104,12 @@ test.describe("verified desktop tools", () => {
     expect(merged.equals(source)).toBe(true);
 
     await page.reload();
+    await waitForToolHydration(page);
     const oneByte = Buffer.from([0xab]);
     await page.locator('input[type="file"]').setInputFiles({ name: "one.bin", mimeType: "application/octet-stream", buffer: oneByte });
     await page.getByLabel("Chunk size").fill("1");
     const oneByteDownload = page.waitForEvent("download", { timeout: 60_000 });
-    await page.getByRole("button", { name: /Split|Create/i }).click();
+    await page.getByRole("button", { name: "Split file" }).click();
     const oneBytePath = await downloadSize(oneByteDownload, "one.bin-parts.zip");
     const oneByteZip = await JSZip.loadAsync(await readFile(oneBytePath));
     expect(Object.keys(oneByteZip.files)).toEqual(["one.bin.part-0001"]);
@@ -110,6 +118,7 @@ test.describe("verified desktop tools", () => {
 
   test("Metadata Viewer reports exact metadata and exposes no fabricated values", async ({ page }) => {
     await page.goto("/tools/metadata-viewer");
+    await waitForToolHydration(page);
     const input = page.locator('input[type="file"]');
     await input.setInputFiles({ name: "report.txt", mimeType: "text/plain", buffer: Buffer.from("report") });
 
