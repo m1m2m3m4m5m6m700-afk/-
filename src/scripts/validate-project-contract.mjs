@@ -106,13 +106,22 @@ for (const file of candidates) {
 if (registrationExportFiles !== 1) fail(`Expected exactly one public tool registry export in src/lib; found ${registrationExportFiles}.`);
 
 const tests = await read("tests/desktop-tools.spec.ts");
-const registrations = [...registry.matchAll(/id:\s*["']([^"']+)["'][\s\S]*?lifecycle:\s*["']([^"']+)["']/g)].map((m) => ({ id: m[1], lifecycle: m[2] }));
+const manifestSection = registry.match(/const manifestData = \[([\s\S]*?)\n\] as const;/)?.[1] ?? "";
+const registrations = [...manifestSection.matchAll(/\{([\s\S]*?)\n\s*\},/g)]
+  .map((match) => match[1])
+  .map((block) => ({
+    id: block.match(/id:\s*["']([^"']+)["']/)?.[1],
+    slug: block.match(/slug:\s*["']([^"']+)["']/)?.[1],
+    lifecycle: block.match(/lifecycle:\s*["']([^"']+)["']/)?.[1],
+  }))
+  .filter((entry) => entry.id && entry.slug && entry.lifecycle);
+
 if (registrations.length === 0) fail("Public desktop registry contains no registrations.");
-for (const { id, lifecycle } of registrations) {
+for (const { id, slug, lifecycle } of registrations) {
   if (lifecycle !== "public") fail(`Public registry entry ${id} has invalid lifecycle: ${lifecycle}`);
-  if (!tests.includes(`/tools/${id}`)) fail(`Missing E2E route assertion for public tool: ${id}`);
-  if (!tests.includes("expect(")) fail(`No result assertions found in desktop E2E coverage: ${id}`);
+  if (!tests.includes(`/tools/${slug}`)) fail(`Missing E2E route assertion for public tool: ${id} (${slug})`);
 }
+if (!tests.includes("expect(")) fail("No result assertions found in desktop E2E coverage.");
 
 const contracts = await read("src/lib/tool-platform/testContracts.ts");
 const requiredChecks = [
