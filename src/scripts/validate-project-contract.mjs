@@ -131,7 +131,8 @@ for (const check of requiredChecks) {
 }
 if (!contracts.includes("const strictChecks")) fail("testContracts.ts must define the shared strictChecks set.");
 for (const { id } of registrations) {
-  const entryPattern = new RegExp(`toolId: [\"']${id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\b[\\s\\S]*?requiredChecks: strictChecks`);
+  const escapedId = id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const entryPattern = new RegExp(`toolId:\s*[\"']${escapedId}[\"'][\\s\\S]*?requiredChecks:\s*strictChecks`);
   if (!entryPattern.test(contracts)) fail(`Tool ${id} is missing a strict verification contract entry.`);
 }
 
