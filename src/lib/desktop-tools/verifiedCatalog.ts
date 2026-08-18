@@ -1,46 +1,46 @@
 import type { Tool } from "@/data/tools";
 
 /**
- * Verified desktop/file tools that extend the legacy catalog without editing
- * the large generated tools.ts file. These entries are public only when a real
- * runtime is registered and covered by the desktop browser tests.
+ * Verified desktop/file tools that are currently public.
+ * Tool Platform is the authoritative public lifecycle; this adapter keeps the
+ * legacy catalog consumers aligned with that same public set.
  */
 export const verifiedDesktopTools: Tool[] = [
   {
-    id: "zip-creator",
-    name: "ZIP Creator",
-    categoryId: "files",
-    description: "Create a ZIP archive from multiple files directly in the browser.",
+    id: "image-compressor",
+    name: "Image Compressor",
+    categoryId: "images",
+    description: "Compress images locally in the browser with quality and format controls.",
     status: "ready",
-    tags: ["zip", "archive", "files", "compress"],
-    slug: "zip-creator",
+    tags: ["compress", "image", "jpg", "png", "webp"],
+    slug: "image-compressor",
   },
   {
-    id: "archive-extractor",
-    name: "Archive Extractor",
-    categoryId: "files",
-    description: "Open ZIP archives in the browser and extract individual files.",
+    id: "image-enhancer",
+    name: "Image Enhancer",
+    categoryId: "images",
+    description: "Enhance image resolution and visual quality locally with adjustable controls.",
     status: "ready",
-    tags: ["unzip", "zip", "extract", "archive"],
-    slug: "archive-extractor",
+    tags: ["enhance", "upscale", "image", "sharpness"],
+    slug: "image-enhancer",
   },
   {
-    id: "file-splitter",
-    name: "File Splitter",
-    categoryId: "files",
-    description: "Split a large file into numbered chunks and download them as a ZIP archive.",
+    id: "video-compressor",
+    name: "Video Compressor",
+    categoryId: "video",
+    description: "Compress supported videos locally with adjustable H.264 quality settings.",
     status: "ready",
-    tags: ["split", "file", "chunks", "large file"],
-    slug: "file-splitter",
+    tags: ["compress", "video", "mp4", "ffmpeg"],
+    slug: "video-compressor",
   },
   {
-    id: "metadata-viewer",
-    name: "File Metadata Viewer",
-    categoryId: "files",
-    description: "Inspect basic file metadata such as name, size, type, and modified date locally.",
+    id: "video-trimmer",
+    name: "Video Trimmer",
+    categoryId: "video",
+    description: "Trim supported videos to precise start and end times locally in the browser.",
     status: "ready",
-    tags: ["metadata", "file", "properties", "details"],
-    slug: "metadata-viewer",
+    tags: ["trim", "cut", "video", "ffmpeg"],
+    slug: "video-trimmer",
   },
 ];
 
