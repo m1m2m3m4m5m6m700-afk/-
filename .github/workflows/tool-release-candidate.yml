@@ -1,0 +1,60 @@
+name: Tool Release Candidate
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tool-release-candidate
+  cancel-in-progress: false
+
+jobs:
+  release-tools:
+    name: Public tools release candidate
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Tool release preflight
+        run: |
+          mkdir -p .artifacts/release-tools
+          node scripts/validate-release-tools.mjs | tee .artifacts/release-tools/preflight.json
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run public tool E2E suite three times
+        run: npx playwright test tests/desktop-tools.spec.ts tests/zip-creator.contract.spec.ts --repeat-each=3 --reporter=line
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Production dependency audit
+        run: npm run audit:production
+
+      - name: Collect release evidence
+        if: always()
+        run: |
+          cp -R .artifacts/verification-evidence .artifacts/release-tools/verification-evidence 2>/dev/null || true
+          printf '{"commit":"%s","timestamp":"%s","status":"%s"}\n' "$GITHUB_SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$([ -d .artifacts/verification-evidence ] && echo evidence-present || echo no-evidence)" > .artifacts/release-tools/summary.json
+
+      - name: Publish release evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tool-release-candidate-${{ github.sha }}
+          path: .artifacts/release-tools
+          if-no-files-found: warn
