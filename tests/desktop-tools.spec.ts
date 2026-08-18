@@ -36,12 +36,12 @@ test.describe("relaunched public tools", () => {
       buffer: onePixelPng,
     });
 
-    const downloadPromise = page.waitForEvent("download");
     await expect(page.getByRole("button", { name: /Download/i })).toBeEnabled({ timeout: 30_000 });
+    const downloadPromise = page.waitForEvent("download");
     await page.getByRole("button", { name: /Download/i }).click();
 
     const download = await downloadPromise;
-    expect(download.failure()).resolves.toBeNull();
+    await expect.poll(() => download.failure()).toBeNull();
     expect(download.suggestedFilename()).toMatch(/-compressed\.png$/i);
 
     const output = await download.createReadStream();
@@ -74,7 +74,7 @@ test.describe("relaunched public tools", () => {
     await expect(page.getByText(/sample\.mp4/)).toBeVisible();
   });
 
-  test("Video Trimmer loads, accepts a candidate video file, and surfaces validation feedback", async ({ page }) =>
+  test("Video Trimmer loads, accepts a candidate video file, and surfaces validation feedback", async ({ page }) => {
     await openTool(page, "video-trimmer");
     const button = page.getByRole("button", { name: /Trim Video/i });
     await expect(button).toBeDisabled();
