@@ -33,6 +33,12 @@ jobs:
         run: npm run verify:foundation
       - name: Dependency contract
         run: npm run validate:dependencies
+      - name: Performance budget contract
+        run: node src/scripts/validate-performance-budget.mjs
+      - name: Tool certification contract
+        run: node src/scripts/validate-tool-certification.mjs
+      - name: Local-only data processing contract
+        run: node src/scripts/validate-data-processing-contract.mjs
       - name: Performance budget
         run: npm run validate:performance
       - name: Upload diagnostics on failure
@@ -88,6 +94,8 @@ jobs:
           cp .artifacts/verification-evidence/*.json verification-evidence/
       - name: Tool invariants and golden fixtures
         run: npx playwright test tests/tool-invariants.spec.ts --project=chromium --repeat-each=2 --output=tool-invariant-results
+      - name: Regression lock
+        run: node src/scripts/validate-regression-lock.mjs
       - name: Verify evidence output contract
         run: |
           test -d verification-evidence
