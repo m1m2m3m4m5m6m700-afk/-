@@ -220,7 +220,7 @@ test.describe("verified desktop tools", () => {
     await expect(page.getByText("text/plain", { exact: true })).toBeVisible();
     await expect(page.getByText("6", { exact: true })).toBeVisible();
 
-    const cardFor = async (key: string) => page.locator("dl > div").filter({ has: page.locator(`dt:has-text(\"${key}\")`) }).locator("dd").innerText();
+    const cardFor = async (key: string) => page.locator("dl > div").filter({ has: page.locator(`dt:has-text("${key}")`) }).locator("dd").innerText();
     const actual = {
       name: await cardFor("name"),
       type: await cardFor("type"),
