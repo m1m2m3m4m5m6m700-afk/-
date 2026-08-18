@@ -1,13 +1,30 @@
+import fs from "node:fs";
 import process from "node:process";
 
-const sha = process.env.GITHUB_SHA;
 const token = process.env.GITHUB_TOKEN;
 const repository = process.env.GITHUB_REPOSITORY;
+const eventPath = process.env.GITHUB_EVENT_PATH;
 
-if (!sha || !token || !repository) {
+if (!token || !repository || !eventPath) {
   console.error("RELEASE CERTIFICATION: FAIL");
-  console.error("Missing GITHUB_SHA, GITHUB_TOKEN, or GITHUB_REPOSITORY.");
+  console.error("Missing GITHUB_TOKEN, GITHUB_REPOSITORY, or GITHUB_EVENT_PATH.");
   process.exit(1);
+}
+
+const event = JSON.parse(fs.readFileSync(eventPath, "utf8"));
+const triggeringRun = event.workflow_run;
+const sha = triggeringRun?.head_sha;
+const branch = triggeringRun?.head_branch;
+
+if (!sha || !branch) {
+  console.error("RELEASE CERTIFICATION: FAIL");
+  console.error("workflow_run.head_sha/head_branch are required.");
+  process.exit(1);
+}
+
+if (branch !== "develop") {
+  console.log(`RELEASE CERTIFICATION: SKIP (branch=${branch})`);
+  process.exit(0);
 }
 
 const [owner, repo] = repository.split("/");
@@ -27,8 +44,8 @@ const api = async (path) => {
 };
 
 const workflows = [
-  { id: "verification-matrix", name: "Verification Matrix" },
-  { id: "tool-platform", name: "Tool Platform" },
+  { name: "Verification Matrix" },
+  { name: "Tool Platform" },
 ];
 
 const workflowList = await api(`/repos/${owner}/${repo}/actions/workflows`);
@@ -42,28 +59,29 @@ const failures = [];
 const evidence = [];
 
 for (const workflow of resolved) {
-  const runs = await api(
-    `/repos/${owner}/${repo}/actions/workflows/${workflow.workflowId}/runs?per_page=20&branch=develop`
-  );
+  const runs = await api(`/repos/${owner}/${repo}/actions/workflows/${workflow.workflowId}/runs?per_page=50`);
   const matching = runs.workflow_runs
-    .filter((run) => run.head_sha === sha && run.status === "completed")
+    .filter((run) => run.head_sha === sha && run.head_branch === branch && run.status === "completed")
     .sort((a, b) => new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime());
 
   const latestTwo = matching.slice(0, 2);
   if (latestTwo.length < 2) {
-    failures.push(`${workflow.name}: requires 2 completed successful runs on ${sha}, found ${latestTwo.length}.`);
-    evidence.push({ workflow: workflow.name, sha, runs: latestTwo.map((run) => ({ id: run.id, conclusion: run.conclusion })) });
-    continue;
-  }
-
-  if (latestTwo.some((run) => run.conclusion !== "success")) {
-    failures.push(`${workflow.name}: latest two completed runs on ${sha} are not both successful.`);
+    failures.push(`${workflow.name}: requires 2 completed runs on ${sha}, found ${latestTwo.length}.`);
+  } else if (latestTwo.some((run) => run.conclusion !== "success")) {
+    failures.push(`${workflow.name}: the latest two completed runs on ${sha} are not both successful.`);
   }
 
   evidence.push({
     workflow: workflow.name,
     sha,
-    runs: latestTwo.map((run) => ({ id: run.id, conclusion: run.conclusion, completedAt: run.completed_at })),
+    branch,
+    runs: latestTwo.map((run) => ({
+      id: run.id,
+      runNumber: run.run_number,
+      conclusion: run.conclusion,
+      event: run.event,
+      completedAt: run.completed_at,
+    })),
   });
 }
 
