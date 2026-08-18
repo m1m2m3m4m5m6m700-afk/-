@@ -1,4 +1,4 @@
-import { test, expect, type TestInfo } from "playwright/test";
+import { test, expect, type Page, type TestInfo } from "playwright/test";
 import { createHash } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -34,7 +34,7 @@ async function writeEvidence(testInfo: TestInfo, evidence: {
   );
 }
 
-async function waitForToolHydration(page: Parameters<typeof test>[0] extends never ? never : any) {
+async function waitForToolHydration(page: Page) {
   await expect(page.locator('[data-hydrated="true"]')).toHaveCount(1, { timeout: 30_000 });
 }
 
