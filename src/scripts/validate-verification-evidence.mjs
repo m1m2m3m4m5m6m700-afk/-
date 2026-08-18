@@ -1,7 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
-const ROOT = path.resolve("test-results", "evidence");
+const ROOT = path.resolve("verification-evidence");
 const REQUIRED_TOOLS = new Set([
   "zip-creator",
   "archive-extractor",
