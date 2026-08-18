@@ -10,7 +10,7 @@ const migration = fs.readFileSync(path.join(root, "drizzle/0003_tool_reviews.sql
 const issues = [];
 
 if (!center.includes("reviews[item.slug]")) issues.push("Review center must treat absent review rows as unreviewed.");
-if (!center.includes("Star")) issues.push("Review center must render the star review marker.");
+if (!center.includes("BadgeCheck")) issues.push("Review center must render the owner review marker.");
 if (!center.includes("not_reviewed")) issues.push("Review center must expose an unreviewed filter.");
 if (!center.includes('status === "ready"')) issues.push("Review center must distinguish runtime-ready tools from roadmap items.");
 if (!rpc.includes("setAdminToolReviewed")) issues.push("Admin review mutation RPC is missing.");
@@ -23,4 +23,4 @@ if (issues.length) {
   throw new Error(`Tool review validation failed:\n- ${issues.join("\n- ")}`);
 }
 
-console.log("Tool review validation passed: review state is separate from readiness, absent rows are unreviewed, and mutations are admin-protected.");
+console.log("Tool review validation passed: review state is separate from readiness, absent rows are unreviewed, the owner marker is explicit, and mutations are admin-protected.");
