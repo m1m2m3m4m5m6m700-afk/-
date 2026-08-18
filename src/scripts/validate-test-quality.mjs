@@ -24,7 +24,17 @@ for (const file of testFiles) {
 }
 
 const contracts = await readFile("src/lib/tool-platform/testContracts.ts", "utf8");
-const requiredChecks = ["render", "interaction", "output", "error"];
+const requiredChecks = [
+  "render",
+  "interaction",
+  "output",
+  "error",
+  "security",
+  "performance",
+  "mutation",
+  "invariant",
+  "evidence",
+];
 const strictChecksMatch = contracts.match(/const\s+strictChecks\s*=\s*\[([^\]]+)\]\s+as const/);
 if (!strictChecksMatch) {
   fail("Canonical tool test contract must define strictChecks as a readonly tuple.");
