@@ -1,0 +1,61 @@
+name: Verification Matrix
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+concurrency:
+  group: verification-matrix-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Project contracts
+            command: npm run validate:project-contract
+          - name: Tool platform
+            command: npm run validate:tool-platform
+          - name: Lifecycle and boundaries
+            command: npm run validate:tool-platform-lifecycle && npm run validate:tool-platform-boundaries
+          - name: Security and failure quality
+            command: npm run validate:security-strict && npm run validate:failure-quality
+          - name: Property fuzz and fault injection
+            command: npm run test:property-fuzz && npm run test:fault-injection
+          - name: Route and dependency contracts
+            command: npm run validate:route-tree && npm run validate:dependencies
+          - name: Typecheck
+            command: npm run typecheck
+          - name: Lint
+            command: npm run lint
+          - name: Build
+            command: npm run build
+          - name: Production audit
+            command: npm run audit:production
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Lockfile integrity before tests
+        run: node scripts/validate-lockfile.mjs
+      - name: Run verification slice
+        run: ${{ matrix.command }}
+      - name: Lockfile unchanged after verification
+        if: success()
+        run: git diff --exit-code -- package.json package-lock.json
