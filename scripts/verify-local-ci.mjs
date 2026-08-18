@@ -13,7 +13,7 @@
  *   SKIP_E2E=1   skip Playwright locally (useful for a quick code-only pass)
  */
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { performance } from "node:perf_hooks";
 
@@ -30,11 +30,10 @@ function run(name, command, args) {
     env: process.env,
   });
   const durationMs = Math.round(performance.now() - started);
-  const passed = result.status === 0;
   return {
     name,
     command: [command, ...args].join(" "),
-    passed,
+    passed: result.status === 0,
     durationMs,
     exitCode: result.status ?? 1,
   };
@@ -42,18 +41,30 @@ function run(name, command, args) {
 
 const nodeVersion = process.version;
 const nvmrc = existsSync(join(root, ".nvmrc"))
-  ? (await import("node:fs/promises")).readFile(join(root, ".nvmrc"), "utf8").then((v) => v.trim())
+  ? readFileSync(join(root, ".nvmrc"), "utf8").trim()
   : null;
+const nodeMajor = Number.parseInt(nodeVersion.slice(1).split(".")[0], 10);
+const expectedMajor = nvmrc ? Number.parseInt(nvmrc.replace(/^v/, "").split(".")[0], 10) : 22;
+
+if (!Number.isInteger(nodeMajor) || nodeMajor !== 22 || (Number.isInteger(expectedMajor) && expectedMajor !== nodeMajor)) {
+  console.error(`LOCAL CI: STOP — Node mismatch. Running ${nodeVersion}, .nvmrc expects ${nvmrc ?? "22"}.`);
+  process.exit(1);
+}
 
 const results = [];
-results.push(run("npm ci", process.platform === "win32" ? "npm.cmd" : "npm", ["ci"]));
+const npm = process.platform === "win32" ? "npm.cmd" : "npm";
+
+results.push(run("npm ci", npm, ["ci"]));
 if (!results.at(-1).passed) {
   console.error("LOCAL CI: STOP — npm ci failed.");
   process.exit(1);
 }
 
-results.push(run("typecheck", process.platform === "win32" ? "npm.cmd" : "npm", ["run", "typecheck"]));
-results.push(run("lint", process.platform === "win32" ? "npm.cmd" : "npm", ["run", "lint"]));
+results.push(run("typecheck", npm, ["run", "typecheck"]));
+if (!results.at(-1).passed) process.exit(1);
+
+results.push(run("lint", npm, ["run", "lint"]));
+if (!results.at(-1).passed) process.exit(1);
 
 const coreValidators = [
   ["registry", ["run", "validate:registry"]],
@@ -72,7 +83,7 @@ const coreValidators = [
 ];
 
 for (const [name, args] of coreValidators) {
-  results.push(run(name, process.platform === "win32" ? "npm.cmd" : "npm", args));
+  results.push(run(name, npm, args));
   if (!results.at(-1).passed) {
     console.error(`LOCAL CI: STOP — ${name} failed.`);
     break;
@@ -80,11 +91,11 @@ for (const [name, args] of coreValidators) {
 }
 
 if (process.env.SKIP_E2E !== "1" && results.every((r) => r.passed)) {
-  results.push(run("E2E", process.platform === "win32" ? "npm.cmd" : "npm", ["run", "test:e2e"]));
+  results.push(run("E2E", npm, ["run", "test:e2e"]));
 }
 
 if (results.every((r) => r.passed)) {
-  results.push(run("build", process.platform === "win32" ? "npm.cmd" : "npm", ["run", "build"]));
+  results.push(run("build", npm, ["run", "build"]));
 }
 
 if (results.every((r) => r.passed)) {
@@ -95,7 +106,7 @@ const report = {
   generatedAt: new Date().toISOString(),
   nodeVersion,
   nvmrc,
-  nodeMajor: Number.parseInt(nodeVersion.slice(1).split(".")[0], 10),
+  nodeMajor,
   skipE2E: process.env.SKIP_E2E === "1",
   results,
   passed: results.every((r) => r.passed),
