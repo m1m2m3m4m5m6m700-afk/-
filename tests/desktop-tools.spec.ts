@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "playwright/test";
+
 import { assertPngArtifact } from "./utils/image-validator";
 
 const onePixelPng = Buffer.from(
@@ -92,7 +93,7 @@ test.describe("relaunched public tools", () => {
     await expect(page.getByText(/sample\.mp4/)).toBeVisible();
   });
 
-  test("Video Trimmer loads, accepts a candidate video file, and surfaces validation feedback", async ({ page }) =>
+  test("Video Trimmer loads, accepts a candidate video file, and surfaces validation feedback", async ({ page }) => {
     await openTool(page, "video-trimmer");
     const button = page.getByRole("button", { name: /Trim Video/i });
     await expect(button).toBeDisabled();
