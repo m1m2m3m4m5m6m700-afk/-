@@ -1,5 +1,5 @@
 import type { PublicToolRegistration } from "./types";
-import { publicToolTestContracts } from "./testContracts";
+import { certificationRequirements, publicToolTestContracts } from "./testContracts";
 
 const manifestData = [
   {
@@ -44,7 +44,10 @@ export const publicToolRegistrations: readonly PublicToolRegistration[] = Object
   manifestData.map((manifest) => {
     const test = publicToolTestContracts.find((entry) => entry.toolId === manifest.id);
     if (!test) throw new Error(`Missing test contract: ${manifest.id}`);
-    return Object.freeze({ manifest, test });
+    return Object.freeze({
+      manifest: Object.freeze({ ...manifest, certification: certificationRequirements }),
+      test,
+    });
   }),
 );
 
