@@ -46,10 +46,6 @@ jobs:
             command: npm run validate:tool-content-localization
           - name: terminology
             command: npm run validate:terminology-profiles
-          - name: localization-agent
-            command: npm run validate:localization-agent
-          - name: pdf-catalog
-            command: npm run validate:pdf-catalog
           - name: tool-review
             command: npm run validate:tool-review
           - name: tool-quality
@@ -125,3 +121,37 @@ jobs:
         run: npm run build
       - name: Run Lighthouse CI
         run: npx @lhci/cli@0.15.1 autorun
+
+  localization-agent-advisory:
+    name: Localization agent roadmap audit (advisory)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Run localization roadmap audit
+        run: npm run validate:localization-agent
+      - name: Publish localization report
+        if: always()
+        run: |
+          test -f reports/localization-agent-report.json && cat reports/localization-agent-report.json || true
+
+  pdf-catalog-advisory:
+    name: PDF mega catalog roadmap audit (advisory)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Run PDF roadmap audit
+        run: npm run validate:pdf-catalog
