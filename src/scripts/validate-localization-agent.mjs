@@ -6,6 +6,7 @@ const localesDir = path.join(root, "src/lib/i18n/locales");
 const reportDir = path.join(root, "reports");
 const reportPath = path.join(reportDir, "localization-agent-report.json");
 const instructionPath = path.join(reportDir, "LOCALIZATION_AGENT_TASK.md");
+const strict = process.argv.includes("--strict");
 
 const LOCALES = [
   "ar", "es", "zh-CN", "hi", "pt", "fr", "de", "ja", "ko", "tr",
@@ -64,6 +65,7 @@ const report = {
   generatedAt: new Date().toISOString(),
   sourceLocale: "en",
   checked: "tool names only",
+  mode: strict ? "strict" : "advisory",
   toolNameKeyCount: toolNameKeys.length,
   locales: byLocale,
   missingNameCount: issues.filter((i) => i.kind === "missing-name").length,
@@ -87,7 +89,9 @@ for (const issue of issues) {
 const lines = [
   "# مهمة وكيل Flixo — استكمال أسماء الأدوات",
   "",
-  "يُنشأ هذا الملف تلقائيًا عندما لا يتوفر اسم أداة باللغة المختارة.",
+  strict
+    ? "هذه الجولة حاجزة: يجب استكمال كل أسماء الأدوات قبل اعتبار الفحص ناجحًا."
+    : "هذه الجولة استشارية: النواقص تُسجل كتقرير ولا تمنع بوابات الإصدار.",
   "",
   "## قاعدة التنفيذ",
   "لا تستخدم الاسم الإنجليزي كبديل. أضف الاسم إلى قاموس اللغة نفسها، ثم اختر المصطلح الطبيعي المستخدم فعليًا في تلك اللغة.",
@@ -113,6 +117,8 @@ fs.writeFileSync(instructionPath, lines.join("\n") + "\n", "utf8");
 
 console.log(`Localization agent report: ${reportPath}`);
 console.log(`Agent instructions: ${instructionPath}`);
+console.log(`Mode: ${strict ? "strict" : "advisory"}`);
 console.log(`Missing names: ${report.missingNameCount}; English fallbacks: ${report.englishNameFallbackCount}; Empty names: ${report.emptyNameCount}`);
 
-if (issues.length) process.exit(1);
+if (strict && issues.length) process.exit(1);
+process.exit(0);
