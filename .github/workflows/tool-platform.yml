@@ -31,7 +31,7 @@ jobs:
       - name: Dependency contract
         run: npm run validate:dependencies
       - name: Performance budget
-        run: npm run validate:performance-budget
+        run: npm run validate:performance
       - name: Upload diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@v4
