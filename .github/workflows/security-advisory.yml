@@ -5,6 +5,8 @@ on:
     branches: [develop]
   pull_request:
     branches: [main]
+  schedule:
+    - cron: "23 2 * * 1"
   workflow_dispatch:
 
 permissions:
@@ -46,6 +48,24 @@ jobs:
           config: p/default
       - name: SAST note
         run: echo "SAST is advisory until false-positive baselines are established."
+
+  codeql:
+    name: CodeQL JavaScript/TypeScript (advisory)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          build-mode: none
+      - name: Analyze
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:javascript-typescript
 
   supply-chain:
     name: Supply-chain inventory (advisory)
