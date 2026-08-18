@@ -53,6 +53,12 @@ function resolveWorkflowValue(value, workflowEnv) {
   return workflowEnv[expression[1]] ?? value;
 }
 
+function extractNodeVersionFileValues(workflow) {
+  return [...workflow.matchAll(/^\s*node-version-file:\s*(.*?)\s*(?:#.*)?$/gm)]
+    .map((match) => match[1].trim())
+    .filter(Boolean);
+}
+
 const pkg = readJson(packagePath);
 const scripts = pkg?.scripts ?? {};
 
@@ -103,11 +109,12 @@ if (!fs.existsSync(workflowsDir)) {
       }
     }
 
-    for (const match of workflow.matchAll(/node-version-file:\s*([^\s#]+)/g)) {
-      const rawVersionFile = match[1].trim();
+    for (const rawVersionFile of extractNodeVersionFileValues(workflow)) {
       const versionFile = resolveWorkflowValue(rawVersionFile, workflowEnv);
       if (!fs.existsSync(path.join(root, versionFile))) {
-        failures.push(`${relativeWorkflow}: node-version-file ${rawVersionFile} resolved to ${versionFile}, which does not exist`);
+        failures.push(
+          `${relativeWorkflow}: node-version-file ${rawVersionFile} resolved to ${versionFile}, which does not exist`,
+        );
       }
     }
   }
