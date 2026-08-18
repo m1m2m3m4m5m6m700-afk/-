@@ -1,5 +1,6 @@
 import type { PublicToolRegistration } from "./types";
 import { certificationRequirements, publicToolTestContracts } from "./testContracts";
+import { toolBaseManifestSchema } from "./schemas";
 
 const manifestData = [
   {
@@ -40,8 +41,10 @@ const manifestData = [
   },
 ] as const;
 
+const validatedManifestData = manifestData.map((manifest) => toolBaseManifestSchema.parse(manifest));
+
 export const publicToolRegistrations: readonly PublicToolRegistration[] = Object.freeze(
-  manifestData.map((manifest) => {
+  validatedManifestData.map((manifest) => {
     const test = publicToolTestContracts.find((entry) => entry.toolId === manifest.id);
     if (!test) throw new Error(`Missing test contract: ${manifest.id}`);
     return Object.freeze({
