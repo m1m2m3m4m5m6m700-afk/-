@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "buildCommand": "vite build",
-  "installCommand": "npm install",
+  "installCommand": "node scripts/validate-package-lock-contract.mjs && npm ci",
   "ignoreCommand": "node scripts/vercel-ignore-build.mjs",
   "devCommand": "vite --host 0.0.0.0 --port 3000",
   "headers": [
