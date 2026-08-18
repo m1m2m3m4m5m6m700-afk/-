@@ -73,6 +73,8 @@ jobs:
         run: npm run test:desktop:flaky
       - name: Archive Extractor security contract
         run: npx playwright test tests/archive-extractor.security.spec.ts --project=chromium --repeat-each=3 --output=archive-security-results
+      - name: File Splitter boundary contract
+        run: npx playwright test tests/file-splitter.contract.spec.ts --project=chromium --repeat-each=3 --output=file-splitter-contract-results
       - name: Preserve verification evidence
         run: |
           test -d test-results/evidence
@@ -109,5 +111,6 @@ jobs:
             playwright-report
             test-results
             archive-security-results
+            file-splitter-contract-results
             tool-invariant-results
           if-no-files-found: ignore
