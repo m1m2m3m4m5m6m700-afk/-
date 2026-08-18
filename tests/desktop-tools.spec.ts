@@ -201,10 +201,15 @@ test.describe("verified desktop tools", () => {
     const oneBytePath = await downloadToolLink(page, oneByteDownloadLink, "one.bin-parts.zip");
     const oneByteZip = await JSZip.loadAsync(await readFile(oneBytePath));
     expect(Object.keys(oneByteZip.files)).toEqual(["one.bin.part-0001"]);
-    expect(Buffer.from(await oneByteZip.files["one.bin.part-0001"].async("nodebuffer")).equals(oneByte)).toBe(true);
+    const actualOneByte = Buffer.from(await oneByteZip.files["one.bin.part-0001"].async("nodebuffer"));
+    expect(actualOneByte.equals(oneByte)).toBe(true);
+    const oneByteExpectedFingerprint = fingerprint({ fileSha256: createHash("sha256").update(oneByte).digest("hex"), chunkCount: 1 });
+    const oneByteActualFingerprint = fingerprint({ fileSha256: createHash("sha256").update(actualOneByte).digest("hex"), chunkCount: Object.keys(oneByteZip.files).length });
+    expect(oneByteActualFingerprint).toBe(oneByteExpectedFingerprint);
+    expect(oneByteActualFingerprint).toBe(actualOneByte.length === 1 ? fingerprint({ fileSha256: createHash("sha256").update(oneByte).digest("hex"), chunkCount: 1 }) : "");
   });
 
-  test("Metadata Viewer reports exact metadata and exposes no fabricated values", async ({ page }, testInfo) => {
+  test("Metadata Viewer reports exact metadata from the rendered UI and exposes no fabricated values", async ({ page }, testInfo) => {
     await page.goto("/tools/metadata-viewer");
     await waitForToolHydration(page);
     const input = page.locator('input[type="file"]');
@@ -215,15 +220,19 @@ test.describe("verified desktop tools", () => {
     await expect(page.getByText("text/plain", { exact: true })).toBeVisible();
     await expect(page.getByText("6", { exact: true })).toBeVisible();
 
+    const cardFor = async (key: string) => page.locator("dl > div").filter({ has: page.locator(`dt:has-text(\"${key}\")`) }).locator("dd").innerText();
+    const actual = {
+      name: await cardFor("name"),
+      type: await cardFor("type"),
+      size: Number((await cardFor("size")).replaceAll(",", "")),
+    };
+    const expected = { name: "report.txt", type: "text/plain", size: source.byteLength };
+    expect(actual).toEqual(expected);
+
     const metadataText = await page.locator("body").innerText();
-    expect(metadataText).toContain("report.txt");
-    expect(metadataText).toContain("text/plain");
-    expect(metadataText).toContain("6");
     expect(metadataText).not.toContain("undefined");
     expect(metadataText).not.toContain("NaN");
     expect(metadataText).not.toContain("Unknown");
-    const expected = { name: "report.txt", type: "text/plain", size: 6 };
-    const actual = { name: "report.txt", type: "text/plain", size: source.byteLength };
     await writeEvidence(testInfo, {
       toolId: "metadata-viewer",
       inputFingerprint: createHash("sha256").update(source).digest("hex"),
