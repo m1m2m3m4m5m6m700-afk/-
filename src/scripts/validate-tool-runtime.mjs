@@ -24,7 +24,8 @@ const FAKE_SIGNATURES = [
 ];
 
 function hasFakeSetTimeout(source) {
-  const lines = source.split("\\n");
+  const lines = source.split("\n");
+  const setterPattern = /set(?:Result|Output|Content|Value)\s*\(/;
   for (let i = 0; i < lines.length; i += 1) {
     const idx = lines[i].indexOf("setTimeout(");
     if (idx === -1) continue;
@@ -42,10 +43,10 @@ function hasFakeSetTimeout(source) {
           depth -= 1;
         }
       }
-      body += `${line}\\n`;
+      body += `${line}\n`;
       if (started && depth === 0) break;
     }
-    if (/set(Result|Output|Content|Value)\\s*\\(\\s*[`"\\\\d{[]/.test(body)) return true;
+    if (setterPattern.test(body)) return true;
   }
   return false;
 }
@@ -101,13 +102,13 @@ recordDuplicates(runtimeEntries.map((entry) => entry.slug), "runtime slug", issu
 recordDuplicates(runtimeEntries.map((entry) => entry.toolId), "runtime tool id", issues);
 
 const registryMatch = readyToolsRegistrySource.match(
-  /export const readyToolRuntimes = \[([\\s\\S]*?)\] as const satisfies readonly ReadyToolRuntimeDefinition\[\];/,
+  /export const readyToolRuntimes = \[([\s\S]*?)\] as const satisfies readonly ReadyToolRuntimeDefinition\[\];/,
 );
 if (!registryMatch) {
   issues.push("readyTools.ts is missing the canonical readyToolRuntimes array.");
 } else {
-  const registeredNames = [...registryMatch[1].matchAll(/\\b([A-Za-z0-9_]+Runtime)\\b/g)].map((match) => match[1]);
-  const importedNames = [...readyToolsRegistrySource.matchAll(/import \{\\s*([A-Za-z0-9_]+Runtime)\\s*\} from "\\.\\/tools\\/([^"]+)";/g)].map((match) => match[1]);
+  const registeredNames = [...registryMatch[1].matchAll(/\b([A-Za-z0-9_]+Runtime)\b/g)].map((match) => match[1]);
+  const importedNames = [...readyToolsRegistrySource.matchAll(/import \{\s*([A-Za-z0-9_]+Runtime)\s*\} from "\.\/tools\/([^"]+)";/g)].map((match) => match[1]);
   recordDuplicates(registeredNames, "registered runtime symbol", issues);
   const registeredFiles = importedNames.map(([, file]) => file).sort();
   const runtimeFileSlugs = runtimeEntries.map((entry) => entry.slug).sort();
@@ -124,7 +125,7 @@ if (!registryMatch) {
 if (runtimeEntries.length === 0) issues.push("No runtime implementations were found.");
 
 if (issues.length > 0) {
-  throw new Error(`Tool runtime validation failed with ${issues.length} issue(s).\\n- ${issues.join("\\n- ")}`);
+  throw new Error(`Tool runtime validation failed with ${issues.length} issue(s).\n- ${issues.join("\n- ")}`);
 }
 
 console.log(`Tool runtime validation passed: ${runtimeEntries.length} canonical public runtimes.`);
