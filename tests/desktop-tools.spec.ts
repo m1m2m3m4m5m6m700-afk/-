@@ -1,7 +1,8 @@
 import { test, expect, type Download, type Page, type TestInfo } from "playwright/test";
 import JSZip from "jszip";
 import { createHash } from "node:crypto";
-import { readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
 
 const makeBytes = (size: number, value = 65) => Buffer.alloc(size, value);
 
@@ -15,8 +16,10 @@ async function writeEvidence(testInfo: TestInfo, evidence: {
   expectedFingerprint: string;
   actualFingerprint: string;
 }) {
+  const evidenceDir = path.resolve("test-results", "evidence");
+  await mkdir(evidenceDir, { recursive: true });
   await writeFile(
-    testInfo.outputPath("verification-evidence.json"),
+    path.join(evidenceDir, `${evidence.toolId}.json`),
     JSON.stringify(
       {
         schemaVersion: 1,
@@ -173,7 +176,7 @@ test.describe("verified desktop tools", () => {
 
     const downloadPath = await downloadToolLink(page, downloadLink, "large.bin-parts.zip");
     const zip = await JSZip.loadAsync(await readFile(downloadPath));
-    const names = Object.keys(zip.files).sort();
+    const names = Object.keys(zip.files).filter((name) => !zip.files[name].dir).sort();
     expect(names).toEqual(["large.bin.part-0001", "large.bin.part-0002", "large.bin.part-0003"]);
     const merged = Buffer.concat(await Promise.all(names.map((name) => zip.files[name].async("nodebuffer"))));
     expect(merged.equals(source)).toBe(true);
