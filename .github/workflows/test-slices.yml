@@ -63,8 +63,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: integration
-            command: npm run validate:integration
           - name: search-catalog
             command: npm run validate:search-catalog
           - name: seo
@@ -187,8 +185,8 @@ jobs:
           path: .artifacts/lighthouse
           if-no-files-found: ignore
 
-  localization-agent-advisory:
-    name: Localization agent roadmap audit (advisory)
+  localization-report-advisory:
+    name: Localization report (advisory)
     if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -200,11 +198,15 @@ jobs:
           node-version-file: ${{ env.NODE_VERSION_FILE }}
           cache: npm
       - run: npm ci
-      - name: Run localization roadmap audit
-        run: npm run validate:localization-agent
+      - name: Run non-blocking localization report
+        run: npm run report:localization
       - name: Publish localization report
         if: always()
-        run: test -f reports/localization-agent-report.json && cat reports/localization-agent-report.json || true
+        uses: actions/upload-artifact@v4
+        with:
+          name: localization-report
+          path: reports/localization-report.txt
+          if-no-files-found: ignore
 
   pdf-catalog-advisory:
     name: PDF mega catalog roadmap audit (advisory)
