@@ -17,9 +17,46 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  NODE_VERSION_FILE: .nvmrc
+
 jobs:
-  test-slice:
-    name: ${{ matrix.name }}
+  fast-gate:
+    name: Fast / ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - name: lockfile
+            command: node scripts/validate-lockfile.mjs
+          - name: typecheck
+            command: npm run typecheck
+          - name: lint
+            command: npm run lint
+          - name: registry
+            command: npm run validate:registry
+          - name: tool-runtime
+            command: npm run validate:tool-runtime
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: ${{ env.NODE_VERSION_FILE }}
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Run fast diagnostic
+        run: ${{ matrix.command }}
+      - name: Lockfile unchanged
+        if: success()
+        run: git diff --exit-code -- package.json package-lock.json
+
+  contract-gate:
+    name: Contract / ${{ matrix.name }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
@@ -28,10 +65,6 @@ jobs:
         include:
           - name: integration
             command: npm run validate:integration
-          - name: registry
-            command: npm run validate:registry
-          - name: tool-runtime
-            command: npm run validate:tool-runtime
           - name: search-catalog
             command: npm run validate:search-catalog
           - name: seo
@@ -58,23 +91,17 @@ jobs:
             command: npm run validate:security
           - name: truthfulness
             command: npm run test:truthfulness
-          - name: typecheck
-            command: npm run typecheck
-          - name: lint
-            command: npm run lint
     steps:
       - uses: actions/checkout@v5
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v5
         with:
-          node-version-file: .nvmrc
+          node-version-file: ${{ env.NODE_VERSION_FILE }}
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Lockfile integrity
-        run: node scripts/validate-lockfile.mjs
-      - name: Run isolated diagnostic slice
+      - name: Run isolated contract slice
         run: ${{ matrix.command }}
       - name: Lockfile unchanged
         if: success()
@@ -90,7 +117,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
-          node-version-file: .nvmrc
+          node-version-file: ${{ env.NODE_VERSION_FILE }}
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
@@ -98,8 +125,7 @@ jobs:
         run: npm run test:desktop:flaky
       - name: Record edge coverage
         if: always()
-        run: |
-          echo "Desktop edge coverage includes exact ZIP bytes, invalid archives, multi-MB splitting, one-byte splitting, metadata correctness, and repeatability."
+        run: echo "Desktop edge coverage: ZIP bytes, invalid archives, multi-MB splitting, one-byte splitting, metadata correctness, repeatability."
 
   lighthouse:
     name: Lighthouse performance and UX audit (advisory)
@@ -108,19 +134,14 @@ jobs:
     timeout-minutes: 20
     continue-on-error: true
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-      - name: Setup Node
-        uses: actions/setup-node@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
-          node-version-file: .nvmrc
+          node-version-file: ${{ env.NODE_VERSION_FILE }}
           cache: npm
-      - name: Install dependencies
-        run: npm ci
-      - name: Build application
-        run: npm run build
-      - name: Run Lighthouse CI
-        run: npx @lhci/cli@0.15.1 autorun
+      - run: npm ci
+      - run: npm run build
+      - run: npx @lhci/cli@0.15.1 autorun
 
   localization-agent-advisory:
     name: Localization agent roadmap audit (advisory)
@@ -131,15 +152,14 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
-          node-version-file: .nvmrc
+          node-version-file: ${{ env.NODE_VERSION_FILE }}
           cache: npm
       - run: npm ci
       - name: Run localization roadmap audit
         run: npm run validate:localization-agent
       - name: Publish localization report
         if: always()
-        run: |
-          test -f reports/localization-agent-report.json && cat reports/localization-agent-report.json || true
+        run: test -f reports/localization-agent-report.json && cat reports/localization-agent-report.json || true
 
   pdf-catalog-advisory:
     name: PDF mega catalog roadmap audit (advisory)
@@ -150,7 +170,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
-          node-version-file: .nvmrc
+          node-version-file: ${{ env.NODE_VERSION_FILE }}
           cache: npm
       - run: npm ci
       - name: Run PDF roadmap audit
