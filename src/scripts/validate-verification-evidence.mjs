@@ -1,7 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
-const ROOT = path.resolve("test-results");
+const ROOT = path.resolve("test-results", "evidence");
 const REQUIRED_TOOLS = new Set([
   "zip-creator",
   "archive-extractor",
@@ -11,13 +11,9 @@ const REQUIRED_TOOLS = new Set([
 
 async function collect(dir) {
   const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
-  const files = [];
-  for (const entry of entries) {
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) files.push(...(await collect(full)));
-    else if (entry.name === "verification-evidence.json") files.push(full);
-  }
-  return files;
+  return entries
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".json"))
+    .map((entry) => path.join(dir, entry.name));
 }
 
 const files = await collect(ROOT);
