@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "certifiedTools": [
+    "zip-creator",
+    "archive-extractor",
+    "file-splitter",
+    "metadata-viewer"
+  ],
+  "policy": {
+    "publicRequiresCertified": true,
+    "localOnlyRequired": true,
+    "evidenceRequired": true,
+    "regressionLocked": true
+  }
+}
