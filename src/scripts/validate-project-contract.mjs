@@ -126,16 +126,13 @@ const requiredChecks = [
   "invariant",
   "evidence",
 ];
+for (const check of requiredChecks) {
+  if (!contracts.includes(`"${check}"`)) fail(`Shared certification check is missing from testContracts.ts: ${check}`);
+}
+if (!contracts.includes("const strictChecks")) fail("testContracts.ts must define the shared strictChecks set.");
 for (const { id } of registrations) {
-  const start = contracts.indexOf(`toolId: "${id}"`);
-  if (start < 0) {
-    fail(`Missing verification contract for public tool: ${id}`);
-    continue;
-  }
-  const block = contracts.slice(start, start + 800);
-  for (const check of requiredChecks) {
-    if (!block.includes(`"${check}"`)) fail(`Tool ${id} is missing strict verification check: ${check}`);
-  }
+  const entryPattern = new RegExp(`toolId: [\"']${id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\b[\\s\\S]*?requiredChecks: strictChecks`);
+  if (!entryPattern.test(contracts)) fail(`Tool ${id} is missing a strict verification contract entry.`);
 }
 
 for (const required of [
