@@ -1,5 +1,23 @@
 import { z } from "zod";
 
+export const toolCategoryIdSchema = z.enum([
+  "translation",
+  "images",
+  "pdf",
+  "writing",
+  "video",
+  "audio",
+  "files",
+  "utilities",
+  "converters",
+  "calculators",
+  "web",
+  "chrome",
+  "developer",
+  "ai",
+  "future",
+]);
+
 export const toolLifecycleStateSchema = z.enum([
   "draft",
   "implemented",
@@ -43,7 +61,7 @@ export const toolBaseManifestSchema = z.object({
   id: z.string().min(1),
   slug: z.string().min(1),
   name: z.string().min(1),
-  category: z.string().min(1),
+  category: toolCategoryIdSchema,
   description: z.string().min(1),
   lifecycle: toolLifecycleStateSchema,
   capabilities: toolCapabilitiesSchema,
