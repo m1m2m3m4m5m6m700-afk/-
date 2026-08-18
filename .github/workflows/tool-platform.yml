@@ -48,9 +48,11 @@ jobs:
     name: Strict Desktop Verification
     needs: foundation
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
+      - name: Validate public tool quarantine contract
+        run: node src/scripts/validate-tool-quarantine.mjs
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
@@ -67,6 +69,8 @@ jobs:
         run: npm run test:mutation
       - name: Real desktop verification with repeatability
         run: npm run test:desktop -- --repeat-each=3
+      - name: Tool invariants and golden fixtures
+        run: npx playwright test tests/tool-invariants.spec.ts --project=chromium --repeat-each=2
       - name: Strict verification evidence
         run: node src/scripts/validate-verification-evidence.mjs
       - name: Upload verification evidence
