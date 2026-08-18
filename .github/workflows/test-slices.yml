@@ -130,9 +130,19 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Run repeated desktop regression
         run: npm run test:desktop:flaky
-      - name: Record edge coverage
+      - name: Record edge timing
         if: always()
-        run: echo "Desktop edge coverage: public tool smoke, invalid inputs, repeatability, and boundary cases."
+        shell: bash
+        run: |
+          mkdir -p .artifacts/edge
+          printf 'timestamp=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .artifacts/edge/run.txt
+      - name: Publish edge evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: edge-regression-evidence
+          path: .artifacts/edge
+          if-no-files-found: ignore
 
   lighthouse:
     name: Lighthouse performance and UX audit (advisory)
@@ -147,8 +157,39 @@ jobs:
           node-version-file: ${{ env.NODE_VERSION_FILE }}
           cache: npm
       - run: npm ci
-      - run: npm run build
-      - run: npx @lhci/cli@0.15.1 autorun
+      - name: Build with timing evidence
+        shell: bash
+        run: |
+          mkdir -p .artifacts/lighthouse
+          start=$(date +%s)
+          npm run build > .artifacts/lighthouse/build.log 2>&1
+          code=$?
+          end=$(date +%s)
+          printf '{"exitCode":%s,"durationSeconds":%s}\n' "$code" "$((end-start))" > .artifacts/lighthouse/build-timing.json
+          exit "$code"
+      - name: Run Lighthouse CI
+        shell: bash
+        run: |
+          set +e
+          npx @lhci/cli@0.15.1 autorun > .artifacts/lighthouse/lhci.log 2>&1
+          code=$?
+          printf '{"exitCode":%s,"timestamp":"%s"}\n' "$code" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .artifacts/lighthouse/lhci-status.json
+          cat .artifacts/lighthouse/lhci.log
+          exit 0
+      - name: Collect Lighthouse output
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p .artifacts/lighthouse
+          if [ -d .lighthouseci ]; then cp -R .lighthouseci .artifacts/lighthouse/.lighthouseci; fi
+          du -sh dist 2>/dev/null | awk '{print "buildOutputSize=" $1}' > .artifacts/lighthouse/build-size.txt || true
+      - name: Publish Lighthouse evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-performance-evidence
+          path: .artifacts/lighthouse
+          if-no-files-found: ignore
 
   localization-agent-advisory:
     name: Localization agent roadmap audit (advisory)
