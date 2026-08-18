@@ -4,30 +4,13 @@
 - Prefer small, typed, accessible changes that preserve current routes and behavior.
 - Run `npm run verify` before committing production changes.
 
-## AI/PR discipline
-
-Automation and AI agents must treat the repository as a shared stateful system, not as a disposable workspace.
-
-- Never open a new PR for a problem already targeted by an existing open PR. Reuse the existing branch and push the next root-cause fix there.
-- Before opening a PR, inspect the repository's open PRs and search for an existing branch, title, or issue addressing the same failure.
-- One recurring CI failure gets one root-cause investigation. Do not repeat an already attempted fix without first explaining why the failure regressed or why the previous fix was insufficient.
-- Do not create a second PR merely because the first PR is waiting for CI. Update the existing PR unless its scope is intentionally superseded.
-- When a later PR supersedes an earlier one, close the obsolete PR or explicitly mark it as superseded; do not leave competing fixes active.
-- Do not merge, force-push, or rewrite shared branches solely to make a check green. Preserve diagnostic history.
-- Treat `develop` as the integration branch for current engineering work. Do not redirect active work to `main` merely to bypass a develop check.
-- Never weaken a release gate, replace a failure with a warning, or add `continue-on-error` to a critical check solely to obtain a green status.
-- Keep advisory security/performance experiments outside the critical release path until their signal quality and runtime stability are proven.
-- When a CI command is a long serial chain, identify and run the failing contract directly rather than applying speculative fixes to unrelated validators.
-- After a root-cause fix, rerun the smallest relevant check first, then the dependent workflow, then the full release gate.
-- Record architectural or workflow changes in the same commit/PR that changes the behavior so future agents do not rely on stale documentation.
-
 ## Adding a "ready" browser tool
 
 A ready tool requires seven coordinated layers; the validators in `src/scripts/`
 enforce most of them:
 
-1. Entry in `src/data/tools.ts` — set `status: "ready"` (use the `t()` helper).
-2. Runtime in `src/lib/tool-runtime/tools/<slug>.tsx` — export
+1. Entry in `src/data/tools.ts` ‚Äî set `status: "ready"` (use the `t()` helper).
+2. Runtime in `src/lib/tool-runtime/tools/<slug>.tsx` ‚Äî export
    `<Name>Runtime: ReadyToolRuntimeDefinition` (real client-side logic, never a
    `setTimeout` stub). Pattern: `useState` + actual logic + copy/download +
    error handling.
@@ -49,95 +32,741 @@ layers 2/6 + content/SEO. New tool ids require inserting into the matching
 category's `toolIds` at the position matching their order in `tools.ts`
 (validator checks strict order).
 
-`npm run verify` chains: validate:registry → validate:tool-runtime → validate:seo
-→ validate:tool-content → typecheck → lint → build → audit:production.
+`npm run verify` chains: validate:registry ‚Üí validate:tool-runtime ‚Üí validate:seo
+‚Üí validate:tool-content ‚Üí typecheck ‚Üí lint ‚Üí build ‚Üí audit:production.
 `react-refresh/only-export-components` warnings are pre-existing on every tool
 runtime file (component + runtime-def export) and are not errors.
 
 ## Known gotchas
 
 - **Translation-key fallbacks**: `t()` returns the raw key string when a key is
-  missing. Always render tool/category names via `resolveToolName`/`resolveCategoryName`.
-- **SSR `<html lang/dir>`**: set in `__root.tsx` `RootShell` via `useRouteLocale()`.
-- **`package.json` top-level keys must be unique**: duplicate JSON keys silently drop data.
+  missing (e.g. `tool.json-formatter.name`). Not every ready tool/category has a
+  `tool.<slug>.name` / `category.<id>.name` dictionary entry. Always render
+  tool/category names via `resolveToolName`/`resolveCategoryName`
+  (`src/lib/i18n/keys.ts`), which fall back to the canonical registry name ‚Äî
+  never call `t(toolNameKey(...))` / `t(categoryNameKey(...))` directly or the
+  H1/breadcrumb will show a literal key.
+- **SSR `<html lang/dir>`**: set in `__root.tsx` `RootShell` via
+  `useRouteLocale()` (reads `useRouterState().location.pathname`, not route
+  match params ‚Äî match params are unavailable during the SSR shell pass).
+  `suppressHydrationWarning` on `<html>` allows the client `I18nProvider` to
+  refine it post-hydration.
+- **`package.json` top-level keys must be unique**: duplicate `overrides`
+  blocks silently drop all but the last (JSON spec). Keep a single merged
+  `overrides` block.
 
-## AI layer (Phase 1 — provider/service/server/hook)
+## AI layer (Phase 1 ‚Äî provider/service/server/hook)
 
 A real, server-side AI generation pipeline lives under `src/lib/ai/`. It is
-provider-agnostic and server-only — no API keys or provider code ever enter the client bundle.
+**provider-agnostic** and **server-only** ‚Äî no API keys or provider code ever
+enter the client bundle.
 
 Flow:
 ```
 client (src/lib/ai/useAIGeneration.ts)
-  → createServerFn RPC (src/lib/ai/server/generate.ts)
-  → aiService.generate (src/lib/ai/aiService.ts)
-  → AIProvider (src/lib/ai/providers/openai.ts)
-  → safe AIGenerateResult (ok | failure with kind/message/retryable)
+  ‚Üí createServerFn RPC (src/lib/ai/server/generate.ts)
+  ‚Üí aiService.generate (src/lib/ai/aiService.ts)
+  ‚Üí AIProvider (src/lib/ai/providers/openai.ts)
+  ‚Üí safe AIGenerateResult (ok | failure with kind/message/retryable)
 ```
 
-`config.ts` reads `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_BASE_URL`, cost limits,
-and per-task overrides. Providers implement a common `AIProvider` interface. The
-service enforces input/output budgets, timeout, sanitization, rate-limiter hooks,
-provider fallback, and truthful discriminated failures.
+Files:
+- `types.ts` ‚Äî shared types safe for client import (`AITaskId`, `AIGenerateResult`,
+  `AIErrorKind`, etc.). No runtime, no secrets.
+- `config.ts` ‚Äî **server-only** env reader (`getAIConfig`, `isAIConfigured`).
+  Reads `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_BASE_URL`, `FLIXO_AI_*` cost
+  limits, and per-task overrides (`FLIXO_AI_<TASK>_MODEL` / `_MAX_TOKENS`).
+  Cached; call `resetAIConfigCache()` in tests.
+- `providers/types.ts` ‚Äî `AIProvider` interface. Adding Gemini/Anthropic later =
+  new file implementing it + register in `providers/index.ts`. No tool changes.
+- `providers/openai.ts` ‚Äî fetch-based (no SDK). Maps upstream errors to safe
+  `AIErrorKind` variants; never logs keys or user content.
+- `providers/index.ts` ‚Äî registry + ordered fallback chain (`getProviderChain`).
+- `prompts.ts` ‚Äî `TASK_PROMPTS[taskId]` (system prompt + user-prompt builder +
+  default max output tokens). Currently ships the six text-tool tasks.
+- `aiService.ts` ‚Äî unified entry. Enforces cost control (max input chars, max
+  output tokens, timeout), input sanitization, rate-limiter slot
+  (`setRateLimiter` ‚Äî no-op by default, wire a real one later), and provider
+  fallback. Returns a discriminated result; never throws.
+- `server/generate.ts` ‚Äî `createServerFn({ method: "POST" })` with a zod
+  validator (`taskId` enum + `input` max length). Handler body stays server-side.
+- `useAIGeneration.ts` ‚Äî client hook: `run`, `retry`, `clear`, plus `loading`,
+  `result`, `content`, `error` states.
 
-### Wiring an AI tool
-1. A planned tool must already exist in `tools.ts` and have a real runtime before
-   promotion to `ready`.
-2. Use `useAIGeneration("<taskId>")` and surface loading/error/retry/empty/success states.
-3. Add new task ids to the shared enum/prompt registry and server validation.
-4. Keep provider traffic server-side; the client only calls the same-origin RPC.
+### Wiring an AI tool (Phase 4 pattern)
+1. The tool already has a `planned` entry in `tools.ts` + stub runtime + route.
+   Flip status to `ready` only after the runtime is real.
+2. Replace the `setTimeout` stub in the runtime with `useAIGeneration("<taskId>")`
+   (taskId == the slug for the six text tools). Render loading / error (with
+   `retry`) / empty / success states. Keep copy/clear/counter UX.
+3. If the tool needs a new `taskId`, add it to `AITaskId` + `TASK_PROMPTS` +
+  the zod `TASK_IDS` enum in `server/generate.ts`.
+4. No CSP change needed ‚Äî the client only calls the same-origin RPC; the
+   OpenAI call happens server-side (not subject to browser CSP `connect-src`).
 
 ### Local dev / keys
-Copy `.env.example` → `.env` and set `OPENAI_API_KEY`. `.env` is gitignored.
-Without a key, generation returns `not_configured`; tools must show an explicit error state.
+Copy `.env.example` ‚Üí `.env` and set `OPENAI_API_KEY`. `.env` is gitignored.
+With no key, every generation returns `kind: "not_configured"` (retryable:
+false) ‚Äî tools must surface this as an error state, never a fake result.
 
-## GitHub layer and Developer Workspace
+### TanStack Start note
+This TanStack Start version (1.170) has **no `createAPIFileRoute`**. Use
+`createServerFn({ method })` from `@tanstack/react-start` for server endpoints.
+The handler value is returned to the client fetcher directly (do not wrap in
+`{ result }`).
 
-The GitHub integration is server-side and token-safe: OAuth access tokens stay in a server cache,
-HttpOnly sessions are HMAC-signed, and secrets-guard prevents sensitive files from being read or
-written. Client-importable RPC modules contain fetchers only. AI working branches use `ai/<slug>`.
+## GitHub layer (Phase 2 ‚Äî App infra / OAuth / repo & branch service)
 
-The `/developer` workspace is phase-gated. Read-only repository/file/search capabilities are
-secrets-guarded. Phase 5 adds explicit user-driven writes, SHA-gated updates/deletes, AI-branch
-isolation, diff redaction, and explicit PR creation. Merge, force-push, branch deletion, autonomous
-coding, and automatic PR creation are intentionally not exposed by the platform contract.
+`src/lib/github/` ‚Äî a server-side GitHub integration that turns Flixo into a
+dev environment (request ‚Üí AI develops ‚Üí branch ‚Üí PR ‚Üí merge). No PATs, no
+tokens in `localStorage`, no Octokit dependency (native `fetch` + `node:crypto`,
+same shape as the AI provider layer).
 
-## Security boundaries
+### Layer map (client-safe vs server-only)
 
-- Secrets are protected by path guard, content guard, and fragment redaction.
-- Read and write operations are session-scoped to the selected repository and branch.
-- Writes are limited to `ai/<slug>` branches and require current file SHA for update/delete.
-- CSRF protection, rate limiting, HMAC-signed cookies, security headers, and same-origin checks
-  are release-gated.
-- Client bundles must not contain GitHub tokens, `api.github.com`, secret env values, or server-only
-  modules such as database/security/GitHub token services.
+- **Client-safe** (safe for the client bundle ‚Äî no tokens/config/provider code):
+  - `index.ts` ‚Äî re-exports public types only.
+  - `types.ts` ‚Äî `GitHubRepository`, `GitHubBranch`, `GitHubRepoSummary`,
+    `GitHubResult<T>` (`GitHubSuccess<T> | GitHubFailure`),
+    `GitHubAuthStatus`. NO token types exported here.
+  - `useGitHub.ts` ‚Äî client hook wrapping the RPC fetchers.
+  - `server/*.rpc.ts` ‚Äî TanStack RPC *fetchers* (client import is a thin stub;
+    handler bodies ship server-side only).
+- **Server-only** (never imported by client code):
+  - `config.ts` ‚Äî reads `GITHUB_*` env, `isGitHubAppConfigured()`,
+    `getSessionSigningKey()` (HMAC key derived from client secret).
+  - `auth/session.ts` ‚Äî signed cookie encode/verify (HMAC-SHA256, base64url),
+    HttpOnly/SameSite=Lax/Secure cookie headers, in-memory token cache keyed by
+    `sessionId`.
+  - `auth/githubSession.ts` ‚Äî `createMiddleware().server` *request* middleware
+    that reads the cookie off `request` and injects `context.githubSession`.
+  - `auth/oauthFlow.ts` ‚Äî `buildAuthorizationUrl`, `exchangeCodeForToken`,
+    CSRF `state` sign/verify.
+  - `client.ts` ‚Äî `githubRequest<T>()` fetch wrapper (auth header, API version,
+    rate-limit/5xx retry, HTTP ‚Üí `GitHubResult` mapping).
+  - `service/repos.ts`, `service/branches.ts` ‚Äî repo + branch operations.
+  - `secrets-guard.ts` ‚Äî blocks `.env`, `*.pem`, `.ssh/`, `credentials.json`,
+    etc. from ever being read/written/searched by the agent. `.env.example` is
+    ALLOWED (documentation).
 
-## Testing and verification
+### Session design (token never leaves the server)
 
-The project uses registry/runtime contracts, localization/SEO checks, typecheck, lint, build,
-production audit, Playwright desktop verification, mutation testing, golden fixtures, regression
-locks, security contracts, fault injection, property fuzzing, and evidence artifacts.
+1. User clicks Connect ‚Üí `startLogin` RPC returns GitHub OAuth URL (needs
+   `GITHUB_CLIENT_ID` only to build the URL).
+2. GitHub redirects to `GITHUB_APP_CALLBACK_URL` with `?code&state`.
+3. `finishCallback` RPC: verifies signed `state`, exchanges `code` for an
+   access token (server-to-server), caches it under a random `sessionId`, and
+   returns a `302 Response` with `Set-Cookie: flixo_dev_session=<signed>`.
+4. The cookie holds ONLY `{ sessionId, login, selectedRepo, selectedBranch,
+   issuedAt, expiresAt }` ‚Äî signed with HMAC. The access token lives only in
+   the server-side `tokenCache` Map.
+5. Every protected RPC uses `.middleware([githubSessionMiddleware])` and reads
+   `context.githubSession`. If the cache misses (server restart, e.g. Render
+   free tier), returns `auth_required` ‚Üí user re-auths. Safe, documented.
 
-`npm ci` is required for reproducibility and `package-lock.json` must remain unchanged after install.
-Critical release gates must fail on real defects. Advisory experiments must not weaken or bypass them.
+### "Completable later" contract (per Phase 2 brief)
 
-## Production deployment config
+`isGitHubAppConfigured()` returns false until `GITHUB_CLIENT_ID`,
+`GITHUB_CLIENT_SECRET`, `GITHUB_APP_CALLBACK_URL` are set. Every GitHub RPC
+then returns a real `not_configured` failure ‚Äî **never a fake success, never a
+stub treated as production**. Once the operator creates the GitHub App + adds
+the env vars, the same code works with zero changes. The app builds and runs
+without these vars.
 
-- Node 22 is pinned in `.nvmrc`.
-- Vercel uses Nitro/Vercel build output from the project build.
-- `deploy.yml` uses `workflow_run` after the required CI workflow succeeds and needs
-  `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and `VERCEL_PROJECT_ID` repository secrets.
+### TanStack Start request middleware shape
 
-## Persistence, admin, analytics, and localization
+A *request* middleware (`createMiddleware().server(fn)`) receives
+`{ request: Request, pathname, context, next, ... }` and may return a
+`Response` or call `next({ context })`. The `context` it sets becomes
+`context` on downstream server fns. Use this ‚Äî not function middleware ‚Äî when
+you need the raw `Request` (cookies, headers). `serverFn` handlers may return
+a `Response` directly (for `Set-Cookie` + redirect).
 
-Postgres/Drizzle persistence, admin conversation management, privacy-first analytics, and the
-localization glossary/coverage/staleness validators are part of the existing platform. DB and SMTP
-configuration are completable-later: missing config produces explicit `not_configured` states,
-never fabricated success.
+### Phase 2 scope (foundation only ‚Äî no UI yet)
 
-## Engineering operating rule
+Shipped: config, secrets-guard, session, OAuth flow, GitHub client, repos +
+branches services, auth/repos/branches RPCs, `useGitHub` hook, `.env.example`.
+**Not** shipped: Developer Explorer UI (Phase 3), file read/search/write
+(Phase 4), commit/push/PR/merge (Phase 5), AI-agent tool wiring (Phase 6).
+The modules exist, typecheck, and lint clean; they are tree-shaken out of the
+build until a route imports `useGitHub` (Phase 3 will). Verified: no GitHub
+tokens/secrets/`api.github.com` in the client bundle.
 
-The project is currently mature enough that the main risk is coordination drift, not lack of checks.
-Prefer one root-cause fix, one coherent PR, and one green verification cycle over parallel speculative
-patches. Preserve the known-good baseline and only promote advisory tools into blocking gates after
-measuring false-positive rate, runtime, and diagnostic quality.
+### RPC fetcher location (import-protection constraint)
+
+This project's TanStack config sets `importProtection.client.files:
+["**/server/**"]` with `behavior: "error"`. **Client code cannot import any
+file under a `server/` directory** ‚Äî even `createServerFn` fetcher modules.
+So the RPC fetchers (`auth.rpc.ts`, `repos.rpc.ts`, `branches.rpc.ts`) live in
+`src/lib/github/rpc/` (NOT `server/`), while truly server-only modules
+(`config.ts`, `auth/session.ts`, `auth/oauthFlow.ts`, `auth/githubSession.ts`,
+`client.ts`, `service/*`, `server/guards.ts`) stay under `server/` and are
+protected. The fetcher modules import `../server/guards` etc. ‚Äî that's safe
+because in the client env the `createServerFn(...).handler(...)` body is
+stubbed, so those imports are dead-stripped from the client bundle (verified:
+no `api.github.com`/tokens/secrets in the client chunk). **A `.rpc.ts` module
+must export ONLY `createServerFn` fetchers** ‚Äî any non-fetcher server helper
+exported alongside them (e.g. a removed `buildSelectionCookie`) defeats the
+client stubbing and the import-protection plugin errors. Put server helpers in
+`server/` and import them from inside handler bodies only.
+
+### Branch naming convention
+
+AI working branches are `ai/<slug>` where `slug = sanitizeBranchSlug(input)`
+(lowercase, `[a-z0-9-]`, no leading/trailing/consecutive hyphens, max 40
+chars). `createAiBranch` POSTs `refs/heads/ai/<slug>` off the base branch's
+sha. Dangerous ops (delete branch, force push) are intentionally NOT exposed.
+
+## Developer Workspace UI (Phase 3 ‚Äî /developer route)
+
+`src/routes/developer.tsx` + `src/components/developer/` ‚Äî a standalone,
+self-contained route (it does NOT use `SiteLayout`, so it's independent of the
+marketing site Navbar/Footer). Reuses the root `ThemeProvider` for dark/light
+mode and the existing GitHub layer (`useGitHub` + Phase 2 RPCs) ‚Äî no second
+GitHub client, no new OAuth, no Octokit, no PATs, no localStorage credentials.
+
+### Component map
+
+- `DeveloperWorkspace.tsx` ‚Äî top-level shell + state machine.
+- `DeveloperTopbar.tsx` ‚Äî wordmark, live connection pill, theme toggle.
+- `DeveloperSidebar.tsx` ‚Äî nav; only "Repository" is active, the rest
+  (File Explorer, AI Assistant, Diff Viewer, Verification, Git/PR, Audit Log)
+  are disabled placeholders labeled with their future phase.
+- `ConnectionPanel.tsx` ‚Äî Connect/Disconnect + security notes (no PATs,
+  HttpOnly session, server-side only).
+- `RepoListPanel.tsx` ‚Äî real repo list from `useGitHub().repos`; selects via
+  `selectRepo` (writes selection to the HttpOnly session cookie server-side).
+- `RepoStatusPanel.tsx` ‚Äî default branch, branch list + select, last commit
+  (sha/author/date), branch-protection flag.
+- `StateBanners.tsx` ‚Äî the six required states: Loading, Empty,
+  NotConfigured, AuthRequired, RateLimited, ApiError (+ Forbidden +
+  `failureBanner()` mapper from `GitHubErrorKind`).
+
+### State machine (DeveloperWorkspace)
+
+1. `loading || !status` ‚Üí `LoadingBanner`.
+2. `!status.configured` ‚Üí `NotConfiguredBanner` (NO fake data, ever).
+3. `configured && !authenticated` ‚Üí `ConnectionPanel`.
+4. `authenticated && !selectedRepo` ‚Üí `RepoListPanel`.
+5. `authenticated && selectedRepo` ‚Üí `RepoStatusPanel`.
+
+Every sub-panel RPC failure is mapped via `failureBanner(kind, message,
+{onRetry,onConnect})` to the right banner. No GitHub token/secret is ever read
+into React state ‚Äî `useGitHub` holds only public shapes (repo names, branch
+names, commit metadata). The session cookie is HttpOnly and never touched by
+JS. `noindex` meta (private workspace).
+
+### `useGitHub` hook (extended in Phase 3)
+
+Phase 2 shipped the hook with status/connect/disconnect/refreshRepos/
+selectRepo. Phase 3 added `refreshBranches()` and `refreshRepoSummary()`
+(calling the existing Phase 2 `listRepoBranches` + `getRepoStatus` RPCs) plus
+`branches`/`branchesLoading`/`repoSummary`/`repoSummaryLoading` state. This
+was the minimal additive change needed for the UI ‚Äî it does NOT redesign the
+Phase 2 architecture (UI ‚Üê existing GitHub RPC/hooks ‚Üê GitHub Service).
+
+### Phase 3 scope (read-only, no writes)
+
+Shipped: route, workspace shell, connection, repo list, repo status, all six
+state banners. **Not** shipped: File Explorer (Phase 4), AI Assistant
+(Phase 6), Diff Viewer / Verification / Git-PR-merge (Phase 5), Audit Log
+(Phase 6). The workspace is explicitly read-only ‚Äî no file writes, no commits,
+no push, no PR, no merge, no AI agent.
+
+## Developer File Explorer + Code Search (Phase 4 — read-only)
+
+`src/lib/github/service/files.ts` + `service/search.ts` + `rpc/files.rpc.ts` +
+`rpc/search.rpc.ts` + `src/components/developer/{FileExplorerPanel,
+FileViewerPanel,SearchResultsPanel}.tsx`. Read-only: lists the repo tree,
+reads a single text file, and searches code. **No writes, no commits, no push,
+no PR, no AI agent.**
+
+### Secrets protection (three layers, all server-side)
+
+1. **Path guard** — `assertNotSecret(path)` runs BEFORE any GitHub fetch in
+   `readFile`. `.env`, `*.pem`, `.ssh/`, `credentials.json`, `.aws/`, … return
+   `forbidden` and their contents are never fetched or returned. Secret paths
+   are also filtered OUT of `listTree` results and `searchCode` matches via
+   `isSecretPath` so the UI never advertises them.
+2. **Content guard (defense-in-depth)** — after decoding, `contentLooksSecret`
+   scans for private-key blocks (`-----BEGIN … PRIVATE KEY-----`) and known
+   token prefixes (`ghp_`, `github_pat_`, `AKIA`). If found, the file is
+   refused as `forbidden` and the content is NOT returned — so an oddly-named
+   file (e.g. `notes.txt` holding a key) cannot leak.
+3. **Fragment redaction** — `searchCode` redacts secret-looking substrings in
+   search fragments (`redactFragment`) before they reach the client.
+
+Verified: the developer client chunk contains NO `api.github.com`, NO tokens,
+NO `process.env`, NO `assertNotSecret`/`secrets-guard`/`service/*` (those run
+server-side only — confirmed present in `.output/server/`).
+
+### RPCs (client-importable fetchers in `rpc/`, session-scoped)
+
+- `listFiles` GET — file tree of the selected repo/branch (recursive, capped
+  at 2000 nodes; secret paths filtered).
+- `readFile` POST — read one text file (path- + content-guarded; >1MB →
+  `truncated`, non-text → `binary` with no content).
+- `searchCode` POST — code search scoped to the selected repo via `repo:`
+  qualifier (query 2–256 chars, capped at 100 matches; secret paths filtered,
+  fragments redacted).
+
+All three are guarded by `guardConfigured` + `guardAuthenticated` +
+`guardRepoSelected` and read only the session's selected repo/branch. They
+export ONLY `createServerFn` fetchers (no server helpers) so client stubbing
+works under the `**/server/**` import-protection rule. Note: the service
+functions are imported under aliases (`readFile as readRemoteFile`,
+`searchCode as runSearch`) to avoid name collisions with the RPC exports.
+
+### `useGitHub` hook (extended in Phase 4)
+
+Phase 3 added `refreshBranches`/`refreshRepoSummary`. Phase 4 adds
+`refreshFiles()`, `readFile(path)`, `searchCode(query)` + state `files`/
+`filesTruncated`/`filesLoading`/`fileContent`/`fileLoading`/`searchResult`/
+`searchLoading`. `disconnect` clears all of these. Additive only — the Phase
+2/3 architecture is unchanged (UI ← useGitHub ← RPCs ← Service ← client).
+
+### UI wiring
+
+`DeveloperSidebar` now has two enabled views: `repository` (default) and
+`files` (exported `WorkspaceView` type). Selecting `files` renders a two-column
+layout: left = file tree OR search results (toggled by an integrated search
+bar), right = read-only `FileViewerPanel` with line numbers. The viewer
+handles text / binary / truncated / forbidden(secret) / loading / empty
+states — content is displayed as DATA only, never fed to any model.
+`EmptyBanner` extended to accept `"files" | "matches"`.
+
+### Phase 4 scope (read-only, no writes)
+
+Shipped: file tree, single-file read (secrets-guarded), code search. **Not**
+shipped: file write/update/delete (Phase 5), commit/push/PR/merge (Phase 5),
+AI agent tool wiring (Phase 6), audit log (Phase 6).
+
+## Phase 4.1 — Security & Read/Write Boundary Audit (read-only hardening)
+
+A pre-Phase-5 audit of every read path. **No new functionality** — only
+verified boundaries and applied three minimal hardening fixes. All 67 audit
+assertions pass; `npm run verify` green (0 errors, 0 vulnerabilities).
+
+### Findings (all verified)
+
+- **Read paths**: `listFiles`, `readFile`, `searchCode` — all call
+  `guardConfigured` → `guardAuthenticated` → `guardRepoSelected`, then pass
+  `session.selectedRepo` + (`session.selectedBranch ?? "main"`) to the service.
+  repo/branch never come from client args. ✅
+- **Session-scoped repo/branch**: repo = `guardRepoSelected(session)` (signed
+  cookie); branch = `session.selectedBranch ?? "main"` (signed cookie). The
+  client only sends `path` / `query`. `selectRepo` re-signs the cookie via
+  `updateSessionSelection`. ✅
+- **Path traversal**: GitHub's contents/trees API resolves `..` *within the
+  repo* — it cannot escape the repository sandbox or reach the filesystem. The
+  secrets-guard checks the basename regardless of `../` position, so
+  traversal-encoded secret paths (`../.env`) are still caught. ✅ (hardened
+  further — see below).
+- **Branch/ref injection**: `encodeURIComponent(branch)` prevents URL
+  injection; git refs cannot contain `..` (GitHub 404s). Repo is in the URL
+  path, scoped. ✅ (validator tightened — see below).
+- **Search leaks**: scoped via `repo:` qualifier (can't cross repos); secret
+  paths filtered via `isSecretPath`; fragments redacted. ✅ (redaction
+  broadened — see below).
+- **File size & truncation**: `MAX_READ_BYTES = 1_000_000`; oversize →
+  `truncated: true, content: null`. Tree capped at 2000 nodes + GitHub's
+  `truncated` flag. ✅
+- **Error/rate-limit handling**: `client.ts` maps 401/403→`forbidden`,
+  403+retry-after / 429→`rate_limited`, 404→`not_found`, 5xx→
+  `provider_unreachable`. `failureBanner` covers all 10 `GitHubErrorKind`
+  values. ✅
+- **secrets-guard bypass**: no code path reads content without
+  `assertNotSecret` first; `listTree`/`searchCode` filter secret paths;
+  `readFile` adds a content-guard after decode. Error messages never include
+  file content. ✅
+- **Client bundle**: developer chunk contains NO `api.github.com`, NO tokens,
+  NO `process.env`, NO server-only modules (`assertNotSecret`, `secrets-guard`,
+  `hasTraversalSegments`, `getCachedToken`, `tokenCache` all stripped — run
+  server-side only). ✅
+
+### Hardening applied (3 minimal, additive fixes)
+
+1. **Branch validator tightened** (`repos.rpc.ts` `selectRepo`): was
+   `z.string().min(1).max(200)` (any string). Now
+   `/^(?!.*\.\.)(?!.*\/\/)[A-Za-z0-9][A-Za-z0-9._/-]*[A-Za-z0-9]$/` — rejects
+   `..`, leading/trailing/double slashes, spaces, shell metachars. Critical
+   prep for Phase 5 (branch is used in `refs/heads/<branch>` for push).
+2. **Explicit `..` rejection** (`secrets-guard.ts` → `service/files.ts`): new
+   `hasTraversalSegments()` helper; `readFile` returns `validation` failure for
+   any path with a `..` segment. GitHub sandbox-contains traversal, but this
+   makes intent unambiguous and prevents guard/resolution divergence.
+3. **Broadened fragment redaction** (`service/search.ts`): added `gho_`/`ghu_`/
+   `ghs_`/`ghr_` (GitHub OAuth/App/server/refresh tokens), `glpt-` (GitLab),
+   `xox[baprs]-` (Slack) to the redaction regex.
+
+### Boundary confirmed for Phase 5
+
+The read/write boundary is sound: Phase 4 cannot write, commit, push, PR, or
+merge by construction (no such RPCs/services exist). Phase 5 may proceed,
+adding write powers incrementally behind the same session-scoped guards +
+secrets-guard, with merge gated behind explicit user consent.
+
+## Phase 5 — Controlled Write + Commit + Push + PR + Diff
+
+Adds controlled write capabilities on top of the Phase 4 read foundation and
+4.1 audit hardening. **No merge, no AI agent, no autonomous coding.** Every
+write is an explicit user action landing on an `ai/<slug>` branch.
+
+### Architecture: Contents API = atomic commit + push
+
+GitHub's Contents API commits atomically: each create/update/delete creates a
+commit directly on the target branch's ref. So "commit" and "push" are the
+SAME operation — the write lands on the remote AI branch immediately. No
+separate push step, no force push, no branch deletion. This is why there is no
+`push` RPC: the write IS the push.
+
+### Write-branch isolation (5A)
+
+The session payload gained a `writeBranch` field (signed cookie, backward-
+compatible with Phase 4 cookies — old cookies get `writeBranch: null`). Writes
+read `session.writeBranch`, NOT `selectedBranch` (the read branch), so reads
+can target `main` while writes target an AI branch.
+
+`guardWriteBranch` enforces `/^ai\/[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$/` —
+this **structurally guarantees** writes can NEVER target the default/protected
+branch (`main`/`master`/`develop` are never `ai/*`). `createBranch` RPC creates
+`refs/heads/ai/<slug>` off a base branch AND sets `writeBranch` in the cookie.
+Writes are refused (`validation`) until a write branch exists.
+
+### File writes (5B) — `service/writes.ts` + `rpc/writes.rpc.ts`
+
+- `createFile` — create a new text file (refuses if exists → 422 → validation).
+- `updateFile` — update a file (SHA-gated; stale SHA → 409 → `conflict`).
+- `deleteFile` — delete a file (SHA-gated; protected paths refused).
+
+Every op enforces, BEFORE any GitHub fetch:
+1. `guardConfigured` → `guardAuthenticated` → `guardRepoSelected` → `guardWriteBranch`.
+2. `assertNotSecret(path)` + `hasTraversalSegments` refusal.
+3. Content: 1MB cap + text-only (reject null bytes / binary).
+4. Message: 1–280 chars, no control characters.
+5. Branch is ALWAYS `session.writeBranch` (client never supplies a branch).
+
+**Conflict protection**: update/delete require the current file SHA. If stale,
+GitHub returns 409 → mapped to `conflict` (new error kind). Never overwrites
+blindly.
+
+**Delete protection** (stricter than reads): refuses secret paths (double-check
+via `isSecretPath`), repo configuration files (`.github/`, `CODEOWNERS`,
+`renovate.json`, CI configs), and requires SHA. Never deletes branches/repos.
+
+### Pull request (5E) — `service/pulls.ts` + `rpc/pulls.rpc.ts`
+
+- `createPullRequest` — opens a PR from `writeBranch` → the repo's default
+  branch. **Base is fetched server-side** (`getDefaultBranch`); the client
+  cannot force a target. Refuses head == base. **NO merge.**
+- `getDiff` — read-only `compareBranches` (write branch vs default). Secret
+  paths filtered; patches redacted (`redactPatch`).
+
+### Diff viewer (read-only)
+
+`DiffViewerPanel` shows changed files with additions/deletions + redacted
+patches. Performs NO actions — display only. Auto-loads when a write branch is
+active.
+
+### UI wiring (5F)
+
+Sidebar now enables 4 views: Repository, File Explorer, Diff Viewer, Git/PR.
+AI Assistant, Verification, Audit Log remain disabled (Phase 6).
+
+- `WriteBranchPanel` — create `ai/<slug>` branch / show active write branch.
+- `FileViewerPanel` — gained edit mode (Phase 5): "Edit" button when
+  `writeBranch` is set + file is text. Textarea + commit message + explicit
+  Save (never auto-commits). Calls `updateFile` (if SHA) or `createFile`.
+- `DiffViewerPanel` — read-only diff with redacted patches.
+- `PullRequestPanel` — open a PR (explicit action); shows created PR with link
+  to GitHub. **No merge button.**
+
+### State handling
+
+Every mutation returns a real `GitHubMutationResult` (path, sha, commitSha,
+branch) or a typed failure. After a successful mutation, the hook reloads the
+REAL state from GitHub (tree/file content) — no fake success. Error kinds
+covered by `failureBanner`: all Phase 4 kinds + `conflict` (stale SHA).
+
+### Security verification (5G)
+
+- `npm run verify` green: 0 errors, 0 vulnerabilities, 125 warnings.
+- Client bundle: NO `api.github.com`, NO tokens, NO `process.env`, NO
+  server-only modules (`assertNotSecret`, `secrets-guard`, `guardWriteBranch`,
+  `service/writes`, `service/pulls`, `getCachedToken`, `createHmac` all run
+  server-side only — confirmed in `.output/server/`).
+- 46 security assertions pass: write-branch regex, traversal, secret paths,
+  delete protection, content/message validation, slug sanitization.
+- No merge code anywhere (grep confirms — only comments stating "no merge").
+- No force push, no branch/repo deletion, no localStorage/sessionStorage
+  credential storage.
+
+### Phase 5 scope — what is NOT here
+
+- **Merge** — not exposed, not performed. PR links to GitHub for review/merge.
+- **AI Agent** — Phase 6.
+- **Autonomous coding / automatic commits / automatic PRs** — none; every
+  write/PR is an explicit user action.
+- **Force push / branch deletion / repo settings changes** — not possible.
+- **Verification automation / Audit log** — Phase 6.
+
+## Phase 5.1 — Security & Write Boundary Audit
+
+Audit-only pass (no new features, no AI Agent, no merge). Reviewed every Phase 5
+write path end-to-end and ran a 117-assertion negative-test suite covering:
+write isolation, file mutation, commit/push boundary, PR isolation, diff
+leakage, session/cookie integrity, and explicit attack scenarios.
+
+### Verified vulnerabilities found and fixed (4)
+
+1. **Cross-repo write branch leak** — `selectRepo` preserved `writeBranch` when
+   the user switched repositories, so a branch created on repo A could silently
+   apply to repo B. Fix: `repos.rpc.ts` `selectRepo` now clears `writeBranch`
+   when `selectedRepo` changes (same-repo re-select preserves it, since only a
+   repo change invalidates a repo-scoped branch).
+2. **`writeBranch` not validated at cookie load** — `verifySessionValue` accepted
+   any string in the signed cookie's `writeBranch` field. Defense-in-depth fix:
+   `auth/session.ts` now nulls out a `writeBranch` that doesn't match the strict
+   `ai/<slug>` pattern at load time (before `guardWriteBranch` runs). The
+   canonical pattern (`WRITE_BRANCH_PATTERN`) is declared once in `auth/session`
+   and re-exported by `server/guards` so load-time + write-time share one source.
+3. **SSH private keys not detected as secret** — `id_rsa`, `id_dsa`, `id_ecdsa`,
+   `id_ed25519` (no extension, no matching keyword) passed `assertNotSecret`.
+   Fix: added these basenames to `SECRET_BASENAMES` in `secrets-guard.ts`.
+4. **Multi-line PEM blocks leaked in diff** — the patch redaction regex used
+   `[^\n]*`, which only masked the `-----BEGIN` header line; the key body
+   remained visible in the diff viewer. Fix: `service/pulls.ts`
+   `SECRET_PATCH_RE` now captures the full block
+   (`-----BEGIN…[\s\S]*?-----END…`).
+
+### Confirmed safe (no fix needed)
+
+- Write RPCs (`writes.rpc.ts`, `pulls.rpc.ts`) accept no `branch`/`repo` field
+  from the client — branch comes only from `guardWriteBranch(session)`, repo
+  only from `guardRepoSelected(session)`.
+- `guardWriteBranch` regex structurally excludes `main`/`master`/`develop`
+  (never `ai/*`).
+- `updateFile`/`deleteFile` require SHA; stale SHA → HTTP 409 → `conflict`.
+- Path traversal (`..`, backslash, absolute `/`, URL-encoded `%2e%2e`) refused
+  or normalized in-repo; secrets guard runs before any fetch.
+- PR base fetched server-side (`getDefaultBranch`); head===base refused; no
+  merge endpoint anywhere (grep-confirmed).
+- Diff: secret paths filtered, patches redacted, errors generic (no token/body).
+- Session cookie: HMAC-signed, `timingSafeEqual`, HttpOnly, Secure in prod,
+  expiry checked; tampered/malformed/expired cookies rejected.
+- Editor saves only on explicit "Save" button click — no auto-commit on open.
+- Client bundle clean: no `ghp_`, `api.github.com`, `process.env.GITHUB`, or
+  server-only modules in client chunks.
+
+### Verify result
+
+`npm run verify` green: validate:registry → tool-runtime → seo → tool-content →
+typecheck → lint (0 errors, 125 pre-existing warnings) → build →
+audit:production (0 vulnerabilities). 117/117 audit assertions passed.
+
+## Localization maintenance hardening (glossary + coverage/stale validation)
+
+Two maintenance gaps from the 25-language audit are now closed. Scope was
+strictly the gaps — no tool/registry/runtime/route/SEO changes.
+
+### Gap 1 — glossary is now functional (`src/lib/i18n/glossary.ts`)
+
+- Populated per-locale concept rows for all 27 locales (25 production + cs/el)
+  for the 28 `GlossaryConcept`s (compress, resize, convert, merge, split,
+  extract, remove, generate, validate, encode, decode, translate, crop,
+  rotate, watermark, protect, unlock, formatter, generator, converter, viewer,
+  reader, checker, parser, tester, minifier, calculator, counter).
+- Technical identifiers (JSON, PDF, CSV, URL, JWT, QR, Base64, HTML, CSS, SQL,
+  YAML, Markdown, UUID, GIF, …) are intentionally NOT in the glossary — they
+  pass through unchanged in every locale.
+- New runtime API: `term(locale, concept)`, `conceptForSlug(slug)`,
+  `toolConceptTerm(locale, slug)`. Real call site:
+  `validate-localization.mjs` reads the glossary and flags terminology
+  inconsistency (advisory only — never auto-edits human translations; native
+  wording stays the priority per the glossary doc).
+
+### Gap 2 — coverage + stale detection (`src/scripts/validate-localization.mjs`)
+
+Derives the production target from the REAL READY tool list
+(`status === "ready"` in `tools.ts`) — never the registry total. Checks, per
+locale, for every ready tool's name+tagline:
+- missing English master keys / empty master values
+- missing locale keys (locale falls back to English → untranslated)
+- empty translations, duplicate keys, untranslated (value === English)
+- broken interpolation placeholders (`{var}` mismatch vs English)
+- NEW English keys (absent from baseline)
+- CHANGED English source → STALE locale translations (hash-based baseline)
+
+Baseline: `src/lib/i18n/translation-source-baseline.json` maps each English
+ready-tool key → sha256(16). `npm run localization:baseline` refreshes it
+after an intentional English change (does NOT touch any locale translation).
+
+### npm scripts
+
+- `npm run validate:localization` — the new validator (added to `verify`).
+- `npm run localization:baseline` — update the staleness baseline.
+
+### New-tool / changed-English flow (now automated detection)
+
+1. Dev adds ONE ready tool (English name/tagline/description in `tools.ts` +
+   `en.ts`).
+2. `npm run validate:localization` reports exactly which locale keys are
+   missing (per-locale) + flags the new English keys (not in baseline).
+3. Translations are added/reviewed; `npm run localization:baseline` updates
+   the baseline. Validation passes. Dev no longer manually tracks 25 files.
+4. If an English string later changes, the validator flags every affected
+   locale translation as STALE (hash mismatch) — never silently undetected.
+
+`npm run verify` is green: registry → tool-runtime → seo → tool-content →
+localization → typecheck → lint (0 errors, 125 pre-existing warnings) → build.
+`npm audit --omit=dev --audit-level=high` = 0 vulnerabilities (the project
+now tracks `package-lock.json`, so `npm ci` is reproducible).
+
+---
+
+## Production deployment config (Vercel + CI/CD)
+
+### Vercel config (`vercel.json`, `.nvmrc`)
+
+The app is a TanStack Start + Nitro project. `vite.config.ts` sets the Nitro
+`preset: "vercel"`, so `npm run build` emits a Vercel Build Output API bundle
+to `.vercel/output/` (runtime `nodejs22.x`, framework `nitro`). Deployment
+config lives in `vercel.json`:
+
+- `framework: null` — the build produces the Build Output API itself; do NOT
+  let Vercel re-run a framework build.
+- Cache headers: content-hashed `/assets/*` and `*.wasm`/`*.gz` →
+  `public, max-age=31536000, immutable`; `sitemap.xml`/`robots.txt` →
+  `public, max-age=3600, must-revalidate`; `manifest.json` → 1 day.
+- `cleanUrls: true`.
+
+`.nvmrc` pins Node 22, matching `engines.node >=20.0.0` and the nitro
+`nodejs22.x` runtime. `.vercel/` is gitignored (build output, never committed).
+
+### CI/CD (`.github/workflows/`)
+
+- `ci.yml` — runs on push/PR to `main` (and `workflow_dispatch`). Uses
+  `.nvmrc` + `npm ci`, then runs the full `verify` chain:
+  registry → tool-runtime → seo → tool-content → localization → typecheck →
+  lint → build. Uploads the `.vercel/output` artifact on PRs only.
+- `deploy.yml` — triggers via `workflow_run` after CI succeeds on `main`
+  (or manual `workflow_dispatch`). Rebuilds and deploys to Vercel production
+  (`vercel deploy --prebuilt --prod`). Requires repo secrets:
+  `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`. Until those are set,
+  the deploy step fails at "Pull Vercel project config" — the CI/build steps
+  still pass. Add the secrets in GitHub → Settings → Secrets and variables →
+  Actions, then re-run the Deploy workflow.
+
+
+
+## Phase 3 — Postgres persistence + admin management + global analytics
+
+A real, server-side persistence layer that replaces the client-side
+`communicationStore` localStorage backend with Postgres (Drizzle ORM) while
+**preserving the exact `useCommunicationStore` API** the UI relies on (same
+method names, same return shapes — `createConversation` still returns a
+synchronous `Conversation` so `VisitorChatWidget`/`ContactOwnerPage` can set
+`activeConvId`/`submittedId` immediately; the persist is fire-and-forget +
+optimistic + server-confirmed). No UI component was edited.
+
+### Layer map (client-safe vs server-only)
+
+- **Client-safe** (safe for the client bundle — no secrets/SQL/pool):
+  - `src/lib/db/types.ts` — re-exports ONLY the DTO/result types from
+    `server/db/types.ts` (no `getDb`, no config, no SQL).
+  - `src/lib/db/rpc/inbox.rpc.ts`, `analytics.rpc.ts` — TanStack RPC
+    *fetchers* (client import is a thin stub; handler bodies ship server-side
+    only). Export ONLY `createServerFn` fetchers (no helper exports).
+  - `src/lib/security/rpc/csrf.rpc.ts` — CSRF token fetcher.
+  - `src/lib/security/requestMiddleware.ts` — request middleware (lives
+    OUTSIDE `server/` on purpose: RPC fetchers import it at top-level for
+    `.middleware([...])`, and import-protection forbids client `server/*`
+    imports; the secret-bearing helpers it calls run at request time only).
+  - `src/lib/communicationStore.ts` — thin client over the RPCs; preserves
+    the legacy public API (the class-based localStorage store is gone; a
+    no-op `communicationStore` singleton shim remains for stray imports).
+- **Server-only** (never imported by client code; dead-stripped from client):
+  - `src/lib/server/db/{schema,config,client,guards,types}.ts` — Drizzle
+    schema, completable-later config (`isDbConfigured()`), lazy singleton
+    pool, guards mirroring admin/github pattern.
+  - `src/lib/server/db/service/{conversations,analytics,toolRequests}.ts` —
+    the real SQL. `DbServiceError` (kind+message) is thrown and mapped to
+    `DbResult` failures by the RPC layer.
+  - `src/lib/server/security/{csrf,request}.ts` — HMAC-signed CSRF tokens
+    (double-submit cookie + constant-time verify), token-bucket rate limiter,
+    client-IP/country/device/referrer extractors.
+  - `src/lib/email/{config,notify}.ts` — SMTP via `nodemailer`
+    (completable-later; `sendNotification` is a no-op resolving
+    `{sent:false, reason:"not_configured"}` when SMTP unset — the DB write
+    still succeeds). Lazy `require("nodemailer")` so it never enters the
+    client/SSR bundle eagerly.
+
+### "Completable-later" contract (DB + email)
+
+`isDbConfigured()` returns false until `DATABASE_URL` is set. Every DB RPC
+then returns a real `db_not_configured` failure — **never fake success, never
+a stub treated as production**. The hook surfaces this as empty
+conversations + empty analytics (mirrors the legacy empty-table behavior).
+Once the operator sets `DATABASE_URL` (+ runs migrations), the same code
+works with zero changes. Email is the same with `SMTP_*`/`NOTIFY_TO`.
+
+### Security (CSRF + rate limiting — TASK 6)
+
+Every mutating RPC (`createConversation`, `sendMessage`, `toggle*`,
+`deleteConversation`, `markAs*`, `addInternalNote`, `deleteInternalNote`,
+`trackAnalyticsEvent`, `createToolRequestRpc`) chains:
+`.middleware([securityRequestMiddleware])` -> `guardDbConfigured()` ->
+`checkCsrf(context.csrfCookie, data.csrfToken ?? null)` -> `rateLimit(...)`.
+The request middleware injects `{csrfCookie, clientIp, country, device,
+referrer}` into context (the only way handlers access the raw request).
+Double-submit cookie: server issues a signed `flixo_csrf` cookie via
+`getCsrfToken` RPC; the client caches the token and echoes it as
+`csrfToken` in the body. No `request` in handler ctx (TanStack constraint —
+same as the GitHub/admin layers).
+
+### Client bundle verified clean
+
+After `npm run build`: client static assets contain NO `api.github.com`, NO
+`DATABASE_URL`, NO `OPENAI_API_KEY`/`GITHUB_CLIENT`/`SMTP_PASS`, NO
+`assertNotSecret`/`getCachedToken`/`getAdminSessionSecret`/`createHmac`/
+`process.env.GITHUB`/`process.env.ADMIN`/`process.env.DATABASE`, NO
+`drizzle-orm` (it ships only in the server function bundle, never the client).
+
+### Admin management (TASK 2) — read/unread/search/delete/categorize
+
+All in `service/conversations.ts` + `inbox.rpc.ts`: `markAsRead`/`markAsUnread`
+(per admin|visitor), `searchConversationIds` (ILIKE on subject/visitor/message
+text -> IDs -> hydrated), `deleteConversation` (cascades messages/notes),
+`updateStatus`/`updatePriority` (category change). `listConversations` accepts
+status/category/priority/unreadAdminOnly/search filters.
+
+### Global analytics (TASK 4) — no fabricated metrics
+
+`service/analytics.ts` derives every metric from `analytics_events`: total
+visitors (distinct country+device tuples; events with neither signal counted
+as one anon per event — never a hardcoded number), most-used tools, traffic
+sources, countries, devices, recent events. Empty table -> zero counts + empty
+arrays (UI shows "Not enough data"). `trackAnalyticsEvent` RPC ingests events
+(CSRF + rate-limited). `getAnalytics` RPC returns the aggregate (read-only,
+no CSRF needed).
+
+### `useCommunicationStore` migration notes
+
+- `createConversation` is **synchronous** (returns optimistic `Conversation`
+  with a client-generated UUID passed to the server insert so optimistic +
+  persisted rows match). On RPC failure the optimistic row is dropped.
+- All other mutations are async `Promise<void>`; the UI calls them
+  fire-and-forget in onClick handlers (no `await` needed). After each
+  mutation the hook re-fetches the real server state — no fake success.
+- `markAsRead` in `VisitorChatWidget`'s `useEffect` returns a promise (fine —
+  effects may call async fns).
+- `getConversation(id)` is now a local lookup over the fetched list (the
+  single-item RPC exists for server-driven reads if needed later).
+- `lastError` + `error` expose the latest `DbFailure` so the UI can surface
+  `db_not_configured`/`validation`/`db_error` states.
+
+### Verify result (Phase 3)
+
+`npm run verify` green: registry -> tool-runtime -> seo -> tool-content ->
+localization -> typecheck -> lint (0 errors, 125 pre-existing warnings) -> build
+-> audit:production (0 vulnerabilities).
