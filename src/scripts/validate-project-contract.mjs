@@ -132,7 +132,7 @@ for (const check of requiredChecks) {
     fail(`Shared certification check is missing from testContracts.ts: ${check}`);
   }
 }
-if (!contractLines.some((line) => line.startsWith("const strictChecks:"))) {
+if (!contractLines.some((line) => line.startsWith("const strictChecks ="))) {
   fail("testContracts.ts must define the shared strictChecks set.");
 }
 for (const { id } of registrations) {
