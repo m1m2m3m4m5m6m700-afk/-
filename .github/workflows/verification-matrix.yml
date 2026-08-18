@@ -35,7 +35,7 @@ jobs:
           - name: Property fuzz and fault injection
             command: npm run test:property-fuzz && npm run test:fault-injection
           - name: Route and dependency contracts
-            command: npm run validate:route-tree && npm run validate:dependencies
+            command: npm run generate:routes && npm run validate:route-tree && npm run validate:dependencies
           - name: Typecheck
             command: npm run typecheck
           - name: Lint
