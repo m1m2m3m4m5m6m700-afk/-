@@ -126,14 +126,24 @@ const requiredChecks = [
   "invariant",
   "evidence",
 ];
+const contractLines = contracts.split(/\r?\n/).map((line) => line.trim());
 for (const check of requiredChecks) {
-  if (!contracts.includes(`"${check}"`)) fail(`Shared certification check is missing from testContracts.ts: ${check}`);
+  if (!contractLines.some((line) => line === `"${check}",`)) {
+    fail(`Shared certification check is missing from testContracts.ts: ${check}`);
+  }
 }
-if (!contracts.includes("const strictChecks")) fail("testContracts.ts must define the shared strictChecks set.");
+if (!contractLines.some((line) => line.startsWith("const strictChecks:"))) {
+  fail("testContracts.ts must define the shared strictChecks set.");
+}
 for (const { id } of registrations) {
-  const escapedId = id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const entryPattern = new RegExp(`toolId:\s*[\"']${escapedId}[\"'][\\s\\S]*?requiredChecks:\s*strictChecks`);
-  if (!entryPattern.test(contracts)) fail(`Tool ${id} is missing a strict verification contract entry.`);
+  const entry = contractLines.find((line) => line.startsWith(`{ toolId: "${id}"`));
+  if (!entry) {
+    fail(`Tool ${id} is missing a strict verification contract entry.`);
+    continue;
+  }
+  if (!entry.includes("requiredChecks: strictChecks")) {
+    fail(`Tool ${id} must be backed by the shared strictChecks set.`);
+  }
 }
 
 for (const required of [
