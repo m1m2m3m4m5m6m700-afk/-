@@ -1,6 +1,24 @@
-import type { ToolTestContract } from "./types";
+import type { ToolCertificationRequirements, ToolTestCheck, ToolTestContract } from "./types";
 
-const strictChecks = ["render", "interaction", "output", "error"] as const;
+const strictChecks: readonly ToolTestCheck[] = [
+  "render",
+  "interaction",
+  "output",
+  "error",
+  "security",
+  "performance",
+  "mutation",
+  "invariant",
+  "evidence",
+];
+
+export const certificationRequirements: ToolCertificationRequirements = Object.freeze({
+  level: "certified",
+  requiredChecks: strictChecks,
+  requiredEvidence: true,
+  regressionLocked: true,
+  dataProcessing: "local-only",
+});
 
 export const publicToolTestContracts: readonly ToolTestContract[] = [
   { toolId: "zip-creator", route: "/tools/zip-creator", requiredChecks: strictChecks },
