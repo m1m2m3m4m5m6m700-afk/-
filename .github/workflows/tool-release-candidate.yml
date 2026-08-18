@@ -68,8 +68,8 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Run public tool operational suite three times
-        run: npx playwright test tests/desktop-tools.spec.ts tests/zip-creator.contract.spec.ts --repeat-each=3 --reporter=line
+      - name: Run relaunch tool operational suite three times
+        run: npx playwright test tests/relaunched-tools.spec.ts --repeat-each=3 --reporter=line
 
       - name: Build production bundle
         run: npm run build
