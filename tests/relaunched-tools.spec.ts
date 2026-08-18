@@ -1,11 +1,11 @@
-import { test, expect } from "playwright/test";
+import { test, expect, type Page } from "playwright/test";
 
 const onePixelPng = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
   "base64",
 );
 
-async function openTool(page: Parameters<typeof test>[0] extends never ? never : any, slug: string) {
+async function openTool(page: Page, slug: string) {
   await page.goto(`/tools/${slug}`);
   await expect(page.locator('[data-hydrated="true"]')).toHaveCount(1, { timeout: 30_000 });
   await expect(page.locator("h1")).toHaveCount(1);
