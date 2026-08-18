@@ -11,11 +11,20 @@ if (!workflow.includes("Verification Matrix") || !workflow.includes("Tool Platfo
 if (!workflow.includes("workflow_run") || !workflow.includes("types: [completed]")) {
   failures.push("Release certification must be driven by completed workflow runs.");
 }
-if (!script.includes("latestTwo") || !script.includes("run.conclusion !== \"success\"")) {
-  failures.push("Release certification must require two successful proofs on the same SHA.");
+if (
+  !script.includes("run.head_sha === sha") ||
+  !script.includes("run.status === \"completed\"") ||
+  !script.includes("run.conclusion === \"success\"") ||
+  !script.includes("const requiredWorkflows = [\"Verification Matrix\", \"Tool Platform\"]")
+) {
+  failures.push("Release certification must require successful Verification Matrix and Tool Platform proofs on the same SHA.");
 }
-if (!docs.includes("latest two completed Verification Matrix runs") || !docs.includes("latest two completed Tool Platform runs")) {
-  failures.push("Release certification documentation must define the two-proof rule.");
+if (
+  !docs.includes("Verification Matrix succeeds for the exact commit SHA") ||
+  !docs.includes("Tool Platform succeeds for the exact commit SHA") ||
+  !docs.includes("two independent green proofs of the same code state")
+) {
+  failures.push("Release certification documentation must define the two-workflow same-SHA proof rule.");
 }
 
 if (failures.length) {
