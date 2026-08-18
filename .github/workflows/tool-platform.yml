@@ -27,6 +27,8 @@ jobs:
         run: node scripts/validate-self-heal-contract.mjs
       - name: Validate PR discipline policy
         run: node scripts/validate-pr-discipline.mjs
+      - name: Validate release gate contract
+        run: node scripts/validate-release-gate-contract.mjs
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
@@ -37,6 +39,8 @@ jobs:
         run: node scripts/validate-lockfile.mjs
       - name: Lockfile unchanged after install
         run: git diff --exit-code -- package.json package-lock.json
+      - name: Dependency health
+        run: node scripts/validate-dependency-health.mjs
       - name: Strict verification foundation
         run: npm run verify:foundation
       - name: Dependency contract
