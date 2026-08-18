@@ -4,6 +4,7 @@ import JSZip from "jszip";
 import type { ReadyToolRuntimeDefinition } from "../types";
 
 type ExtractedEntry = { name: string; url: string };
+type LoadedZipEntry = JSZip.JSZipObject & { unsafeOriginalName?: string };
 
 const isUnsafeArchivePath = (name: string): boolean => {
   const normalized = name.replaceAll("\\", "/");
@@ -31,9 +32,11 @@ function ArchiveExtractorTool() {
       const output: ExtractedEntry[] = [];
       const downloadNames = new Set<string>();
 
-      for (const [name, entry] of Object.entries(zip.files)) {
+      for (const [name, rawEntry] of Object.entries(zip.files)) {
+        const entry = rawEntry as LoadedZipEntry;
         if (entry.dir) continue;
-        if (isUnsafeArchivePath(name)) {
+        const originalName = entry.unsafeOriginalName ?? name;
+        if (isUnsafeArchivePath(originalName)) {
           setError("The ZIP archive contains an unsafe file path and cannot be extracted.");
           return;
         }
