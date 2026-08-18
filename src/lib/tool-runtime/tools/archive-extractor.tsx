@@ -29,8 +29,8 @@ function ArchiveExtractorTool() {
       }
       setEntries(output);
       if (!output.length) setError("The ZIP archive contains no extractable files.");
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "The selected file is not a valid ZIP archive.");
+    } catch {
+      setError("The selected file is not a valid ZIP archive.");
     } finally {
       setBusy(false);
     }
