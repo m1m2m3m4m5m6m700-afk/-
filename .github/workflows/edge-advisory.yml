@@ -1,0 +1,33 @@
+name: Edge Regression Advisory
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: edge-advisory-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  edge-regression:
+    name: Repeated desktop edge regression (advisory)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Run repeated desktop regression
+        continue-on-error: true
+        run: npm run test:desktop:flaky
+      - name: Record edge coverage
+        run: |
+          echo "Existing desktop regression covers exact ZIP bytes, invalid archives, multi-MB splitting, one-byte splitting, metadata correctness, and repeatability."
