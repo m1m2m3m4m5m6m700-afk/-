@@ -1,0 +1,8 @@
+{
+  "version": "2.0.0",
+  "name": "FLIXO CI Repair Agent v2",
+  "independent": true,
+  "importsOtherVersions": false,
+  "capabilities": ["context", "project-graph", "decision-memory", "diagnose", "plan", "verify", "dry-run", "safe-execute"],
+  "entrypoint": "index.mjs"
+}
