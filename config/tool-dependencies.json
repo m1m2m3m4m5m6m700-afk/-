@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "policy": {
+    "scope": "cross-tool",
+    "rule": "A certified tool may not be promoted if a dependency regression invalidates another certified tool."
+  },
+  "tools": {
+    "qr-generator": {
+      "baseline": "qr-generator-baseline-v1",
+      "dependsOn": ["tool-platform", "browser-runtime"]
+    },
+    "pdf-merge": {
+      "baseline": "pdf-merge-baseline-v1",
+      "dependsOn": ["tool-platform", "pdf-lib", "browser-runtime"]
+    }
+  },
+  "sharedComponents": {
+    "tool-platform": ["qr-generator", "pdf-merge"],
+    "browser-runtime": ["qr-generator", "pdf-merge"]
+  }
+}
