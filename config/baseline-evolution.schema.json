@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["schemaVersion", "tool", "baselineId", "history"],
+  "properties": {
+    "schemaVersion": {"type": "integer", "minimum": 1},
+    "tool": {"type": "string"},
+    "baselineId": {"type": "string"},
+    "history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["commit", "runId", "certifiedAt", "status"],
+        "properties": {
+          "commit": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+          "runId": {"type": "string"},
+          "certifiedAt": {"type": "string", "format": "date-time"},
+          "status": {"type": "string", "enum": ["certified", "revalidated", "rejected"]},
+          "fastMs": {"type": ["number", "null"]},
+          "mediumMs": {"type": ["number", "null"]},
+          "browserMs": {"type": ["number", "null"]}
+        }
+      }
+    }
+  }
+}
