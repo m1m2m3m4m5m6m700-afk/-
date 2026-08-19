@@ -45,6 +45,12 @@ const line = (label, job) => {
 const lines = targets.map(([label, name]) => line(label, jobs.find((job) => job.name === name)));
 const certified = targets.every(([, name]) => jobs.find((job) => job.name === name)?.conclusion === "success");
 
+const tests = Number(process.env.TEST_COUNT || 0);
+const vulnerabilities = Number(process.env.VULNERABILITIES || 0);
+const baselineStatus = process.env.BASELINE_STATUS || "NOT_ESTABLISHED";
+const regressionStatus = process.env.REGRESSION_STATUS || "NOT_APPLICABLE";
+const baselineId = process.env.BASELINE_ID || "—";
+
 const body = [
   "<!-- flixo-certification-summary -->",
   "## FLIXO Certification",
@@ -52,6 +58,12 @@ const body = [
   "```text",
   ...lines,
   "```",
+  "",
+  `Tests: ${tests}`,
+  `Vulnerabilities: ${vulnerabilities}`,
+  `Baseline: ${baselineStatus}`,
+  `Regression: ${regressionStatus}`,
+  `Baseline ID: ${baselineId}`,
   "",
   `Verdict: ${certified ? "🟢 CERTIFIED" : "🔴 NOT CERTIFIED"}`,
   `Run: #${runId}`,

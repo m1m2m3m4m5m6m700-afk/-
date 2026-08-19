@@ -1,18 +1,29 @@
-const escapeWifiValue = (value) =>
-  String(value)
-    .replace(/[\\;,:]/g, (character) => `\\${character}`)
-    .replaceAll('"', String.fromCharCode(92, 34));
+/** @typedef {"url"|"text"|"wifi"|"email"|"phone"} QrMode */
 
-export function buildQrPayload({
-  mode,
-  input = "",
-  wifiSsid = "",
-  wifiPass = "",
-  wifiEncryption = "WPA",
-  emailTo = "",
-  emailSubject = "",
-  phoneNumber = "",
-}) {
+/**
+ * Escape a value according to the Wi-Fi QR payload grammar.
+ * @param {string} value
+ */
+export function escapeWifiValue(value) {
+  return value.replace(/[\\;,:]/g, (character) => `\\${character}`).replaceAll('"', String.fromCharCode(92, 34));
+}
+
+/**
+ * Build the canonical payload used by the QR generator.
+ * @param {{mode: QrMode, input?: string, wifiSsid?: string, wifiPass?: string, wifiEncryption?: "WPA"|"WEP"|"nopass", emailTo?: string, emailSubject?: string, phoneNumber?: string}} options
+ */
+export function buildQrPayload(options) {
+  const {
+    mode,
+    input = "",
+    wifiSsid = "",
+    wifiPass = "",
+    wifiEncryption = "WPA",
+    emailTo = "",
+    emailSubject = "",
+    phoneNumber = "",
+  } = options;
+
   switch (mode) {
     case "wifi":
       return `WIFI:T:${wifiEncryption};S:${escapeWifiValue(wifiSsid)};P:${escapeWifiValue(wifiPass)};;`;
@@ -20,11 +31,7 @@ export function buildQrPayload({
       return `mailto:${emailTo}?subject=${encodeURIComponent(emailSubject)}`;
     case "phone":
       return `tel:${phoneNumber}`;
-    case "url":
-    case "text":
     default:
-      return String(input);
+      return input;
   }
 }
-
-export { escapeWifiValue };
