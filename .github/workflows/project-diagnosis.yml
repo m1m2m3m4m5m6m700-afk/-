@@ -1,0 +1,100 @@
+name: FLIXO Project Diagnosis
+
+on:
+  push:
+    branches: [experimental]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  checks: read
+
+concurrency:
+  group: flixo-project-diagnosis-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  diagnose:
+    name: V3 Project Diagnosis (read-only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Verify branch policy
+        shell: bash
+        run: |
+          test "${GITHUB_REF_NAME}" = "experimental"
+          test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run project health inspection
+        shell: bash
+        run: |
+          set +e
+          npm run agent:health > diagnosis-health.log 2>&1
+          HEALTH_EXIT=$?
+          set -e
+          echo "health_exit=$HEALTH_EXIT" >> "$GITHUB_STEP_SUMMARY"
+          exit 0
+
+      - name: Run V3 cognitive diagnosis
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import { buildCognitiveAssessment } from './scripts/flixo-agent/cognitive/cognitive-engine.mjs';
+          import { buildStrategicPlan } from './scripts/flixo-agent/planning/strategic-planner.mjs';
+
+          const log = fs.readFileSync('diagnosis-health.log', 'utf8');
+          const assessment = buildCognitiveAssessment({
+            log,
+            context: { projectGraph: { nodes: [], edges: [] } },
+            decisions: [],
+          });
+          const plan = buildStrategicPlan({
+            diagnosis: assessment.diagnosis,
+            dependencyImpact: assessment.dependencyImpact,
+          });
+
+          const report = {
+            version: 1,
+            mode: 'read-only-project-diagnosis',
+            branch: process.env.GITHUB_REF_NAME,
+            sha: process.env.GITHUB_SHA,
+            generatedAt: new Date().toISOString(),
+            assessment,
+            plan,
+            repairAllowed: false,
+          };
+
+          fs.mkdirSync('diagnostics', { recursive: true });
+          fs.writeFileSync('diagnostics/v3-project-diagnosis.json', JSON.stringify(report, null, 2));
+          console.log(JSON.stringify(report, null, 2));
+          NODE
+
+      - name: Run Agent V3 tests
+        run: node --test scripts/flixo-agent/tests/v3-preflight.test.mjs scripts/flixo-agent/tests/v3-strategic-planning.test.mjs
+
+      - name: Upload diagnosis artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flixo-v3-project-diagnosis-${{ github.run_id }}
+          path: |
+            diagnosis-health.log
+            diagnostics/v3-project-diagnosis.json
+          if-no-files-found: warn
+          retention-days: 14
