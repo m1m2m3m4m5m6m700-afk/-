@@ -36,45 +36,15 @@ const required = [
   [`regression lock requirement`, has(contracts, "regressionLocked: true")],
   [`public certification assertion`, has(promotion, "assertPublicRegistration")],
 ];
+for (const [name, passed] of required) if (!passed) fail(`${name} is missing for ${slug}`);
 
-for (const [name, passed] of required) {
-  if (!passed) fail(`${name} is missing for ${slug}`);
-}
-
-const strictChecks = [
-  "render",
-  "interaction",
-  "output",
-  "error",
-  "security",
-  "performance",
-  "mutation",
-  "invariant",
-  "evidence",
-];
+const strictChecks = ["render","interaction","output","error","security","performance","mutation","invariant","evidence"];
 const contractSlice = contracts.match(new RegExp(`toolId: "${slug}"[\\s\\S]{0,240}`))?.[0] ?? "";
-if (!contractSlice.includes("requiredChecks: strictChecks")) {
-  fail(`tool ${slug} is not attached to the canonical strict certification checks`);
+if (!contractSlice.includes("requiredChecks: strictChecks")) fail(`tool ${slug} is not attached to the canonical strict certification checks`);
+
+for (const script of ["validate-tool-governance.mjs", "validate-tool-dependencies.mjs", "validate-release-tools.mjs"]) {
+  const result = spawnSync("node", [`scripts/${script}`], { stdio: "inherit", env: { ...process.env, TOOL_SLUG: slug, CI: process.env.CI ?? "1" } });
+  if (result.status !== 0) fail(`${script} failed for ${slug}`);
 }
 
-const governance = spawnSync("node", ["scripts/validate-tool-governance.mjs"], {
-  stdio: "inherit",
-  env: { ...process.env, CI: process.env.CI ?? "1" },
-});
-if (governance.status !== 0) fail(`tool governance validation failed for ${slug}`);
-
-const validation = spawnSync("node", ["scripts/validate-release-tools.mjs"], {
-  stdio: "inherit",
-  env: { ...process.env, CI: process.env.CI ?? "1" },
-});
-if (validation.status !== 0) fail(`release-tool validator failed for ${slug}`);
-
-console.log(JSON.stringify({
-  verdict: "POLICY_PASS",
-  tool: slug,
-  requiredChecks: strictChecks,
-  certification: "certified",
-  evidenceRequired: true,
-  regressionLocked: true,
-  localOnly: true,
-}, null, 2));
+console.log(JSON.stringify({ verdict: "POLICY_PASS", tool: slug, requiredChecks: strictChecks, certification: "certified", evidenceRequired: true, regressionLocked: true, localOnly: true }, null, 2));
