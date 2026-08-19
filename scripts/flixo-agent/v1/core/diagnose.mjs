@@ -1,6 +1,7 @@
 const RULES = [
   { id: 'playwright', category: 'ENVIRONMENT', pattern: /Executable doesn't exist.*(chromium|chrome-headless-shell)|browserType\.launch/i },
   { id: 'jsqr', category: 'DEPENDENCY', pattern: /Cannot find (?:module|package).*jsqr/i },
+  { id: 'arabic-test-case', category: 'TEST_CONTRACT', pattern: /Unknown TEST_CASE:\s*arabic|TEST_CASE\s*=\s*arabic/i },
   { id: 'baseline', category: 'CONTRACT', pattern: /certification commit mismatch|baseline expired|baseline.*invalid expiry/i },
   { id: 'workflow', category: 'WORKFLOW', pattern: /QR.*Windows|Windows.*QR|workflow/i },
   { id: 'external', category: 'EXTERNAL', pattern: /api-deployments-free-per-day|deployment.*limit/i },
