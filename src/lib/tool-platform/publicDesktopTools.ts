@@ -46,7 +46,13 @@ const manifestData = [
     category: "utilities" as const,
     description: "Create QR codes locally for links, text, Wi-Fi, email, and phone numbers.",
     lifecycle: "public" as const,
-    capabilities: { input: "text" as const, output: "download" as const, localOnly: true },
+    capabilities: {
+      input: "text" as const,
+      output: "download" as const,
+      localOnly: true,
+      policy: { requiresNetwork: false, requiresStorage: false, sensitiveInput: false },
+    },
+    dependencies: [],
   },
 ] as const;
 
