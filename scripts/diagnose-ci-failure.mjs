@@ -4,27 +4,29 @@ const token = process.env.GITHUB_TOKEN;
 const repository = process.env.GITHUB_REPOSITORY;
 const runId = process.env.GITHUB_RUN_ID;
 
-const outputPath = ".artifacts/diagnostics/ci-failure-diagnosis.json";
-
 const fs = await import("node:fs");
 const path = await import("node:path");
 
+const outputPath = ".artifacts/diagnostics/ci-failure-diagnosis.json";
+const signaturePath = path.resolve("scripts/ci-error-signatures.json");
+
 const ensureOutput = (value) => {
-  const dir = path.dirname(outputPath);
-  fs.mkdirSync(dir, { recursive: true });
+  fs.mkdirSync(path.dirname(outputPath), { recursive: true });
   fs.writeFileSync(outputPath, JSON.stringify(value, null, 2) + "\n");
 };
 
 if (!token || !repository || !runId) {
   ensureOutput({
-    schemaVersion: 1,
+    schemaVersion: 2,
     status: "UNKNOWN",
+    confidenceScore: 0,
     reason: "Missing GitHub Actions context; no diagnosis attempted.",
     repairAllowed: false,
   });
   process.exit(0);
 }
 
+const signatures = JSON.parse(fs.readFileSync(signaturePath, "utf8")).signatures ?? [];
 const headers = {
   Accept: "application/vnd.github+json",
   Authorization: `Bearer ${token}`,
@@ -35,8 +37,9 @@ const apiBase = `https://api.github.com/repos/${repository}`;
 const jobsResponse = await fetch(`${apiBase}/actions/runs/${runId}/jobs?per_page=100`, { headers });
 if (!jobsResponse.ok) {
   ensureOutput({
-    schemaVersion: 1,
+    schemaVersion: 2,
     status: "UNKNOWN",
+    confidenceScore: 0,
     reason: `GitHub jobs API failed with HTTP ${jobsResponse.status}; no diagnosis attempted.`,
     repairAllowed: false,
     runId,
@@ -49,8 +52,9 @@ const terminalJobs = jobs.filter((job) => ["failure", "cancelled", "timed_out"].
 
 if (terminalJobs.length === 0) {
   ensureOutput({
-    schemaVersion: 1,
+    schemaVersion: 2,
     status: "NO_FAILURE",
+    confidenceScore: 0,
     reason: "No failed, cancelled, or timed-out jobs were observed in this run.",
     repairAllowed: false,
     runId,
@@ -60,54 +64,76 @@ if (terminalJobs.length === 0) {
 }
 
 const ranked = [...terminalJobs].sort((a, b) => {
-  const time = (job) => (job.completed_at ? new Date(job.completed_at).getTime() : Number.MAX_SAFE_INTEGER);
+  const time = (job) => (job.started_at ? new Date(job.started_at).getTime() : Number.MAX_SAFE_INTEGER);
   return time(a) - time(b);
 });
 const firstFailureJob = ranked[0];
+const firstFailingStep = firstFailureJob.steps?.find((step) => ["failure", "cancelled", "timed_out"].includes(step.conclusion)) ?? null;
 
 const evidenceResponse = await fetch(`${apiBase}/actions/jobs/${firstFailureJob.id}/logs`, { headers });
 const rawEvidence = evidenceResponse.ok ? await evidenceResponse.text() : "";
-const evidence = rawEvidence.slice(-20000);
+const evidenceLines = rawEvidence.split(/\r?\n/);
 
-const patterns = [
-  { id: "lint", source: "code", pattern: /ESLint|no-useless-escape|no-undef|TS\d{3,4}/i, action: "Fix the exact reported lint/type error only; do not change unrelated code." },
-  { id: "test", source: "code", pattern: /expect\(|Test timeout|Locator.*not found|received.*expected/i, action: "Reproduce the exact failing test and fix the asserted behavior or test contract." },
-  { id: "build", source: "code-or-config", pattern: /Build failed|vite .*error|next .*error|module not found|Cannot find module/i, action: "Inspect the first build error and its dependency/config chain." },
-  { id: "dependency-install", source: "environment-or-dependency", pattern: /npm ERR!|npm ci|ECONNRESET|ENOTFOUND|ETIMEDOUT|EAI_AGAIN/i, action: "Treat as dependency/network evidence first; do not modify application code without a second confirming failure." },
-  { id: "browser-environment", source: "environment", pattern: /playwright install|browserType\.launch|Chromium launch|executable doesn't exist|Browser.*not found/i, action: "Fix runner/browser provisioning before changing application code." },
-  { id: "permissions", source: "ci-config", pattern: /Resource not accessible by integration|HTTP 403|permission denied|Bad credentials/i, action: "Fix GitHub Actions permissions/authentication before changing application code." },
-  { id: "yaml", source: "ci-config", pattern: /Invalid workflow file|YAML syntax|Unexpected value/i, action: "Fix workflow YAML only; do not touch product code." },
-  { id: "vercel-rate-limit", source: "external-service", pattern: /build-rate-limit|api-deployments-free-per-day|rate.?limit/i, action: "External deployment quota; do not modify product code. Re-run only when the external limit is resolved or bypassed." },
-  { id: "timeout-cancel", source: "orchestration", pattern: /operation was canceled|The operation was canceled|timed out/i, action: "Establish whether the cancellation was external, timeout-related, or caused by an upstream failure before any code change." },
-];
+const signatureMatches = signatures.flatMap((signature) => {
+  const regexes = signature.patterns.map((pattern) => new RegExp(signature.regex ? pattern : pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"));
+  const matched = regexes.some((regex) => regex.test(rawEvidence));
+  return matched ? [{
+    id: signature.id,
+    category: signature.category,
+    source: signature.source,
+    priority: signature.priority,
+    confidence: signature.confidence,
+    repair: signature.repair,
+  }] : [];
+});
 
-const matches = patterns.filter((item) => item.pattern.test(evidence));
+const matches = signatureMatches.sort((a, b) => b.priority - a.priority);
 const uniqueMatches = [...new Map(matches.map((item) => [item.id, item])).values()];
 
-const diagnosis = uniqueMatches.length === 1
-  ? {
-      status: "DIAGNOSED",
-      confidence: "HIGH",
-      failureClass: uniqueMatches[0].id,
-      source: uniqueMatches[0].source,
-      firstFailingJob: firstFailureJob.name,
-      firstFailingStep: firstFailureJob.steps?.find((step) => step.conclusion === "failure" || step.conclusion === "cancelled" || step.conclusion === "timed_out")?.name ?? null,
-      evidenceExcerpt: evidence.slice(-4000),
-      repairAllowed: true,
-      repairRule: uniqueMatches[0].action,
-    }
-  : {
-      status: "UNKNOWN",
-      confidence: uniqueMatches.length === 0 ? "NONE" : "AMBIGUOUS",
-      failureClass: uniqueMatches.length === 0 ? "unknown" : "ambiguous",
-      firstFailingJob: firstFailureJob.name,
-      evidenceExcerpt: evidence.slice(-4000),
-      repairAllowed: false,
-      repairRule: "Stop. Gather more evidence from the exact failing step/log and do not guess the root cause.",
-    };
+const firstMatchIndex = uniqueMatches[0]
+  ? Math.max(0, evidenceLines.findIndex((line) => signatures.find((s) => s.id === uniqueMatches[0].id)?.patterns.some((p) => new RegExp(signatures.find((s) => s.id === uniqueMatches[0].id)?.regex ? p : p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(line))))
+  : -1;
+const snapshotStart = firstMatchIndex >= 0 ? Math.max(0, firstMatchIndex - 25) : Math.max(0, evidenceLines.length - 30);
+const snapshotEnd = firstMatchIndex >= 0 ? Math.min(evidenceLines.length, firstMatchIndex + 26) : evidenceLines.length;
+const evidenceSnapshot = evidenceLines.slice(snapshotStart, snapshotEnd).join("\n");
+
+const sameCategory = uniqueMatches.length > 1 && uniqueMatches[0].category === uniqueMatches[1].category;
+const top = uniqueMatches[0] ?? null;
+const confidenceScore = top
+  ? Math.max(0, Math.min(0.999, sameCategory ? Math.min(top.confidence, 0.89) : top.confidence))
+  : 0;
+
+const status = !top
+  ? "UNKNOWN"
+  : uniqueMatches.length > 1 && !sameCategory
+    ? "AMBIGUOUS"
+    : "DIAGNOSED";
+
+const repairAllowed = status === "DIAGNOSED" && confidenceScore >= 0.9 && top?.source !== "external-service" && top?.source !== "orchestration";
+const repairMode = repairAllowed ? "AUTO_ALLOWED" : confidenceScore >= 0.6 ? "DRY_RUN_ONLY" : "STOP_AND_GATHER_EVIDENCE";
+
+const diagnosis = {
+  status,
+  confidenceScore,
+  confidenceBand: confidenceScore >= 0.9 ? "HIGH" : confidenceScore >= 0.6 ? "MEDIUM" : "LOW",
+  failureClass: top?.id ?? (uniqueMatches.length ? "ambiguous" : "unknown"),
+  category: top?.category ?? null,
+  source: top?.source ?? null,
+  firstFailingJob: firstFailureJob.name,
+  firstFailingStep: firstFailingStep?.name ?? null,
+  firstFailingStepConclusion: firstFailingStep?.conclusion ?? null,
+  matchedSignatures: uniqueMatches.map(({ id, category, source, priority, confidence }) => ({ id, category, source, priority, confidence })),
+  evidenceSnapshot,
+  evidenceWindow: { before: 25, after: 25 },
+  repairAllowed,
+  repairMode,
+  repairRule: repairAllowed
+    ? top.repair
+    : "Do not guess. Preserve the evidence, inspect the exact failing step, and collect additional corroboration before changing code.",
+};
 
 ensureOutput({
-  schemaVersion: 1,
+  schemaVersion: 2,
   generatedAt: new Date().toISOString(),
   repository,
   runId,
