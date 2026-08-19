@@ -26,13 +26,13 @@ function assertRepairPlan(plan) {
     if (FORBIDDEN_PATHS.has(change.file)) {
       throw new Error(`Forbidden file: ${change.file}`);
     }
-    if (!['replace', 'insert', 'delete'].includes(change.type)) {
+    if (!['replace', 'insert', 'insert-after', 'delete'].includes(change.type)) {
       throw new Error(`Unsupported change type: ${change.type}`);
     }
   }
 }
 
-export function applyChange(source, change) {
+function applyChange(source, change) {
   if (change.type === 'replace') {
     if (typeof change.find !== 'string' || change.find.length === 0) {
       throw new Error(`Replace change requires non-empty find text for ${change.file}`);
@@ -44,15 +44,16 @@ export function applyChange(source, change) {
     return source.replace(change.find, change.content ?? '');
   }
 
-  if (change.type === 'insert') {
-    if (typeof change.after !== 'string' || change.after.length === 0) {
-      throw new Error(`Insert change requires non-empty after text for ${change.file}`);
+  if (change.type === 'insert' || change.type === 'insert-after') {
+    const anchor = change.anchor ?? change.after;
+    if (typeof anchor !== 'string' || anchor.length === 0) {
+      throw new Error(`Insert change requires non-empty anchor text for ${change.file}`);
     }
-    const count = source.split(change.after).length - 1;
+    const count = source.split(anchor).length - 1;
     if (count !== 1) {
       throw new Error(`Insert anchor must match exactly once in ${change.file}; found ${count}`);
     }
-    return source.replace(change.after, `${change.after}${change.content ?? ''}`);
+    return source.replace(anchor, `${anchor}${change.content ?? ''}`);
   }
 
   if (change.type === 'delete') {
