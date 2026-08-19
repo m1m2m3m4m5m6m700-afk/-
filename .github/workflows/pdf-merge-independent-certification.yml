@@ -100,6 +100,8 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium
       - run: npm run test:desktop
       - name: Evidence
         if: always()
