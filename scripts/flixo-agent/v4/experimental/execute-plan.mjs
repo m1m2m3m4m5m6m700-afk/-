@@ -1,14 +1,21 @@
 import { verifyHypothesisSet, DEVELOPMENT_BRANCH } from '../core/verifier.mjs';
 
-/** v4 executes only a verified v3 decision package on the development branch. */
+/** v4 executes only a verified v3 decision package. Remote execution remains development-branch-only. */
 export async function executePlan(decisionPackage, runner, options = {}) {
   const plan = decisionPackage?.plan;
   const verification = decisionPackage?.verification;
   if (!plan || plan.version !== 3 || plan.status !== 'planned') throw new Error('v4 requires a planned v3 repair plan');
   if (verification?.valid !== true) throw new Error('v4 requires a successful v3 verifier result');
   if (typeof runner?.createSandbox !== 'function' || typeof runner?.runCI !== 'function') throw new Error('v4 requires sandbox and CI runners');
-  if (options.apply !== true) return { status: 'dry-run', executed: [], autoApply: false, developmentBranch: DEVELOPMENT_BRANCH };
-  if (options.branch !== DEVELOPMENT_BRANCH) throw new Error(`v4 may execute only on development branch: ${DEVELOPMENT_BRANCH}`);
+  if (options.apply !== true) return { status: 'dry-run', executed: [], autoApply: false, localOnly: Boolean(options.localOnly), developmentBranch: DEVELOPMENT_BRANCH };
+
+  if (options.localOnly === true) {
+    if (!options.branch || options.branch === 'main' || options.branch === 'master') {
+      throw new Error('v4 local repair may not execute on main/master or without a branch');
+    }
+  } else if (options.branch !== DEVELOPMENT_BRANCH) {
+    throw new Error(`v4 remote execution may execute only on development branch: ${DEVELOPMENT_BRANCH}`);
+  }
 
   const executed = [];
   for (const step of plan.steps ?? []) {
@@ -19,15 +26,15 @@ export async function executePlan(decisionPackage, runner, options = {}) {
       executed.push({ id: step.id, result });
       if (result?.conclusion !== 'success') {
         await runner.rollback(sandbox, step);
-        return { status: 'rolled-back', executed, failedStep: step.id, autoApply: true, developmentBranch: DEVELOPMENT_BRANCH };
+        return { status: 'rolled-back', executed, failedStep: step.id, autoApply: true, localOnly: Boolean(options.localOnly), developmentBranch: DEVELOPMENT_BRANCH };
       }
       await runner.accept(sandbox, step);
     } catch (error) {
       await runner.rollback(sandbox, step);
-      return { status: 'rolled-back', executed, failedStep: step.id, error: error instanceof Error ? error.message : String(error), autoApply: true, developmentBranch: DEVELOPMENT_BRANCH };
+      return { status: 'rolled-back', executed, failedStep: step.id, error: error instanceof Error ? error.message : String(error), autoApply: true, localOnly: Boolean(options.localOnly), developmentBranch: DEVELOPMENT_BRANCH };
     }
   }
-  return { status: 'accepted', executed, autoApply: true, developmentBranch: DEVELOPMENT_BRANCH };
+  return { status: 'accepted', executed, autoApply: true, localOnly: Boolean(options.localOnly), developmentBranch: DEVELOPMENT_BRANCH };
 }
 
 export function validateV3PlanForExecution(decisionPackage, hypothesisSet = []) {
