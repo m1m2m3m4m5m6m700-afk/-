@@ -1,0 +1,29 @@
+name: FLIXO Agent Role Pipeline
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/flixo-agent/**'
+      - '.github/workflows/flixo-agent-role-pipeline.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flixo-agent-role-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  role-pipeline:
+    name: Agent Role Pipeline
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+      - name: Run v1 → v2 → v3 → v4 integration
+        run: node --test scripts/flixo-agent/tests/agent-role-pipeline.integration.test.mjs
