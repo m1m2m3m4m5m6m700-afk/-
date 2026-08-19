@@ -49,27 +49,35 @@ test.describe("QR browser integration certification", () => {
 
   test("critical UI and downloads work for Arabic", async ({ page }) => {
     await page.locator('button[aria-pressed]').nth(1).click();
-    await page.locator("textarea").fill("مرحبا Flixo — اختبار QR ✓");
+    const textarea = page.locator("textarea");
+    await expect(textarea).toBeVisible({ timeout: 5_000 });
+    await textarea.fill("مرحبا Flixo — اختبار QR ✓");
     await verifyDownloads(page);
   });
 
   test("critical UI and downloads work for Wi-Fi escaping", async ({ page }) => {
     await page.locator('button[aria-pressed]').nth(2).click();
-    await expect(page.locator('input[type="password"]')).toBeVisible({ timeout: 5_000 });
+    const textInput = page.locator('input[type="text"]').first();
+    const password = page.locator('input[type="password"]');
+    await expect(textInput).toBeVisible({ timeout: 5_000 });
+    await expect(password).toBeVisible({ timeout: 5_000 });
     await page.locator('input[type="text"]').first().fill("Office;WiFi\\5G");
-    await page.locator('input[type="password"]').fill("p@ss:word,42");
+    await password.fill("p@ss:word,42");
     await page.locator("select").selectOption("WPA");
     await verifyDownloads(page);
   });
 
   test("critical UI and downloads work for long Unicode", async ({ page }) => {
     await page.locator('button[aria-pressed]').nth(1).click();
-    await page.locator("textarea").fill("مرحبا Flixo — QR ✓ اختبار ".repeat(12));
+    const textarea = page.locator("textarea");
+    await expect(textarea).toBeVisible({ timeout: 5_000 });
+    await textarea.fill("مرحبا Flixo — QR ✓ اختبار ".repeat(12));
     await verifyDownloads(page);
   });
 
   test("critical rapid changes do not block downloads", async ({ page }) => {
     const input = page.locator('input[type="text"]').first();
+    await expect(input).toBeVisible({ timeout: 5_000 });
     await input.fill("https://example.com/old-result");
     await input.fill("https://example.com/final-result");
     await verifyDownloads(page);
