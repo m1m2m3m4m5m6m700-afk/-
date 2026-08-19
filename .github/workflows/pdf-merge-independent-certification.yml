@@ -104,8 +104,6 @@ jobs:
         run: npx playwright install chromium
       - name: Run Windows desktop functional tests
         run: npx playwright test tests/desktop-tools.spec.ts --grep-invert "QR Generator output correctness" --reporter=line
-      - name: Run Windows QR functional tests
-        run: npx playwright test tests/desktop-tools.spec.ts --grep "QR Generator output correctness" --reporter=line
       - name: Evidence
         if: always()
         shell: bash
