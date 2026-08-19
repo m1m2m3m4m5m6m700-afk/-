@@ -49,9 +49,7 @@ for (const tool of publicTools) {
   if (!contentSource.includes(`"${tool.slug}"`)) errors.push(`${tool.slug}: content registry entry missing`);
   if (!seoSource.includes(`"${tool.slug}"`)) errors.push(`${tool.slug}: SEO registry entry missing`);
   if (!smokeSource.includes(`/tools/${tool.slug}`)) errors.push(`${tool.slug}: no operational E2E coverage detected`);
-  if (!runtimeSource.match(new RegExp(`toolId\\s*:\\s*"${tool.id.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}"`))) {
-    errors.push(`${tool.slug}: runtime module is missing toolId binding`);
-  }
+  if (!runtimeSource.includes(`toolId: "${tool.id}"`)) errors.push(`${tool.slug}: runtime module is missing toolId binding`);
 }
 
 const report = {
