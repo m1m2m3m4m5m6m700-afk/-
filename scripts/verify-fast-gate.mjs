@@ -20,7 +20,7 @@ const tiers = {
     ["localization", "npm", ["run", "validate:localization"]],
     ["accessibility contract", "npm", ["run", "validate:accessibility"]],
     ["security contract", "npm", ["run", "validate:security"]],
-    ["TypeScript strict", "npm", ["run", "typecheck"]],
+    ["TypeScript strict", "node", ["node_modules/typescript/bin/tsc", "--noEmit", "--pretty", "false"]],
     ["ESLint", "npm", ["run", "lint"]],
     ["public runtime preflight", "node", ["scripts/validate-release-tools.mjs"]],
     ["Playwright collection", "npx", ["playwright", "test", "tests/desktop-tools.spec.ts", "--list"]],
