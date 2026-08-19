@@ -31,8 +31,6 @@ jobs:
         run: |
           test "$GITHUB_REF_NAME" = "feat/certification-foundation-pdf-merge"
           test "$GITHUB_REF_NAME" != "main"
-      - name: Install dependencies
-        run: npm ci --include=dev
       - name: Run v4 every five minutes
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -43,6 +41,9 @@ jobs:
           set -euo pipefail
           for i in $(seq 1 60); do
             echo "===== FLIXO v4 cycle $i/60 ====="
+            git fetch origin feat/certification-foundation-pdf-merge
+            git reset --hard origin/feat/certification-foundation-pdf-merge
+            npm ci --include=dev
             node scripts/flixo-agent/v4/experimental/hourly-auto-repair.mjs || true
             if [ "$i" -lt 60 ]; then sleep 300; fi
           done
