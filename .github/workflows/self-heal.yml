@@ -1,70 +1,73 @@
-name: Self Heal Monitor
+name: Experimental Auto Repair
 
 on:
-  workflow_dispatch:
-    inputs:
-      source_run_id:
-        description: "Failed CI workflow run ID to diagnose"
-        required: true
-        type: string
-      failed_sha:
-        description: "Exact failed CI commit SHA"
-        required: true
-        type: string
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
 
 concurrency:
-  group: self-heal-manual-${{ github.ref }}
+  group: experimental-auto-repair-${{ github.event.workflow_run.id }}
   cancel-in-progress: false
 
 permissions:
-  contents: read
+  contents: write
   actions: read
-  pull-requests: read
   checks: read
+  pull-requests: write
 
 jobs:
-  diagnose-only:
-    name: Manual CI Failure Diagnosis
+  diagnose-and-repair:
+    name: Diagnose and Repair experimental only
+    if: >-
+      github.event.workflow_run.conclusion == 'failure' &&
+      github.event.workflow_run.head_branch == 'experimental'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     env:
-      RUN_ID: ${{ inputs.source_run_id }}
-      FAILED_SHA: ${{ inputs.failed_sha }}
+      RUN_ID: ${{ github.event.workflow_run.id }}
+      FAILED_SHA: ${{ github.event.workflow_run.head_sha }}
+      FAILED_BRANCH: ${{ github.event.workflow_run.head_branch }}
       REPOSITORY: ${{ github.repository }}
+      GITHUB_REF_NAME: experimental
     steps:
-      - name: Validate inputs
-        shell: bash
-        run: |
-          test -n "$RUN_ID"
-          test -n "$FAILED_SHA"
-          echo "Manual self-heal is diagnosis-only. No repository mutation is permitted."
-
-      - name: Checkout failed revision
+      - name: Checkout exact failed experimental revision
         uses: actions/checkout@v5
         with:
-          ref: ${{ inputs.failed_sha }}
+          ref: ${{ env.FAILED_SHA }}
           fetch-depth: 0
+          persist-credentials: true
 
-      - name: Verify checkout integrity
+      - name: Verify failed revision and branch policy
         shell: bash
         run: |
-          ACTUAL_SHA="$(git rev-parse HEAD)"
-          test "$ACTUAL_SHA" = "$FAILED_SHA" || {
-            echo "ERROR: checked-out SHA does not match supplied failed SHA." >&2
-            exit 1
-          }
-          git log -1 --pretty=fuller
+          test "$FAILED_BRANCH" = "experimental"
+          test "$(git rev-parse HEAD)" = "$FAILED_SHA"
+          echo "Source branch: $FAILED_BRANCH"
+          echo "Source SHA: $FAILED_SHA"
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
 
       - name: Diagnose failed CI run
         env:
           GH_TOKEN: ${{ github.token }}
         run: node .github/scripts/diagnose.js
 
-      - name: Upload diagnosis report
+      - name: Run experimental-only repair policy tests
+        run: node --test .github/scripts/experimental-auto-repair.test.mjs
+
+      - name: Execute guarded repair
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node .github/scripts/experimental-auto-repair.mjs
+
+      - name: Upload repair decision
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: self-heal-diagnosis-${{ inputs.source_run_id }}
+          name: experimental-auto-repair-${{ github.event.workflow_run.id }}
           path: |
             .github/diagnosis-report.json
             .github/self-healing/logs/
