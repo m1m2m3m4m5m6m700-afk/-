@@ -42,8 +42,9 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      - name: Validate baseline contract
+        run: node scripts/certification/validate-baseline.mjs
       - run: node scripts/certification/smoke-test.mjs
-      - run: node scripts/certification/validate-baseline.mjs
       - run: npm run verify:foundation
       - name: Evidence
         if: always()
@@ -190,7 +191,7 @@ jobs:
         run: |
           mkdir -p .artifacts/${TOOL}/browser
           cp -R test-results .artifacts/${TOOL}/browser/test-results 2>/dev/null || true
-          printf '%s\n' '{"schemaVersion":1,"tool":"qr-generator","gate":"browser","commit":"'"${GITHUB_SHA}"'","runId":"'"${GITHUB_RUN_ID}"'","status":"'"${GATE_STATUS}"'","createdAt":"'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"}' > .artifacts/${TOOL}/browser/gate-evidence.json
+          printf '%s\n' '{"schemaVersion":1,"tool":"qr-generator","gate":"browser","commit":"'"${GITHUB_SHA}"'","runId":"'"${GITHUB_RUN_ID}"'","status":"'"${GATE_STATUS}"'","createdAt":"'"$(date -u +%Y-%m-%dT%H:%M:%SZ"}'"}' > .artifacts/${TOOL}/browser/gate-evidence.json
         env:
           GATE_STATUS: ${{ job.status }}
       - name: Gate Manifest
@@ -223,7 +224,7 @@ jobs:
         run: |
           mkdir -p .artifacts/${TOOL}/stability
           cp -R test-results .artifacts/${TOOL}/stability/test-results 2>/dev/null || true
-          printf '%s\n' '{"schemaVersion":1,"tool":"qr-generator","gate":"stability","commit":"'"${GITHUB_SHA}"'","runId":"'"${GITHUB_RUN_ID}"'","status":"'"${GATE_STATUS}"'","repeatCount":3,"createdAt":"'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"}' > .artifacts/${TOOL}/stability/gate-evidence.json
+          printf '%s\n' '{"schemaVersion":1,"tool":"qr-generator","gate":"stability","commit":"'"${GITHUB_SHA}"'","runId":"'"${GITHUB_RUN_ID}"'","status":"'"${GATE_STATUS}"'","repeatCount":3,"createdAt":"'"$(date -u +%Y-%m-%dT%H:%M:%SZ"}'"}' > .artifacts/${TOOL}/stability/gate-evidence.json
         env:
           GATE_STATUS: ${{ job.status }}
       - name: Gate Manifest
