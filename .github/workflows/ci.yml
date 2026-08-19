@@ -55,17 +55,15 @@ jobs:
         run: npm ci
       - name: Lockfile unchanged after install
         run: git diff --exit-code -- package.json package-lock.json
-      - name: Production dependency audit
-        run: npm run audit:production
       - name: Install Chromium for operational tests
         run: npx playwright install --with-deps chromium
-      - name: Run canonical test gate
+      - name: Run canonical verification gate
         shell: bash
         run: |
           set -o pipefail
           mkdir -p diagnostics
-          echo "Starting npm test at $(date -u +%FT%TZ)"
-          timeout --signal=TERM --kill-after=30s 30m npm test 2>&1 | tee diagnostics/npm-test.log
+          echo "Starting npm run verify at $(date -u +%FT%TZ)"
+          timeout --signal=TERM --kill-after=30s 35m npm run verify 2>&1 | tee diagnostics/npm-verify.log
       - name: Upload browser report
         if: always()
         uses: actions/upload-artifact@v4
@@ -74,17 +72,19 @@ jobs:
           path: playwright-report
           if-no-files-found: ignore
           retention-days: 7
-      - name: Upload canonical test diagnostics
+      - name: Upload canonical verification diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: flixo-canonical-test-diagnostics-${{ github.run_id }}
+          name: flixo-canonical-verify-diagnostics-${{ github.run_id }}
           path: |
-            diagnostics/npm-test.log
+            diagnostics/npm-verify.log
             test-results/
             playwright-report/
           if-no-files-found: ignore
           retention-days: 14
+      - name: Production dependency audit
+        run: npm run audit:production
       - name: Upload diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@v4
