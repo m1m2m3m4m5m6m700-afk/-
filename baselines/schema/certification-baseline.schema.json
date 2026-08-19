@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://flixo.tools/schemas/certification-baseline.v1.json",
+  "title": "Flixo Certification Baseline v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "baselineId", "tool", "version", "status", "verdict", "certification", "gates", "quality", "performance", "evidence", "promotion"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "baselineId": { "type": "string", "pattern": "^[a-z0-9-]+-baseline-v[0-9]+$" },
+    "tool": { "type": "string", "minLength": 1 },
+    "version": { "type": "integer", "minimum": 1 },
+    "status": { "const": "certified" },
+    "verdict": { "const": "CERTIFIED" },
+    "certification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commit", "runId", "certifiedAt", "expiresAt", "workflow"],
+      "properties": {
+        "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "runId": { "type": "string", "minLength": 1 },
+        "certifiedAt": { "type": "string", "format": "date-time" },
+        "expiresAt": { "type": "string", "format": "date-time" },
+        "workflow": { "type": "string", "format": "uri" }
+      }
+    },
+    "gates": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "runId"],
+        "properties": {
+          "status": { "const": "success" },
+          "runId": { "type": "string", "minLength": 1 },
+          "evidenceSha256": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" }
+        }
+      }
+    },
+    "quality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidenceComplete", "independentOutputValidation", "repeatability", "regressionLocked"],
+      "properties": {
+        "evidenceComplete": { "const": true },
+        "independentOutputValidation": { "const": true },
+        "repeatability": { "type": "integer", "minimum": 1 },
+        "regressionLocked": { "const": true }
+      }
+    },
+    "performance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["baseline", "current", "regression"],
+      "properties": {
+        "baseline": { "$ref": "#/$defs/performance" },
+        "current": { "$ref": "#/$defs/performance" },
+        "regression": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "thresholdPercent"],
+          "properties": {
+            "status": { "enum": ["PASS", "NOT_APPLICABLE"] },
+            "thresholdPercent": { "type": "number", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifacts", "hashes", "integrity"],
+      "properties": {
+        "artifacts": { "type": "array", "items": { "type": "string" } },
+        "hashes": { "type": "object", "additionalProperties": { "type": "string", "pattern": "^[0-9a-f]{64}$" } },
+        "integrity": { "const": "PASS" }
+      }
+    },
+    "promotion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["previousBaseline", "previousCommit", "promotionStatus", "immutable"],
+      "properties": {
+        "previousBaseline": { "type": ["string", "null"] },
+        "previousCommit": { "type": ["string", "null"], "pattern": "^[0-9a-f]{40}$" },
+        "promotionStatus": { "const": "FROZEN" },
+        "immutable": { "const": true }
+      }
+    }
+  },
+  "$defs": {
+    "performance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fastMs", "mediumMs", "browserMs"],
+      "properties": {
+        "fastMs": { "type": ["number", "null"], "minimum": 0 },
+        "mediumMs": { "type": ["number", "null"], "minimum": 0 },
+        "browserMs": { "type": ["number", "null"], "minimum": 0 }
+      }
+    }
+  }
+}
