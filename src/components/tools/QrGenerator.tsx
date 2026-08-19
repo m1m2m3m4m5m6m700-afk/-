@@ -40,6 +40,7 @@ export function QrGenerator() {
   const [qrSvgString, setQrSvgString] = useState<string>("");
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hydrated, setHydrated] = useState(false);
 
   const payload = buildQrPayload({
     mode,
@@ -51,6 +52,10 @@ export function QrGenerator() {
     emailSubject,
     phoneNumber,
   });
+
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
 
   useEffect(() => {
     if (!payload.trim()) {
@@ -116,7 +121,11 @@ export function QrGenerator() {
   };
 
   return (
-    <div className="rounded-3xl border border-border bg-card/80 p-4 shadow-soft backdrop-blur md:p-6">
+    <div
+      data-qr-ready={hydrated ? "true" : "false"}
+      data-qr-mode={mode}
+      className="rounded-3xl border border-border bg-card/80 p-4 shadow-soft backdrop-blur md:p-6"
+    >
       <div className="flex flex-wrap items-center gap-2 border-b border-border/60 pb-4">
         {[
           { id: "url", label: t("qr.mode.url"), icon: Link2 },
@@ -128,7 +137,15 @@ export function QrGenerator() {
           const Icon = item.icon;
           const isActive = mode === item.id;
           return (
-            <button key={item.id} type="button" aria-pressed={isActive} aria-label={t("qr.switchMode", { mode: item.label })} onClick={() => { setMode(item.id as PresetMode); setError(null); }} className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium transition-all ${isActive ? "bg-primary text-primary-foreground shadow-xs" : "bg-surface text-muted-foreground hover:bg-card hover:text-foreground"}`}>
+            <button
+              key={item.id}
+              type="button"
+              data-qr-mode-button={item.id}
+              aria-pressed={isActive}
+              aria-label={t("qr.switchMode", { mode: item.label })}
+              onClick={() => { setMode(item.id as PresetMode); setError(null); }}
+              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium transition-all ${isActive ? "bg-primary text-primary-foreground shadow-xs" : "bg-surface text-muted-foreground hover:bg-card hover:text-foreground"}`}
+            >
               <Icon className="size-3.5" />{item.label}
             </button>
           );
@@ -136,11 +153,11 @@ export function QrGenerator() {
       </div>
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_340px]">
         <div className="space-y-5">
-          {mode === "url" && <div><Label className="text-xs font-semibold">{t("qr.url.label")}</Label><Input value={input} onChange={(e) => setInput(e.target.value)} placeholder={t("qr.url.placeholder")} className="mt-1.5 text-sm rounded-xl" /></div>}
-          {mode === "text" && <div><Label className="text-xs font-semibold">{t("qr.text.label")}</Label><textarea value={input} onChange={(e) => setInput(e.target.value)} placeholder={t("qr.text.placeholder")} className="mt-1.5 min-h-32 w-full rounded-xl border border-input bg-background/60 p-3 text-sm outline-none placeholder:text-muted-foreground" /></div>}
-          {mode === "wifi" && <div className="space-y-4"><div><Label className="text-xs font-semibold">{t("qr.wifi.ssid")}</Label><Input value={wifiSsid} onChange={(e) => setWifiSsid(e.target.value)} placeholder={t("qr.wifi.ssidPlaceholder")} className="mt-1.5 text-sm rounded-xl" /></div><div><Label className="text-xs font-semibold">{t("qr.wifi.password")}</Label><Input type="password" value={wifiPass} onChange={(e) => setWifiPass(e.target.value)} placeholder={t("qr.wifi.passwordPlaceholder")} className="mt-1.5 text-sm rounded-xl" /></div><div><Label className="text-xs font-semibold">{t("qr.wifi.encryption")}</Label><select value={wifiEncryption} onChange={(e) => setWifiEncryption(e.target.value as "WPA" | "WEP" | "nopass")} className="mt-1.5 w-full rounded-xl border border-input bg-background/60 p-2 text-sm"><option value="WPA">{t("qr.wifi.wpa")}</option><option value="WEP">{t("qr.wifi.wep")}</option><option value="nopass">{t("qr.wifi.open")}</option></select></div></div>}
-          {mode === "email" && <div className="space-y-4"><div><Label className="text-xs font-semibold">{t("qr.email.to")}</Label><Input type="email" value={emailTo} onChange={(e) => setEmailTo(e.target.value)} placeholder={t("qr.email.toPlaceholder")} className="mt-1.5 text-sm rounded-xl" /></div><div><Label className="text-xs font-semibold">{t("qr.email.subject")}</Label><Input value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} placeholder={t("qr.email.subjectPlaceholder")} className="mt-1.5 text-sm rounded-xl" /></div></div>}
-          {mode === "phone" && <div><Label className="text-xs font-semibold">{t("qr.phone.label")}</Label><Input type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder={t("qr.phone.placeholder")} className="mt-1.5 text-sm rounded-xl" /></div>}
+          {mode === "url" && <div><Label className="text-xs font-semibold">{t("qr.url.label")}</Label><Input data-qr-input="url" value={input} onChange={(e) => setInput(e.target.value)} placeholder={t("qr.url.placeholder")} className="mt-1.5 text-sm rounded-xl" /></div>}
+          {mode === "text" && <div><Label className="text-xs font-semibold">{t("qr.text.label")}</Label><textarea data-qr-input="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder={t("qr.text.placeholder")} className="mt-1.5 min-h-32 w-full rounded-xl border border-input bg-background/60 p-3 text-sm outline-none placeholder:text-muted-foreground" /></div>}
+          {mode === "wifi" && <div className="space-y-4"><div><Label className="text-xs font-semibold">{t("qr.wifi.ssid")}</Label><Input data-qr-input="wifi-ssid" value={wifiSsid} onChange={(e) => setWifiSsid(e.target.value)} placeholder={t("qr.wifi.ssidPlaceholder")} className="mt-1.5 text-sm rounded-xl" /></div><div><Label className="text-xs font-semibold">{t("qr.wifi.password")}</Label><Input data-qr-input="wifi-password" type="password" value={wifiPass} onChange={(e) => setWifiPass(e.target.value)} placeholder={t("qr.wifi.passwordPlaceholder")} className="mt-1.5 text-sm rounded-xl" /></div><div><Label className="text-xs font-semibold">{t("qr.wifi.encryption")}</Label><select data-qr-input="wifi-encryption" value={wifiEncryption} onChange={(e) => setWifiEncryption(e.target.value as "WPA" | "WEP" | "nopass")} className="mt-1.5 w-full rounded-xl border border-input bg-background/60 p-2 text-sm"><option value="WPA">{t("qr.wifi.wpa")}</option><option value="WEP">{t("qr.wifi.wep")}</option><option value="nopass">{t("qr.wifi.open")}</option></select></div></div>}
+          {mode === "email" && <div className="space-y-4"><div><Label className="text-xs font-semibold">{t("qr.email.to")}</Label><Input data-qr-input="email-to" type="email" value={emailTo} onChange={(e) => setEmailTo(e.target.value)} placeholder={t("qr.email.toPlaceholder")} className="mt-1.5 text-sm rounded-xl" /></div><div><Label className="text-xs font-semibold">{t("qr.email.subject")}</Label><Input data-qr-input="email-subject" value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} placeholder={t("qr.email.subjectPlaceholder")} className="mt-1.5 text-sm rounded-xl" /></div></div>}
+          {mode === "phone" && <div><Label className="text-xs font-semibold">{t("qr.phone.label")}</Label><Input data-qr-input="phone" type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder={t("qr.phone.placeholder")} className="mt-1.5 text-sm rounded-xl" /></div>}
           <div className="rounded-2xl border border-border/60 bg-surface/40 p-4 space-y-3"><span className="text-xs font-semibold uppercase tracking-wider text-foreground flex items-center gap-1.5"><Sliders className="size-3.5 text-primary" />{t("qr.customization")}</span><div className="grid grid-cols-2 gap-3 pt-1"><div><Label className="text-[11px] text-muted-foreground">{t("qr.fgColor")}</Label><div className="flex items-center gap-2 mt-1"><input type="color" value={darkColor} onChange={(e) => setDarkColor(e.target.value)} className="size-7 rounded cursor-pointer border-0 bg-transparent" /><span className="font-mono text-xs text-foreground">{darkColor}</span></div></div><div><Label className="text-[11px] text-muted-foreground">{t("qr.bgColor")}</Label><div className="flex items-center gap-2 mt-1"><input type="color" value={lightColor} onChange={(e) => setLightColor(e.target.value)} className="size-7 rounded cursor-pointer border-0 bg-transparent" /><span className="font-mono text-xs text-foreground">{lightColor}</span></div></div></div></div>
           <div className="flex items-center justify-between pt-2"><Button variant="ghost" size="sm" onClick={handleClear} className="rounded-xl text-xs text-muted-foreground"><Trash2 className="me-1.5 size-3.5" />{t("qr.clear")}</Button><Button variant="outline" size="sm" onClick={handleCopyText} disabled={!payload} className="rounded-xl text-xs">{copied ? <Check className="me-1.5 size-3.5 text-primary" /> : <Copy className="me-1.5 size-3.5" />}{copied ? t("qr.copiedContent") : t("qr.copyPayload")}</Button></div>
         </div>
