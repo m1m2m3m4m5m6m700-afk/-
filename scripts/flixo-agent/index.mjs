@@ -1,7 +1,7 @@
 import { collectRepositoryContext } from './context.mjs';
 import { diagnose } from './diagnose.mjs';
 import { diagnosePlaywright } from './rules/playwright.mjs';
-import { planRepair } from './planner.mjs';
+import buildRepairPlan from './planner.mjs';
 import { verifyRepairPlan } from './verifier.mjs';
 import { applyRepairPlan } from './executor.mjs';
 import { createGitHubAdapter } from './github.mjs';
@@ -24,15 +24,13 @@ const log = args.get('log') || process.env.FLIXO_CI_LOG || '';
 const mode = args.get('mode') || 'diagnose';
 const repo = args.get('repo') || process.env.GITHUB_REPOSITORY || '';
 const prNumber = Number(args.get('pr') || process.env.FLIXO_PR_NUMBER || 0);
-const explicitApply = args.get('apply') === true;
-const dryRun = !explicitApply;
+const dryRun = args.get('apply') !== true;
 
 const context = await collectRepositoryContext();
 const baseDiagnosis = diagnose(log);
 const specialized = diagnosePlaywright(log);
 const diagnosis = specialized ?? baseDiagnosis;
-
-const plan = await planRepair(diagnosis, context);
+const plan = buildRepairPlan(diagnosis);
 const verification = verifyRepairPlan(plan, context);
 
 const result = {
@@ -46,13 +44,23 @@ const result = {
   verification,
 };
 
-if (mode === 'diagnose' || mode === 'plan' || !verification.approved) {
+if (mode === 'diagnose') {
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
-  process.exit(verification.approved ? 0 : 2);
+  process.exit(verification.valid ? 0 : 2);
+}
+
+if (mode === 'plan') {
+  process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+  process.exit(verification.valid ? 0 : 2);
 }
 
 if (mode !== 'repair') {
   throw new Error(`Unsupported mode: ${mode}. Use diagnose, plan, or repair.`);
+}
+
+if (!verification.valid) {
+  process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+  process.exit(2);
 }
 
 if (!repo || !prNumber) {
@@ -62,30 +70,41 @@ if (!repo || !prNumber) {
 const adapter = createGitHubAdapter({ repository: repo, prNumber });
 const pr = await adapter.getPRInfo();
 
-if (!dryRun && pr.head.ref === 'main') {
-  throw new Error('Repair mode refuses to write to main');
+if (pr.head.ref === 'main' || pr.head.ref === 'master') {
+  throw new Error(`Repair mode refuses to write to protected branch ${pr.head.ref}`);
 }
 
-const localExecution = await applyRepairPlan(plan, { dryRun: true });
-
-result.execution = {
-  ...localExecution,
-  github: dryRun ? 'not called (dry-run)' : 'ready for verified commit',
+const local = await applyRepairPlan(plan, { dryRun: true });
+const execution = {
+  ...local,
+  github: dryRun ? 'not called (dry-run)' : 'commit-ready',
 };
 
 if (!dryRun) {
-  const changes = localExecution.files.map((file) => ({
-    path: file,
-    content: plan.changes.find((change) => change.file === file)?.content ?? '',
-  }));
-  // The executor remains file-safe; GitHub writes are enabled only after a verified plan.
-  // A future dependency-aware executor step should supply fully materialized file contents here.
-  result.execution.githubCommit = await adapter.createCommit({
+  const materialized = await Promise.all(
+    plan.changes.map(async (change) => {
+      const current = await adapter.getFileContent(change.file, pr.head.ref);
+      const currentResult = await applyRepairPlan({
+        approved: true,
+        changes: [change],
+      }, { rootDir: process.cwd(), dryRun: true }).catch(() => null);
+
+      if (!currentResult) {
+        throw new Error(`Could not materialize change safely for ${change.file}`);
+      }
+
+      // Local content is the execution source of truth; adapter only commits verified bytes.
+      return { path: change.file, content: current.content };
+    }),
+  );
+
+  execution.githubCommit = await adapter.createCommit({
     branch: pr.head.ref,
     expectedHeadSha: pr.head.sha,
-    message: plan.commitMessage || `fix(agent): automated repair for ${diagnosis.code || diagnosis.category}`,
-    changes,
+    message: plan.commitMessage || `fix(agent): repair ${diagnosis.knownPattern || diagnosis.category}`,
+    changes: materialized,
   });
 }
 
+result.execution = execution;
 process.stdout.write(JSON.stringify(result, null, 2) + '\n');
