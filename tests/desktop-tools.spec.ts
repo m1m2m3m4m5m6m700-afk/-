@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "playwright/test";
+import { test, expect, type Download, type Page } from "playwright/test";
 
 import { assertPngArtifact } from "./utils/image-validator";
 
@@ -13,7 +13,7 @@ async function openTool(page: Page, slug: string) {
   await expect(page.locator("h1")).toHaveCount(1);
 }
 
-async function readDownloadBuffer(download: Awaited<ReturnType<DownloadWaiter>>): Promise<Buffer> {
+async function readDownloadBuffer(download: Download): Promise<Buffer> {
   const stream = await download.createReadStream();
   if (!stream) throw new Error("Download did not provide a readable output stream.");
   const chunks: Buffer[] = [];
@@ -21,19 +21,14 @@ async function readDownloadBuffer(download: Awaited<ReturnType<DownloadWaiter>>)
   return Buffer.concat(chunks);
 }
 
-type DownloadWaiter = () => Promise<import("playwright/test").Download>;
-
-async function readDownloadText(download: Awaited<ReturnType<DownloadWaiter>>): Promise<string> {
-  const buffer = await readDownloadBuffer(download);
-  return buffer.toString("utf8");
+async function readDownloadText(download: Download): Promise<string> {
+  return (await readDownloadBuffer(download)).toString("utf8");
 }
 
 async function decodeQrDataUrl(page: Page, dataUrl: string): Promise<string> {
   return page.evaluate(async (source) => {
     type DetectedCode = { rawValue: string };
-    type Detector = {
-      detect(source: ImageBitmapSource): Promise<DetectedCode[]>;
-    };
+    type Detector = { detect(source: ImageBitmapSource): Promise<DetectedCode[]> };
     type DetectorConstructor = {
       new (options?: { formats?: string[] }): Detector;
       getSupportedFormats(): Promise<string[]>;
@@ -62,6 +57,15 @@ async function decodeQrDataUrl(page: Page, dataUrl: string): Promise<string> {
     }
     return detected[0].rawValue;
   }, dataUrl);
+}
+
+async function setColorInput(locator: ReturnType<Page["locator"]>, value: string) {
+  await locator.evaluate((element, nextValue) => {
+    const input = element as HTMLInputElement;
+    input.value = nextValue;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  }, value);
 }
 
 async function assertQrDownloads(page: Page, expectedPayload: string) {
@@ -235,8 +239,8 @@ test.describe("relaunched public tools", () => {
       const expected = "https://example.com/color-variant";
       await page.locator('input[type="text"]').first().fill(expected);
       const colors = page.locator('input[type="color"]');
-      await colors.nth(0).fill("#123456");
-      await colors.nth(1).fill("#ffffff");
+      await setColorInput(colors.nth(0), "#123456");
+      await setColorInput(colors.nth(1), "#ffffff");
       await assertQrDownloads(page, expected);
     });
 
