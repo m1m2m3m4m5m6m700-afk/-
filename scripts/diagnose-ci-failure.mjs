@@ -9,6 +9,7 @@ const path = await import("node:path");
 
 const outputPath = ".artifacts/diagnostics/ci-failure-diagnosis.json";
 const signaturePath = path.resolve("scripts/ci-error-signatures.json");
+const historyPath = path.resolve("history/ci-failures.json");
 
 const ensureOutput = (value) => {
   fs.mkdirSync(path.dirname(outputPath), { recursive: true });
@@ -16,17 +17,15 @@ const ensureOutput = (value) => {
 };
 
 if (!token || !repository || !runId) {
-  ensureOutput({
-    schemaVersion: 2,
-    status: "UNKNOWN",
-    confidenceScore: 0,
-    reason: "Missing GitHub Actions context; no diagnosis attempted.",
-    repairAllowed: false,
-  });
+  ensureOutput({ schemaVersion: 3, status: "UNKNOWN", confidenceScore: 0, reason: "Missing GitHub Actions context; no diagnosis attempted.", repairAllowed: false });
   process.exit(0);
 }
 
-const signatures = JSON.parse(fs.readFileSync(signaturePath, "utf8")).signatures ?? [];
+const signaturesData = JSON.parse(fs.readFileSync(signaturePath, "utf8"));
+const signatures = signaturesData.signatures ?? [];
+const defaults = signaturesData.defaults ?? { autoThreshold: 0.9, dryRunThreshold: 0.6, maxConfidence: 0.99, historicalBoostCap: 0.05, ambiguityMargin: 0.15, snapshotLines: 25 };
+const history = fs.existsSync(historyPath) ? JSON.parse(fs.readFileSync(historyPath, "utf8")) : { schemaVersion: 1, failures: [] };
+
 const headers = {
   Accept: "application/vnd.github+json",
   Authorization: `Bearer ${token}`,
@@ -34,106 +33,126 @@ const headers = {
 };
 const apiBase = `https://api.github.com/repos/${repository}`;
 
+const normalize = (value) => String(value ?? "")
+  .replace(/https?:\/\/[^\s]+/gi, "<URL>")
+  .replace(/\/home\/runner\/work\/[\w.-]+\/[\w.-]+/gi, "<WORKSPACE>")
+  .replace(/\/Users\/runner\/work\/[\w.-]+\/[\w.-]+/gi, "<WORKSPACE>")
+  .replace(/\/[^\s]*\/FLIXO-AI-TOOLS\//g, "<REPO>/")
+  .replace(/\b[0-9a-f]{7,40}\b/gi, "<IDENTIFIER>")
+  .replace(/\bRun #?\d+\b/gi, "Run <RUN>")
+  .replace(/\bline \d+(?::\d+)?\b/gi, "line <LOCATION>")
+  .replace(/\bcolumn \d+\b/gi, "column <LOCATION>")
+  .replace(/\s+/g, " ")
+  .trim();
+
+const escaped = (pattern) => pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const matchesPattern = (signature, text) => signature.patterns.some((pattern) => new RegExp(signature.regex ? pattern : escaped(pattern), "i").test(text));
+
 const jobsResponse = await fetch(`${apiBase}/actions/runs/${runId}/jobs?per_page=100`, { headers });
 if (!jobsResponse.ok) {
-  ensureOutput({
-    schemaVersion: 2,
-    status: "UNKNOWN",
-    confidenceScore: 0,
-    reason: `GitHub jobs API failed with HTTP ${jobsResponse.status}; no diagnosis attempted.`,
-    repairAllowed: false,
-    runId,
-  });
+  ensureOutput({ schemaVersion: 3, status: "UNKNOWN", confidenceScore: 0, reason: `GitHub jobs API failed with HTTP ${jobsResponse.status}; no diagnosis attempted.`, repairAllowed: false, runId });
   process.exit(0);
 }
 
 const jobs = (await jobsResponse.json()).jobs ?? [];
 const terminalJobs = jobs.filter((job) => ["failure", "cancelled", "timed_out"].includes(job.conclusion));
-
 if (terminalJobs.length === 0) {
-  ensureOutput({
-    schemaVersion: 2,
-    status: "NO_FAILURE",
-    confidenceScore: 0,
-    reason: "No failed, cancelled, or timed-out jobs were observed in this run.",
-    repairAllowed: false,
-    runId,
-    jobs: jobs.map((job) => ({ name: job.name, conclusion: job.conclusion })),
-  });
+  ensureOutput({ schemaVersion: 3, status: "NO_FAILURE", confidenceScore: 0, reason: "No failed, cancelled, or timed-out jobs were observed in this run.", repairAllowed: false, runId, jobs: jobs.map((job) => ({ name: job.name, conclusion: job.conclusion })) });
   process.exit(0);
 }
 
-const ranked = [...terminalJobs].sort((a, b) => {
-  const time = (job) => (job.started_at ? new Date(job.started_at).getTime() : Number.MAX_SAFE_INTEGER);
-  return time(a) - time(b);
-});
-const firstFailureJob = ranked[0];
+const rankedJobs = [...terminalJobs].sort((a, b) => (a.started_at ? new Date(a.started_at).getTime() : Number.MAX_SAFE_INTEGER) - (b.started_at ? new Date(b.started_at).getTime() : Number.MAX_SAFE_INTEGER));
+const firstFailureJob = rankedJobs[0];
 const firstFailingStep = firstFailureJob.steps?.find((step) => ["failure", "cancelled", "timed_out"].includes(step.conclusion)) ?? null;
 
 const evidenceResponse = await fetch(`${apiBase}/actions/jobs/${firstFailureJob.id}/logs`, { headers });
 const rawEvidence = evidenceResponse.ok ? await evidenceResponse.text() : "";
 const evidenceLines = rawEvidence.split(/\r?\n/);
+const normalizedMessage = normalize(rawEvidence.slice(-5000));
 
-const signatureMatches = signatures.flatMap((signature) => {
-  const regexes = signature.patterns.map((pattern) => new RegExp(signature.regex ? pattern : pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"));
-  const matched = regexes.some((regex) => regex.test(rawEvidence));
-  return matched ? [{
-    id: signature.id,
-    category: signature.category,
-    source: signature.source,
-    priority: signature.priority,
-    confidence: signature.confidence,
-    repair: signature.repair,
-  }] : [];
-});
+const signatureMatches = signatures
+  .filter((signature) => matchesPattern(signature, rawEvidence))
+  .map((signature) => {
+    const historyItem = history.failures.find((item) => item.signatureId === signature.id && item.normalizedMessage === normalizedMessage);
+    const boost = Math.min(defaults.historicalBoostCap ?? 0.05, historyItem?.confidenceBoost ?? 0);
+    return {
+      id: signature.id,
+      category: signature.category,
+      source: signature.source,
+      priority: signature.priority ?? 0,
+      baseConfidence: signature.confidence ?? 0,
+      historicalOccurrences: historyItem?.occurrences ?? 0,
+      historicalSimilarity: historyItem ? 1 : 0,
+      confidenceScore: Math.min(defaults.maxConfidence ?? 0.99, (signature.confidence ?? 0) + boost),
+      repair: signature.repair,
+    };
+  })
+  .sort((a, b) => (b.priority - a.priority) || (b.confidenceScore - a.confidenceScore));
 
-const matches = signatureMatches.sort((a, b) => b.priority - a.priority);
-const uniqueMatches = [...new Map(matches.map((item) => [item.id, item])).values()];
+const top = signatureMatches[0] ?? null;
+const second = signatureMatches[1] ?? null;
+const distinct = Boolean(top && (!second || (top.confidenceScore - second.confidenceScore >= (defaults.ambiguityMargin ?? 0.15))));
+const score = top?.confidenceScore ?? 0;
+const repairMode = !distinct ? "STOP_AND_GATHER_EVIDENCE" : score >= (defaults.autoThreshold ?? 0.9) ? "AUTO_ALLOWED" : score >= (defaults.dryRunThreshold ?? 0.6) ? "DRY_RUN_ONLY" : "STOP_AND_GATHER_EVIDENCE";
 
-const firstMatchIndex = uniqueMatches[0]
-  ? Math.max(0, evidenceLines.findIndex((line) => signatures.find((s) => s.id === uniqueMatches[0].id)?.patterns.some((p) => new RegExp(signatures.find((s) => s.id === uniqueMatches[0].id)?.regex ? p : p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(line))))
-  : -1;
-const snapshotStart = firstMatchIndex >= 0 ? Math.max(0, firstMatchIndex - 25) : Math.max(0, evidenceLines.length - 30);
-const snapshotEnd = firstMatchIndex >= 0 ? Math.min(evidenceLines.length, firstMatchIndex + 26) : evidenceLines.length;
-const evidenceSnapshot = evidenceLines.slice(snapshotStart, snapshotEnd).join("\n");
+const matchIndex = top ? evidenceLines.findIndex((line) => {
+  const signature = signatures.find((item) => item.id === top.id);
+  return signature ? matchesPattern(signature, line) : false;
+}) : -1;
+const center = matchIndex >= 0 ? matchIndex : Math.max(0, evidenceLines.length - 1);
+const snapshotLines = defaults.snapshotLines ?? 25;
+const evidenceSnapshot = evidenceLines.slice(Math.max(0, center - snapshotLines), Math.min(evidenceLines.length, center + snapshotLines + 1)).join("\n");
 
-const sameCategory = uniqueMatches.length > 1 && uniqueMatches[0].category === uniqueMatches[1].category;
-const top = uniqueMatches[0] ?? null;
-const confidenceScore = top
-  ? Math.max(0, Math.min(0.999, sameCategory ? Math.min(top.confidence, 0.89) : top.confidence))
-  : 0;
+const historicalMatches = history.failures
+  .map((item) => ({
+    signatureId: item.signatureId,
+    occurrences: item.occurrences ?? 0,
+    similarity: item.normalizedMessage === normalizedMessage ? 1 : item.normalizedMessage && normalizedMessage.includes(item.normalizedMessage) ? 0.8 : 0,
+    confidenceBoost: item.confidenceBoost ?? 0,
+  }))
+  .filter((item) => item.similarity > 0)
+  .sort((a, b) => b.similarity - a.similarity)
+  .slice(0, 5);
 
-const status = !top
-  ? "UNKNOWN"
-  : uniqueMatches.length > 1 && !sameCategory
-    ? "AMBIGUOUS"
-    : "DIAGNOSED";
-
-const repairAllowed = status === "DIAGNOSED" && confidenceScore >= 0.9 && top?.source !== "external-service" && top?.source !== "orchestration";
-const repairMode = repairAllowed ? "AUTO_ALLOWED" : confidenceScore >= 0.6 ? "DRY_RUN_ONLY" : "STOP_AND_GATHER_EVIDENCE";
+const status = !top ? "UNKNOWN" : !distinct ? "AMBIGUOUS" : "DIAGNOSED";
+const repairAllowed = status === "DIAGNOSED" && (repairMode === "AUTO_ALLOWED" || repairMode === "DRY_RUN_ONLY") && !["external-service", "orchestration"].includes(top.source);
 
 const diagnosis = {
   status,
-  confidenceScore,
-  confidenceBand: confidenceScore >= 0.9 ? "HIGH" : confidenceScore >= 0.6 ? "MEDIUM" : "LOW",
-  failureClass: top?.id ?? (uniqueMatches.length ? "ambiguous" : "unknown"),
+  confidenceScore: score,
+  confidenceBand: score >= 0.9 ? "HIGH" : score >= 0.6 ? "MEDIUM" : "LOW",
+  failureClass: top?.id ?? (signatureMatches.length ? "ambiguous" : "unknown"),
   category: top?.category ?? null,
   source: top?.source ?? null,
   firstFailingJob: firstFailureJob.name,
   firstFailingStep: firstFailingStep?.name ?? null,
   firstFailingStepConclusion: firstFailingStep?.conclusion ?? null,
-  matchedSignatures: uniqueMatches.map(({ id, category, source, priority, confidence }) => ({ id, category, source, priority, confidence })),
+  matchedSignatures: signatureMatches.slice(0, 5).map(({ id, category, priority, baseConfidence, confidenceScore, historicalOccurrences }) => ({ id, category, priority, baseConfidence, confidenceScore, historicalOccurrences })),
+  historicalMatches,
+  normalizedMessage,
   evidenceSnapshot,
-  evidenceWindow: { before: 25, after: 25 },
+  evidenceWindow: { before: snapshotLines, after: snapshotLines },
   repairAllowed,
   repairMode,
-  repairRule: repairAllowed
-    ? top.repair
-    : "Do not guess. Preserve the evidence, inspect the exact failing step, and collect additional corroboration before changing code.",
+  repairRule: repairAllowed ? top.repair : "Do not guess. Preserve the evidence, inspect the exact failing step, and collect additional corroboration before changing code.",
 };
 
+if (top && distinct) {
+  const now = new Date().toISOString();
+  const existing = history.failures.find((item) => item.signatureId === top.id && item.normalizedMessage === normalizedMessage);
+  if (existing) {
+    existing.lastSeen = now;
+    existing.occurrences = (existing.occurrences ?? 0) + 1;
+  } else {
+    history.failures.push({ signatureId: top.id, normalizedMessage, firstSeen: now, lastSeen: now, occurrences: 1, successfulFixes: 0, confidenceBoost: 0 });
+  }
+  history.failures = history.failures.slice(-500);
+  fs.mkdirSync(path.dirname(historyPath), { recursive: true });
+  fs.writeFileSync(historyPath, JSON.stringify(history, null, 2) + "\n");
+}
+
 ensureOutput({
-  schemaVersion: 2,
+  schemaVersion: 3,
   generatedAt: new Date().toISOString(),
   repository,
   runId,
