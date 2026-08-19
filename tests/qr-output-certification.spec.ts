@@ -1,6 +1,7 @@
 import { test, expect, type Download, type Page } from "playwright/test";
 import { assertPngArtifact } from "./utils/image-validator";
 
+// CI trigger: QR certification readiness is intentionally fail-fast and bounded.
 test.describe.configure({ mode: "serial", retries: 1, timeout: 45_000 });
 
 async function openTool(page: Page) {
