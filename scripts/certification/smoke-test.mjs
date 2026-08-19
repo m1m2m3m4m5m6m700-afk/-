@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { createGateManifest } from './create-gate-manifest.mjs';
+import { validateGateManifestSchema } from './validate-gate-manifest-schema.mjs';
 import { verifyGateManifest } from './verify-gate-manifest.mjs';
 
 const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'flixo-cert-'));
@@ -16,6 +17,8 @@ try {
     evidencePath, expectedCommit: commit, expectedRunId: runId,
     now: new Date('2026-08-19T00:00:00.000Z')
   });
+  const schemaResult = await validateGateManifestSchema(manifest);
+  assert.equal(schemaResult.valid, true, schemaResult.errors.join('\n'));
   const result = await verifyGateManifest(manifest, {
     evidencePath,
     expectedCommit: commit,

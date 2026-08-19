@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://flixo.tools/schemas/gate-manifest.schema.json",
+  "title": "Flixo Gate Manifest",
+  "description": "Canonical certification evidence contract for every releasable tool gate.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "manifestId",
+    "tool",
+    "gate",
+    "status",
+    "commit",
+    "runId",
+    "createdAt",
+    "expiresAt",
+    "evidence",
+    "execution",
+    "quality",
+    "baseline",
+    "integrity",
+    "diagnostics"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "manifestId": { "type": "string", "minLength": 1 },
+    "tool": { "type": "string", "minLength": 1 },
+    "gate": { "type": "string", "minLength": 1 },
+    "status": { "type": "string", "enum": ["success", "failure", "skipped", "cancelled"] },
+    "commit": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+    "runId": { "type": "string", "pattern": "^[0-9]+$" },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "expiresAt": { "type": "string", "format": "date-time" },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "sha256", "sizeBytes"],
+      "properties": {
+        "file": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "sizeBytes": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["durationMs", "attempt", "repeatCount"],
+      "properties": {
+        "durationMs": { "type": "number", "minimum": 0 },
+        "attempt": { "type": "integer", "minimum": 1 },
+        "repeatCount": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "quality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["testsPassed", "testsFailed", "warnings"],
+      "properties": {
+        "testsPassed": { "type": "integer", "minimum": 0 },
+        "testsFailed": { "type": "integer", "minimum": 0 },
+        "warnings": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "baseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["baselineId", "baselineCommit", "baselineStatus"],
+      "properties": {
+        "baselineId": { "type": ["string", "null"] },
+        "baselineCommit": { "type": ["string", "null"] },
+        "baselineStatus": { "type": "string", "enum": ["none", "active", "frozen", "retired"] }
+      }
+    },
+    "integrity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commitMatch", "runMatch", "hashMatch", "notExpired", "valid"],
+      "properties": {
+        "commitMatch": { "type": "boolean" },
+        "runMatch": { "type": "boolean" },
+        "hashMatch": { "type": "boolean" },
+        "notExpired": { "type": "boolean" },
+        "valid": { "type": "boolean" }
+      }
+    },
+    "diagnostics": { "type": "object" }
+  }
+}

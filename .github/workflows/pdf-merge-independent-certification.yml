@@ -1,0 +1,289 @@
+name: PDF Merge Independent Certification
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/components/tools/PdfMerge.tsx"
+      - "tests/pdf-merge-stability.spec.ts"
+      - "tests/pdf-tools.spec.ts"
+      - "scripts/certification/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".nvmrc"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pdf-merge-independent-certification-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  TOOL: pdf-merge
+  BASELINE_STATUS: none
+
+jobs:
+  fast:
+    name: PDF Merge — Fast Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: node scripts/certification/smoke-test.mjs
+      - run: node scripts/certification/validate-gate-manifest-schema.mjs scripts/certification
+      - run: npm run validate:pdf-catalog
+      - name: Evidence
+        if: always()
+        run: |
+          mkdir -p .artifacts/${TOOL}/fast
+          printf '%s\n' '{"schemaVersion":1,"tool":"pdf-merge","gate":"fast","commit":"'"${GITHUB_SHA}"'","runId":"'"${GITHUB_RUN_ID}"'","status":"'"${GATE_STATUS}"'","createdAt":"'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"}' > .artifacts/${TOOL}/fast/gate-evidence.json
+        env:
+          GATE_STATUS: ${{ job.status }}
+      - name: Gate Manifest
+        if: always()
+        run: |
+          TOOL=${TOOL} GATE=fast GATE_STATUS=${{ job.status }} BASELINE_STATUS=${BASELINE_STATUS} EVIDENCE_PATH=.artifacts/${TOOL}/fast/gate-evidence.json node scripts/certification/generate-gates.mjs
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: pdf-merge-${{ github.sha }}-fast
+          path: .artifacts/${{ env.TOOL }}/fast
+          if-no-files-found: error
+
+  medium:
+    name: PDF Merge — Medium Gate
+    needs: fast
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run validate:security-strict
+      - run: npm run validate:performance
+      - name: Evidence
+        if: always()
+        run: |
+          mkdir -p .artifacts/${TOOL}/medium
+          printf '%s\n' '{"schemaVersion":1,"tool":"pdf-merge","gate":"medium","commit":"'"${GITHUB_SHA}"'","runId":"'"${GITHUB_RUN_ID}"'","status":"'"${GATE_STATUS}"'","createdAt":"'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"}' > .artifacts/${TOOL}/medium/gate-evidence.json
+        env:
+          GATE_STATUS: ${{ job.status }}
+      - name: Gate Manifest
+        if: always()
+        run: |
+          TOOL=${TOOL} GATE=medium GATE_STATUS=${{ job.status }} BASELINE_STATUS=${BASELINE_STATUS} EVIDENCE_PATH=.artifacts/${TOOL}/medium/gate-evidence.json node scripts/certification/generate-gates.mjs
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: pdf-merge-${{ github.sha }}-medium
+          path: .artifacts/${{ env.TOOL }}/medium
+          if-no-files-found: error
+
+  windows:
+    name: PDF Merge — Windows Smoke
+    needs: fast
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run test:desktop
+      - name: Evidence
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p .artifacts/${TOOL}/windows
+          printf '%s\n' '{"schemaVersion":1,"tool":"pdf-merge","gate":"windows","commit":"'"${GITHUB_SHA}"'","runId":"'"${GITHUB_RUN_ID}"'","status":"'"${GATE_STATUS}"'","createdAt":"'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"}' > .artifacts/${TOOL}/windows/gate-evidence.json
+        env:
+          GATE_STATUS: ${{ job.status }}
+      - name: Gate Manifest
+        if: always()
+        shell: bash
+        run: |
+          TOOL=${TOOL} GATE=windows GATE_STATUS=${{ job.status }} BASELINE_STATUS=${BASELINE_STATUS} EVIDENCE_PATH=.artifacts/${TOOL}/windows/gate-evidence.json node scripts/certification/generate-gates.mjs
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: pdf-merge-${{ github.sha }}-windows
+          path: .artifacts/${{ env.TOOL }}/windows
+          if-no-files-found: error
+
+  node:
+    name: PDF Merge — Node Gate
+    needs: fast
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run validate:tool-runtime
+      - name: Evidence
+        if: always()
+        run: |
+          mkdir -p .artifacts/${TOOL}/node
+          printf '%s\n' '{"schemaVersion":1,"tool":"pdf-merge","gate":"node","commit":"'"${GITHUB_SHA}"'","runId":"'"${GITHUB_RUN_ID}"'","status":"'"${GATE_STATUS}"'","createdAt":"'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"}' > .artifacts/${TOOL}/node/gate-evidence.json
+        env:
+          GATE_STATUS: ${{ job.status }}
+      - name: Gate Manifest
+        if: always()
+        run: |
+          TOOL=${TOOL} GATE=node GATE_STATUS=${{ job.status }} BASELINE_STATUS=${BASELINE_STATUS} EVIDENCE_PATH=.artifacts/${TOOL}/node/gate-evidence.json node scripts/certification/generate-gates.mjs
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: pdf-merge-${{ github.sha }}-node
+          path: .artifacts/${{ env.TOOL }}/node
+          if-no-files-found: error
+
+  browser:
+    name: PDF Merge — Browser Critical
+    needs: [node, windows]
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test tests/pdf-merge-stability.spec.ts --reporter=line
+      - name: Evidence
+        if: always()
+        run: |
+          mkdir -p .artifacts/${TOOL}/browser
+          cp -R test-results .artifacts/${TOOL}/browser/test-results 2>/dev/null || true
+          printf '%s\n' '{"schemaVersion":1,"tool":"pdf-merge","gate":"browser","commit":"'"${GITHUB_SHA}"'","runId":"'"${GITHUB_RUN_ID}"'","status":"'"${GATE_STATUS}"'","createdAt":"'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"}' > .artifacts/${TOOL}/browser/gate-evidence.json
+        env:
+          GATE_STATUS: ${{ job.status }}
+      - name: Gate Manifest
+        if: always()
+        run: |
+          TOOL=${TOOL} GATE=browser GATE_STATUS=${{ job.status }} BASELINE_STATUS=${BASELINE_STATUS} EVIDENCE_PATH=.artifacts/${TOOL}/browser/gate-evidence.json node scripts/certification/generate-gates.mjs
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: pdf-merge-${{ github.sha }}-browser
+          path: .artifacts/${{ env.TOOL }}/browser
+          if-no-files-found: error
+
+  stability:
+    name: PDF Merge — Stability x3
+    needs: browser
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test tests/pdf-merge-stability.spec.ts --repeat-each=3 --reporter=line
+      - name: Evidence
+        if: always()
+        run: |
+          mkdir -p .artifacts/${TOOL}/stability
+          cp -R test-results .artifacts/${TOOL}/stability/test-results 2>/dev/null || true
+          printf '%s\n' '{"schemaVersion":1,"tool":"pdf-merge","gate":"stability","commit":"'"${GITHUB_SHA}"'","runId":"'"${GITHUB_RUN_ID}"'","status":"'"${GATE_STATUS}"'","repeatCount":3,"createdAt":"'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"}' > .artifacts/${TOOL}/stability/gate-evidence.json
+        env:
+          GATE_STATUS: ${{ job.status }}
+      - name: Gate Manifest
+        if: always()
+        run: |
+          TOOL=${TOOL} GATE=stability GATE_STATUS=${{ job.status }} REPEAT_COUNT=3 BASELINE_STATUS=${BASELINE_STATUS} EVIDENCE_PATH=.artifacts/${TOOL}/stability/gate-evidence.json node scripts/certification/generate-gates.mjs
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: pdf-merge-${{ github.sha }}-stability
+          path: .artifacts/${{ env.TOOL }}/stability
+          if-no-files-found: error
+
+  full:
+    name: PDF Merge — Full Certification
+    needs: [fast, medium, windows, node, browser, stability]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - run: npm audit --omit=dev --audit-level=high
+      - name: Evidence
+        if: always()
+        run: |
+          mkdir -p .artifacts/${TOOL}/full
+          printf '%s\n' '{"schemaVersion":1,"tool":"pdf-merge","gate":"full","commit":"'"${GITHUB_SHA}"'","runId":"'"${GITHUB_RUN_ID}"'","status":"'"${GATE_STATUS}"'","createdAt":"'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"}' > .artifacts/${TOOL}/full/gate-evidence.json
+        env:
+          GATE_STATUS: ${{ job.status }}
+      - name: Gate Manifest
+        if: always()
+        run: |
+          TOOL=${TOOL} GATE=full GATE_STATUS=${{ job.status }} BASELINE_STATUS=${BASELINE_STATUS} EVIDENCE_PATH=.artifacts/${TOOL}/full/gate-evidence.json node scripts/certification/generate-gates.mjs
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: pdf-merge-${{ github.sha }}-full
+          path: .artifacts/${{ env.TOOL }}/full
+          if-no-files-found: error
+
+  release:
+    name: PDF Merge — Release Decision
+    needs: [fast, medium, windows, node, browser, stability, full]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: pdf-merge-${{ github.sha }}-*
+          path: .artifacts/${{ env.TOOL }}/downloads
+          merge-multiple: false
+      - name: Validate release evidence contract
+        continue-on-error: true
+        env:
+          ARTIFACT_ROOT: .artifacts/pdf-merge/downloads
+          EXPECTED_COMMIT: ${{ github.sha }}
+          EXPECTED_RUN_ID: ${{ github.run_id }}
+        run: node scripts/certification/validate-release.mjs
+      - name: Produce release decision
+        env:
+          TOOL: pdf-merge
+          ARTIFACT_ROOT: .artifacts/pdf-merge/downloads
+          REQUIRED_GATES: fast,medium,windows,node,browser,stability,full
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+        run: node scripts/certification/release-decision.mjs
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: pdf-merge-${{ github.sha }}-release
+          path: .artifacts/${{ env.TOOL }}/downloads
+          if-no-files-found: error
