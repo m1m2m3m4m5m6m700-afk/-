@@ -1,0 +1,308 @@
+name: QR Independent Certification
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/lib/qr/**"
+      - "src/components/tools/QrGenerator.tsx"
+      - "src/lib/tool-platform/**"
+      - "src/lib/tool-runtime/**"
+      - "tests/qr-*.spec.ts"
+      - "scripts/test-qr-payload-matrix.mjs"
+      - "scripts/validate-release-tools.mjs"
+      - "scripts/certification/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".nvmrc"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qr-independent-certification-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  TOOL: qr-generator
+  BASELINE_ID: qr-generator-baseline-v1
+  BASELINE_COMMIT: 059b269cda951284e150c79f08fa60a699f75697
+  BASELINE_STATUS: frozen
+
+jobs:
+  fast:
+    name: QR — Fast Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run test:certification
+      - run: npm run validate:certification:baseline
+      - run: npm run verify:foundation
+      - name: Evidence
+        if: always()
+        run: |
+          mkdir -p .artifacts/${TOOL}/fast
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          fs.writeFileSync('.artifacts/qr-generator/fast/gate-evidence.json', JSON.stringify({
+            schemaVersion:1, tool:'qr-generator', gate:'fast', commit:process.env.GITHUB_SHA,
+            runId:process.env.GITHUB_RUN_ID, status:process.env.GATE_STATUS,
+            createdAt:new Date().toISOString()
+          },null,2)+'\n');
+          NODE
+        env:
+          GATE_STATUS: ${{ job.status }}
+      - name: Gate Manifest
+        if: always()
+        run: |
+          DURATION_MS=0 TOOL=${TOOL} GATE=fast GATE_STATUS=${{ job.status }} \
+          BASELINE_ID=${BASELINE_ID} BASELINE_COMMIT=${BASELINE_COMMIT} BASELINE_STATUS=${BASELINE_STATUS} \
+          EVIDENCE_PATH=.artifacts/${TOOL}/fast/gate-evidence.json \
+          node scripts/certification/generate-gates.mjs
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: qr-${{ github.sha }}-fast
+          path: .artifacts/${{ env.TOOL }}/fast
+          if-no-files-found: error
+
+  medium:
+    name: QR — Medium Gate
+    needs: fast
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run validate:security-strict
+      - run: npm run validate:performance
+      - name: Evidence
+        if: always()
+        run: |
+          mkdir -p .artifacts/${TOOL}/medium
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          fs.writeFileSync('.artifacts/qr-generator/medium/gate-evidence.json', JSON.stringify({schemaVersion:1,tool:'qr-generator',gate:'medium',commit:process.env.GITHUB_SHA,runId:process.env.GITHUB_RUN_ID,status:process.env.GATE_STATUS,createdAt:new Date().toISOString()},null,2)+'\n');
+          NODE
+        env:
+          GATE_STATUS: ${{ job.status }}
+      - name: Gate Manifest
+        if: always()
+        run: |
+          TOOL=${TOOL} GATE=medium GATE_STATUS=${{ job.status }} \
+          BASELINE_ID=${BASELINE_ID} BASELINE_COMMIT=${BASELINE_COMMIT} BASELINE_STATUS=${BASELINE_STATUS} \
+          EVIDENCE_PATH=.artifacts/${TOOL}/medium/gate-evidence.json \
+          node scripts/certification/generate-gates.mjs
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: qr-${{ github.sha }}-medium
+          path: .artifacts/${{ env.TOOL }}/medium
+          if-no-files-found: error
+
+  windows:
+    name: QR — Windows Smoke
+    needs: fast
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run test:desktop
+      - name: Evidence
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p .artifacts/${TOOL}/windows
+          printf '%s\n' '{"schemaVersion":1,"tool":"qr-generator","gate":"windows","commit":"'"${GITHUB_SHA}"'","runId":"'"${GITHUB_RUN_ID}"'","status":"'"${GATE_STATUS}"'","createdAt":"'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"}' > .artifacts/${TOOL}/windows/gate-evidence.json
+        env:
+          GATE_STATUS: ${{ job.status }}
+      - name: Gate Manifest
+        if: always()
+        shell: bash
+        run: |
+          TOOL=${TOOL} GATE=windows GATE_STATUS=${{ job.status }} BASELINE_ID=${BASELINE_ID} BASELINE_COMMIT=${BASELINE_COMMIT} BASELINE_STATUS=${BASELINE_STATUS} EVIDENCE_PATH=.artifacts/${TOOL}/windows/gate-evidence.json node scripts/certification/generate-gates.mjs
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: qr-${{ github.sha }}-windows
+          path: .artifacts/${{ env.TOOL }}/windows
+          if-no-files-found: error
+
+  node-matrix:
+    name: QR — Node ${{ matrix.case }}
+    needs: fast
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        case: [url, text, arabic, unicode, wifi, email, phone]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: node scripts/test-qr-payload-matrix.mjs
+        env:
+          TEST_CASE: ${{ matrix.case }}
+      - name: Evidence
+        if: always()
+        run: |
+          mkdir -p .artifacts/${TOOL}/node-${{ matrix.case }}
+          printf '%s\n' '{"schemaVersion":1,"tool":"qr-generator","gate":"node-${{ matrix.case }}","commit":"'"${GITHUB_SHA}"'","runId":"'"${GITHUB_RUN_ID}"'","status":"'"${GATE_STATUS}"'","createdAt":"'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"}' > .artifacts/${TOOL}/node-${{ matrix.case }}/gate-evidence.json
+        env:
+          GATE_STATUS: ${{ job.status }}
+      - name: Gate Manifest
+        if: always()
+        run: |
+          TOOL=${TOOL} GATE=node-${{ matrix.case }} GATE_STATUS=${{ job.status }} BASELINE_ID=${BASELINE_ID} BASELINE_COMMIT=${BASELINE_COMMIT} BASELINE_STATUS=${BASELINE_STATUS} EVIDENCE_PATH=.artifacts/${TOOL}/node-${{ matrix.case }}/gate-evidence.json node scripts/certification/generate-gates.mjs
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: qr-${{ github.sha }}-node-${{ matrix.case }}
+          path: .artifacts/${{ env.TOOL }}/node-${{ matrix.case }}
+          if-no-files-found: error
+
+  browser-critical:
+    name: QR — Browser Critical
+    needs: node-matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install chromium
+      - run: npx playwright test tests/qr-output-certification.spec.ts --reporter=line
+      - name: Evidence
+        if: always()
+        run: |
+          mkdir -p .artifacts/${TOOL}/browser
+          cp -R test-results .artifacts/${TOOL}/browser/test-results 2>/dev/null || true
+          printf '%s\n' '{"schemaVersion":1,"tool":"qr-generator","gate":"browser","commit":"'"${GITHUB_SHA}"'","runId":"'"${GITHUB_RUN_ID}"'","status":"'"${GATE_STATUS}"'","createdAt":"'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"}' > .artifacts/${TOOL}/browser/gate-evidence.json
+        env:
+          GATE_STATUS: ${{ job.status }}
+      - name: Gate Manifest
+        if: always()
+        run: |
+          TOOL=${TOOL} GATE=browser GATE_STATUS=${{ job.status }} BASELINE_ID=${BASELINE_ID} BASELINE_COMMIT=${BASELINE_COMMIT} BASELINE_STATUS=${BASELINE_STATUS} EVIDENCE_PATH=.artifacts/${TOOL}/browser/gate-evidence.json node scripts/certification/generate-gates.mjs
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: qr-${{ github.sha }}-browser
+          path: .artifacts/${{ env.TOOL }}/browser
+          if-no-files-found: error
+
+  stability:
+    name: QR — Stability x3
+    needs: browser-critical
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install chromium
+      - run: npx playwright test tests/qr-output-stability.spec.ts --repeat-each=3 --reporter=line
+      - name: Evidence
+        if: always()
+        run: |
+          mkdir -p .artifacts/${TOOL}/stability
+          cp -R test-results .artifacts/${TOOL}/stability/test-results 2>/dev/null || true
+          printf '%s\n' '{"schemaVersion":1,"tool":"qr-generator","gate":"stability","commit":"'"${GITHUB_SHA}"'","runId":"'"${GITHUB_RUN_ID}"'","status":"'"${GATE_STATUS}"'","repeatCount":3,"createdAt":"'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"}' > .artifacts/${TOOL}/stability/gate-evidence.json
+        env:
+          GATE_STATUS: ${{ job.status }}
+      - name: Gate Manifest
+        if: always()
+        run: |
+          TOOL=${TOOL} GATE=stability GATE_STATUS=${{ job.status }} REPEAT_COUNT=3 BASELINE_ID=${BASELINE_ID} BASELINE_COMMIT=${BASELINE_COMMIT} BASELINE_STATUS=${BASELINE_STATUS} EVIDENCE_PATH=.artifacts/${TOOL}/stability/gate-evidence.json node scripts/certification/generate-gates.mjs
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: qr-${{ github.sha }}-stability
+          path: .artifacts/${{ env.TOOL }}/stability
+          if-no-files-found: error
+
+  full:
+    name: QR — Full Certification
+    needs: [fast, medium, windows, node-matrix, browser-critical, stability]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run test
+      - run: npm run build
+      - run: npm audit --omit=dev --audit-level=high
+      - name: Evidence
+        if: always()
+        run: |
+          mkdir -p .artifacts/${TOOL}/full
+          printf '%s\n' '{"schemaVersion":1,"tool":"qr-generator","gate":"full","commit":"'"${GITHUB_SHA}"'","runId":"'"${GITHUB_RUN_ID}"'","status":"'"${GATE_STATUS}"'","createdAt":"'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"}' > .artifacts/${TOOL}/full/gate-evidence.json
+        env:
+          GATE_STATUS: ${{ job.status }}
+      - name: Gate Manifest
+        if: always()
+        run: |
+          TOOL=${TOOL} GATE=full GATE_STATUS=${{ job.status }} BASELINE_ID=${BASELINE_ID} BASELINE_COMMIT=${BASELINE_COMMIT} BASELINE_STATUS=${BASELINE_STATUS} EVIDENCE_PATH=.artifacts/${TOOL}/full/gate-evidence.json node scripts/certification/generate-gates.mjs
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: qr-${{ github.sha }}-full
+          path: .artifacts/${{ env.TOOL }}/full
+          if-no-files-found: error
+
+  release:
+    name: QR — Release Decision
+    needs: [fast, medium, windows, node-matrix, browser-critical, stability, full]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: qr-${{ github.sha }}-*
+          path: .artifacts/${{ env.TOOL }}/downloads
+          merge-multiple: false
+      - name: Verify all manifests
+        env:
+          TOOL: qr-generator
+          ARTIFACT_ROOT: .artifacts/qr-generator/downloads
+          REQUIRED_GATES: fast,medium,windows,node-url,node-text,node-arabic,node-unicode,node-wifi,node-email,node-phone,browser,stability,full
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+        run: node scripts/certification/release-decision.mjs
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: qr-${{ github.sha }}-release
+          path: .artifacts/${{ env.TOOL }}/downloads
+          if-no-files-found: warn
