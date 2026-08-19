@@ -76,17 +76,10 @@ const patterns = {
 function makeEvidence(category, text, regex, source, minConfidence) {
   const lines = samples(text, new RegExp(`.*${regex.source}.*`, regex.flags.includes('i') ? 'gim' : 'gm'), 3);
   if (!lines.length) return null;
-  return {
-    category,
-    source,
-    samples: lines,
-    count: lines.length,
-    minConfidence,
-  };
+  return { category, source, samples: lines, count: lines.length, minConfidence };
 }
 
 const evidence = [];
-
 const missingLockEvidence =
   makeEvidence('missingLockfile', setupNodeCorpus || failedCorpus || corpus, patterns.missingLockfile, 'setup-node/job-log', 0.9)
   || (!packageLockExists && packageJsonExists && failedJobs.some((job) => job.steps.some((step) => /setup node|install dependencies|npm ci/i.test(step.name)))
@@ -125,9 +118,8 @@ const runHistoryMatches = recentRelevantRuns.filter((item) => item.conclusion ==
 function confidenceFor(category) {
   const direct = evidence.find((item) => item.category === category);
   if (!direct) return 0;
-  const base = direct.minConfidence;
   const repeatBoost = Math.min(0.1, runHistoryMatches * 0.05);
-  return Math.min(1, base + repeatBoost);
+  return Math.min(1, direct.minConfidence + repeatBoost);
 }
 
 const issues = [];
@@ -140,11 +132,11 @@ if (evidence.some((item) => item.category === 'missingLockfile' || item.category
     severity: 'high',
     recommendedStrategy: 'lockfile-fixer',
     confidence,
-    autoApplyAllowed: false,
+    autoApplyAllowed: true,
     rule: 'R010',
     evidence: directLock,
     runHistoryMatches,
-    reason: 'Dependency/setup evidence indicates a lockfile or npm installation problem.',
+    reason: 'Dependency/setup evidence indicates a lockfile or npm installation problem, and this is the only allow-listed automatic repair strategy.',
   });
 }
 
@@ -202,7 +194,7 @@ if (securityEvidence) {
 
 const baseRef = run.pull_requests?.[0]?.base?.ref ?? 'main';
 const conflictingHighRisk = issues.some((issue) => issue.severity === 'critical');
-const lockfileCandidate = issues.find((issue) => issue.recommendedStrategy === 'lockfile-fixer');
+const lockfileCandidate = issues.find((issue) => issue.recommendedStrategy === 'lockfile-fixer' && issue.autoApplyAllowed === true);
 
 const report = {
   version: 2,
@@ -232,6 +224,8 @@ const report = {
     majorDependencyAutoMutation: false,
     productionAutoMerge: false,
     defaultMode: 'dry-run',
+    automaticStrategies: ['lockfile-fixer'],
+    automaticStrategyRequirement: 'autoApplyAllowed === true and confidence >= 0.85',
   },
 };
 
