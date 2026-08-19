@@ -267,6 +267,7 @@ jobs:
           NODE
       - name: Run fast independent Node QR matrix
         run: |
+          set -o pipefail
           mkdir -p .artifacts/qr
           node scripts/test-qr-payload-matrix.mjs | tee .artifacts/qr/node-matrix.json
       - name: Cache Playwright browsers
