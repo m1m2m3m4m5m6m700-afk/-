@@ -7,9 +7,9 @@
   "sourceArtifactId": "9377114440",
   "sourceArtifactName": "certification-059b269cda951284e150c79f08fa60a699f75697",
   "sourceArtifactDigest": "sha256:7bad1633097f16ce2678a61cd60fe8d9988d3bd161532a99f1b937f7551f50b1",
-  "baselineFileSha256": "868b0a9ddd64dce1040c952319a9bf82b394b3aa527e4e38ab4ea313633a4d44",
+  "baselineFileSha256": "fd7c296b59c50d661b12d16d0d2daeae3a1413b0a32d96cf59856b33874478f1",
   "certifiedAt": "2026-08-19T17:57:36.588Z",
   "expiresAt": "2026-09-18T17:57:36.588Z",
-  "promotionNote": "Frozen from the official CERTIFIED run artifact. Main promotion commit is intentionally distinct from the source certification commit and must not be treated as a fresh certification run.",
+  "promotionNote": "Frozen from the official CERTIFIED run artifact. Normalized to certification-baseline.v1 without changing source certification provenance.",
   "immutable": true
 }
