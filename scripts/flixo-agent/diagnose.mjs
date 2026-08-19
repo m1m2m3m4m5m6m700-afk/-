@@ -1,13 +1,13 @@
 const PATTERNS = [
   {
-    id: 'lockfile',
-    layer: 'DEPENDENCY',
-    expression: /package-lock\.json|npm ci|ERESOLVE|lockfile|cannot find module|cannot find package/i,
-  },
-  {
     id: 'jsqr',
     layer: 'DEPENDENCY',
-    expression: /jsqr|Cannot find module.*qrcode|QR Node Matrix/i,
+    expression: /jsqr|Cannot find module\s+['\"]jsqr['\"]|QR Node Matrix/i,
+  },
+  {
+    id: 'lockfile',
+    layer: 'DEPENDENCY',
+    expression: /package-lock\.json|ERESOLVE|npm ci.*(?:failed|error)|lockfile.*(?:mismatch|invalid|out of sync)/i,
   },
   {
     id: 'playwright',
