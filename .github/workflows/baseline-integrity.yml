@@ -1,0 +1,29 @@
+name: Certification Baseline Integrity
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "baselines/**"
+      - "scripts/validate-certification-baseline.mjs"
+  push:
+    branches: [main]
+    paths:
+      - "baselines/**"
+      - "scripts/validate-certification-baseline.mjs"
+
+permissions:
+  contents: read
+
+jobs:
+  baseline-integrity:
+    name: Baseline Integrity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: node scripts/validate-certification-baseline.mjs
