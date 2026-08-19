@@ -4,18 +4,24 @@ import { assertPngArtifact } from "./utils/image-validator";
 test.describe.configure({ mode: "serial", retries: 1, timeout: 45_000 });
 
 const CRITICAL_CASES = [
-  { id: "arabic", modeIndex: 1, input: "مرحبا Flixo — اختبار QR ✓" },
-  { id: "wifi", modeIndex: 2, ssid: "Office;WiFi\\5G", pass: "p@ss:word,42" },
-  { id: "long-unicode", modeIndex: 1, input: "مرحبا Flixo — QR ✓ اختبار ".repeat(12) },
-  { id: "rapid-change", modeIndex: 0, input: "https://example.com/final-result" },
+  { id: "arabic", mode: "text", input: "مرحبا Flixo — اختبار QR ✓" },
+  { id: "wifi", mode: "wifi", ssid: "Office;WiFi\\5G", pass: "p@ss:word,42" },
+  { id: "long-unicode", mode: "text", input: "مرحبا Flixo — QR ✓ اختبار ".repeat(12) },
+  { id: "rapid-change", mode: "url", input: "https://example.com/final-result" },
 ] as const;
 
 async function openTool(page: Page) {
   await page.goto("/tools/qr-generator", { waitUntil: "domcontentloaded", timeout: 10_000 });
+  await expect(page.locator('div[data-qr-ready="true"]')).toHaveCount(1, { timeout: 10_000 });
   await expect(page.locator("h1")).toHaveCount(1, { timeout: 10_000 });
-  await expect(page.locator('button[aria-pressed]')).toHaveCount(5, { timeout: 10_000 });
+  await expect(page.locator("[data-qr-mode-button]")).toHaveCount(5, { timeout: 10_000 });
   await expect(page.getByRole("button", { name: "Download PNG" })).toBeVisible({ timeout: 10_000 });
   await expect(page.getByRole("button", { name: "Download Vector SVG" })).toBeVisible({ timeout: 10_000 });
+}
+
+async function selectMode(page: Page, mode: "url" | "text" | "wifi") {
+  await page.locator(`[data-qr-mode-button="${mode}"]`).click({ timeout: 5_000 });
+  await expect(page.locator(`[data-qr-mode="${mode}"]`)).toHaveCount(1, { timeout: 5_000 });
 }
 
 async function readDownloadBuffer(download: Download) {
@@ -28,17 +34,26 @@ async function readDownloadBuffer(download: Download) {
 
 async function assertCase(page: Page, testInfo: TestInfo, item: (typeof CRITICAL_CASES)[number]) {
   try {
-    await page.locator('button[aria-pressed]').nth(item.modeIndex).click({ timeout: 5_000 });
+    await selectMode(page, item.mode);
     if (item.id === "wifi") {
-      await expect(page.locator('input[type="password"]')).toBeVisible({ timeout: 5_000 });
-      await page.locator('input[type="text"]').first().fill(item.ssid, { timeout: 5_000 });
-      await page.locator('input[type="password"]').fill(item.pass, { timeout: 5_000 });
-    } else if (item.id === "rapid-change") {
-      const input = page.locator('input[type="text"]').first();
+      const ssid = page.locator('[data-qr-input="wifi-ssid"]');
+      const password = page.locator('[data-qr-input="wifi-password"]');
+      const encryption = page.locator('[data-qr-input="wifi-encryption"]');
+      await expect(ssid).toBeVisible({ timeout: 5_000 });
+      await expect(password).toBeVisible({ timeout: 5_000 });
+      await expect(encryption).toBeVisible({ timeout: 5_000 });
+      await ssid.fill(item.ssid, { timeout: 5_000 });
+      await password.fill(item.pass, { timeout: 5_000 });
+      await encryption.selectOption("WPA");
+    } else if (item.mode === "url") {
+      const input = page.locator('[data-qr-input="url"]');
+      await expect(input).toBeVisible({ timeout: 5_000 });
       await input.fill("https://example.com/old-result");
       await input.fill(item.input);
     } else {
-      await page.locator("textarea").fill(item.input, { timeout: 5_000 });
+      const textarea = page.locator('[data-qr-input="text"]');
+      await expect(textarea).toBeVisible({ timeout: 5_000 });
+      await textarea.fill(item.input, { timeout: 5_000 });
     }
 
     await expect(page.locator("img[alt]").first()).toBeVisible({ timeout: 10_000 });
