@@ -1,10 +1,10 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 
 const root = process.cwd();
 const manifestPath = path.join(root, "src/lib/tool-platform/publicDesktopTools.ts");
 const readyToolsPath = path.join(root, "src/lib/tool-runtime/readyTools.ts");
-const smokeSpecPath = path.join(root, "tests/desktop-tools.spec.ts");
+const testsDirectory = path.join(root, "tests");
 const contentFile = path.join(root, "src/data/toolContent.ts");
 const seoFile = path.join(root, "src/data/toolSeo.ts");
 const dynamicRouteFile = path.join(root, "src/routes/tools/$slug.tsx");
@@ -13,9 +13,22 @@ const runtimeDirectory = path.join(root, "src/lib/tool-runtime/tools");
 const read = (file) => readFileSync(file, "utf8");
 const manifestSource = read(manifestPath);
 const readySource = read(readyToolsPath);
-const smokeSource = read(smokeSpecPath);
 const contentSource = read(contentFile);
 const seoSource = read(seoFile);
+
+const collectSpecFiles = (directory) => {
+  if (!existsSync(directory)) return [];
+  const files = [];
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const fullPath = path.join(directory, entry.name);
+    if (entry.isDirectory()) files.push(...collectSpecFiles(fullPath));
+    else if (/\.(spec|test)\.(tsx?|jsx?)$/.test(entry.name)) files.push(fullPath);
+  }
+  return files;
+};
+
+const smokeSpecFiles = collectSpecFiles(testsDirectory);
+const smokeSource = smokeSpecFiles.map(read).join("\n\n");
 
 const publicTools = [...manifestSource.matchAll(/id:\s*"([^"]+)"[\s\S]*?slug:\s*"([^"]+)"/g)].map((match) => ({
   id: match[1],
@@ -45,7 +58,7 @@ if (runtimeImports.length !== publicTools.length) {
 }
 if (!existsSync(dynamicRouteFile)) errors.push("Dynamic tool route src/routes/tools/$slug.tsx is missing.");
 if (!hasDynamicDesktopToolCoverage) {
-  errors.push("Desktop E2E spec is missing the canonical dynamic public-tool route helper.");
+  errors.push("Browser E2E specs are missing the canonical dynamic public-tool route helper.");
 }
 
 for (const tool of publicTools) {
@@ -57,15 +70,16 @@ for (const tool of publicTools) {
   if (!seoSource.includes(`"${tool.slug}"`)) errors.push(`${tool.slug}: SEO registry entry missing`);
 
   const hasExplicitCoverage = smokeSource.includes(`openTool(page, "${tool.slug}")`);
-  if (!hasExplicitCoverage) errors.push(`${tool.slug}: no operational E2E coverage detected`);
+  if (!hasExplicitCoverage) errors.push(`${tool.slug}: no operational E2E coverage detected across test specs`);
   if (!runtimeSource.includes(`toolId: "${tool.id}"`)) errors.push(`${tool.slug}: runtime module is missing toolId binding`);
 }
 
 const report = {
-  schemaVersion: 4,
+  schemaVersion: 5,
   generatedAt: new Date().toISOString(),
   verifiedPublicRuntimes: publicTools.map((tool) => tool.slug),
   count: publicTools.length,
+  browserSpecCount: smokeSpecFiles.length,
   requiredEvidence: [
     "runtime",
     "dynamic-route",
