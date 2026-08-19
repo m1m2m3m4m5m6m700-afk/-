@@ -23,7 +23,6 @@ for (const [name, file] of Object.entries(files)) {
 const manifest = fs.readFileSync(files.manifest, "utf8");
 const contracts = fs.readFileSync(files.contracts, "utf8");
 const promotion = fs.readFileSync(files.promotion, "utf8");
-
 const has = (source, text) => source.includes(text);
 
 const required = [
@@ -53,13 +52,16 @@ const strictChecks = [
   "invariant",
   "evidence",
 ];
-
-const contractSlice = contracts.match(
-  new RegExp(`toolId: "${slug}"[\\s\\S]{0,240}`),
-)?.[0] ?? "";
+const contractSlice = contracts.match(new RegExp(`toolId: "${slug}"[\\s\\S]{0,240}`))?.[0] ?? "";
 if (!contractSlice.includes("requiredChecks: strictChecks")) {
   fail(`tool ${slug} is not attached to the canonical strict certification checks`);
 }
+
+const governance = spawnSync("node", ["scripts/validate-tool-governance.mjs"], {
+  stdio: "inherit",
+  env: { ...process.env, CI: process.env.CI ?? "1" },
+});
+if (governance.status !== 0) fail(`tool governance validation failed for ${slug}`);
 
 const validation = spawnSync("node", ["scripts/validate-release-tools.mjs"], {
   stdio: "inherit",
