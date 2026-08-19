@@ -75,7 +75,7 @@ jobs:
         run: node scripts/verify-fast-gate.mjs fast
       - name: Publish fast-gate evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: fast-gate-${{ github.sha }}
           path: .artifacts/gates/fast-gate.json
@@ -108,14 +108,14 @@ jobs:
         run: node scripts/validate-performance-regression.mjs
       - name: Publish medium-gate evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: medium-gate-${{ github.sha }}
           path: .artifacts/gates/medium-gate.json
           if-no-files-found: warn
       - name: Publish performance regression evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: performance-regression-${{ github.sha }}
           path: .artifacts/gates/performance-regression.json
@@ -153,13 +153,26 @@ jobs:
         shell: pwsh
         run: |
           node --input-type=module -e "import { chromium } from 'playwright'; const b = await chromium.launch({headless:true}); await b.close(); console.log('Chromium launch: OK')"
+      - name: Write environment smoke evidence
+        if: always()
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path .artifacts/environment-smoke | Out-Null
+          @{
+            commit = $env:GITHUB_SHA
+            runner = $env:RUNNER_OS
+            node = (node --version)
+            npm = (npm --version)
+            playwright = (npx playwright --version)
+            timestamp = (Get-Date).ToUniversalTime().ToString("o")
+          } | ConvertTo-Json | Set-Content .artifacts/environment-smoke/summary.json
       - name: Publish environment evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: environment-smoke-${{ github.sha }}
-          path: .artifacts/gates
-          if-no-files-found: warn
+          path: .artifacts/environment-smoke/summary.json
+          if-no-files-found: error
 
   full-certification:
     name: Full certification (browser + E2E + build + audit)
@@ -181,7 +194,7 @@ jobs:
       - name: Validate lockfile
         run: node scripts/validate-lockfile.mjs
       - name: Cache Playwright browsers
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
@@ -216,7 +229,7 @@ jobs:
         run: node scripts/seal-evidence.mjs .artifacts/full
       - name: Publish full evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: full-certification-${{ github.sha }}
           path: .artifacts/full
@@ -257,7 +270,7 @@ jobs:
           mkdir -p .artifacts/qr
           node scripts/test-qr-payload-matrix.mjs | tee .artifacts/qr/node-matrix.json
       - name: Cache Playwright browsers
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
@@ -288,7 +301,7 @@ jobs:
           node scripts/seal-evidence.mjs .artifacts/qr
       - name: Publish QR evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: qr-certification-${{ github.sha }}
           path: .artifacts/qr
@@ -314,7 +327,7 @@ jobs:
         run: node scripts/diagnose-ci-failure.mjs
       - name: Publish diagnosis evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ci-failure-diagnosis-${{ github.sha }}
           path: .artifacts/diagnostics/ci-failure-diagnosis.json
@@ -332,19 +345,19 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Download fast gate evidence
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: fast-gate-${{ github.sha }}
           path: .artifacts/gates
         continue-on-error: true
       - name: Download medium gate evidence
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: medium-gate-${{ github.sha }}
           path: .artifacts/gates
         continue-on-error: true
       - name: Download failure diagnosis
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: ci-failure-diagnosis-${{ github.sha }}
           path: .artifacts/diagnostics
@@ -370,7 +383,7 @@ jobs:
         run: node scripts/seal-evidence.mjs .artifacts/release-tools
       - name: Publish certification evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: certification-${{ github.sha }}
           path: .artifacts/release-tools
