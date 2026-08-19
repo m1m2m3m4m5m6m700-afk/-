@@ -2,6 +2,26 @@
   "schemaVersion": 1,
   "signatures": [
     {
+      "id": "yaml",
+      "category": "CI_CONFIG",
+      "source": "ci-config",
+      "priority": 140,
+      "confidence": 0.995,
+      "patterns": ["Invalid workflow file", "YAML syntax", "Unexpected value"],
+      "regex": false,
+      "repair": "Fix workflow YAML only; do not touch product code."
+    },
+    {
+      "id": "typescript-blobpart",
+      "category": "CODE",
+      "source": "code",
+      "priority": 125,
+      "confidence": 0.999,
+      "patterns": ["Type 'Uint8Array<ArrayBufferLike>' is not assignable to type 'BlobPart'", "SharedArrayBuffer.*BlobPart"],
+      "regex": true,
+      "repair": "Normalize typed byte buffers to an ArrayBuffer before passing them to Blob; change only the reported output-buffer boundary."
+    },
+    {
       "id": "lint",
       "category": "CODE",
       "source": "code",
@@ -20,16 +40,6 @@
       "patterns": ["expect\\(", "Test timeout", "Locator.*not found", "received.*expected"],
       "regex": true,
       "repair": "Reproduce the exact failing test and fix the asserted behavior or test contract."
-    },
-    {
-      "id": "yaml",
-      "category": "CI_CONFIG",
-      "source": "ci-config",
-      "priority": 120,
-      "confidence": 0.995,
-      "patterns": ["Invalid workflow file", "YAML syntax", "Unexpected value"],
-      "regex": false,
-      "repair": "Fix workflow YAML only; do not touch product code."
     },
     {
       "id": "dependency-install",
