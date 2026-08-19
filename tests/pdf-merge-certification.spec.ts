@@ -8,8 +8,8 @@ async function makePdf(name: string, pages: Array<[number, number]>) {
   return { name, mimeType: "application/pdf", buffer: Buffer.from(bytes) };
 }
 
-async function openTool(page: Page) {
-  await page.goto("/tools/pdf-merge", { waitUntil: "domcontentloaded", timeout: 15_000 });
+async function openTool(page: Page, slug: string) {
+  await page.goto(`/tools/${slug}`, { waitUntil: "domcontentloaded", timeout: 15_000 });
   await expect(page.locator('[data-pdf-merge-ready="true"]')).toHaveCount(1, { timeout: 10_000 });
   await expect(page.locator('[data-pdf-merge-input="true"]')).toHaveCount(1);
 }
@@ -35,7 +35,7 @@ async function certifyMergedPdf(bytes: Buffer, expectedSizes: Array<[number, num
 
 test.describe("PDF Merge critical output certification", () => {
   test("merges PDFs, preserves page order, and downloads a valid PDF", async ({ page }, testInfo) => {
-    await openTool(page);
+    await openTool(page, "pdf-merge");
 
     const first = await makePdf("first.pdf", [[200, 300], [210, 310]]);
     const second = await makePdf("second.pdf", [[400, 500]]);
@@ -69,7 +69,7 @@ test.describe("PDF Merge critical output certification", () => {
   });
 
   test("rejects a single input instead of generating an invalid merge", async ({ page }) => {
-    await openTool(page);
+    await openTool(page, "pdf-merge");
     const only = await makePdf("only.pdf", [[200, 300]]);
     await page.locator('[data-pdf-merge-input="true"]').setInputFiles(only);
     await expect(page.getByRole("button", { name: "Merge PDFs" })).toBeDisabled();
