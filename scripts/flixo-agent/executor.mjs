@@ -32,7 +32,7 @@ function assertRepairPlan(plan) {
   }
 }
 
-function applyChange(source, change) {
+export function applyChange(source, change) {
   if (change.type === 'replace') {
     if (typeof change.find !== 'string' || change.find.length === 0) {
       throw new Error(`Replace change requires non-empty find text for ${change.file}`);
@@ -90,10 +90,11 @@ export async function applyRepairPlan(plan, { rootDir = process.cwd(), dryRun = 
     applied: !dryRun,
     dryRun,
     files: updates.map(({ file }) => file),
+    updates,
     note: dryRun
       ? 'Dry-run only. No files were written.'
       : 'Plan applied. Dependency synchronization and git commit must be performed by the outer execution layer after verification.',
   };
 }
 
-export default { applyRepairPlan };
+export default { applyRepairPlan, applyChange };
