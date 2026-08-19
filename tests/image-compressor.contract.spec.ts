@@ -12,6 +12,6 @@ test.describe("Image Compressor contract", () => {
     });
 
     await expect(page.getByRole("alert")).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByRole("button", { name: /Download/i })).toHaveCount(1);
+    await expect(page.getByRole("button", { name: /Download/i })).toHaveCount(0);
   });
 });
