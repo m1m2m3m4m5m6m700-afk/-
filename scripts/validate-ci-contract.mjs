@@ -72,6 +72,9 @@ const scripts = pkg?.scripts ?? {};
 if (pkg && !scripts["validate-ci-contract"]) {
   failures.push("package.json: missing scripts.validate-ci-contract");
 }
+if (pkg && !scripts.verify) {
+  failures.push("package.json: missing scripts.verify");
+}
 
 if (fs.existsSync(nvmrcPath) && pkg?.engines?.node) {
   const nvmVersion = readText(nvmrcPath).trim();
@@ -132,6 +135,15 @@ if (!fs.existsSync(workflowsDir)) {
       const versionFile = resolveWorkflowValue(rawVersionFile, workflowEnv);
       if (!fs.existsSync(path.join(root, versionFile))) {
         failures.push(`${relativeWorkflow}: node-version-file ${rawVersionFile} resolved to ${versionFile}, which does not exist`);
+      }
+    }
+
+    if (relativeWorkflow === path.join(".github", "workflows", "ci.yml")) {
+      if (!/npm\s+run\s+verify\b/.test(workflow)) {
+        failures.push(".github/workflows/ci.yml: canonical verification gate must execute npm run verify");
+      }
+      if (!/timeout\s+--signal=TERM\s+--kill-after=30s\s+35m\s+/.test(workflow)) {
+        failures.push(".github/workflows/ci.yml: canonical verification gate must have a 35-minute shell timeout with TERM/KILL escalation");
       }
     }
   }
