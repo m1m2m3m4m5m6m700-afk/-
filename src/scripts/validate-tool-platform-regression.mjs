@@ -1,19 +1,35 @@
 import { readFile } from "node:fs/promises";
 
 const registry = await readFile("src/lib/tool-platform/publicDesktopTools.ts", "utf8");
+const contracts = await readFile("src/lib/tool-platform/testContracts.ts", "utf8");
 const tests = await readFile("tests/desktop-tools.spec.ts", "utf8");
 
-const tools = [
-  ["zip-creator", "ZIP Creator"],
-  ["archive-extractor", "Archive Extractor"],
-  ["file-splitter", "File Splitter"],
-  ["metadata-viewer", "Metadata Viewer"],
-];
+const publicTools = [
+  ...registry.matchAll(/\n\s+id:\s*"([^"]+)"/g),
+].map((match) => match[1]);
 
-for (const [slug, title] of tools) {
-  if (!registry.includes(`id: \"${slug}\"`)) throw new Error(`Public manifest missing: ${slug}`);
-  if (!tests.includes(title)) throw new Error(`Regression test missing: ${title}`);
-  if (!tests.includes(`/tools/${slug}`)) throw new Error(`Regression route missing: ${slug}`);
+if (publicTools.length === 0) {
+  throw new Error("Desktop regression contract: public manifest contains no tools.");
 }
 
-console.log("Desktop regression contract: PASS");
+const contractTools = new Set(
+  [...contracts.matchAll(/toolId:\s*"([^"]+)"/g)].map((match) => match[1]),
+);
+
+const routeAssertions = new Set([
+  ...[...tests.matchAll(/openTool\(page,\s*["']([^"']+)["']\)/g)].map((match) => match[1]),
+  ...[...tests.matchAll(/page\.goto\(\s*["']\/tools\/([^"']+)["']/g)].map((match) => match[1]),
+]);
+
+for (const toolId of publicTools) {
+  if (!contractTools.has(toolId)) {
+    throw new Error(`Desktop regression contract: test contract missing: ${toolId}`);
+  }
+  if (!routeAssertions.has(toolId)) {
+    throw new Error(`Desktop regression contract: E2E route assertion missing: ${toolId}`);
+  }
+}
+
+console.log(
+  `Desktop regression contract: PASS — ${publicTools.length} public tools are registered, contracted, and routed.`,
+);
