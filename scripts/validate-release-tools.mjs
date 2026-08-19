@@ -35,11 +35,18 @@ for (const runtimeFileName of runtimeImports) {
   runtimeSources.set(runtimeFileName, read(runtimePath));
 }
 
+const hasDynamicDesktopToolCoverage =
+  smokeSource.includes("async function openTool(page: Page, slug: string)") &&
+  smokeSource.includes("page.goto(`/tools/${slug}`)");
+
 if (publicTools.length === 0) errors.push("Public Tool Platform manifest is empty.");
 if (runtimeImports.length !== publicTools.length) {
   errors.push(`Public runtime count (${runtimeImports.length}) does not match manifest count (${publicTools.length}).`);
 }
 if (!existsSync(dynamicRouteFile)) errors.push("Dynamic tool route src/routes/tools/$slug.tsx is missing.");
+if (!hasDynamicDesktopToolCoverage) {
+  errors.push("Desktop E2E spec is missing the canonical dynamic public-tool route helper.");
+}
 
 for (const tool of publicTools) {
   const runtimeFile = path.join(runtimeDirectory, `${tool.slug}.tsx`);
@@ -48,12 +55,14 @@ for (const tool of publicTools) {
   if (!existsSync(runtimeFile)) errors.push(`${tool.slug}: runtime missing`);
   if (!contentSource.includes(`"${tool.slug}"`)) errors.push(`${tool.slug}: content registry entry missing`);
   if (!seoSource.includes(`"${tool.slug}"`)) errors.push(`${tool.slug}: SEO registry entry missing`);
-  if (!smokeSource.includes(`/tools/${tool.slug}`)) errors.push(`${tool.slug}: no operational E2E coverage detected`);
+
+  const hasExplicitCoverage = smokeSource.includes(`openTool(page, "${tool.slug}")`);
+  if (!hasExplicitCoverage) errors.push(`${tool.slug}: no operational E2E coverage detected`);
   if (!runtimeSource.includes(`toolId: "${tool.id}"`)) errors.push(`${tool.slug}: runtime module is missing toolId binding`);
 }
 
 const report = {
-  schemaVersion: 3,
+  schemaVersion: 4,
   generatedAt: new Date().toISOString(),
   verifiedPublicRuntimes: publicTools.map((tool) => tool.slug),
   count: publicTools.length,
