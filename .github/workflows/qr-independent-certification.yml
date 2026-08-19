@@ -42,8 +42,8 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - run: npm run test:certification
-      - run: npm run validate:certification:baseline
+      - run: node scripts/certification/smoke-test.mjs
+      - run: node scripts/certification/validate-baseline.mjs
       - run: npm run verify:foundation
       - name: Evidence
         if: always()
@@ -51,21 +51,14 @@ jobs:
           mkdir -p .artifacts/${TOOL}/fast
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
-          fs.writeFileSync('.artifacts/qr-generator/fast/gate-evidence.json', JSON.stringify({
-            schemaVersion:1, tool:'qr-generator', gate:'fast', commit:process.env.GITHUB_SHA,
-            runId:process.env.GITHUB_RUN_ID, status:process.env.GATE_STATUS,
-            createdAt:new Date().toISOString()
-          },null,2)+'\n');
+          fs.writeFileSync('.artifacts/qr-generator/fast/gate-evidence.json', JSON.stringify({schemaVersion:1,tool:'qr-generator',gate:'fast',commit:process.env.GITHUB_SHA,runId:process.env.GITHUB_RUN_ID,status:process.env.GATE_STATUS,createdAt:new Date().toISOString()},null,2)+'\n');
           NODE
         env:
           GATE_STATUS: ${{ job.status }}
       - name: Gate Manifest
         if: always()
         run: |
-          DURATION_MS=0 TOOL=${TOOL} GATE=fast GATE_STATUS=${{ job.status }} \
-          BASELINE_ID=${BASELINE_ID} BASELINE_COMMIT=${BASELINE_COMMIT} BASELINE_STATUS=${BASELINE_STATUS} \
-          EVIDENCE_PATH=.artifacts/${TOOL}/fast/gate-evidence.json \
-          node scripts/certification/generate-gates.mjs
+          TOOL=${TOOL} GATE=fast GATE_STATUS=${{ job.status }} BASELINE_ID=${BASELINE_ID} BASELINE_COMMIT=${BASELINE_COMMIT} BASELINE_STATUS=${BASELINE_STATUS} EVIDENCE_PATH=.artifacts/${TOOL}/fast/gate-evidence.json node scripts/certification/generate-gates.mjs
       - uses: actions/upload-artifact@v6
         if: always()
         with:
@@ -100,10 +93,7 @@ jobs:
       - name: Gate Manifest
         if: always()
         run: |
-          TOOL=${TOOL} GATE=medium GATE_STATUS=${{ job.status }} \
-          BASELINE_ID=${BASELINE_ID} BASELINE_COMMIT=${BASELINE_COMMIT} BASELINE_STATUS=${BASELINE_STATUS} \
-          EVIDENCE_PATH=.artifacts/${TOOL}/medium/gate-evidence.json \
-          node scripts/certification/generate-gates.mjs
+          TOOL=${TOOL} GATE=medium GATE_STATUS=${{ job.status }} BASELINE_ID=${BASELINE_ID} BASELINE_COMMIT=${BASELINE_COMMIT} BASELINE_STATUS=${BASELINE_STATUS} EVIDENCE_PATH=.artifacts/${TOOL}/medium/gate-evidence.json node scripts/certification/generate-gates.mjs
       - uses: actions/upload-artifact@v6
         if: always()
         with:
@@ -152,7 +142,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        case: [url, text, arabic, unicode, wifi, email, phone]
+        case: [url, text, arabic, long-unicode, wifi, email, phone]
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -296,7 +286,7 @@ jobs:
         env:
           TOOL: qr-generator
           ARTIFACT_ROOT: .artifacts/qr-generator/downloads
-          REQUIRED_GATES: fast,medium,windows,node-url,node-text,node-arabic,node-unicode,node-wifi,node-email,node-phone,browser,stability,full
+          REQUIRED_GATES: fast,medium,windows,node-url,node-text,node-arabic,node-long-unicode,node-wifi,node-email,node-phone,browser,stability,full
           GITHUB_SHA: ${{ github.sha }}
           GITHUB_RUN_ID: ${{ github.run_id }}
         run: node scripts/certification/release-decision.mjs
