@@ -20,6 +20,7 @@ const tiers = {
     ["localization", "npm", ["run", "validate:localization"]],
     ["accessibility contract", "npm", ["run", "validate:accessibility"]],
     ["security contract", "npm", ["run", "validate:security"]],
+    ["route tree generation", "npm", ["run", "generate:routes"]],
     ["TypeScript strict", "node", ["node_modules/typescript/bin/tsc", "--noEmit", "--pretty", "false"]],
     ["ESLint", "npm", ["run", "lint"]],
     ["public runtime preflight", "node", ["scripts/validate-release-tools.mjs"]],
