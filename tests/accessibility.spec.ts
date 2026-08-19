@@ -17,10 +17,11 @@ test.describe("public accessibility baseline", () => {
         const disabled = await control.isDisabled().catch(() => false);
         if (disabled) continue;
         const aria = (await control.getAttribute("aria-label"))?.trim();
-        const labelledBy = await control.getAttribute("aria-labelledby");
+        const labelledBy = (await control.getAttribute("aria-labelledby"))?.trim();
+        const title = (await control.getAttribute("title"))?.trim();
         const text = (await control.innerText().catch(() => "")).trim();
         const name = (await control.getAttribute("name"))?.trim();
-        expect(Boolean(aria || labelledBy || text || name)).toBeTruthy();
+        expect(Boolean(aria || labelledBy || title || text || name)).toBeTruthy();
       }
 
       const focused = page.locator(":focus-visible");

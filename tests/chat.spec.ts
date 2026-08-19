@@ -22,11 +22,7 @@ test.describe("Flex interactive chat", () => {
 
     await page.goto("/");
 
-    const openButton = page.getByRole("button", { name: "Open Flex chat" });
-    await expect(openButton).toBeVisible();
-    await openButton.click();
-
-    const composer = page.getByPlaceholder("Ask Flex anything about Flixo…");
+    const composer = page.getByRole("textbox", { name: /try:/i });
     await expect(composer).toBeVisible();
 
     await composer.fill("مرحبا");
@@ -52,7 +48,6 @@ test.describe("Flex interactive chat", () => {
     );
 
     await page.reload();
-    await page.getByRole("button", { name: "Open Flex chat" }).click();
 
     await expect(page.getByText("مرحبا")).toBeVisible();
     await expect(page.getByText("أهلًا! كيف أساعدك؟")).toBeVisible();
@@ -77,15 +72,14 @@ test.describe("Flex interactive chat", () => {
     });
 
     await page.goto("/");
-    await page.getByRole("button", { name: "Open Flex chat" }).click();
 
-    const quickPrompt = page.getByRole("button", { name: "What can Flixo do?" });
+    const quickPrompt = page.getByRole("button", { name: /translate text/i });
     await expect(quickPrompt).toBeVisible();
     await quickPrompt.click();
     await expect(page.getByText("mock-reply-1")).toBeVisible();
 
-    await page.getByRole("button", { name: "New chat" }).click();
-    await expect(page.getByText("Hi! I’m Flex, Flixo’s AI assistant.")).toBeVisible();
+    await page.getByRole("button", { name: "New chat" }).first().click();
+    await expect(page.getByText(/Tell me what you need/i)).toBeVisible();
     await expect(page.getByText("mock-reply-1")).not.toBeVisible();
   });
 });
