@@ -60,7 +60,12 @@ jobs:
       - name: Install Chromium for operational tests
         run: npx playwright install --with-deps chromium
       - name: Run canonical test gate
-        run: npm test
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p diagnostics
+          echo "Starting npm test at $(date -u +%FT%TZ)"
+          timeout --signal=TERM --kill-after=30s 30m npm test 2>&1 | tee diagnostics/npm-test.log
       - name: Upload browser report
         if: always()
         uses: actions/upload-artifact@v4
@@ -69,6 +74,17 @@ jobs:
           path: playwright-report
           if-no-files-found: ignore
           retention-days: 7
+      - name: Upload canonical test diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flixo-canonical-test-diagnostics-${{ github.run_id }}
+          path: |
+            diagnostics/npm-test.log
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Upload diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@v4
