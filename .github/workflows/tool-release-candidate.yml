@@ -66,7 +66,9 @@ jobs:
         run: node scripts/validate-lockfile.mjs
 
       - name: Tool release preflight
+        shell: bash
         run: |
+          set -o pipefail
           mkdir -p .artifacts/release-tools
           node scripts/validate-release-tools.mjs | tee .artifacts/release-tools/preflight.txt
 
