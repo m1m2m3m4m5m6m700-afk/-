@@ -54,6 +54,21 @@ const manifestData = [
     },
     dependencies: [],
   },
+  {
+    id: "pdf-merge",
+    slug: "pdf-merge",
+    name: "Merge PDF",
+    category: "pdf" as const,
+    description: "Combine multiple PDF files locally in your browser into one ordered document.",
+    lifecycle: "public" as const,
+    capabilities: {
+      input: "files" as const,
+      output: "download" as const,
+      localOnly: true,
+      policy: { requiresNetwork: false, requiresStorage: false, sensitiveInput: false },
+    },
+    dependencies: ["pdf-lib"],
+  },
 ] as const;
 
 const validatedManifestData = manifestData.map((manifest) => toolBaseManifestSchema.parse(manifest));
