@@ -1,3 +1,15 @@
-import { diagnose } from './core/diagnose.mjs'; import { plan } from './core/planner.mjs'; import { verify } from './core/verifier.mjs'; import { collectContext } from './core/context.mjs';
-export async function runV2(log,options={}){const context=await collectContext();const diagnosis=diagnose(log);const repairPlan=plan(diagnosis);const verification=verify(repairPlan,options);return {version:'2.0.0',context,diagnosis,plan:repairPlan,verification};}
-if(import.meta.url===`file://${process.argv[1]}`){console.log(JSON.stringify(await runV2(process.argv.slice(2).join(' ')),null,2));}
+import { diagnose } from './core/diagnose.mjs';
+import { collectContext } from './core/context.mjs';
+
+/**
+ * v2 observes and enriches detections with project context/history. It does
+ * not create a repair plan, verify it, mutate files, or execute commands.
+ */
+export async function detectV2(log) {
+  const context = await collectContext();
+  return { version: '2.0.0', role: 'DETECT_CONTEXT', context, detection: diagnose(log) };
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  console.log(JSON.stringify(await detectV2(process.argv.slice(2).join(' ')), null, 2));
+}
