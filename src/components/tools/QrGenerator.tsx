@@ -18,10 +18,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useI18n } from "@/lib/i18n";
 import { SITE_URL } from "@/lib/seo/site";
+import { buildQrPayload } from "@/lib/qr/payload.mjs";
 
 type PresetMode = "url" | "text" | "wifi" | "email" | "phone";
-
-const escapeWifiValue = (value: string): string => value.replace(/[\\;,:]/g, (character) => `\\${character}`).replaceAll('"', String.fromCharCode(92, 34));
 
 export function QrGenerator() {
   const { t } = useI18n();
@@ -42,16 +41,16 @@ export function QrGenerator() {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const getPayload = (): string => {
-    switch (mode) {
-      case "wifi": return `WIFI:T:${wifiEncryption};S:${escapeWifiValue(wifiSsid)};P:${escapeWifiValue(wifiPass)};;`;
-      case "email": return `mailto:${emailTo}?subject=${encodeURIComponent(emailSubject)}`;
-      case "phone": return `tel:${phoneNumber}`;
-      default: return input;
-    }
-  };
-
-  const payload = getPayload();
+  const payload = buildQrPayload({
+    mode,
+    input,
+    wifiSsid,
+    wifiPass,
+    wifiEncryption,
+    emailTo,
+    emailSubject,
+    phoneNumber,
+  });
 
   useEffect(() => {
     if (!payload.trim()) {
