@@ -24,24 +24,39 @@ const manifest = fs.readFileSync(files.manifest, "utf8");
 const contracts = fs.readFileSync(files.contracts, "utf8");
 const promotion = fs.readFileSync(files.promotion, "utf8");
 
+const has = (source, text) => source.includes(text);
+
 const required = [
-  [`manifest id`, new RegExp(`id:\s*"${slug}"`), manifest],
-  [`manifest slug`, new RegExp(`slug:\s*"${slug}"`), manifest],
-  [`public lifecycle`, /lifecycle:\s*"public"/, manifest],
-  [`local-only capability`, /localOnly:\s*true/, manifest],
-  [`test contract`, new RegExp(`toolId:\s*"${slug}"`), contracts],
-  [`test route`, new RegExp(`route:\s*"\/tools\/${slug}"`), contracts],
-  [`strict evidence requirement`, /requiredEvidence:\s*true/, contracts],
-  [`regression lock requirement`, /regressionLocked:\s*true/, contracts],
-  [`public certification assertion`, /assertPublicRegistration/, promotion],
+  [`manifest id`, has(manifest, `id: "${slug}"`)],
+  [`manifest slug`, has(manifest, `slug: "${slug}"`)],
+  [`public lifecycle`, has(manifest, `lifecycle: "public"`)],
+  [`local-only capability`, has(manifest, "localOnly: true")],
+  [`test contract`, has(contracts, `toolId: "${slug}"`)],
+  [`test route`, has(contracts, `route: "/tools/${slug}"`)],
+  [`strict evidence requirement`, has(contracts, "requiredEvidence: true")],
+  [`regression lock requirement`, has(contracts, "regressionLocked: true")],
+  [`public certification assertion`, has(promotion, "assertPublicRegistration")],
 ];
 
-for (const [name, pattern, source] of required) {
-  if (!pattern.test(source)) fail(`${name} is missing for ${slug}`);
+for (const [name, passed] of required) {
+  if (!passed) fail(`${name} is missing for ${slug}`);
 }
 
-const strictChecks = ["render", "interaction", "output", "error", "security", "performance", "mutation", "invariant", "evidence"];
-const contractSlice = contracts.match(new RegExp(`toolId:\s*"${slug}"[\\s\\S]{0,180}`))?.[0] ?? "";
+const strictChecks = [
+  "render",
+  "interaction",
+  "output",
+  "error",
+  "security",
+  "performance",
+  "mutation",
+  "invariant",
+  "evidence",
+];
+
+const contractSlice = contracts.match(
+  new RegExp(`toolId: "${slug}"[\\s\\S]{0,240}`),
+)?.[0] ?? "";
 if (!contractSlice.includes("requiredChecks: strictChecks")) {
   fail(`tool ${slug} is not attached to the canonical strict certification checks`);
 }
