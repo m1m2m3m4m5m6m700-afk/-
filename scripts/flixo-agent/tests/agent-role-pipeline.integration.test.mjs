@@ -51,8 +51,9 @@ test('v1/v2 observe, v3 decides, v4 acts on development branch', async () => {
   const gate = validateV3PlanForExecution(decisionPackage);
   assert.equal(gate.valid, true);
 
-  const dryRun = await executePlan(decisionPackage, fakeRunner('success'), { apply: false });
+  const dryRun = await executePlan(decisionPackage, fakeRunner('success'), { apply: false, branch: DEVELOPMENT_BRANCH });
   assert.equal(dryRun.status, 'dry-run');
+  assert.equal(dryRun.developmentBranch, DEVELOPMENT_BRANCH);
 
   const successRunner = fakeRunner('success');
   const success = await executePlan(decisionPackage, successRunner, { apply: true, branch: DEVELOPMENT_BRANCH });
@@ -67,9 +68,23 @@ test('v1/v2 observe, v3 decides, v4 acts on development branch', async () => {
   assert.equal(failureRunner.events.some((e) => e[0] === 'accept'), false);
 });
 
-test('v4 rejects an unverified, non-v3, or non-development execution package', async () => {
+test('v4 rejects execution outside the development branch', async () => {
+  const roots = diagnoseAll(LOG);
+  const plan = buildStrategicPlan(roots);
+  const verification = verify(plan);
+  const decisionPackage = { plan, verification };
+  await assert.rejects(
+    () => executePlan(decisionPackage, fakeRunner('success'), { apply: true, branch: 'main' }),
+    /development branch/
+  );
+  await assert.rejects(
+    () => executePlan(decisionPackage, fakeRunner('success'), { apply: true, branch: 'feature/other' }),
+    /development branch/
+  );
+});
+
+test('v4 rejects an unverified or non-v3 package', async () => {
   const runner = fakeRunner('success');
   await assert.rejects(() => executePlan({ plan: { version: 3, status: 'planned', steps: [], policy: { autoApply: false } }, verification: { valid: false } }, runner, { apply: true, branch: DEVELOPMENT_BRANCH }));
   await assert.rejects(() => executePlan({ plan: { version: 2, status: 'planned', steps: [] }, verification: { valid: true } }, runner, { apply: true, branch: DEVELOPMENT_BRANCH }));
-  await assert.rejects(() => executePlan({ plan: { version: 3, status: 'planned', steps: [], policy: { autoApply: false } }, verification: { valid: true } }, runner, { apply: true, branch: 'main' }));
 });
