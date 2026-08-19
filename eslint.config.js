@@ -31,8 +31,6 @@ export default tseslint.config(
           ],
         },
       ],
-      // Allow variables that are intentionally read by a closure before their
-      // assignment (for example, a timer referenced by cleanup logic).
       "prefer-const": ["error", { ignoreReadBeforeAssign: true }],
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
       "react-hooks/set-state-in-effect": "off",
@@ -70,6 +68,13 @@ export default tseslint.config(
     ],
     rules: {
       "react-refresh/only-export-components": "off",
+    },
+  },
+  {
+    files: ["src/lib/ai/chat/handler.ts"],
+    rules: {
+      // The chat sanitizer intentionally removes NUL characters from untrusted input.
+      "no-control-regex": "off",
     },
   },
 );

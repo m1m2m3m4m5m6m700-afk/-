@@ -3,8 +3,7 @@ import { useEffect } from "react";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { ToolLayout } from "@/components/tools/ToolLayout";
 import { getReadyToolRuntime } from "@/lib/tool-runtime/readyTools";
-import { tools } from "@/data/tools";
-import { getVerifiedDesktopTool } from "@/lib/desktop-tools/verifiedCatalog";
+import { getPublicToolRegistrationBySlug } from "@/lib/tool-platform";
 import { trackPageView } from "@/lib/analytics";
 import { useI18n } from "@/lib/i18n";
 import { resolveCategoryName, resolveToolName } from "@/lib/i18n/keys";
@@ -12,24 +11,29 @@ import { buildToolHeadMetadata } from "@/lib/seo/toolPageMetadata";
 import { usePageSeo } from "@/lib/usePageSeo";
 
 export const Route = createFileRoute("/tools/$slug")({
-  head: ({ params }) =>
-    buildToolHeadMetadata(params.slug, getReadyToolRuntime(params.slug)?.seoOverride),
+  head: ({ params }) => {
+    const registration = getPublicToolRegistrationBySlug(params.slug);
+    return buildToolHeadMetadata(
+      params.slug,
+      registration ? getReadyToolRuntime(params.slug)?.seoOverride : undefined,
+    );
+  },
   component: ToolSlugRoute,
 });
 
 function ToolSlugRoute() {
   const { t } = useI18n();
-  const { slug } = Route.useParams() as { slug: string };
-
+  const { slug } = Route.useParams();
   const runtime = getReadyToolRuntime(slug);
+  const registration = getPublicToolRegistrationBySlug(slug);
+
   usePageSeo(slug, runtime?.seoOverride, "en");
 
   useEffect(() => {
     trackPageView(`/tools/${slug}`);
   }, [slug]);
 
-  const toolRecord = tools.find((tool) => tool.slug === slug || tool.id === slug) ?? getVerifiedDesktopTool(slug);
-  if (!runtime || !toolRecord || toolRecord.status !== "ready") throw notFound();
+  if (!runtime || !registration) throw notFound();
 
   const ToolComponent = runtime.component;
   const description = runtime.layoutDescriptionKey
@@ -40,10 +44,10 @@ function ToolSlugRoute() {
     <SiteLayout>
       <ToolLayout
         icon={runtime.icon}
-        name={resolveToolName(runtime.toolId, t)}
+        name={resolveToolName(registration.manifest.id, t)}
         description={description}
-        category={resolveCategoryName(runtime.categoryId, t)}
-        slug={runtime.slug}
+        category={resolveCategoryName(registration.manifest.category, t)}
+        slug={registration.manifest.slug}
       >
         <ToolComponent />
       </ToolLayout>

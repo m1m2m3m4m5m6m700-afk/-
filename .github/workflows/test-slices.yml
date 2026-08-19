@@ -1,0 +1,229 @@
+name: Test Slices
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [develop]
+  workflow_dispatch:
+  schedule:
+    - cron: "37 2 * * 3"
+
+concurrency:
+  group: test-slices-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION_FILE: .nvmrc
+
+jobs:
+  fast-gate:
+    name: Fast / ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - name: lockfile
+            command: node scripts/validate-lockfile.mjs
+          - name: typecheck
+            command: npm run typecheck
+          - name: lint
+            command: npm run lint
+          - name: registry
+            command: npm run validate:registry
+          - name: tool-runtime
+            command: npm run validate:tool-runtime
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Validate package/lock contract before install
+        run: node scripts/validate-package-lock-contract.mjs
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: ${{ env.NODE_VERSION_FILE }}
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Run fast diagnostic
+        run: ${{ matrix.command }}
+      - name: Lockfile unchanged
+        if: success()
+        run: git diff --exit-code -- package.json package-lock.json
+
+  contract-gate:
+    name: Contract / ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: search-catalog
+            command: npm run validate:search-catalog
+          - name: seo
+            command: npm run validate:seo
+          - name: tool-content
+            command: npm run validate:tool-content
+          - name: localization
+            command: npm run validate:localization
+          - name: localization-surface
+            command: npm run validate:localization-surface
+          - name: search-intent
+            command: npm run validate:search-intent
+          - name: tool-content-state
+            command: npm run validate:tool-content-localization
+          - name: tool-review
+            command: npm run validate:tool-review
+          - name: ai-contract
+            command: npm run validate:ai
+          - name: accessibility
+            command: npm run validate:accessibility
+          - name: security
+            command: npm run validate:security
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Validate package/lock contract before install
+        run: node scripts/validate-package-lock-contract.mjs
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: ${{ env.NODE_VERSION_FILE }}
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Run isolated contract slice
+        run: ${{ matrix.command }}
+      - name: Lockfile unchanged
+        if: success()
+        run: git diff --exit-code -- package.json package-lock.json
+
+  edge-regression:
+    name: Repeated desktop edge regression (advisory)
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: ${{ env.NODE_VERSION_FILE }}
+          cache: npm
+      - run: npm ci
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+      - run: npx playwright install --with-deps chromium
+      - name: Run repeated desktop regression
+        run: npm run test:desktop:flaky
+      - name: Record edge timing
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p .artifacts/edge
+          printf 'timestamp=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .artifacts/edge/run.txt
+      - name: Publish edge evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: edge-regression-evidence
+          path: .artifacts/edge
+          if-no-files-found: ignore
+
+  lighthouse:
+    name: Lighthouse performance and UX audit (advisory)
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: ${{ env.NODE_VERSION_FILE }}
+          cache: npm
+      - run: npm ci
+      - name: Build with timing evidence
+        shell: bash
+        run: |
+          mkdir -p .artifacts/lighthouse
+          start=$(date +%s)
+          npm run build > .artifacts/lighthouse/build.log 2>&1
+          code=$?
+          end=$(date +%s)
+          printf '{"exitCode":%s,"durationSeconds":%s}\n' "$code" "$((end-start))" > .artifacts/lighthouse/build-timing.json
+          exit "$code"
+      - name: Run Lighthouse CI
+        shell: bash
+        run: |
+          set +e
+          npx @lhci/cli@0.15.1 autorun > .artifacts/lighthouse/lhci.log 2>&1
+          code=$?
+          printf '{"exitCode":%s,"timestamp":"%s"}\n' "$code" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .artifacts/lighthouse/lhci-status.json
+          cat .artifacts/lighthouse/lhci.log
+          exit 0
+      - name: Collect Lighthouse output
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p .artifacts/lighthouse
+          if [ -d .lighthouseci ]; then cp -R .lighthouseci .artifacts/lighthouse/.lighthouseci; fi
+          du -sh dist 2>/dev/null | awk '{print "buildOutputSize=" $1}' > .artifacts/lighthouse/build-size.txt || true
+      - name: Publish Lighthouse evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-performance-evidence
+          path: .artifacts/lighthouse
+          if-no-files-found: ignore
+
+  localization-report-advisory:
+    name: Localization report (advisory)
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: ${{ env.NODE_VERSION_FILE }}
+          cache: npm
+      - run: npm ci
+      - name: Run non-blocking localization report
+        run: npm run report:localization
+      - name: Publish localization report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: localization-report
+          path: reports/localization-report.txt
+          if-no-files-found: ignore
+
+  pdf-catalog-advisory:
+    name: PDF mega catalog roadmap audit (advisory)
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: ${{ env.NODE_VERSION_FILE }}
+          cache: npm
+      - run: npm ci
+      - name: Run PDF roadmap audit
+        run: npm run validate:pdf-catalog

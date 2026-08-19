@@ -54,14 +54,14 @@ test.describe("File Splitter contract", () => {
 
     const source = Buffer.from(Array.from({ length: 7 }, (_, index) => index + 1));
     await page.locator('input[type="file"]').setInputFiles({ name: "seven.bin", mimeType: "application/octet-stream", buffer: source });
-    await page.getByLabel("Chunk size").fill("0.000001");
+    await page.getByLabel("Chunk size").fill("0.000005");
     await page.getByRole("button", { name: "Split file" }).click();
 
-    await expect(page.getByText("Created 7 chunk(s).", { exact: true })).toBeVisible();
+    await expect(page.getByText("Created 2 chunk(s).", { exact: true })).toBeVisible();
     const path = await downloadPath(page, "seven.bin-parts.zip");
     const zip = await JSZip.loadAsync(await readFile(path));
     const files = Object.keys(zip.files).filter((name) => !zip.files[name].dir).sort();
-    expect(files).toEqual(Array.from({ length: 7 }, (_, index) => `seven.bin.part-${String(index + 1).padStart(4, "0")}`));
+    expect(files).toEqual(["seven.bin.part-0001", "seven.bin.part-0002"]);
 
     const merged = Buffer.concat(await Promise.all(files.map((name) => zip.files[name].async("nodebuffer"))));
     expect(merged).toEqual(source);

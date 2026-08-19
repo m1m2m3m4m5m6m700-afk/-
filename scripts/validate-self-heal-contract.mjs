@@ -17,6 +17,7 @@ if (!workflow.includes("pull-requests: read")) fail("Self-Heal must explicitly d
 if (workflow.includes("cache: npm")) fail("Manual Self-Heal diagnosis must not depend on npm cache or lockfile discovery.");
 if (!workflow.includes("source_run_id")) fail("Manual Self-Heal must require source_run_id.");
 if (!workflow.includes("failed_sha")) fail("Manual Self-Heal must require failed_sha.");
+if (!workflow.includes("source_run_id")) fail("Manual Self-Heal must correlate diagnosis to an explicit source run.");
 if (packageLock.lockfileVersion !== 3) fail("package-lock.json must remain lockfileVersion 3.");
 
 if (failures.length) {

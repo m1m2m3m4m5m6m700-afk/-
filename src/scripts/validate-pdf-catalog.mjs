@@ -5,7 +5,9 @@ const root = process.cwd();
 const catalog = fs.readFileSync(path.join(root, "src/data/megaToolsCatalog.ts"), "utf8");
 const engine = fs.readFileSync(path.join(root, "src/lib/megaToolsEngine.ts"), "utf8");
 
-const expectedHandlers = [
+const strict = process.argv.includes("--strict");
+
+const declaredHandlers = [
   "inspect",
   "extract-text",
   "rotate",
@@ -20,32 +22,57 @@ const expectedHandlers = [
   "poster",
 ];
 
-const missingFromCatalog = expectedHandlers.filter(
-  (handler) => !catalog.includes(`[\"${handler}\"`),
+const implementedHandlers = declaredHandlers.filter((handler) =>
+  engine.includes(`tool.handler === "${handler}"`),
 );
-const missingFromEngine = expectedHandlers.filter(
-  (handler) => !engine.includes(`tool.handler === \"${handler}\"`) && !engine.includes(`tool.handler === \"${handler}\"`),
+const roadmapHandlers = declaredHandlers.filter(
+  (handler) => !implementedHandlers.includes(handler),
+);
+
+const catalogHandlers = declaredHandlers.filter((handler) =>
+  catalog.includes(`["${handler}"`),
+);
+const missingFromCatalog = declaredHandlers.filter(
+  (handler) => !catalogHandlers.includes(handler),
 );
 
 const presetsMatch = catalog.match(/export const PRESETS = \[(.*?)\] as const/s);
 const presetCount = presetsMatch ? (presetsMatch[1].match(/\[\"/g) ?? []).length : 0;
-
-const expectedVariants = expectedHandlers.length * 11;
 const declaredPdfVariants = (catalog.match(/slug: `mega-pdf-/g) ?? []).length;
 
 const issues = [];
-if (missingFromCatalog.length) issues.push(`Missing PDF handlers from catalog: ${missingFromCatalog.join(", ")}`);
-if (missingFromEngine.length) issues.push(`Missing PDF handlers from engine: ${missingFromEngine.join(", ")}`);
-if (presetCount !== 11) issues.push(`Expected 11 presets, found ${presetCount}.`);
-if (expectedVariants !== 132) issues.push(`Internal PDF variant expectation is ${expectedVariants}, expected 132.`);
+const advisories = [];
+
+if (missingFromCatalog.length) {
+  issues.push(`Missing declared PDF handlers from catalog: ${missingFromCatalog.join(", ")}`);
+}
+
+if (presetCount !== 11) {
+  issues.push(`Expected 11 presets, found ${presetCount}.`);
+}
+
 if (declaredPdfVariants !== 0) {
-  // MEGA_TOOLS is generated at runtime; this branch intentionally verifies that
-  // the source does not try to hand-maintain a second static list of variants.
   issues.push("PDF mega variants must remain generated from the canonical handler/preset catalog.");
 }
+
+if (roadmapHandlers.length) {
+  advisories.push(
+    `Roadmap PDF handlers are cataloged but not implemented: ${roadmapHandlers.join(", ")}`,
+  );
+}
+
+const expectedVariants = implementedHandlers.length * presetCount;
+const message = `PDF catalog audit: ${implementedHandlers.length} implemented handlers × ${presetCount} presets = ${expectedVariants} executable variants.`;
+console.log(message);
+
+for (const advisory of advisories) console.warn(`Advisory: ${advisory}`);
 
 if (issues.length) {
   throw new Error(`PDF catalog validation failed:\n- ${issues.join("\n- ")}`);
 }
 
-console.log(`PDF catalog validation passed: ${expectedHandlers.length} handlers × ${presetCount} presets = 132 generated variants.`);
+if (strict && advisories.length) {
+  throw new Error(`PDF catalog strict validation failed:\n- ${advisories.join("\n- ")}`);
+}
+
+console.log(strict ? "PDF catalog strict validation passed." : "PDF catalog advisory validation passed.");

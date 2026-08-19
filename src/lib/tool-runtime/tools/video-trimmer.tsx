@@ -196,7 +196,10 @@ function VideoTrimmerTool() {
         <div className="space-y-4 flex flex-col justify-between">
           <div className="h-full rounded-2xl border border-border bg-background/50 p-4 text-sm flex flex-col items-center justify-center text-center gap-3">
             {error ? (
-              <div className="flex flex-col items-center gap-2 text-destructive">
+              <div
+                role="alert"
+                className="flex flex-col items-center gap-2 text-destructive"
+              >
                 <AlertCircle className="size-8" />
                 <span className="text-xs">{error}</span>
               </div>

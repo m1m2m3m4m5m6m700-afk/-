@@ -22,8 +22,7 @@ function MarkdownToWordTool() {
       const { marked } = await import("marked");
       const html = marked.parse(md, { async: false }) as string;
       const { Document, Packer, Paragraph, TextRun, HeadingLevel } = await import("docx");
-      const tempEl = document.createElement("div");
-      tempEl.innerHTML = html;
+      const parsed = new DOMParser().parseFromString(html, "text/html");
       const paragraphs: InstanceType<typeof Paragraph>[] = [];
       paragraphs.push(
         new Paragraph({ text: title || "Document", heading: HeadingLevel.HEADING_1 }),
@@ -63,7 +62,7 @@ function MarkdownToWordTool() {
         );
       };
 
-      for (const node of Array.from(tempEl.childNodes)) {
+      for (const node of Array.from(parsed.body.childNodes)) {
         if (node.nodeType !== 1) {
           const txt = (node.textContent || "").trim();
           if (txt) paragraphs.push(new Paragraph({ children: [new TextRun({ text: txt })] }));

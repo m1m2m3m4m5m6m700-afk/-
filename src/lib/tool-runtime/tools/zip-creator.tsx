@@ -11,6 +11,12 @@ function ZipCreatorTool() {
 
   const createZip = async () => {
     if (!files.length || busy) return;
+    const names = files.map((file) => file.name);
+    if (new Set(names).size !== names.length) {
+      setError("Duplicate file names are not allowed because they would overwrite data in the ZIP archive.");
+      setDownloadUrl(null);
+      return;
+    }
     setBusy(true);
     setError(null);
     if (downloadUrl) URL.revokeObjectURL(downloadUrl);

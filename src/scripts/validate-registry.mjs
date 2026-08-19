@@ -3,7 +3,7 @@ import path from "node:path";
 
 const root = process.cwd();
 const toolsSource = fs.readFileSync(path.join(root, "src/data/tools.ts"), "utf8");
-const categoriesSource = fs.readFileSync(path.join(root, "src/data/categories.ts"), "utf8");
+const categoriesSource = fs.readFileSync(path.join(root, "src/lib/tool-platform/categories.ts"), "utf8");
 const toolSeoSource = fs.readFileSync(path.join(root, "src/data/toolSeo.ts"), "utf8");
 const seoEnterpriseSource = fs.readFileSync(
   path.join(root, "src/data/seoEnterpriseData.ts"),
@@ -64,16 +64,16 @@ function loadCategoryCatalog(source) {
     return Function(`${stubPrelude}\nreturn [${body}];`)();
   }
 
-  const body = extractBetween(
-    source,
-    "export const categories: Category[] = [",
-    "];\n\nexport const categoryById",
+  const body = source.match(
+    /export const categories: (?:Category|ToolCategoryPresentation)\[\] = \[([\s\S]*?)\n\];/,
   );
+  if (!body) throw new Error("Missing canonical categories export array.");
+
   const categoryEntries = [];
   const objectPattern =
     /\{\s*id:\s*"([^"]+)"[\s\S]*?name:\s*"([^"]+)"[\s\S]*?description:\s*"([^"]+)"[\s\S]*?anchor:\s*"([^"]+)"[\s\S]*?order:\s*(\d+)/g;
   let match;
-  while ((match = objectPattern.exec(body))) {
+  while ((match = objectPattern.exec(body[1]))) {
     categoryEntries.push({
       id: match[1],
       name: match[2],
@@ -153,22 +153,10 @@ function validateRegistry({
     duplicates.forEach((value) => issues.push(`Duplicate ${label}: ${value}`));
   };
 
-  recordDuplicates(
-    categoryCatalog.map((category) => category.id),
-    "category id",
-  );
-  recordDuplicates(
-    categoryCatalog.map((category) => category.anchor),
-    "category anchor",
-  );
-  recordDuplicates(
-    categoryCatalog.map((category) => String(category.order)),
-    "category order",
-  );
-  recordDuplicates(
-    tools.map((tool) => tool.id),
-    "tool id",
-  );
+  recordDuplicates(categoryCatalog.map((category) => category.id), "category id");
+  recordDuplicates(categoryCatalog.map((category) => category.anchor), "category anchor");
+  recordDuplicates(categoryCatalog.map((category) => String(category.order)), "category order");
+  recordDuplicates(tools.map((tool) => tool.id), "tool id");
   recordDuplicates(
     tools.filter((tool) => isNonEmptyString(tool.slug)).map((tool) => tool.slug.trim()),
     "tool slug",
@@ -178,14 +166,10 @@ function validateRegistry({
   categoryCatalog.forEach((category) => {
     categoryIds.add(category.id);
     if (!isNonEmptyString(category.id)) issues.push("A category is missing its required id.");
-    if (!isNonEmptyString(category.name))
-      issues.push(`Category ${category.id || "<unknown>"} is missing its required name.`);
-    if (!isNonEmptyString(category.description))
-      issues.push(`Category ${category.id || "<unknown>"} is missing its required description.`);
-    if (!isNonEmptyString(category.anchor))
-      issues.push(`Category ${category.id || "<unknown>"} is missing its required anchor.`);
-    if (!Number.isInteger(category.order))
-      issues.push(`Category ${category.id || "<unknown>"} must have an integer order.`);
+    if (!isNonEmptyString(category.name)) issues.push(`Category ${category.id || "<unknown>"} is missing its required name.`);
+    if (!isNonEmptyString(category.description)) issues.push(`Category ${category.id || "<unknown>"} is missing its required description.`);
+    if (!isNonEmptyString(category.anchor)) issues.push(`Category ${category.id || "<unknown>"} is missing its required anchor.`);
+    if (!Number.isInteger(category.order)) issues.push(`Category ${category.id || "<unknown>"} must have an integer order.`);
   });
 
   const toolIds = new Set();
@@ -194,25 +178,16 @@ function validateRegistry({
   tools.forEach((tool) => {
     toolIds.add(tool.id);
     if (!isNonEmptyString(tool.id)) issues.push("A tool is missing its required id.");
-    if (!isNonEmptyString(tool.name))
-      issues.push(`Tool ${tool.id || "<unknown>"} is missing its required name.`);
-    if (!isNonEmptyString(tool.description))
-      issues.push(`Tool ${tool.id || "<unknown>"} is missing its required description.`);
-    if (!categoryIds.has(tool.categoryId))
-      issues.push(
-        `Tool ${tool.id || "<unknown>"} references invalid category ${String(tool.categoryId)}.`,
-      );
-    if (!statuses.has(tool.status))
-      issues.push(`Tool ${tool.id || "<unknown>"} has invalid status ${String(tool.status)}.`);
+    if (!isNonEmptyString(tool.name)) issues.push(`Tool ${tool.id || "<unknown>"} is missing its required name.`);
+    if (!isNonEmptyString(tool.description)) issues.push(`Tool ${tool.id || "<unknown>"} is missing its required description.`);
+    if (!categoryIds.has(tool.categoryId)) issues.push(`Tool ${tool.id || "<unknown>"} references invalid category ${String(tool.categoryId)}.`);
+    if (!statuses.has(tool.status)) issues.push(`Tool ${tool.id || "<unknown>"} has invalid status ${String(tool.status)}.`);
 
     const slug = tool.slug?.trim();
-    if ((tool.status === "ready" || tool.status === "planned") && !slug)
-      issues.push(`Tool ${tool.id} with status ${tool.status} must define a slug.`);
-    if (slug && !slugPattern.test(slug))
-      issues.push(`Tool ${tool.id} has an invalid slug format: ${slug}.`);
+    if ((tool.status === "ready" || tool.status === "planned") && !slug) issues.push(`Tool ${tool.id} with status ${tool.status} must define a slug.`);
+    if (slug && !slugPattern.test(slug)) issues.push(`Tool ${tool.id} has an invalid slug format: ${slug}.`);
     if (slug) toolSlugs.add(slug);
-    if (tool.tags && tool.tags.some((tag) => !isNonEmptyString(tag)))
-      issues.push(`Tool ${tool.id} contains an empty tag.`);
+    if (tool.tags && tool.tags.some((tag) => !isNonEmptyString(tag))) issues.push(`Tool ${tool.id} contains an empty tag.`);
 
     const bucket = groupedToolsByCategory.get(tool.categoryId);
     if (bucket) bucket.push(tool.id);
@@ -227,44 +202,30 @@ function validateRegistry({
 
     recordDuplicates(category.toolIds, `tool id inside category ${category.id}`);
     category.toolIds.forEach((toolId) => {
-      if (!toolIds.has(toolId))
-        issues.push(`Derived category ${category.id} references missing tool ${toolId}.`);
+      if (!toolIds.has(toolId)) issues.push(`Derived category ${category.id} references missing tool ${toolId}.`);
     });
 
     const expected = groupedToolsByCategory.get(category.id) ?? [];
-    if (
-      expected.length !== category.toolIds.length ||
-      expected.some((toolId, index) => toolId !== category.toolIds[index])
-    ) {
-      issues.push(
-        `Derived toolIds for category ${category.id} are inconsistent with the canonical tool catalog.`,
-      );
+    if (expected.length !== category.toolIds.length || expected.some((toolId, index) => toolId !== category.toolIds[index])) {
+      issues.push(`Derived toolIds for category ${category.id} are inconsistent with the canonical tool catalog.`);
     }
   });
 
   recordDuplicates(Object.keys(toolSeoRegistry), "tool SEO registry key");
-  recordDuplicates(
-    Object.values(toolSeoRegistry).map((entry) => entry.slug),
-    "tool SEO slug",
-  );
+  recordDuplicates(Object.values(toolSeoRegistry).map((entry) => entry.slug), "tool SEO slug");
 
   Object.entries(toolSeoRegistry).forEach(([key, entry]) => {
     if (!isNonEmptyString(entry.slug)) issues.push(`Tool SEO entry ${key} is missing its slug.`);
-    if (entry.slug !== key)
-      issues.push(`Tool SEO entry ${key} must use the same slug in its payload.`);
-    if (!toolSlugs.has(entry.slug))
-      issues.push(`Tool SEO entry ${key} references unknown tool slug ${entry.slug}.`);
+    if (entry.slug !== key) issues.push(`Tool SEO entry ${key} must use the same slug in its payload.`);
+    if (!toolSlugs.has(entry.slug)) issues.push(`Tool SEO entry ${key} references unknown tool slug ${entry.slug}.`);
   });
 
   seoEnterpriseReferences.forEach(({ field, value }) => {
-    if (!toolIds.has(value))
-      issues.push(`SEO enterprise field ${field} references unknown tool id ${value}.`);
+    if (!toolIds.has(value)) issues.push(`SEO enterprise field ${field} references unknown tool id ${value}.`);
   });
 
   if (issues.length > 0) {
-    throw new Error(
-      `Registry validation failed with ${issues.length} issue(s).\n- ${issues.join("\n- ")}`,
-    );
+    throw new Error(`Registry validation failed with ${issues.length} issue(s).\n- ${issues.join("\n- ")}`);
   }
 }
 
@@ -275,6 +236,4 @@ const toolSeoRegistry = loadToolSeoRegistry(toolSeoSource);
 const seoEnterpriseReferences = collectToolReferences(seoEnterpriseSource);
 
 validateRegistry({ tools, categoryCatalog, categories, toolSeoRegistry, seoEnterpriseReferences });
-console.log(
-  `Registry validation passed: ${categoryCatalog.length} categories, ${tools.length} tools, ${Object.keys(toolSeoRegistry).length} SEO entries.`,
-);
+console.log(`Registry validation passed: ${categoryCatalog.length} canonical categories, ${tools.length} tools, ${Object.keys(toolSeoRegistry).length} SEO entries.`);

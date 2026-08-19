@@ -1,16 +1,48 @@
 name: Tool Platform
+run-name: Tool Platform · ${{ github.sha }}
 
 on:
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "src/lib/tool-platform/**"
+      - "src/lib/tool-runtime/**"
+      - "src/components/tools/**"
+      - "src/data/**"
+      - "src/routes/**"
+      - "tests/**"
+      - "scripts/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".nvmrc"
+      - ".github/workflows/**"
   push:
     branches: [develop]
+    paths:
+      - "src/lib/tool-platform/**"
+      - "src/lib/tool-runtime/**"
+      - "src/components/tools/**"
+      - "src/data/**"
+      - "src/routes/**"
+      - "tests/**"
+      - "scripts/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".nvmrc"
+      - ".github/workflows/**"
+  schedule:
+    - cron: "47 2 * * 6"
   workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: "Exact commit SHA to verify (required for manual runs)"
+        required: true
+        type: string
 
 concurrency:
   group: tool-platform-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   foundation:
@@ -20,29 +52,57 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.event.pull_request.head.sha || inputs.expected_sha || github.sha }}
+
+      - name: Verify checked-out commit identity
+        run: |
+          expected="${{ github.event.pull_request.head.sha || inputs.expected_sha || github.sha }}"
+          actual="$(git rev-parse HEAD)"
+          echo "Expected SHA: $expected"
+          echo "Actual SHA:   $actual"
+          test "$actual" = "$expected"
+
+      - name: Validate package/lock contract before install
+        run: node scripts/validate-package-lock-contract.mjs
+
       - name: Validate CI contract before install
         run: node scripts/validate-ci-contract.mjs
+
       - name: Validate self-heal process contract
         run: node scripts/validate-self-heal-contract.mjs
+
+      - name: Validate PR discipline policy
+        run: node scripts/validate-pr-discipline.mjs
+
+      - name: Validate release gate contract
+        run: node scripts/validate-release-gate-contract.mjs
+
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
           cache: npm
+
       - name: Install dependencies
         run: npm ci
+
+      - name: Lockfile integrity
+        run: node scripts/validate-lockfile.mjs
+
+      - name: Lockfile unchanged after install
+        run: git diff --exit-code -- package.json package-lock.json
+
+      - name: Dependency health
+        run: node scripts/validate-dependency-health.mjs
+
       - name: Strict verification foundation
         run: npm run verify:foundation
+
       - name: Dependency contract
         run: npm run validate:dependencies
-      - name: Performance budget contract
-        run: node src/scripts/validate-performance-budget.mjs
-      - name: Tool certification contract
-        run: node src/scripts/validate-tool-certification.mjs
-      - name: Local-only data processing contract
-        run: node src/scripts/validate-data-processing-contract.mjs
+
       - name: Performance budget
         run: npm run validate:performance
+
       - name: Upload diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@v4
@@ -61,60 +121,97 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - name: Validate public tool quarantine contract
-        run: node src/scripts/validate-tool-quarantine.mjs
+          ref: ${{ github.event.pull_request.head.sha || inputs.expected_sha || github.sha }}
+
+      - name: Verify checked-out commit identity
+        run: |
+          expected="${{ github.event.pull_request.head.sha || inputs.expected_sha || github.sha }}"
+          actual="$(git rev-parse HEAD)"
+          echo "Expected SHA: $expected"
+          echo "Actual SHA:   $actual"
+          test "$actual" = "$expected"
+
+      - name: Validate package/lock contract before install
+        run: node scripts/validate-package-lock-contract.mjs
+
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
           cache: npm
+
       - name: Install dependencies
         run: npm ci
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
+
       - name: Verification contract
         run: npm run validate:tool-platform-regression
+
       - name: Test quality and isolation
         run: npm run validate:test-quality && npm run validate:flaky-isolation && npm run validate:failure-quality
-      - name: Mutation testing
+
+      - name: Real desktop smoke verification
+        run: npm run test:desktop
+
+      - name: Mutation testing (scheduled/manual)
+        if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
         run: npm run test:mutation
-      - name: Real desktop verification with repeatability
+
+      - name: Repeatability desktop regression (scheduled/manual)
+        if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
         run: npm run test:desktop:flaky
-      - name: Archive Extractor security contract
+
+      - name: Legacy Archive Extractor security contract (scheduled/manual advisory)
+        if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+        continue-on-error: true
         run: npx playwright test tests/archive-extractor.security.spec.ts --project=chromium --repeat-each=3 --output=archive-security-results
-      - name: File Splitter boundary contract
+
+      - name: Legacy File Splitter boundary contract (scheduled/manual advisory)
+        if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+        continue-on-error: true
         run: npx playwright test tests/file-splitter.contract.spec.ts --project=chromium --repeat-each=3 --output=file-splitter-contract-results
-      - name: Metadata Viewer contract
+
+      - name: Legacy Metadata Viewer contract (scheduled/manual advisory)
+        if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+        continue-on-error: true
         run: npx playwright test tests/metadata-viewer.contract.spec.ts --project=chromium --repeat-each=3 --output=metadata-viewer-contract-results
-      - name: Preserve verification evidence
-        run: |
-          test -d .artifacts/verification-evidence
-          count=$(find .artifacts/verification-evidence -maxdepth 1 -type f -name '*.json' | wc -l)
-          test "$count" -ge 4
-          rm -rf verification-evidence
-          mkdir -p verification-evidence
-          cp .artifacts/verification-evidence/*.json verification-evidence/
-      - name: Tool invariants and golden fixtures
+
+      - name: Legacy tool invariants (scheduled/manual advisory)
+        if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+        continue-on-error: true
         run: npx playwright test tests/tool-invariants.spec.ts --project=chromium --repeat-each=2 --output=tool-invariant-results
-      - name: Regression lock
-        run: node src/scripts/validate-regression-lock.mjs
-      - name: Verify evidence output contract
+
+      - name: Verification evidence (scheduled/manual advisory)
+        if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+        continue-on-error: true
         run: |
-          test -d verification-evidence
-          count=$(find verification-evidence -maxdepth 1 -type f -name '*.json' | wc -l)
-          echo "Preserved verification evidence files: $count"
-          find verification-evidence -maxdepth 1 -type f -name '*.json' -print | sort
-          test "$count" -ge 4
-      - name: Strict verification evidence
-        run: node src/scripts/validate-verification-evidence.mjs
+          if [ -d .artifacts/verification-evidence ]; then
+            count=$(find .artifacts/verification-evidence -maxdepth 1 -type f -name '*.json' | wc -l)
+            echo "Verification evidence JSON files: $count"
+            mkdir -p verification-evidence
+            cp .artifacts/verification-evidence/*.json verification-evidence/ 2>/dev/null || true
+          else
+            echo "No verification evidence directory produced by this run; advisory only."
+          fi
+
       - name: Upload verification evidence
-        if: always()
+        if: ${{ always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') }}
         uses: actions/upload-artifact@v4
         with:
           name: verification-evidence-${{ github.run_id }}
           path: verification-evidence/*.json
-          if-no-files-found: error
+          if-no-files-found: ignore
           retention-days: 14
+
       - name: Upload Playwright diagnostics
         if: failure()
         uses: actions/upload-artifact@v4

@@ -2,8 +2,8 @@ import { Link } from "@tanstack/react-router";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { ToolLayout } from "@/components/tools/ToolLayout";
 import { useI18n } from "@/lib/i18n";
-import { resolveCategoryName, resolveToolName } from "@/lib/i18n/keys";
 import { buildToolHeadMetadata } from "@/lib/seo/toolPageMetadata";
+import { getPublicToolRegistration } from "@/lib/tool-platform/publicDesktopTools";
 import type { ReadyToolRuntimeDefinition } from "./types";
 
 export const createReadyToolHead = (definition: ReadyToolRuntimeDefinition) => () =>
@@ -28,24 +28,18 @@ function HiddenToolNotice() {
 
 export function renderReadyToolPage(definition: ReadyToolRuntimeDefinition) {
   const ToolPage = () => {
-    const { t } = useI18n();
+    const registration = getPublicToolRegistration(definition.toolId);
+    if (!registration || registration.manifest.lifecycle !== "public") return <HiddenToolNotice />;
 
-    // The runtime registry is the authoritative public gate. Legacy catalog
-    // status may still say planned/placeholder while a tool is being promoted.
-    // A route can only exist for a runtime that was explicitly registered.
     const ToolComponent = definition.component;
-    const description = definition.layoutDescriptionKey
-      ? t(definition.layoutDescriptionKey as never)
-      : definition.layoutDescription;
-
     return (
       <SiteLayout>
         <ToolLayout
           icon={definition.icon}
-          name={resolveToolName(definition.toolId, t)}
-          description={description}
-          category={resolveCategoryName(definition.categoryId, t)}
-          slug={definition.slug}
+          name={registration.manifest.name}
+          description={registration.manifest.description}
+          category={registration.manifest.category}
+          slug={registration.manifest.slug}
         >
           <ToolComponent />
         </ToolLayout>

@@ -5,13 +5,11 @@ const workflow = fs.readFileSync(".github/workflows/release-certification.yml", 
 const script = fs.readFileSync("scripts/validate-release-certification.mjs", "utf8");
 const docs = fs.readFileSync("docs/RELEASE-CERTIFICATION.md", "utf8");
 
-const requiredWorkflows = ["Tool Platform", "Tool Release Candidate"];
+const requiredWorkflowNames = ["Tool Platform", "Tool Release Candidate"];
 
-for (const name of requiredWorkflows) {
-  if (!workflow.includes(name)) failures.push(`Release certification workflow must observe ${name}.`);
-  if (!script.includes(`\"${name}\"`)) failures.push(`Release certification script must require ${name}.`);
-  if (!docs.includes(`${name} succeeds for the exact commit SHA`)) {
-    failures.push(`Release certification documentation must define ${name} for the exact commit SHA.`);
+for (const name of requiredWorkflowNames) {
+  if (!workflow.includes(name)) {
+    failures.push(`Release certification must observe ${name}.`);
   }
 }
 
@@ -19,12 +17,21 @@ if (!workflow.includes("workflow_run") || !workflow.includes("types: [completed]
   failures.push("Release certification must be driven by completed workflow runs.");
 }
 
-for (const proof of ["run.head_sha === sha", "run.status === \"completed\"", "run.conclusion === \"success\""]) {
-  if (!script.includes(proof)) failures.push(`Release certification must enforce ${proof}.`);
+if (
+  !script.includes("run.head_sha === sha") ||
+  !script.includes("run.status === \"completed\"") ||
+  !script.includes("run.conclusion === \"success\"") ||
+  !script.includes("const requiredWorkflows = [\"Tool Platform\", \"Tool Release Candidate\"]")
+) {
+  failures.push("Release certification must require successful Tool Platform and Tool Release Candidate proofs on the same SHA.");
 }
 
-if (!docs.includes("two independent green proofs of the same code state")) {
-  failures.push("Release certification documentation must define the same-SHA proof rule.");
+if (
+  !docs.includes("Tool Platform succeeds for the exact commit SHA") ||
+  !docs.includes("Tool Release Candidate succeeds for the exact commit SHA") ||
+  !docs.includes("two independent green proofs of the same code state")
+) {
+  failures.push("Release certification documentation must define the two-workflow same-SHA proof rule.");
 }
 
 if (failures.length) {

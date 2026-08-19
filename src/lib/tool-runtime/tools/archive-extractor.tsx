@@ -4,6 +4,16 @@ import JSZip from "jszip";
 import type { ReadyToolRuntimeDefinition } from "../types";
 
 type ExtractedEntry = { name: string; url: string };
+type LoadedZipEntry = JSZip.JSZipObject & { unsafeOriginalName?: string };
+
+const isUnsafeArchivePath = (name: string): boolean => {
+  const normalized = name.replaceAll("\\", "/");
+  if (!normalized || normalized.startsWith("/") || /^[A-Za-z]:\//.test(normalized)) return true;
+  const segments = normalized.split("/");
+  return segments.includes("..") || segments.some((segment) => segment === "");
+};
+
+const getDownloadName = (name: string): string => name.split("/").pop() || "file";
 
 function ArchiveExtractorTool() {
   const [entries, setEntries] = useState<ExtractedEntry[]>([]);
@@ -20,17 +30,34 @@ function ArchiveExtractorTool() {
     try {
       const zip = await JSZip.loadAsync(await file.arrayBuffer());
       const output: ExtractedEntry[] = [];
-      for (const [name, entry] of Object.entries(zip.files)) {
+      const downloadNames = new Set<string>();
+
+      for (const [name, rawEntry] of Object.entries(zip.files)) {
+        const entry = rawEntry as LoadedZipEntry;
         if (entry.dir) continue;
+        const originalName = entry.unsafeOriginalName ?? name;
+        if (isUnsafeArchivePath(originalName)) {
+          setError("The ZIP archive contains an unsafe file path and cannot be extracted.");
+          return;
+        }
+
+        const downloadName = getDownloadName(name);
+        if (downloadNames.has(downloadName)) {
+          setError("The ZIP archive contains duplicate output filenames and cannot be extracted safely.");
+          return;
+        }
+        downloadNames.add(downloadName);
+
         const bytes = await entry.async("uint8array");
         const buffer = new ArrayBuffer(bytes.byteLength);
         new Uint8Array(buffer).set(bytes);
         output.push({ name, url: URL.createObjectURL(new Blob([buffer])) });
       }
+
       setEntries(output);
       if (!output.length) setError("The ZIP archive contains no extractable files.");
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "The selected file is not a valid ZIP archive.");
+    } catch {
+      setError("The selected file is not a valid ZIP archive.");
     } finally {
       setBusy(false);
     }
@@ -42,7 +69,7 @@ function ArchiveExtractorTool() {
       <input type="file" accept=".zip,application/zip" onChange={(event) => { const file = event.target.files?.[0]; if (file) void extract(file); }} className="block w-full rounded-xl border border-border bg-background p-3 text-sm" />
       {busy && <p className="text-sm text-muted-foreground">Reading archive…</p>}
       {error && <p className="rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
-      {entries.length > 0 && <div className="space-y-2"><p className="text-xs font-semibold text-muted-foreground">{entries.length} file(s) found</p>{entries.map((entry) => <a key={entry.name} href={entry.url} download={entry.name.split("/").pop() || "file"} className="flex items-center justify-between rounded-xl border border-border px-3 py-2 text-sm hover:bg-muted"><span className="truncate">{entry.name}</span><Download className="size-4 shrink-0 text-primary" /></a>)}</div>}
+      {entries.length > 0 && <div className="space-y-2"><p className="text-xs font-semibold text-muted-foreground">{entries.length} file(s) found</p>{entries.map((entry) => <a key={entry.name} href={entry.url} download={getDownloadName(entry.name)} className="flex items-center justify-between rounded-xl border border-border px-3 py-2 text-sm hover:bg-muted"><span className="truncate">{entry.name}</span><Download className="size-4 shrink-0 text-primary" /></a>)}</div>}
     </div>
   );
 }

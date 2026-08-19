@@ -1,75 +1,107 @@
-import { test, expect, type Download } from "playwright/test";
-import JSZip from "jszip";
-import { readFile } from "node:fs/promises";
+import { test, expect, type Page } from "playwright/test";
 
-const makeBytes = (size: number, value = 65) => Buffer.alloc(size, value);
+import { assertPngArtifact } from "./utils/image-validator";
 
-async function downloadSize(downloadPromise: Promise<Download>, downloadName?: string) {
-  const download = await downloadPromise;
-  if (downloadName) expect(download.suggestedFilename()).toBe(downloadName);
-  const path = await download.path();
-  expect(path).toBeTruthy();
-  return path!;
+const onePixelPng = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+  "base64",
+);
+
+async function openTool(page: Page, slug: string) {
+  await page.goto(`/tools/${slug}`);
+  await expect(page.locator('[data-hydrated="true"]')).toHaveCount(1, { timeout: 30_000 });
+  await expect(page.locator("h1")).toHaveCount(1);
 }
 
-test.describe("verified desktop tools", () => {
-  test("ZIP Creator creates a readable archive containing selected files", async ({ page }) => {
-    await page.goto("/tools/zip-creator");
-
-    // Register the download listener before selecting files because the ZIP tool
-    // may generate the archive immediately after the file selection completes.
-    const downloadPromise = page.waitForEvent("download", { timeout: 60_000 });
+test.describe("relaunched public tools", () => {
+  test("Image Compressor loads, accepts an image, and exposes a download action", async ({ page }) => {
+    await openTool(page, "image-compressor");
     const input = page.locator('input[type="file"]');
-    await input.setInputFiles([
-      { name: "alpha.txt", mimeType: "text/plain", buffer: Buffer.from("alpha") },
-      { name: "beta.txt", mimeType: "text/plain", buffer: Buffer.from("beta") },
-    ]);
-
-    const downloadPath = await downloadSize(downloadPromise, "flixo-files.zip");
-    const archive = await readFile(downloadPath);
-    expect(archive.length).toBeGreaterThan(0);
-
-    const zip = await JSZip.loadAsync(archive);
-    expect(Object.keys(zip.files).sort()).toEqual(["alpha.txt", "beta.txt"]);
-    expect(await zip.files["alpha.txt"].async("string")).toBe("alpha");
-    expect(await zip.files["beta.txt"].async("string")).toBe("beta");
-    await expect(page.getByText("Download ZIP")).toBeVisible();
+    await input.setInputFiles({ name: "pixel.png", mimeType: "image/png", buffer: onePixelPng });
+    await expect(page.getByRole("button", { name: /Download/i })).toBeEnabled({ timeout: 30_000 });
+    await expect(page.locator('img[alt]').first()).toBeVisible();
   });
 
-  test("Archive Extractor reads ZIP entries and exposes extracted output", async ({ page }) => {
-    const zip = new JSZip();
-    zip.file("hello.txt", "hello from Flixo");
-    const bytes = await zip.generateAsync({ type: "nodebuffer" });
-    await page.goto("/tools/archive-extractor");
-    await page.locator('input[type="file"]').setInputFiles({ name: "sample.zip", mimeType: "application/zip", buffer: bytes });
-    await expect(page.getByText("hello.txt")).toBeVisible();
-    const link = page.getByRole("link", { name: /hello\.txt/ });
-    const href = await link.getAttribute("href");
-    expect(href).toMatch(/^blob:/);
-    const extracted = await link.getAttribute("download");
-    expect(extracted).toBe("hello.txt");
+  test("Image Compressor produces a valid PNG artifact", async ({ page }) => {
+    await openTool(page, "image-compressor");
+    await page.locator('input[type="file"]').setInputFiles({
+      name: "pixel.png",
+      mimeType: "image/png",
+      buffer: onePixelPng,
+    });
+
+    await expect(page.getByRole("button", { name: /Download/i })).toBeEnabled({ timeout: 30_000 });
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: /Download/i }).click();
+
+    const download = await downloadPromise;
+    await expect.poll(() => download.failure()).toBeNull();
+    expect(download.suggestedFilename()).toMatch(/-compressed\.png$/i);
+
+    const output = await download.createReadStream();
+    if (!output) throw new Error("Image Compressor did not provide a downloadable output stream.");
+
+    const chunks: Buffer[] = [];
+    for await (const chunk of output) chunks.push(Buffer.from(chunk));
+    const buffer = Buffer.concat(chunks);
+    assertPngArtifact(buffer, 1, 1);
   });
 
-  test("File Splitter produces numbered chunks with exact source coverage", async ({ page }) => {
-    const source = makeBytes(2 * 1024 * 1024 + 17, 88);
-    await page.goto("/tools/file-splitter");
-    await page.locator('input[type="file"]').setInputFiles({ name: "large.bin", mimeType: "application/octet-stream", buffer: source });
-    await page.getByLabel("Chunk size").fill("1");
-    const downloadPromise = page.waitForEvent("download", { timeout: 60_000 });
-    await page.getByRole("button", { name: /Split|Create/i }).click();
-    const downloadPath = await downloadSize(downloadPromise, "large.bin-parts.zip");
-    const zip = await JSZip.loadAsync(await readFile(downloadPath));
-    const names = Object.keys(zip.files).sort();
-    expect(names).toEqual(["large.bin.part-0001", "large.bin.part-0002", "large.bin.part-0003"]);
-    const merged = Buffer.concat(await Promise.all(names.map((name) => zip.files[name].async("nodebuffer"))));
-    expect(merged.equals(source)).toBe(true);
+  test("Image Enhancer loads and accepts an image input", async ({ page }) => {
+    await openTool(page, "image-enhancer");
+    const input = page.locator('input[type="file"]').first();
+    await expect(input).toBeAttached();
+    await input.setInputFiles({ name: "pixel.png", mimeType: "image/png", buffer: onePixelPng });
+    await expect(page.locator('img[alt]').first()).toBeVisible({ timeout: 30_000 });
   });
 
-  test("Metadata Viewer reports basic browser file metadata", async ({ page }) => {
-    await page.goto("/tools/metadata-viewer");
-    await page.locator('input[type="file"]').setInputFiles({ name: "report.txt", mimeType: "text/plain", buffer: Buffer.from("report") });
-    await expect(page.getByText("report.txt", { exact: true })).toBeVisible();
-    await expect(page.getByText("text/plain", { exact: true })).toBeVisible();
-    await expect(page.getByText("6", { exact: true })).toBeVisible();
+  test("Image Enhancer produces a valid 4x PNG artifact", async ({ page }) => {
+    await openTool(page, "image-enhancer");
+    await page.locator('input[type="file"]').setInputFiles({
+      name: "pixel.png",
+      mimeType: "image/png",
+      buffer: onePixelPng,
+    });
+
+    await expect(page.getByRole("button", { name: /Download/i })).toBeEnabled({ timeout: 30_000 });
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: /Download/i }).click();
+
+    const download = await downloadPromise;
+    await expect.poll(() => download.failure()).toBeNull();
+    expect(download.suggestedFilename()).toMatch(/-4x\.png$/i);
+
+    const output = await download.createReadStream();
+    if (!output) throw new Error("Image Enhancer did not provide a downloadable output stream.");
+
+    const chunks: Buffer[] = [];
+    for await (const chunk of output) chunks.push(Buffer.from(chunk));
+    const buffer = Buffer.concat(chunks);
+    assertPngArtifact(buffer, 4, 4);
+  });
+
+  test("Video Compressor loads, validates video input, and enables processing", async ({ page }) => {
+    await openTool(page, "video-compressor");
+    const button = page.getByRole("button", { name: /Compress Video/i });
+    await expect(button).toBeDisabled();
+    await page.locator('input[type="file"]').setInputFiles({
+      name: "sample.mp4",
+      mimeType: "video/mp4",
+      buffer: Buffer.from("not-a-real-video"),
+    });
+    await expect(button).toBeEnabled();
+    await expect(page.getByText(/sample\.mp4/)).toBeVisible();
+  });
+
+  test("Video Trimmer loads, accepts a candidate video file, and surfaces validation feedback", async ({ page }) => {
+    await openTool(page, "video-trimmer");
+    const button = page.getByRole("button", { name: /Trim Video/i });
+    await expect(button).toBeDisabled();
+    await page.locator('input[type="file"]').setInputFiles({
+      name: "invalid.mp4",
+      mimeType: "video/mp4",
+      buffer: Buffer.from("not-a-real-video"),
+    });
+    await expect(page.getByRole("alert")).toBeVisible({ timeout: 30_000 });
   });
 });

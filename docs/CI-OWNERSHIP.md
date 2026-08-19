@@ -1,21 +1,24 @@
-# FLIXO CI Ownership
+# CI Ownership and Blocking Policy
 
-This document defines the role of each workflow so a future cleanup does not turn into a duplicate gate or a missing critical check.
+Use this table as the human-readable map of the current CI topology. The workflow files remain the executable source of truth; this document exists to prevent accidental duplication or orphaned gates.
 
-| Workflow | Trigger | Critical / Advisory | Purpose |
+| Workflow | Trigger | Blocking role | Responsibility |
 |---|---|---|---|
-| `tool-platform.yml` | PR to `main`, push `develop`, schedule, manual | Critical on PR/push; advisory scheduled/manual legacy paths | Foundation contracts, public tool registry, desktop smoke and repeatability |
-| `ci.yml` | `main` push, manual | Critical | Full verification for production/mainline code |
-| `security-advisory.yml` | `develop`, PR to `main`, weekly, manual | Advisory | Security scanning and dependency/security evidence |
-| `dast-advisory.yml` | Manual | Advisory | OWASP ZAP baseline scan against an explicit deployment URL |
-| `release-certification.yml` | Completion of release/tool workflows | Advisory until release policy promotes it | Cross-workflow certification evidence |
-| `deploy.yml` | CI completion on `main`, manual | Deployment disabled during hardening; manual health check is safe | Production deployment placeholder plus manual deployment health verification |
+| `ci.yml` | `main` push/manual | Blocking | Canonical full verification for main |
+| `test-slices.yml` | PR/main + `develop` push + schedule/manual | Mixed | Fast/contract diagnostics and advisory quality slices |
+| `tool-platform.yml` | tool-related PRs + `develop` push + schedule/manual | Blocking for tool release path | Tool platform foundation, desktop verification, evidence and regression locks |
+| `tool-release-candidate.yml` | tool-related PRs + `develop` push + manual | Blocking for public-tool release | Operational tool verification, build and production audit |
+| `release-certification.yml` | completion of required tool workflows | Blocking | Same-SHA certification using Tool Platform + Tool Release Candidate |
+| `security-advisory.yml` | security triggers/schedule/manual | Advisory except explicit high-confidence gates | Security evidence and analysis |
+| `dast-advisory.yml` | manual/advisory trigger | Advisory | Dynamic security scan against explicit target |
+| `deploy.yml` | workflow completion/manual | Disabled during hardening | Production deployment placeholder until release approval |
+| `self-heal.yml` | manual | Operational only | Diagnosis and evidence; no silent repository mutation |
+| `prune-auto-fix.yml` | maintenance/manual | Operational only | Cleanup of obsolete auto-fix branches/PR state |
 
-## Rules
+## Change rules
 
-1. Critical workflows must have `concurrency.cancel-in-progress` enabled unless there is a documented reason not to.
-2. Manual workflows that inspect a deployment must accept an explicit target URL or SHA; never infer a deployment from stale history.
-3. Advisory workflows must not block the critical PR path unless their policy is explicitly promoted.
-4. A workflow may not duplicate another workflow's critical gate without documenting the reason.
-5. A deleted or renamed validator must have all references removed from workflows, `package.json`, and scripts before the change is considered complete.
-6. Release readiness requires evidence from the same Git SHA across CI and deployment; a green Vercel commit status alone is not sufficient.
+- Do not add a new workflow when an existing workflow can own the check.
+- Any workflow name referenced by a release contract must exist in `.github/workflows/`.
+- Blocking checks must be deterministic and reproducible.
+- Advisory checks must not become blocking implicitly.
+- A deleted workflow requires the release-contract and documentation references to be updated in the same change series.

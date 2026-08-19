@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft, ChevronRight, type LucideIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useI18n } from "@/lib/i18n";
 import { ToolSeoSection } from "./ToolSeoSection";
 import { SponsorSection } from "@/components/landing/SponsorSection";
@@ -26,9 +26,8 @@ export function ToolLayout({
   children,
 }: ToolLayoutProps) {
   const { t } = useI18n();
+  const [hydrated, setHydrated] = useState(false);
 
-  // Extract slug from pathname if not explicitly passed. Handles both
-  // /tools/<slug> (English) and /<locale>/tools/<slug> (localized) shapes.
   const pathSlug =
     slug ||
     (typeof window !== "undefined"
@@ -40,8 +39,12 @@ export function ToolLayout({
 
   usePageSeo(pathSlug);
 
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
+
   return (
-    <div className="bg-hero-glow">
+    <div data-hydrated={hydrated ? "true" : "false"} className="bg-hero-glow">
       <div className="mx-auto max-w-5xl px-5 pb-20 pt-10 md:pt-14">
         <nav aria-label="Breadcrumb" className="text-xs text-muted-foreground">
           <ol className="flex items-center flex-wrap gap-1.5">
@@ -99,10 +102,8 @@ export function ToolLayout({
 
         <div className="mt-8">{children}</div>
 
-        {/* Dynamic SEO Section with Breadcrumbs, Content, FAQ Accordions, and Internal Links */}
         {pathSlug && <ToolSeoSection slug={pathSlug} toolName={name} categoryName={category} />}
 
-        {/* Reusable Sponsor Section at the bottom of every tool page */}
         <div className="mt-16">
           <SponsorSection variant="compact" />
         </div>
