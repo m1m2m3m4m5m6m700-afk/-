@@ -58,8 +58,19 @@ if (!verification.valid) {
   process.exit(2);
 }
 
+if (dryRun) {
+  result.execution = {
+    applied: false,
+    dryRun: true,
+    github: 'not called (dry-run)',
+    note: 'No files or GitHub refs were modified. GitHub credentials are not required.',
+  };
+  process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+  process.exit(0);
+}
+
 if (!repo || !prNumber) {
-  throw new Error('Repair mode requires --repo owner/name and --pr number');
+  throw new Error('Apply mode requires --repo owner/name and --pr number');
 }
 
 const adapter = createGitHubAdapter({ repository: repo, prNumber });
@@ -67,17 +78,6 @@ const pr = await adapter.getPRInfo();
 
 if (pr.head.ref === 'main' || pr.head.ref === 'master') {
   throw new Error(`Repair mode refuses to write to protected branch ${pr.head.ref}`);
-}
-
-if (dryRun) {
-  result.execution = {
-    applied: false,
-    dryRun: true,
-    github: 'not called (dry-run)',
-    note: 'No files or GitHub refs were modified.',
-  };
-  process.stdout.write(JSON.stringify(result, null, 2) + '\n');
-  process.exit(0);
 }
 
 const materialized = [];
