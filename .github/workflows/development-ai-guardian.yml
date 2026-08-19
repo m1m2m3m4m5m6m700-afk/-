@@ -1,0 +1,86 @@
+name: Development AI Guardian
+
+on:
+  push:
+    branches: [experimental]
+    paths:
+      - "src/**"
+      - "scripts/**"
+      - "tests/**"
+      - "public/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/**"
+      - ".github/scripts/**"
+  pull_request:
+    branches: [experimental]
+    paths:
+      - "src/**"
+      - "scripts/**"
+      - "tests/**"
+      - "public/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/**"
+      - ".github/scripts/**"
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: development-ai-guardian-${{ github.ref_name || 'experimental' }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  guardian:
+    name: AI Guardian (experimental only)
+    if: github.ref_name == 'experimental' || github.base_ref == 'experimental'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout experimental revision
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run AI engineering report
+        run: npm run agent:report
+
+      - name: Validate AI Guardian report
+        shell: node {0}
+        run: |
+          const fs = require('node:fs');
+          const report = JSON.parse(fs.readFileSync('reports/full-report.json', 'utf8'));
+          const summary = report.summary ?? {};
+          console.log(JSON.stringify(summary, null, 2));
+          if (!summary.healthPassed || !summary.localizationPassed) {
+            process.exit(1);
+          }
+
+      - name: Upload AI engineering reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flixo-ai-guardian-${{ github.run_id }}
+          path: |
+            reports/full-report.json
+            reports/localization-agent-report.json
+            reports/LOCALIZATION_AGENT_TASK.md
+            PROJECT_STATUS.md
+            .github/preflight-report.json
+            .github/diagnosis-report.json
+          if-no-files-found: ignore
+          retention-days: 14
