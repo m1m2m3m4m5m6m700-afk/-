@@ -1,0 +1,23 @@
+name: P0 Verify Temporary
+
+on:
+  pull_request:
+    branches: [experimental]
+    paths:
+      - "**"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run verify
