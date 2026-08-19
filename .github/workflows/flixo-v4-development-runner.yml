@@ -1,0 +1,38 @@
+name: FLIXO v4 Development Runner
+
+on:
+  workflow_dispatch:
+    inputs:
+      allow_push:
+        description: 'Allow v4 to commit/push a verified repair to the development branch'
+        required: true
+        default: 'false'
+      message:
+        description: 'Commit message for the verified repair'
+        required: false
+        default: 'fix(agent): apply verified v4 repair'
+
+permissions:
+  contents: write
+
+jobs:
+  development-runner:
+    if: github.ref_name == 'feat/certification-foundation-pdf-merge'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: feat/certification-foundation-pdf-merge
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+      - name: Assert development branch
+        run: |
+          test "$GITHUB_REF_NAME" = "feat/certification-foundation-pdf-merge"
+          test "$GITHUB_REF_NAME" != "main"
+      - name: Run v4 development runner
+        env:
+          V4_ALLOW_PUSH: ${{ inputs.allow_push }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: node scripts/flixo-agent/v4/experimental/github-development-runner.mjs "${{ inputs.message }}"
