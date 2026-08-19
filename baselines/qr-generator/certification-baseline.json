@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "baselineId": "qr-generator-baseline-v1",
+  "version": 1,
+  "tool": "qr-generator",
+  "status": "certified",
+  "verdict": "CERTIFIED",
+  "createdAt": "2026-08-19T17:57:36.588Z",
+  "lastRecertifiedAt": "2026-08-19T17:57:36.588Z",
+  "certifiedCommit": "059b269cda951284e150c79f08fa60a699f75697",
+  "certifiedRun": "32283990843",
+  "certifiedAt": "2026-08-19T17:57:36.588Z",
+  "expiresAt": "2026-09-18T17:57:36.588Z",
+  "gates": {
+    "fast": "success",
+    "medium": "success",
+    "windows": "success",
+    "full": "success",
+    "qr": "success"
+  },
+  "quality": {
+    "repeatability": 3,
+    "evidenceComplete": true
+  },
+  "performance": {
+    "fastGateMs": 49918,
+    "mediumGateMs": 12729,
+    "baselineFastGateMs": null,
+    "baselineMediumGateMs": null,
+    "fastRegression": {
+      "status": "not-applicable"
+    },
+    "mediumRegression": {
+      "status": "not-applicable"
+    }
+  },
+  "evidence": {
+    "hashes": {
+      "fast-gate.json": "64bc77b2243b4a441931fbf7225748cac36439cfa4c578517d06d4c3880b8f1b",
+      "medium-gate.json": "37dc3a81c7929c3f596f133ee83f3fb687630896595e11c3d9039b4505b0af82"
+    },
+    "baselineId": "qr-generator-baseline-v1"
+  }
+}
