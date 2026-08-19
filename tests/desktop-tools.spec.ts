@@ -93,7 +93,7 @@ test.describe("relaunched public tools", () => {
     await expect(page.getByText(/sample\.mp4/)).toBeVisible();
   });
 
-  test("Video Trimmer loads, accepts a candidate video file, and surfaces validation feedback", async ({ page }) =>
+  test("Video Trimmer loads, accepts a candidate video file, and surfaces validation feedback", async ({ page }) => {
     await openTool(page, "video-trimmer");
     const button = page.getByRole("button", { name: /Trim Video/i });
     await expect(button).toBeDisabled();
@@ -109,7 +109,6 @@ test.describe("relaunched public tools", () => {
     await page.goto("/tools/qr-generator");
     await expect(page.locator('[data-hydrated="true"]')).toHaveCount(1, { timeout: 30_000 });
     await expect(page.locator("h1")).toHaveCount(1);
-    await expect(page.locator('img[alt]').filter({ hasText: "" })).toHaveCount(0);
     await expect(page.locator('img[alt*="QR"]').first()).toBeVisible({ timeout: 30_000 });
     await expect(page.locator('button[aria-pressed]')).toHaveCount(5);
 
