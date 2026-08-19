@@ -1,3 +1,4 @@
+// Workflow bridge for the shared Certification Manifest v1.
 import fs from "node:fs/promises";
 import path from "node:path";
 import { createGateManifest, writeGateManifest } from "./create-gate-manifest.mjs";
