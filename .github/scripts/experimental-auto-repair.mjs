@@ -57,6 +57,15 @@ function writeDecision(data) {
   );
 }
 
+function rollbackRemoteBranch(repository, branch) {
+  if (!repository || !branch) return;
+  try {
+    run('gh', ['api', `repos/${repository}/git/refs/heads/${branch}`, '--method', 'DELETE']);
+  } catch (cleanupError) {
+    console.error(`Remote rollback warning for ${branch}: ${String(cleanupError)}`);
+  }
+}
+
 function main() {
   const runId = process.env.RUN_ID || 'unknown';
   const repository = process.env.REPOSITORY || process.env.GITHUB_REPOSITORY || '';
@@ -77,6 +86,7 @@ function main() {
   const issue = selectRepair(report);
   const branch = `auto-fix/${issue.recommendedStrategy}/${runId}`;
   const failedSha = report.headSha;
+  let remoteBranchPushed = false;
 
   if (!failedSha) throw new Error('Missing failed SHA in diagnosis report');
   if (report.headBranch !== TARGET_BRANCH) throw new Error('Refusing non-experimental source branch');
@@ -115,6 +125,7 @@ function main() {
     run('git', ['config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com']);
     run('git', ['commit', '-m', `chore(auto-repair): ${issue.recommendedStrategy} from run ${runId}`]);
     run('git', ['push', '--set-upstream', 'origin', branch]);
+    remoteBranchPushed = true;
 
     const body = [
       '## Experimental-only automatic repair',
@@ -151,8 +162,10 @@ function main() {
       strategy: issue.recommendedStrategy,
       confidence: issue.confidence,
       changed: staged,
+      remoteBranchPushed: true,
     });
   } catch (error) {
+    if (remoteBranchPushed) rollbackRemoteBranch(repository, branch);
     try { run('git', ['reset', '--hard', 'HEAD']); } catch {}
     try { run('git', ['branch', '-D', branch]); } catch {}
     writeDecision({
@@ -161,6 +174,7 @@ function main() {
       targetBranch: TARGET_BRANCH,
       sourceSha: failedSha,
       strategy: issue.recommendedStrategy,
+      remoteBranchPushed,
       error: String(error),
     });
     console.error(error);
