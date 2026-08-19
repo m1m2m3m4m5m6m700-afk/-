@@ -13,6 +13,7 @@ on:
       - "tests/**"
       - "scripts/validate-release-tools.mjs"
       - "scripts/validate-package-lock-contract.mjs"
+      - "scripts/verify-fast-gate.mjs"
       - "package.json"
       - "package-lock.json"
       - ".nvmrc"
@@ -30,6 +31,7 @@ on:
       - "tests/**"
       - "scripts/validate-release-tools.mjs"
       - "scripts/validate-package-lock-contract.mjs"
+      - "scripts/verify-fast-gate.mjs"
       - "package.json"
       - "package-lock.json"
       - ".nvmrc"
@@ -67,15 +69,9 @@ jobs:
       - name: Validate lockfile
         run: node scripts/validate-lockfile.mjs
 
-      - name: Fast code/tool preflight
+      - name: Fast-fail gate
         timeout-minutes: 8
-        shell: bash
-        run: |
-          set -euo pipefail
-          npm run typecheck
-          npm run lint
-          node scripts/validate-release-tools.mjs
-          npx playwright test tests/desktop-tools.spec.ts --list
+        run: node scripts/verify-fast-gate.mjs
 
       - name: Cache Playwright browsers
         uses: actions/cache@v4
@@ -142,6 +138,9 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
+      - name: Validate package/lock contract
+        run: node scripts/validate-package-lock-contract.mjs
+
       - name: Setup Node
         uses: actions/setup-node@v5
         with:
@@ -150,6 +149,10 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Fast-fail gate
+        timeout-minutes: 8
+        run: node scripts/verify-fast-gate.mjs
 
       - name: Cache Playwright browsers
         uses: actions/cache@v4
