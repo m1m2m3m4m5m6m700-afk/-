@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { verifyEvidenceIntegrity } from "./verify-evidence-integrity.mjs";
+import { computeSha256 } from "./create-gate-manifest.mjs";
 
 export async function verifyBaseline({ baselinePath, provenancePath, now = new Date() }) {
   const errors = [];
@@ -27,9 +27,15 @@ export async function verifyBaseline({ baselinePath, provenancePath, now = new D
   if (!baseline.certifiedCommit || !provenance.sourceCommit) errors.push("certification commit missing");
   if (baseline.certifiedCommit !== provenance.sourceCommit) errors.push("certification commit mismatch");
 
-  const sourceArtifact = provenance.sourceArtifactDigest;
-  if (!/^sha256:[a-f0-9]{64}$/.test(sourceArtifact ?? "")) errors.push("source artifact digest invalid");
-  if (!/^sha256:[a-f0-9]{64}$/.test(provenance.baselineFileSha256 ? `sha256:${provenance.baselineFileSha256}` : "")) errors.push("baseline file SHA-256 invalid");
+  if (!/^sha256:[a-f0-9]{64}$/.test(provenance.sourceArtifactDigest ?? "")) errors.push("source artifact digest invalid");
+  if (!/^[a-f0-9]{64}$/.test(provenance.baselineFileSha256 ?? "")) errors.push("baseline file SHA-256 invalid");
+
+  try {
+    const actualBaselineSha = await computeSha256(baselinePath);
+    if (actualBaselineSha !== provenance.baselineFileSha256) errors.push("baseline file SHA-256 mismatch");
+  } catch (error) {
+    errors.push(`baseline hash unavailable: ${error.message}`);
+  }
 
   const integrity = {
     baselinePath: path.normalize(baselinePath),
@@ -38,4 +44,12 @@ export async function verifyBaseline({ baselinePath, provenancePath, now = new D
   };
 
   return { valid: errors.length === 0, errors, baseline, provenance, integrity };
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const baselinePath = process.argv[2] ?? "baselines/qr-generator/certification-baseline.json";
+  const provenancePath = process.argv[3] ?? "baselines/qr-generator/provenance.json";
+  const result = await verifyBaseline({ baselinePath, provenancePath });
+  console.log(JSON.stringify(result, null, 2));
+  process.exit(result.valid ? 0 : 1);
 }
