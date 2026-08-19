@@ -152,6 +152,10 @@ async function pdfTool(file: File, tool: MegaTool): Promise<MegaToolResult> {
   if (tool.handler === "inspect") return { type: "text", text: `File: ${file.name}\nPages: ${pages.length}\nTitle: ${pdf.getTitle() || "—"}\nAuthor: ${pdf.getAuthor() || "—"}` };
   if (tool.handler === "extract-text") {
     const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+    const workerModule = await import("pdfjs-dist/legacy/build/pdf.worker.mjs?url");
+    if (typeof window !== "undefined") {
+      pdfjs.GlobalWorkerOptions.workerSrc = workerModule.default;
+    }
     const doc = await pdfjs.getDocument({ data: bytes }).promise; let text = "";
     for (let pageNumber = 1; pageNumber <= doc.numPages; pageNumber += 1) { const page = await doc.getPage(pageNumber); const content = await page.getTextContent(); text += `${content.items.map((item) => ("str" in item ? item.str : "")).join(" ")}\n`; }
     return { type: "text", text: text.trim() || "No selectable text was found in this PDF." };
