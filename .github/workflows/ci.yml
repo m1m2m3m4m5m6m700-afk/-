@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, experimental]
     paths:
       - "src/**"
       - "tests/**"
@@ -14,7 +14,7 @@ on:
       - ".nvmrc"
       - ".github/workflows/**"
   pull_request:
-    branches: [main]
+    branches: [main, experimental]
     paths:
       - "src/**"
       - "tests/**"
@@ -36,7 +36,7 @@ permissions:
 
 jobs:
   verify:
-    name: Full Verification (main)
+    name: Full Verification (${{ github.ref_name }})
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
@@ -65,7 +65,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: flixo-playwright-report
+          name: flixo-playwright-report-${{ github.ref_name }}
           path: playwright-report
           if-no-files-found: ignore
           retention-days: 7
