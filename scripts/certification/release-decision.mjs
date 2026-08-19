@@ -3,6 +3,25 @@ import path from "node:path";
 import { readAndVerifyGateManifest } from "./verify-gate-manifest.mjs";
 import { verifyBaseline } from "./verify-baseline.mjs";
 
+async function findManifest(root, gate) {
+  let found = null;
+  async function walk(dir) {
+    if (found) return;
+    let entries;
+    try { entries = await fs.readdir(dir, { withFileTypes: true }); } catch { return; }
+    for (const entry of entries) {
+      const file = path.join(dir, entry.name);
+      if (entry.isDirectory()) await walk(file);
+      else if (entry.name === "gate-manifest.json") {
+        const manifest = JSON.parse(await fs.readFile(file, "utf8"));
+        if (manifest.gate === gate) { found = { file, manifest }; return; }
+      }
+    }
+  }
+  await walk(root);
+  return found;
+}
+
 export async function evaluateRelease(tool, {
   root = `.artifacts/${tool}`,
   requiredGates = ["fast", "medium", "correctness", "browser", "stability", "full"],
@@ -12,36 +31,42 @@ export async function evaluateRelease(tool, {
   now = new Date(),
 } = {}) {
   const gateResults = [];
+  let rootFailureSeen = false;
+
   for (const gate of requiredGates) {
-    const manifestPath = path.join(root, gate, "gate-manifest.json");
-    try {
-      const result = await readAndVerifyGateManifest(manifestPath, {
-        evidencePath: path.join(root, gate, "gate-evidence.json"),
-        expectedCommit,
-        expectedRunId,
-        now,
-      });
-      gateResults.push({
-        gate,
-        status: result.manifest.status,
-        valid: result.valid,
-        manifestId: result.manifest.manifestId,
-        integrity: result.integrity,
-        errors: result.errors,
-      });
-    } catch (error) {
-      gateResults.push({ gate, status: "missing", valid: false, errors: [error.message] });
+    const located = await findManifest(root, gate);
+    if (!located) {
+      const failureKind = rootFailureSeen ? "cascade" : "missing-root-gate";
+      gateResults.push({ gate, status: "missing", valid: false, failureKind, errors: ["gate manifest missing"] });
+      continue;
     }
+
+    const result = await readAndVerifyGateManifest(located.file, {
+      evidencePath: path.join(path.dirname(located.file), located.manifest.evidence.file),
+      expectedCommit,
+      expectedRunId,
+      now,
+    });
+    const rootFailure = located.manifest.status !== "success" && !rootFailureSeen;
+    if (rootFailure) rootFailureSeen = true;
+    gateResults.push({
+      gate,
+      status: located.manifest.status,
+      valid: result.valid,
+      manifestId: located.manifest.manifestId,
+      integrity: result.integrity,
+      failureKind: result.valid ? null : (rootFailure ? "root" : "cascade"),
+      errors: result.errors,
+    });
   }
 
   const baselineResult = baseline
     ? await verifyBaseline({ ...baseline, now })
     : { valid: true, errors: [], skipped: true };
-
-  const rootFailures = gateResults.filter((gate) => !gate.valid);
+  const rootFailures = gateResults.filter((gate) => gate.failureKind === "root" || gate.failureKind === "missing-root-gate");
+  const cascadeFailures = gateResults.filter((gate) => gate.failureKind === "cascade");
   const passed = gateResults.filter((gate) => gate.valid && gate.status === "success").length;
-  const failed = gateResults.length - passed;
-  const releaseStatus = rootFailures.length === 0 && baselineResult.valid ? "CERTIFIED" : "REJECTED";
+  const releaseStatus = rootFailures.length === 0 && cascadeFailures.length === 0 && baselineResult.valid ? "CERTIFIED" : "REJECTED";
 
   const decision = {
     schemaVersion: 1,
@@ -55,11 +80,12 @@ export async function evaluateRelease(tool, {
     summary: {
       total: requiredGates.length,
       passed,
-      failed,
+      failed: requiredGates.length - passed,
       rootFailures: rootFailures.map((gate) => gate.gate),
+      cascadeFailures: cascadeFailures.map((gate) => gate.gate),
     },
     diagnostics: {
-      cascadeFailures: gateResults.filter((gate) => gate.status === "skipped").map((gate) => gate.gate),
+      failureMode: rootFailures.length ? "root" : cascadeFailures.length ? "cascade" : "none",
       externalChecksAreNonAuthoritative: true,
     },
   };
@@ -73,7 +99,7 @@ export async function evaluateRelease(tool, {
 if (import.meta.url === `file://${process.argv[1]}`) {
   const tool = process.env.TOOL ?? "pdf-merge";
   const requiredGates = (process.env.REQUIRED_GATES ?? "fast,medium,correctness,browser,stability,full").split(",").filter(Boolean);
-  const decision = await evaluateRelease(tool, { requiredGates });
+  const decision = await evaluateRelease(tool, { requiredGates, root: process.env.ARTIFACT_ROOT ?? `.artifacts/${tool}` });
   console.log(JSON.stringify(decision, null, 2));
   process.exit(decision.releaseStatus === "CERTIFIED" ? 0 : 1);
 }
