@@ -55,6 +55,11 @@ export const toolCapabilitiesSchema = z.object({
   input: toolInputKindSchema,
   output: toolOutputKindSchema,
   localOnly: z.boolean(),
+  policy: z.object({
+    requiresNetwork: z.boolean().default(false),
+    requiresStorage: z.boolean().default(false),
+    sensitiveInput: z.boolean().default(false),
+  }).default({}),
 });
 
 export const toolBaseManifestSchema = z.object({
@@ -65,6 +70,7 @@ export const toolBaseManifestSchema = z.object({
   description: z.string().min(1),
   lifecycle: toolLifecycleStateSchema,
   capabilities: toolCapabilitiesSchema,
+  dependencies: z.array(z.string().min(1)).default([]),
 });
 
 export const toolTestContractSchema = z.object({
