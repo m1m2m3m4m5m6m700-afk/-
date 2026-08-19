@@ -1,7 +1,6 @@
 #!/bin/sh
 set -eu
 
-# Never mutate or block CI-side commits. Server-side self-heal has its own policy.
 if [ "${CI:-false}" = "true" ] || [ "${FLIXO_PREFLIGHT_SKIP:-0}" = "1" ]; then
   exit 0
 fi
@@ -13,4 +12,4 @@ if [ "$branch" != "experimental" ]; then
 fi
 
 echo "FLIXO Preflight Guardian: V3 diagnose -> V4 guarded repair -> local gates"
-npm run preflight:repair
+node scripts/flixo-agent/preflight-auto-repair.mjs
