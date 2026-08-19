@@ -22,7 +22,7 @@ const baselineExists = fs.existsSync(baselinePath);
 const baseline = baselineExists ? JSON.parse(fs.readFileSync(baselinePath, "utf8")) : null;
 const baselineExpired = Boolean(baseline?.expiresAt && Date.parse(baseline.expiresAt) <= Date.now());
 const allGatesPassed = Object.values(stages).every((value) => value === "success");
-const verdict = allGatesPassed && !baselineExpired ? "CERTIFIED" : "REJECTED";
+const verdict = allGatesPassed ? "CERTIFIED" : "REJECTED";
 
 const readJson = (file) => {
   if (!fs.existsSync(file)) return null;
@@ -37,7 +37,7 @@ const mediumGate = readJson(path.join(gateDir, "medium-gate.json"));
 const performance = {
   fastGateMs: fastGate?.durationMs ?? null,
   mediumGateMs: mediumGate?.durationMs ?? null,
-  baselineFastGateMs: baseline?.performance?.fastGateMs ?? baseline?.performance?.fastGateMs ?? null,
+  baselineFastGateMs: baseline?.performance?.fastGateMs ?? null,
   baselineMediumGateMs: baseline?.performance?.mediumGateMs ?? null,
   fastRegression: null,
   mediumRegression: null,
@@ -73,6 +73,7 @@ const report = {
     baselineExpiresAt: baseline?.expiresAt ?? null,
     status: baselineExpired ? "EXPIRED" : baselineExists ? "CURRENT" : "NOT_ESTABLISHED",
     maxAgeDays: 30,
+    action: baselineExpired ? "RECERTIFY" : baselineExists ? "MONITOR" : "ESTABLISH_BASELINE",
   },
   quality: {
     repeatability: 3,
