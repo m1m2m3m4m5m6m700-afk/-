@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "certifiedTools": [
-    "zip-creator",
-    "archive-extractor",
-    "file-splitter",
-    "metadata-viewer"
+    "image-compressor",
+    "image-enhancer",
+    "video-compressor",
+    "video-trimmer"
   ],
   "policy": {
     "publicRequiresCertified": true,
