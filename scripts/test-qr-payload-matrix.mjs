@@ -10,10 +10,12 @@ const jsQR = require("jsqr");
 
 const longUnicode = "مرحبا Flixo — QR ✓ اختبار ".repeat(12);
 const nearCapacityUnicode = "مرحبا Flixo — QR ✓ اختبار ".repeat(20);
+const arabicText = "مرحبا Flixo QR ✓ — تحقق من الناتج";
 
 const cases = [
   { id: "url", options: { mode: "url", input: "https://example.com/flixo?qr=1&lang=ar" }, expected: "https://example.com/flixo?qr=1&lang=ar" },
-  { id: "text", options: { mode: "text", input: "مرحبا Flixo QR ✓ — تحقق من الناتج" }, expected: "مرحبا Flixo QR ✓ — تحقق من الناتج" },
+  { id: "text", options: { mode: "text", input: arabicText }, expected: arabicText },
+  { id: "arabic", options: { mode: "text", input: arabicText }, expected: arabicText },
   { id: "wifi", options: { mode: "wifi", wifiSsid: "Office;WiFi\\5G", wifiPass: "p@ss:word,42", wifiEncryption: "WPA" }, expected: "WIFI:T:WPA;S:Office\\;WiFi\\\\5G;P:p@ss\\:word\\,42;;" },
   { id: "email", options: { mode: "email", emailTo: "test@example.com", emailSubject: "Hello Flixo ✓" }, expected: "mailto:test@example.com?subject=Hello%20Flixo%20%E2%9C%93" },
   { id: "phone", options: { mode: "phone", phoneNumber: "+201001234567" }, expected: "tel:+201001234567" },
