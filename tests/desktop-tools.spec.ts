@@ -81,7 +81,10 @@ async function assertQrDownloads(page: Page, expectedPayload: string) {
 
   const pngBuffer = await readDownloadBuffer(pngDownload);
   assertPngArtifact(pngBuffer, 300, 300);
-  const pngDecoded = await decodeQrDataUrl(page, `data:image/png;base64,${pngBuffer.toString("base64")}`);
+  const pngDecoded = await decodeQrDataUrl(
+    page,
+    `data:image/png;base64,${pngBuffer.toString("base64")}`,
+  );
   expect(pngDecoded).toBe(expectedPayload);
 
   const svgDownloadPromise = page.waitForEvent("download");
@@ -93,6 +96,7 @@ async function assertQrDownloads(page: Page, expectedPayload: string) {
   const svgText = await readDownloadText(svgDownload);
   expect(svgText).toContain("<svg");
   expect(svgText).toContain("xmlns=");
+  expect(svgText).not.toMatch(/<script|javascript:|on[a-z]+\s*=/i);
   const svgDataUrl = `data:image/svg+xml;base64,${Buffer.from(svgText, "utf8").toString("base64")}`;
   const svgDecoded = await decodeQrDataUrl(page, svgDataUrl);
   expect(svgDecoded).toBe(expectedPayload);
@@ -178,7 +182,7 @@ test.describe("relaunched public tools", () => {
     await expect(page.getByText(/sample\.mp4/)).toBeVisible();
   });
 
-  test("Video Trimmer loads, accepts a candidate video file, and surfaces validation feedback", async ({ page }) =>
+  test("Video Trimmer loads, accepts a candidate video file, and surfaces validation feedback", async ({ page }) => {
     await openTool(page, "video-trimmer");
     const button = page.getByRole("button", { name: /Trim Video/i });
     await expect(button).toBeDisabled();
@@ -197,25 +201,22 @@ test.describe("relaunched public tools", () => {
     });
 
     test("URL payload decodes exactly from both PNG and SVG", async ({ page }) => {
-      const urlInput = page.locator('input[type="text"]').first();
-      await urlInput.fill("https://example.com/flixo?qr=1&lang=ar");
-      await assertQrDownloads(page, "https://example.com/flixo?qr=1&lang=ar");
+      const expected = "https://example.com/flixo?qr=1&lang=ar";
+      await page.locator('input[type="text"]').first().fill(expected);
+      await assertQrDownloads(page, expected);
     });
 
     test("plain Unicode text decodes exactly from both PNG and SVG", async ({ page }) => {
       await page.locator('button[aria-pressed]').nth(1).click();
-      const textInput = page.locator("textarea");
       const expected = "مرحبا Flixo QR ✓ — تحقق من الناتج";
-      await textInput.fill(expected);
+      await page.locator("textarea").fill(expected);
       await assertQrDownloads(page, expected);
     });
 
     test("Wi-Fi payload preserves required escaping exactly", async ({ page }) => {
       await page.locator('button[aria-pressed]').nth(2).click();
-      const ssid = "Office;WiFi\\5G";
-      const password = "p@ss:word,42";
-      await page.locator('input[type="text"]').first().fill(ssid);
-      await page.locator('input[type="password"]').fill(password);
+      await page.locator('input[type="text"]').first().fill("Office;WiFi\\5G");
+      await page.locator('input[type="password"]').fill("p@ss:word,42");
       await page.locator("select").selectOption("WPA");
 
       const expected = "WIFI:T:WPA;S:Office\\;WiFi\\\\5G;P:p@ss\\:word\\,42;;";
@@ -231,8 +232,24 @@ test.describe("relaunched public tools", () => {
 
     test("phone payload decodes exactly", async ({ page }) => {
       await page.locator('button[aria-pressed]').nth(4).click();
+      const expected = "tel:+201001234567";
       await page.locator('input[type="tel"]').fill("+201001234567");
-      await assertQrDownloads(page, "tel:+201001234567");
+      await assertQrDownloads(page, expected);
+    });
+
+    test("long Unicode text remains decodable without payload corruption", async ({ page }) => {
+      await page.locator('button[aria-pressed]').nth(1).click();
+      const expected = "مرحبا Flixo — " + "QR ✓ اختبار ".repeat(40);
+      await page.locator("textarea").fill(expected);
+      await assertQrDownloads(page, expected);
+    });
+
+    test("rapid input changes do not leave a stale QR result", async ({ page }) => {
+      const input = page.locator('input[type="text"]').first();
+      await input.fill("https://example.com/old-result");
+      await input.fill("https://example.com/final-result");
+      await expect(page.locator('img[alt]').first()).toBeVisible({ timeout: 30_000 });
+      await assertQrDownloads(page, "https://example.com/final-result");
     });
 
     test("custom dark/light colors still produce a decodable QR payload", async ({ page }) => {
