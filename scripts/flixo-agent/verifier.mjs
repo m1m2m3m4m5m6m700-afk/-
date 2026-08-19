@@ -49,6 +49,10 @@ function validateToolIsolation(plan, context = {}) {
 
 function validateChanges(plan) {
   for (const change of plan.changes ?? []) {
+    if (!change?.file || !plan.files?.includes(change.file)) {
+      return 'every repair change must reference a file declared in plan.files';
+    }
+
     if (change.type === 'dependency-sync') {
       if (!hasFile(plan, 'package.json') || !hasFile(plan, 'package-lock.json')) {
         return 'dependency-sync requires package.json and package-lock.json';
@@ -56,10 +60,20 @@ function validateChanges(plan) {
       if (!change.command?.startsWith('npm install --save-dev ')) {
         return 'dependency-sync must use npm install --save-dev';
       }
+      // dependency-sync is planning-only until the executor gains an npm-backed lockfile step.
+      continue;
     }
 
-    if (change.type === 'insert-after' && !change.anchor) {
-      return 'insert-after change requires an anchor';
+    if (change.type === 'insert') {
+      if (!change.after || typeof change.content !== 'string') {
+        return 'insert change requires an exact after anchor and content';
+      }
+    }
+
+    if (change.type === 'replace') {
+      if (!change.find || typeof change.content !== 'string') {
+        return 'replace change requires an exact find string and content';
+      }
     }
   }
   return null;
@@ -81,8 +95,14 @@ export function verifyRepairPlan(plan, context = {}) {
   const isolationError = validateToolIsolation(plan ?? {}, context);
   if (isolationError) errors.push(isolationError);
 
+  const executionReady = (plan?.changes ?? []).every((change) =>
+    ['insert', 'replace', 'delete'].includes(change.type),
+  );
+  if (!executionReady) errors.push('plan contains changes not yet supported by executor');
+
   return {
     valid: errors.length === 0,
+    approved: errors.length === 0,
     errors,
     checked: {
       contracts: true,
