@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://flixo.tools/schemas/gate-manifest.v1.json",
+  "title": "Flixo Gate Manifest v1",
+  "type": "object",
+  "required": ["schemaVersion", "manifestId", "tool", "gate", "status", "commit", "runId", "createdAt", "expiresAt", "evidence", "execution", "quality", "baseline", "integrity"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "manifestId": { "type": "string", "pattern": "^[a-z0-9-]+-[a-z0-9-]+-[0-9]+$" },
+    "tool": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]+$" },
+    "gate": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]+$" },
+    "status": { "enum": ["success", "failure", "pending", "skipped"] },
+    "commit": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+    "runId": { "type": "string", "pattern": "^[0-9]+$" },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "expiresAt": { "type": "string", "format": "date-time" },
+    "evidence": {
+      "type": "object",
+      "required": ["file", "sha256", "sizeBytes"],
+      "properties": {
+        "file": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "sizeBytes": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "execution": {
+      "type": "object",
+      "required": ["durationMs", "attempt", "repeatCount"],
+      "properties": {
+        "durationMs": { "type": "integer", "minimum": 0 },
+        "attempt": { "type": "integer", "minimum": 1 },
+        "repeatCount": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "quality": {
+      "type": "object",
+      "required": ["testsPassed", "testsFailed", "warnings"],
+      "properties": {
+        "testsPassed": { "type": "integer", "minimum": 0 },
+        "testsFailed": { "type": "integer", "minimum": 0 },
+        "warnings": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "baseline": {
+      "type": "object",
+      "required": ["baselineId", "baselineCommit", "baselineStatus"],
+      "properties": {
+        "baselineId": { "type": ["string", "null"] },
+        "baselineCommit": { "type": ["string", "null"], "pattern": "^[a-f0-9]{40}$" },
+        "baselineStatus": { "enum": ["frozen", "deprecated", "candidate", "none"] }
+      }
+    },
+    "integrity": {
+      "type": "object",
+      "required": ["commitMatch", "runMatch", "hashMatch", "notExpired", "valid"],
+      "properties": {
+        "commitMatch": { "type": "boolean" },
+        "runMatch": { "type": "boolean" },
+        "hashMatch": { "type": "boolean" },
+        "notExpired": { "type": "boolean" },
+        "valid": { "type": "boolean" }
+      }
+    },
+    "diagnostics": { "type": "object" }
+  }
+}
