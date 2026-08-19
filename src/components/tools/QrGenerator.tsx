@@ -4,7 +4,6 @@ import {
   Copy,
   Check,
   Trash2,
-  Sparkles,
   Link2,
   Wifi,
   Mail,
@@ -21,6 +20,8 @@ import { useI18n } from "@/lib/i18n";
 import { SITE_URL } from "@/lib/seo/site";
 
 type PresetMode = "url" | "text" | "wifi" | "email" | "phone";
+
+const escapeWifiValue = (value: string): string => value.replace(/[\\;,\:\"]/g, (character) => `\\${character}`);
 
 export function QrGenerator() {
   const { t } = useI18n();
@@ -49,7 +50,7 @@ export function QrGenerator() {
   const getPayload = (): string => {
     switch (mode) {
       case "wifi":
-        return `WIFI:T:${wifiEncryption};S:${wifiSsid};P:${wifiPass};;`;
+        return `WIFI:T:${wifiEncryption};S:${escapeWifiValue(wifiSsid)};P:${escapeWifiValue(wifiPass)};;`;
       case "email":
         return `mailto:${emailTo}?subject=${encodeURIComponent(emailSubject)}`;
       case "phone":
