@@ -25,6 +25,7 @@
 - `package.json` is treated as immutable during lockfile repair.
 - Repair must pass `npm ci --ignore-scripts` and `npm run validate:dependencies`.
 - Repairs never write directly to `main`.
+- Rollback is hardened: if an auto-fix branch was pushed but PR creation fails, Self-Heal now deletes the remote branch before escalating.
 
 ### CI evidence and timeout hardening
 - GitHub Runner was reached successfully by CI Run #897.
@@ -36,7 +37,7 @@
 - CI contract validation was strengthened to require `scripts.verify` and to reject CI configurations that stop using the canonical `npm run verify` gate or omit the required timeout policy.
 - Promotion auto-merge permissions were corrected on `experimental`: the Promotion Gate requests `contents: write` plus `pull-requests: write` for the final merge operation.
 - The Promotion Gate was further hardened to require production-safe `main` protection: required status checks, pull-request review protection, and administrator enforcement must all be enabled before promotion can pass.
-- Current `experimental` head: `8e881c356f8c48e0186d1fd1945004fc570d1e29`.
+- Current `experimental` head: `03e3262f0c660f6444b7a4e0156185ffbc18f808`.
 - Temporary validation PR #96 was created against `experimental`, but the current GitHub connector exposed only a Vercel failure status and no CI Run/check for that PR. PR #96 was closed without merge.
 
 ### Promotion governance
