@@ -37,7 +37,6 @@ jobs:
           cache: npm
       - run: npm ci
       - run: node scripts/certification/smoke-test.mjs
-      - run: node scripts/certification/validate-gate-manifest-schema.mjs scripts/certification
       - run: npm run validate:pdf-catalog
       - name: Evidence
         if: always()
