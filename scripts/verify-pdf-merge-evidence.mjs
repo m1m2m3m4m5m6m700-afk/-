@@ -5,7 +5,7 @@ import path from "node:path";
 const root = path.resolve(process.cwd(), ".artifacts/pdf-merge");
 const expectedCommit = process.env.GITHUB_SHA;
 const expectedRunId = process.env.GITHUB_RUN_ID;
-const requiredGates = ["fast", "medium", "browser", "stability", "full"];
+const requiredGates = ["fast", "medium", "correctness", "browser", "stability", "full"];
 
 const findManifests = (directory) => {
   if (!fs.existsSync(directory)) return [];
@@ -18,18 +18,12 @@ const findManifests = (directory) => {
   return found;
 };
 
-const manifests = findManifests(root).map((file) => ({
-  file,
-  manifest: JSON.parse(fs.readFileSync(file, "utf8")),
-}));
-
+const manifests = findManifests(root).map((file) => ({ file, manifest: JSON.parse(fs.readFileSync(file, "utf8")) }));
 const errors = [];
+
 for (const gate of requiredGates) {
   const entry = manifests.find((item) => item.manifest.gate === gate);
-  if (!entry) {
-    errors.push(`${gate}: evidence manifest missing`);
-    continue;
-  }
+  if (!entry) { errors.push(`${gate}: evidence manifest missing`); continue; }
   const { manifest, file } = entry;
   if (manifest.commit !== expectedCommit) errors.push(`${gate}: commit mismatch`);
   if (String(manifest.runId) !== String(expectedRunId)) errors.push(`${gate}: runId mismatch`);
@@ -38,10 +32,7 @@ for (const gate of requiredGates) {
   if (!manifest.evidenceSha256) errors.push(`${gate}: evidence hash missing`);
 
   const evidencePath = path.join(path.dirname(file), manifest.evidenceFile || "gate-evidence.json");
-  if (!fs.existsSync(evidencePath)) {
-    errors.push(`${gate}: evidence file missing`);
-    continue;
-  }
+  if (!fs.existsSync(evidencePath)) { errors.push(`${gate}: evidence file missing`); continue; }
   const digest = crypto.createHash("sha256").update(fs.readFileSync(evidencePath)).digest("hex");
   if (digest !== manifest.evidenceSha256) errors.push(`${gate}: evidence SHA-256 mismatch`);
 }
