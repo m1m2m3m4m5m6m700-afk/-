@@ -5,40 +5,43 @@
   "tool": "qr-generator",
   "status": "certified",
   "verdict": "CERTIFIED",
-  "createdAt": "2026-08-19T17:57:36.588Z",
-  "lastRecertifiedAt": "2026-08-19T17:57:36.588Z",
-  "certifiedCommit": "059b269cda951284e150c79f08fa60a699f75697",
-  "certifiedRun": "32283990843",
-  "certifiedAt": "2026-08-19T17:57:36.588Z",
-  "expiresAt": "2026-09-18T17:57:36.588Z",
+  "certification": {
+    "commit": "059b269cda951284e150c79f08fa60a699f75697",
+    "runId": "32283990843",
+    "certifiedAt": "2026-08-19T17:57:36.588Z",
+    "expiresAt": "2026-09-18T17:57:36.588Z",
+    "workflow": "https://github.com/m1m2m3m4m5m6m700-afk/FLIXO-AI-TOOLS/actions/runs/32283990843"
+  },
   "gates": {
-    "fast": "success",
-    "medium": "success",
-    "windows": "success",
-    "full": "success",
-    "qr": "success"
+    "fast": {"status": "success", "runId": "32283990843", "evidenceSha256": "64bc77b2243b4a441931fbf7225748cac36439cfa4c578517d06d4c3880b8f1b"},
+    "medium": {"status": "success", "runId": "32283990843", "evidenceSha256": "37dc3a81c7929c3f596f133ee83f3fb687630896595e11c3d9039b4505b0af82"},
+    "windows": {"status": "success", "runId": "32283990843", "evidenceSha256": null},
+    "qr": {"status": "success", "runId": "32283990843", "evidenceSha256": null},
+    "full": {"status": "success", "runId": "32283990843", "evidenceSha256": null}
   },
   "quality": {
+    "evidenceComplete": true,
+    "independentOutputValidation": true,
     "repeatability": 3,
-    "evidenceComplete": true
+    "regressionLocked": true
   },
   "performance": {
-    "fastGateMs": 49918,
-    "mediumGateMs": 12729,
-    "baselineFastGateMs": null,
-    "baselineMediumGateMs": null,
-    "fastRegression": {
-      "status": "not-applicable"
-    },
-    "mediumRegression": {
-      "status": "not-applicable"
-    }
+    "baseline": {"fastMs": null, "mediumMs": null, "browserMs": null},
+    "current": {"fastMs": 49918, "mediumMs": 12729, "browserMs": null},
+    "regression": {"status": "NOT_APPLICABLE", "thresholdPercent": 10}
   },
   "evidence": {
+    "artifacts": ["fast-gate.json", "medium-gate.json"],
     "hashes": {
       "fast-gate.json": "64bc77b2243b4a441931fbf7225748cac36439cfa4c578517d06d4c3880b8f1b",
       "medium-gate.json": "37dc3a81c7929c3f596f133ee83f3fb687630896595e11c3d9039b4505b0af82"
     },
-    "baselineId": "qr-generator-baseline-v1"
+    "integrity": "PASS"
+  },
+  "promotion": {
+    "previousBaseline": null,
+    "previousCommit": null,
+    "promotionStatus": "FROZEN",
+    "immutable": true
   }
 }
