@@ -13,7 +13,7 @@ const safeIssue = {
   id: 'R010',
   recommendedStrategy: 'lockfile-fixer',
   confidence: MIN_CONFIDENCE,
-  autoApplyAllowed: false,
+  autoApplyAllowed: true,
 };
 
 const safeReport = {
@@ -23,9 +23,15 @@ const safeReport = {
   issues: [safeIssue],
 };
 
-test('accepts only experimental source reports with a safe known fixer', () => {
+test('accepts only experimental source reports with an explicitly allowed safe fixer', () => {
   assert.equal(isRepairEligible(safeReport), true);
   assert.equal(selectRepair(safeReport), safeIssue);
+});
+
+test('rejects a report that is not explicitly auto-apply allowed', () => {
+  const report = { ...safeReport, issues: [{ ...safeIssue, autoApplyAllowed: false }] };
+  assert.equal(isRepairEligible(report), false);
+  assert.equal(selectRepair(report), null);
 });
 
 test('rejects a main source branch', () => {
@@ -44,6 +50,10 @@ test('rejects strategies outside the allow-list', () => {
     ...safeReport,
     issues: [{ ...safeIssue, recommendedStrategy: 'playwright-fixer' }],
   }), false);
+});
+
+test('rejects empty repair path sets', () => {
+  assert.equal(allowedChangedPaths([]), false);
 });
 
 test('allows only package-lock.json mutations', () => {
