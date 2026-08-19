@@ -223,7 +223,7 @@ jobs:
           if-no-files-found: warn
 
   qr-output-certification:
-    name: QR output certification (fast matrix + critical browser)
+    name: QR output certification (hybrid fast + critical browser)
     runs-on: ubuntu-latest
     needs: medium-gate
     timeout-minutes: 20
@@ -239,18 +239,20 @@ jobs:
           cache: npm
       - name: Install locked project dependencies
         run: npm ci
-      - name: Install pinned test-only QR decoder
-        run: npm install --no-save --package-lock=false jsqr@1.4.0
-      - name: Verify independent decoder import
+      - name: Install pinned test-only QR decoders
+        run: npm install --no-save --package-lock=false jsqr@1.4.0 pngjs@7.0.0
+      - name: Verify independent decoder imports
         run: |
           node --input-type=module <<'NODE'
           import { createRequire } from "node:module";
           const require = createRequire(import.meta.url);
           const jsQR = require("jsqr");
+          const { PNG } = require("pngjs");
           if (typeof jsQR !== "function") throw new Error("jsQR decoder import failed");
-          console.log("Independent jsQR decoder: OK");
+          if (!PNG?.sync?.read) throw new Error("pngjs decoder import failed");
+          console.log("Independent Node QR decoders: OK");
           NODE
-      - name: Run fast QR payload and artifact matrix
+      - name: Run fast independent Node QR matrix
         run: |
           mkdir -p .artifacts/qr
           node scripts/test-qr-payload-matrix.mjs | tee .artifacts/qr/node-matrix.json
@@ -273,16 +275,16 @@ jobs:
           await browser.close();
           console.log("Chromium launch: OK");
           NODE
-      - name: Run critical browser certification once
+      - name: Run critical browser integration once
         run: npx playwright test tests/qr-output-certification.spec.ts --reporter=line
-      - name: Run critical stability suite three times
+      - name: Run critical browser stability three times
         run: npx playwright test tests/qr-output-stability.spec.ts --repeat-each=3 --reporter=line
       - name: Collect and seal QR evidence
         if: always()
         run: |
           mkdir -p .artifacts/qr
           cp -R test-results .artifacts/qr/test-results 2>/dev/null || true
-          node -e 'const fs=require("fs"); fs.writeFileSync(".artifacts/qr/summary.json", JSON.stringify({commit:process.env.GITHUB_SHA, timestamp:new Date().toISOString(), job:process.env.GITHUB_JOB, decoder:"jsqr@1.4.0", matrix:"node-all-cases", browser:"critical-once", stability:"critical-x3"}, null, 2)+"\n")'
+          node -e 'const fs=require("fs"); fs.writeFileSync(".artifacts/qr/summary.json", JSON.stringify({commit:process.env.GITHUB_SHA, timestamp:new Date().toISOString(), job:process.env.GITHUB_JOB, decoder:"jsqr@1.4.0+pngjs@7.0.0", matrix:"node-all-cases", browser:"critical-once", stability:"critical-x3"}, null, 2)+"\n")'
           node scripts/seal-evidence.mjs .artifacts/qr
       - name: Publish QR evidence
         if: always()
