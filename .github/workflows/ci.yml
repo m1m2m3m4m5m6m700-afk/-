@@ -13,6 +13,18 @@ on:
       - "tsconfig*.json"
       - ".nvmrc"
       - ".github/workflows/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "public/**"
+      - "package.json"
+      - "package-lock.json"
+      - "vite.config.ts"
+      - "tsconfig*.json"
+      - ".nvmrc"
+      - ".github/workflows/**"
   workflow_dispatch:
 
 concurrency:
