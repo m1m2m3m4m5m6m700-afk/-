@@ -30,11 +30,12 @@
 - GitHub Runner was reached successfully by CI Run #897.
 - Steps 1–9 completed successfully: CI contract, dependency contract, clean install, lockfile stability, production audit, and Chromium setup.
 - Run #897 remains stuck in `Run canonical test gate` with no final conclusion in the available evidence.
-- Root cause identified at the CI/test-harness level: Playwright allowed up to **20 minutes per test** with no independent shell timeout for the canonical `npm test` command, allowing a hung test to leave the runner unresolved.
-- Fixed on `experimental` by commit `1bdd56e1a1e667e1e4f26aa18eef2d8b5cdb5bae`: Playwright test timeout reduced to 5 minutes, action/navigation timeouts set to 30 seconds.
-- Fixed on `experimental` by commit `04f0df006f6e834b78b6544bc7cea98050b84adf`: CI now runs `npm test` under an explicit 30-minute shell timeout and always stores `diagnostics/npm-test.log`, test results, and Playwright reports as artifacts.
-- A temporary validation PR #95 was created to exercise the hardened gate; it is validation-only and must not be merged.
-- The new PR run is not surfaced by the current GitHub connector, so the timeout fix is **implemented but not yet operationally certified**.
+- Root cause identified at the CI/test-harness level: Playwright allowed up to **20 minutes per test** with no independent shell timeout for the canonical test command, allowing a hung test to leave the runner unresolved.
+- Playwright hardening applied on `experimental` by commit `1bdd56e1a1e667e1e4f26aa18eef2d8b5cdb5bae`: test timeout reduced to 5 minutes, action/navigation timeouts set to 30 seconds.
+- CI hardening applied on `experimental`: canonical verification is now executed through `npm run verify` under a 35-minute shell timeout with TERM/KILL escalation and always-on diagnostic artifacts.
+- CI contract validation was strengthened in commit `00b6d9abfbf8a7289ede9f1e7c0ce012f757b1e2` to require `scripts.verify` and to reject CI configurations that stop using the canonical `npm run verify` gate or omit the required timeout policy.
+- The current `experimental` head is `eddf6dec1708aa20516de7125b8282154e211ea0`.
+- Temporary validation PR #96 was created against `experimental`, but the current GitHub connector exposed only a Vercel failure status and no CI Run/check for that PR. PR #96 was closed without merge.
 
 ### Promotion governance
 - A dedicated Promotion Gate workflow exists for `experimental -> main` pull requests.
@@ -46,14 +47,15 @@
 1. `main` branch protection is not enabled in the current GitHub repository settings.
 2. Repository-level Auto-Merge is disabled.
 3. CI Run #897 has not produced a final canonical test result in the evidence available to this review.
-4. The timeout hardening fix has not yet received a visible GitHub Runner result through the current connector.
-5. Vercel production deployment remains intentionally disabled during hardening.
+4. The hardened `npm run verify` gate has not yet produced a visible GitHub Runner result through the current connector; implementation is complete, operational certification is still pending.
+5. The Vercel status currently reports an external deployment/rate-limit failure; production deployment remains intentionally disabled during hardening.
 
 ## Closed validation PRs
 
 - PR #93: temporary real-runner verification; closed without merge.
 - PR #94: temporary promotion-governance validation; closed without merge.
-- PR #95: temporary CI timeout validation; created for evidence only and must remain unmerged.
+- PR #95: temporary CI timeout validation; closed without merge.
+- PR #96: temporary hardened verify-gate validation; closed without merge.
 
 ## Release rule
 
