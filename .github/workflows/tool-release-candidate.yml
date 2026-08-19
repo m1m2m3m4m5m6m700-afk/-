@@ -252,8 +252,8 @@ jobs:
           if-no-files-found: warn
 
   qr-output-certification:
-    name: QR output certification
-    runs-on: macos-latest
+    name: QR output certification (portable decoder)
+    runs-on: ubuntu-latest
     needs: medium-gate
     timeout-minutes: 25
     steps:
@@ -268,13 +268,19 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
 
-      - name: Install dependencies
+      - name: Install locked project dependencies
         run: npm ci
+
+      - name: Install pinned test-only QR decoder
+        run: npm install --no-save --package-lock=false jsqr@1.4.0
+
+      - name: Verify independent decoder import
+        run: node --input-type=module -e "const { createRequire } = await import('node:module'); const jsQR = createRequire(import.meta.url)('jsqr'); if (typeof jsQR !== 'function') throw new Error('jsQR decoder import failed'); console.log('Independent jsQR decoder: OK')"
 
       - name: Cache Playwright browsers
         uses: actions/cache@v4
         with:
-          path: ~/Library/Caches/ms-playwright
+          path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-playwright-
@@ -283,33 +289,25 @@ jobs:
         timeout-minutes: 8
         run: npx playwright install chromium
 
-      - name: Verify QR decoder capability
+      - name: Verify Chromium can launch
         timeout-minutes: 3
         run: |
           node --input-type=module <<'NODE'
           import { chromium } from 'playwright';
           const browser = await chromium.launch({ headless: true });
-          const page = await browser.newPage();
-          const supported = await page.evaluate(async () => {
-            const detector = globalThis.BarcodeDetector;
-            if (!detector) return false;
-            const formats = await detector.getSupportedFormats();
-            return formats.includes('qr_code');
-          });
           await browser.close();
-          if (!supported) throw new Error('QR BarcodeDetector support is unavailable on the certification runner.');
-          console.log('QR BarcodeDetector: OK');
+          console.log('Chromium launch: OK');
           NODE
 
-      - name: Run QR output certification three times
-        run: npx playwright test tests/desktop-tools.spec.ts --grep "QR Generator output correctness" --repeat-each=3 --reporter=line
+      - name: Run independent QR output certification three times
+        run: npx playwright test tests/qr-output-certification.spec.ts --repeat-each=3 --reporter=line
 
       - name: Collect and seal QR evidence
         if: always()
         run: |
           mkdir -p .artifacts/qr
           cp -R test-results .artifacts/qr/test-results 2>/dev/null || true
-          node -e 'const fs=require("fs"); fs.writeFileSync(".artifacts/qr/summary.json", JSON.stringify({commit:process.env.GITHUB_SHA, timestamp:new Date().toISOString(), job:process.env.GITHUB_JOB}, null, 2)+"\n")'
+          node -e 'const fs=require("fs"); fs.writeFileSync(".artifacts/qr/summary.json", JSON.stringify({commit:process.env.GITHUB_SHA, timestamp:new Date().toISOString(), job:process.env.GITHUB_JOB, decoder:"jsqr@1.4.0"}, null, 2)+"\n")'
           node scripts/seal-evidence.mjs .artifacts/qr
 
       - name: Publish QR evidence
