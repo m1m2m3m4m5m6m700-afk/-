@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "coverage": {
+    "targetGlobalPercent": 90,
+    "enforcement": "progressive",
+    "note": "Enforce only after coverage tooling is installed and measured on main. No false-green threshold is allowed."
+  },
+  "performance": {
+    "lcpMsTarget": 1500,
+    "mainChunkGzipBytesTarget": 153600,
+    "lighthousePerformanceTarget": 90,
+    "lighthouseAccessibilityTarget": 95
+  },
+  "release": {
+    "noCriticalVulnerabilities": true,
+    "noHighProductionVulnerabilities": true,
+    "certificationRequiredForPublicTools": true
+  }
+}
