@@ -93,7 +93,7 @@ test.describe("relaunched public tools", () => {
     await expect(page.getByText(/sample\.mp4/)).toBeVisible();
   });
 
-  test("Video Trimmer loads, accepts a candidate video file, and surfaces validation feedback", async ({ page }) => {
+  test("Video Trimmer loads, accepts a candidate video file, and surfaces validation feedback", async ({ page }) =>
     await openTool(page, "video-trimmer");
     const button = page.getByRole("button", { name: /Trim Video/i });
     await expect(button).toBeDisabled();
@@ -103,5 +103,30 @@ test.describe("relaunched public tools", () => {
       buffer: Buffer.from("not-a-real-video"),
     });
     await expect(page.getByRole("alert")).toBeVisible({ timeout: 30_000 });
+  });
+
+  test("QR Generator renders a QR code and exposes PNG and SVG downloads", async ({ page }) => {
+    await page.goto("/tools/qr-generator");
+    await expect(page.locator('[data-hydrated="true"]')).toHaveCount(1, { timeout: 30_000 });
+    await expect(page.locator("h1")).toHaveCount(1);
+    await expect(page.locator('img[alt]').filter({ hasText: "" })).toHaveCount(0);
+    await expect(page.locator('img[alt*="QR"]').first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('button[aria-pressed]')).toHaveCount(5);
+
+    const pngDownloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Download PNG" }).click();
+    const pngDownload = await pngDownloadPromise;
+    await expect.poll(() => pngDownload.failure()).toBeNull();
+    const pngStream = await pngDownload.createReadStream();
+    if (!pngStream) throw new Error("QR Generator did not provide a PNG stream.");
+    const pngChunks: Buffer[] = [];
+    for await (const chunk of pngStream) pngChunks.push(Buffer.from(chunk));
+    assertPngArtifact(Buffer.concat(pngChunks), 300, 300);
+
+    const svgDownloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Download Vector SVG" }).click();
+    const svgDownload = await svgDownloadPromise;
+    await expect.poll(() => svgDownload.failure()).toBeNull();
+    expect(svgDownload.suggestedFilename()).toMatch(/\.svg$/i);
   });
 });
