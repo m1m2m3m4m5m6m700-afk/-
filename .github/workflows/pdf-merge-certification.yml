@@ -47,6 +47,10 @@ jobs:
       - run: npm ci
       - name: Start gate timer
         run: echo "GATE_STARTED_MS=$(date +%s%3N)" >> "$GITHUB_ENV"
+      - name: Validate certification library
+        run: npm run test:certification
+      - name: Validate previous frozen baseline
+        run: npm run validate:certification:baseline
       - name: Validate public tool governance
         run: node scripts/validate-release-tools.mjs
       - name: Publish gate evidence
@@ -56,15 +60,7 @@ jobs:
           mkdir -p .artifacts/pdf-merge/fast
           node --input-type=module <<'NODE'
           import fs from "node:fs";
-          const evidence = {
-            schemaVersion: 1,
-            tool: "pdf-merge",
-            gate: "fast",
-            commit: process.env.GITHUB_SHA,
-            runId: process.env.GITHUB_RUN_ID,
-            status: process.env.GATE_STATUS,
-            createdAt: new Date().toISOString()
-          };
+          const evidence = { schemaVersion: 1, tool: "pdf-merge", gate: "fast", commit: process.env.GITHUB_SHA, runId: process.env.GITHUB_RUN_ID, status: process.env.GATE_STATUS, createdAt: new Date().toISOString() };
           fs.writeFileSync(".artifacts/pdf-merge/fast/gate-evidence.json", JSON.stringify(evidence, null, 2) + "\n");
           NODE
       - name: Create gate manifest
@@ -330,5 +326,5 @@ jobs:
         if: always()
         with:
           name: pdf-merge-${{ github.sha }}-release
-          path: .artifacts/pdf-merge/downloads/**/release
+          path: .artifacts/pdf-merge/downloads/release
           if-no-files-found: warn
