@@ -36,6 +36,8 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      - name: Validate baseline contract
+        run: node scripts/certification/validate-baseline.mjs
       - run: node scripts/certification/smoke-test.mjs
       - run: npm run validate:pdf-catalog
       - name: Evidence
