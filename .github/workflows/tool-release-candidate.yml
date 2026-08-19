@@ -44,7 +44,7 @@ concurrency:
 
 jobs:
   fast-gate:
-    name: Fast gate (static + contracts + policy)
+    name: Fast Gate
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -73,18 +73,20 @@ jobs:
         run: node scripts/validate-certification-policy.mjs
       - name: Run fast gate
         run: node scripts/verify-fast-gate.mjs fast
-      - name: Publish fast-gate evidence
+      - name: Write Fast Gate evidence manifest
+        run: node scripts/write-gate-evidence.mjs fast .artifacts/gates/fast-gate.json
+      - name: Publish Fast Gate evidence
         if: always()
         uses: actions/upload-artifact@v6
         with:
           name: fast-gate-${{ github.sha }}
-          path: .artifacts/gates/fast-gate.json
-          if-no-files-found: warn
+          path: .artifacts/gates
+          if-no-files-found: error
 
   medium-gate:
-    name: Medium gate (deep validation)
-    runs-on: ubuntu-latest
+    name: Medium Gate
     needs: fast-gate
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - name: Checkout
@@ -106,13 +108,15 @@ jobs:
         env:
           TOOL_SLUG: qr-generator
         run: node scripts/validate-performance-regression.mjs
-      - name: Publish medium-gate evidence
+      - name: Write Medium Gate evidence manifest
+        run: node scripts/write-gate-evidence.mjs medium .artifacts/gates/medium-gate.json
+      - name: Publish Medium Gate evidence
         if: always()
         uses: actions/upload-artifact@v6
         with:
           name: medium-gate-${{ github.sha }}
-          path: .artifacts/gates/medium-gate.json
-          if-no-files-found: warn
+          path: .artifacts/gates
+          if-no-files-found: error
       - name: Publish performance regression evidence
         if: always()
         uses: actions/upload-artifact@v6
@@ -122,9 +126,9 @@ jobs:
           if-no-files-found: warn
 
   environment-smoke:
-    name: Cross-environment smoke (Windows)
-    runs-on: windows-latest
+    name: Windows Smoke
     needs: fast-gate
+    runs-on: windows-latest
     timeout-minutes: 15
     steps:
       - name: Checkout
@@ -153,11 +157,10 @@ jobs:
         shell: pwsh
         run: |
           node --input-type=module -e "import { chromium } from 'playwright'; const b = await chromium.launch({headless:true}); await b.close(); console.log('Chromium launch: OK')"
-      - name: Write environment smoke evidence
-        if: always()
+      - name: Write Windows evidence
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path .artifacts/environment-smoke | Out-Null
+          New-Item -ItemType Directory -Force -Path .artifacts/windows | Out-Null
           @{
             commit = $env:GITHUB_SHA
             runner = $env:RUNNER_OS
@@ -165,19 +168,167 @@ jobs:
             npm = (npm --version)
             playwright = (npx playwright --version)
             timestamp = (Get-Date).ToUniversalTime().ToString("o")
-          } | ConvertTo-Json | Set-Content .artifacts/environment-smoke/summary.json
-      - name: Publish environment evidence
+          } | ConvertTo-Json | Set-Content .artifacts/windows/windows-smoke.json
+      - name: Write Windows evidence manifest
+        run: node scripts/write-gate-evidence.mjs windows .artifacts/windows/windows-smoke.json
+      - name: Publish Windows evidence
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: environment-smoke-${{ github.sha }}
-          path: .artifacts/environment-smoke/summary.json
+          name: windows-gate-${{ github.sha }}
+          path: .artifacts/windows
+          if-no-files-found: error
+
+  qr-node:
+    name: QR Node Gate
+    needs: fast-gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install locked project dependencies
+        run: npm ci
+      - name: Install pinned test-only QR decoders
+        run: npm install --no-save --package-lock=false jsqr@1.4.0 pngjs@7.0.0
+      - name: Verify independent decoder imports
+        run: |
+          node --input-type=module <<'NODE'
+          import { createRequire } from "node:module";
+          const require = createRequire(import.meta.url);
+          const jsQR = require("jsqr");
+          const { PNG } = require("pngjs");
+          if (typeof jsQR !== "function") throw new Error("jsQR decoder import failed");
+          if (!PNG?.sync?.read) throw new Error("pngjs decoder import failed");
+          console.log("Independent Node QR decoders: OK");
+          NODE
+      - name: Run QR payload matrix
+        run: |
+          set -o pipefail
+          mkdir -p .artifacts/qr-node
+          node scripts/test-qr-payload-matrix.mjs | tee .artifacts/qr-node/node-matrix.json
+      - name: Write QR Node evidence manifest
+        run: node scripts/write-gate-evidence.mjs qr-node .artifacts/qr-node/node-matrix.json
+      - name: Publish QR Node evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: qr-node-${{ github.sha }}
+          path: .artifacts/qr-node
+          if-no-files-found: error
+
+  qr-browser:
+    name: QR Browser Gate
+    needs: qr-node
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install locked project dependencies
+        run: npm ci
+      - name: Install pinned test-only QR decoders
+        run: npm install --no-save --package-lock=false jsqr@1.4.0 pngjs@7.0.0
+      - name: Cache Playwright browsers
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+      - name: Install Chromium
+        timeout-minutes: 8
+        run: npx playwright install chromium
+      - name: Verify Chromium can launch
+        timeout-minutes: 3
+        run: |
+          node --input-type=module <<'NODE'
+          import { chromium } from "playwright";
+          const browser = await chromium.launch({ headless: true });
+          await browser.close();
+          console.log("Chromium launch: OK");
+          NODE
+      - name: Run QR critical browser certification
+        run: npx playwright test tests/qr-output-certification.spec.ts --reporter=line
+      - name: Write QR Browser evidence
+        run: |
+          mkdir -p .artifacts/qr-browser
+          node -e 'const fs=require("fs"); fs.writeFileSync(".artifacts/qr-browser/browser-gate.json", JSON.stringify({commit:process.env.GITHUB_SHA, runId:process.env.GITHUB_RUN_ID, gate:"qr-browser", status:"PASS", timestamp:new Date().toISOString()}, null, 2)+"\n")'
+      - name: Write QR Browser evidence manifest
+        run: node scripts/write-gate-evidence.mjs qr-browser .artifacts/qr-browser/browser-gate.json
+      - name: Publish QR Browser evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: qr-browser-${{ github.sha }}
+          path: |
+            .artifacts/qr-browser
+            test-results
+          if-no-files-found: error
+
+  qr-stability:
+    name: QR Stability Gate
+    needs: qr-browser
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Cache Playwright browsers
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+      - name: Install Chromium
+        timeout-minutes: 8
+        run: npx playwright install chromium
+      - name: Run QR stability certification three times
+        run: npx playwright test tests/qr-output-stability.spec.ts --repeat-each=3 --reporter=line
+      - name: Write QR Stability evidence
+        run: |
+          mkdir -p .artifacts/qr-stability
+          node -e 'const fs=require("fs"); fs.writeFileSync(".artifacts/qr-stability/stability-gate.json", JSON.stringify({commit:process.env.GITHUB_SHA, runId:process.env.GITHUB_RUN_ID, gate:"qr-stability", status:"PASS", repeatEach:3, timestamp:new Date().toISOString()}, null, 2)+"\n")'
+      - name: Write QR Stability evidence manifest
+        run: node scripts/write-gate-evidence.mjs qr-stability .artifacts/qr-stability/stability-gate.json
+      - name: Publish QR Stability evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: qr-stability-${{ github.sha }}
+          path: |
+            .artifacts/qr-stability
+            test-results
           if-no-files-found: error
 
   full-certification:
-    name: Full certification (browser + E2E + build + audit)
+    name: Full Certification
+    needs: [medium-gate, environment-smoke, qr-node, qr-browser, qr-stability]
     runs-on: ubuntu-latest
-    needs: [medium-gate, environment-smoke]
     timeout-minutes: 45
     steps:
       - name: Checkout
@@ -218,101 +369,27 @@ jobs:
         run: npm run build
       - name: Production dependency audit
         run: npm audit --omit=dev --audit-level=high
-      - name: Collect full evidence
-        if: always()
+      - name: Write Full evidence
         run: |
           mkdir -p .artifacts/full
-          cp -R .artifacts/gates .artifacts/full/gates 2>/dev/null || true
-          node -e 'const fs=require("fs"); fs.writeFileSync(".artifacts/full/summary.json", JSON.stringify({commit:process.env.GITHUB_SHA, timestamp:new Date().toISOString(), job:process.env.GITHUB_JOB}, null, 2)+"\n")'
+          node -e 'const fs=require("fs"); fs.writeFileSync(".artifacts/full/full-gate.json", JSON.stringify({commit:process.env.GITHUB_SHA, runId:process.env.GITHUB_RUN_ID, gate:"full", status:"PASS", timestamp:new Date().toISOString()}, null, 2)+"\n")'
+      - name: Write Full evidence manifest
+        run: node scripts/write-gate-evidence.mjs full .artifacts/full/full-gate.json
       - name: Seal full evidence
-        if: always()
         run: node scripts/seal-evidence.mjs .artifacts/full
-      - name: Publish full evidence
+      - name: Publish Full evidence
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: full-certification-${{ github.sha }}
+          name: full-gate-${{ github.sha }}
           path: .artifacts/full
-          if-no-files-found: warn
-
-  qr-output-certification:
-    name: QR output certification (hybrid fast + critical browser)
-    runs-on: ubuntu-latest
-    needs: medium-gate
-    timeout-minutes: 20
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - name: Setup Node
-        uses: actions/setup-node@v5
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-      - name: Install locked project dependencies
-        run: npm ci
-      - name: Install pinned test-only QR decoders
-        run: npm install --no-save --package-lock=false jsqr@1.4.0 pngjs@7.0.0
-      - name: Verify independent decoder imports
-        run: |
-          node --input-type=module <<'NODE'
-          import { createRequire } from "node:module";
-          const require = createRequire(import.meta.url);
-          const jsQR = require("jsqr");
-          const { PNG } = require("pngjs");
-          if (typeof jsQR !== "function") throw new Error("jsQR decoder import failed");
-          if (!PNG?.sync?.read) throw new Error("pngjs decoder import failed");
-          console.log("Independent Node QR decoders: OK");
-          NODE
-      - name: Run fast independent Node QR matrix
-        run: |
-          set -o pipefail
-          mkdir -p .artifacts/qr
-          node scripts/test-qr-payload-matrix.mjs | tee .artifacts/qr/node-matrix.json
-      - name: Cache Playwright browsers
-        uses: actions/cache@v5
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-playwright-
-      - name: Install Chromium
-        timeout-minutes: 8
-        run: npx playwright install chromium
-      - name: Verify Chromium can launch
-        timeout-minutes: 3
-        run: |
-          node --input-type=module <<'NODE'
-          import { chromium } from "playwright";
-          const browser = await chromium.launch({ headless: true });
-          await browser.close();
-          console.log("Chromium launch: OK");
-          NODE
-      - name: Run critical browser integration once
-        run: npx playwright test tests/qr-output-certification.spec.ts --reporter=line
-      - name: Run critical browser stability three times
-        run: npx playwright test tests/qr-output-stability.spec.ts --repeat-each=3 --reporter=line
-      - name: Collect and seal QR evidence
-        if: always()
-        run: |
-          mkdir -p .artifacts/qr
-          cp -R test-results .artifacts/qr/test-results 2>/dev/null || true
-          node -e 'const fs=require("fs"); fs.writeFileSync(".artifacts/qr/summary.json", JSON.stringify({commit:process.env.GITHUB_SHA, timestamp:new Date().toISOString(), job:process.env.GITHUB_JOB, decoder:"jsqr@1.4.0+pngjs@7.0.0", matrix:"node-all-cases", browser:"critical-once", stability:"critical-x3"}, null, 2)+"\n")'
-          node scripts/seal-evidence.mjs .artifacts/qr
-      - name: Publish QR evidence
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: qr-certification-${{ github.sha }}
-          path: .artifacts/qr
-          if-no-files-found: warn
+          if-no-files-found: error
 
   failure-diagnosis:
-    name: Evidence-first failure diagnosis
-    runs-on: ubuntu-latest
-    needs: [fast-gate, medium-gate, environment-smoke, full-certification, qr-output-certification]
+    name: Evidence-first Failure Diagnosis
+    needs: [fast-gate, medium-gate, environment-smoke, qr-node, qr-browser, qr-stability, full-certification]
     if: ${{ always() }}
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - name: Checkout
@@ -335,28 +412,30 @@ jobs:
           if-no-files-found: error
 
   release-decision:
-    name: Release decision + certification report
-    runs-on: ubuntu-latest
-    needs: [fast-gate, medium-gate, environment-smoke, full-certification, qr-output-certification, failure-diagnosis]
+    name: Release Decision + Certification
+    needs: [fast-gate, medium-gate, environment-smoke, qr-node, qr-browser, qr-stability, full-certification, failure-diagnosis]
     if: ${{ always() }}
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v5
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - name: Download fast gate evidence
+      - name: Download current-run gate evidence
         uses: actions/download-artifact@v7
         with:
-          name: fast-gate-${{ github.sha }}
-          path: .artifacts/gates
+          pattern: "*-${{ github.sha }}"
+          path: .artifacts/evidence
+          merge-multiple: false
         continue-on-error: true
-      - name: Download medium gate evidence
-        uses: actions/download-artifact@v7
-        with:
-          name: medium-gate-${{ github.sha }}
-          path: .artifacts/gates
-        continue-on-error: true
+      - name: Validate evidence identity and integrity
+        env:
+          EVIDENCE_ROOT: .artifacts/evidence
+          CURRENT_COMMIT: ${{ github.sha }}
+          CURRENT_RUN_ID: ${{ github.run_id }}
+          REQUIRED_GATES: fast,medium,windows,qr-node,qr-browser,qr-stability,full
+        run: node scripts/validate-certification-evidence.mjs
       - name: Download failure diagnosis
         uses: actions/download-artifact@v7
         with:
@@ -371,11 +450,11 @@ jobs:
           MEDIUM_RESULT: ${{ needs.medium-gate.result }}
           WINDOWS_RESULT: ${{ needs.environment-smoke.result }}
           FULL_RESULT: ${{ needs.full-certification.result }}
-          QR_RESULT: ${{ needs.qr-output-certification.result }}
+          QR_RESULT: ${{ needs.qr-stability.result }}
           DIAGNOSIS_RESULT: ${{ needs.failure-diagnosis.result }}
         run: node scripts/write-certification-report.mjs
       - name: Generate certification baseline when certified
-        if: always()
+        if: ${{ success() }}
         env:
           TOOL_SLUG: qr-generator
         run: node scripts/generate-certification-baseline.mjs
