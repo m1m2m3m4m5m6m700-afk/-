@@ -67,12 +67,15 @@ jobs:
       - name: Validate lockfile
         run: node scripts/validate-lockfile.mjs
 
-      - name: Tool release preflight
+      - name: Fast code/tool preflight
+        timeout-minutes: 8
         shell: bash
         run: |
-          set -o pipefail
-          mkdir -p .artifacts/release-tools
-          node scripts/validate-release-tools.mjs | tee .artifacts/release-tools/preflight.txt
+          set -euo pipefail
+          npm run typecheck
+          npm run lint
+          node scripts/validate-release-tools.mjs
+          npx playwright test tests/desktop-tools.spec.ts --list
 
       - name: Cache Playwright browsers
         uses: actions/cache@v4
@@ -83,10 +86,21 @@ jobs:
             ${{ runner.os }}-playwright-
 
       - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+        timeout-minutes: 8
+        run: npx playwright install chromium
 
-      - name: Run public tool operational suite three times
-        run: npx playwright test tests/desktop-tools.spec.ts tests/image-compressor.contract.spec.ts --repeat-each=3 --reporter=line
+      - name: Verify Chromium can launch
+        timeout-minutes: 3
+        run: |
+          node --input-type=module <<'NODE'
+          import { chromium } from 'playwright';
+          const browser = await chromium.launch({ headless: true });
+          await browser.close();
+          console.log('Chromium launch: OK');
+          NODE
+
+      - name: Run non-QR public tool operational suite three times
+        run: npx playwright test tests/desktop-tools.spec.ts tests/image-compressor.contract.spec.ts --grep-invert "QR Generator output correctness" --repeat-each=3 --reporter=line
 
       - name: Build production bundle
         run: npm run build
@@ -117,3 +131,55 @@ jobs:
           name: tool-release-candidate-${{ github.sha }}
           path: .artifacts/release-tools
           if-no-files-found: warn
+
+  qr-output-certification:
+    name: QR output certification
+    runs-on: macos-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - name: Install Chromium
+        timeout-minutes: 8
+        run: npx playwright install chromium
+
+      - name: Verify QR decoder capability
+        timeout-minutes: 3
+        run: |
+          node --input-type=module <<'NODE'
+          import { chromium } from 'playwright';
+          const browser = await chromium.launch({ headless: true });
+          const page = await browser.newPage();
+          const supported = await page.evaluate(async () => {
+            const detector = globalThis.BarcodeDetector;
+            if (!detector) return false;
+            const formats = await detector.getSupportedFormats();
+            return formats.includes('qr_code');
+          });
+          await browser.close();
+          if (!supported) throw new Error('QR BarcodeDetector support is unavailable on the certification runner.');
+          console.log('QR BarcodeDetector: OK');
+          NODE
+
+      - name: Run QR output certification three times
+        run: npx playwright test tests/desktop-tools.spec.ts --grep "QR Generator output correctness" --repeat-each=3 --reporter=line
