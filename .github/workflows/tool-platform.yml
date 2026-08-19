@@ -33,6 +33,11 @@ on:
   schedule:
     - cron: "47 2 * * 6"
   workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: "Exact commit SHA to verify (required for manual runs)"
+        required: true
+        type: string
 
 concurrency:
   group: tool-platform-${{ github.event.pull_request.number || github.ref }}
@@ -46,7 +51,14 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.event.pull_request.head.sha || inputs.expected_sha || github.sha }}
+      - name: Verify checked-out commit identity
+        run: |
+          expected="${{ github.event.pull_request.head.sha || inputs.expected_sha || github.sha }}"
+          actual="$(git rev-parse HEAD)"
+          echo "Expected SHA: $expected"
+          echo "Actual SHA:   $actual"
+          test "$actual" = "$expected"
       - name: Validate package/lock contract before install
         run: node scripts/validate-package-lock-contract.mjs
       - name: Validate CI contract before install
@@ -99,7 +111,14 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.event.pull_request.head.sha || inputs.expected_sha || github.sha }}
+      - name: Verify checked-out commit identity
+        run: |
+          expected="${{ github.event.pull_request.head.sha || inputs.expected_sha || github.sha }}"
+          actual="$(git rev-parse HEAD)"
+          echo "Expected SHA: $expected"
+          echo "Actual SHA:   $actual"
+          test "$actual" = "$expected"
       - name: Validate public tool quarantine contract
         run: node src/scripts/validate-tool-quarantine.mjs
       - name: Validate package/lock contract before install
