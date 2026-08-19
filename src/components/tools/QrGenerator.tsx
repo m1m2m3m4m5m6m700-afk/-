@@ -21,7 +21,7 @@ import { SITE_URL } from "@/lib/seo/site";
 
 type PresetMode = "url" | "text" | "wifi" | "email" | "phone";
 
-const escapeWifiValue = (value: string): string => value.replace(/[\\;,:]/g, (character) => `\\${character}`).replaceAll('"', "\\" + '"');
+const escapeWifiValue = (value: string): string => value.replace(/[\\;,:]/g, (character) => `\\${character}`).replaceAll('"', String.fromCharCode(92, 34));
 
 export function QrGenerator() {
   const { t } = useI18n();
