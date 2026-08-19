@@ -39,8 +39,7 @@ function assertOnlyLockfileChanged(beforePackageJson) {
   if (!changed.every((file) => ALLOWED_PATHS.has(file))) {
     throw new Error(`Repair touched forbidden paths: ${changed.join(', ')}`);
   }
-  const afterPackageJson = fs.readFileSync('package.json', 'utf8');
-  if (afterPackageJson !== beforePackageJson) {
+  if (fs.readFileSync('package.json', 'utf8') !== beforePackageJson) {
     throw new Error('package.json changed during lockfile repair.');
   }
 }
@@ -95,6 +94,7 @@ export function preflight() {
   }
 
   const checks = [];
+  let repaired = false;
   checks.push(['validate-ci-contract', run('npm', ['run', 'validate-ci-contract'])]);
   checks.push(['validate-dependencies', run('npm', ['run', 'validate:dependencies'])]);
   checks.push(['npm-ci', run('npm', ['ci', '--ignore-scripts'])]);
@@ -118,6 +118,7 @@ export function preflight() {
 
     if (isRepairEligible(synthetic) && selectRepair(synthetic)?.recommendedStrategy === 'lockfile-fixer') {
       fixLockfile();
+      repaired = true;
     } else {
       throw new Error(`Pre-CI diagnosis requires manual review. See ${REPORT_PATH}.\n${log}`);
     }
@@ -143,13 +144,13 @@ export function preflight() {
     mode: 'pre-ci',
     branch: TARGET_BRANCH,
     status: 'passed',
+    repaired,
     checks: checks.map(([name, result]) => ({ name, ok: result.ok })),
-    repaired: checks.some(([name]) => name === 'npm-ci' && name !== 'npm-ci'),
   });
-  return { skipped: false, status: 'passed' };
+  return { skipped: false, status: 'passed', repaired };
 }
 
-if (import.meta.url === new URL(process.argv[1], 'file:').href) {
+if (process.argv[1] && new URL(`file://${process.argv[1]}`).href === import.meta.url) {
   try {
     const result = preflight();
     console.log(JSON.stringify(result));
