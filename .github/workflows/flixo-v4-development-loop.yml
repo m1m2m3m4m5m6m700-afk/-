@@ -1,0 +1,48 @@
+name: FLIXO v4 Development Auto-Repair Loop
+
+on:
+  push:
+    branches:
+      - feat/certification-foundation-pdf-merge
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: flixo-v4-development-auto-repair
+  cancel-in-progress: false
+
+jobs:
+  repair-loop:
+    if: github.ref_name == 'feat/certification-foundation-pdf-merge' && (github.event_name == 'workflow_dispatch' || !startsWith(github.event.head_commit.message, 'fix(agent): v4'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: feat/certification-foundation-pdf-merge
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+      - name: Assert development-only execution
+        run: |
+          test "$GITHUB_REF_NAME" = "feat/certification-foundation-pdf-merge"
+          test "$GITHUB_REF_NAME" != "main"
+      - name: Install dependencies
+        run: npm ci --include=dev
+      - name: Run v4 every five minutes
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          V4_ALLOW_PUSH: 'true'
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 60); do
+            echo "===== FLIXO v4 cycle $i/60 ====="
+            node scripts/flixo-agent/v4/experimental/hourly-auto-repair.mjs || true
+            if [ "$i" -lt 60 ]; then sleep 300; fi
+          done
