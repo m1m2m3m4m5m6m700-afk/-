@@ -5,6 +5,7 @@ import { detectV2 } from '../v2/index.mjs';
 import { diagnoseAll } from '../v3/core/diagnose.mjs';
 import { buildStrategicPlan } from '../v3/planning/strategic-planner.mjs';
 import { verify } from '../v3/core/verifier.mjs';
+import { DEVELOPMENT_BRANCH } from '../v4/core/verifier.mjs';
 import { executePlan, validateV3PlanForExecution } from '../v4/experimental/execute-plan.mjs';
 
 const LOG = [
@@ -24,7 +25,7 @@ function fakeRunner(conclusion) {
   };
 }
 
-test('v1/v2 observe, v3 decides, v4 acts', async () => {
+test('v1/v2 observe, v3 decides, v4 acts on development branch', async () => {
   const v1 = detectV1(LOG);
   const v2 = await detectV2(LOG);
   assert.equal(v1.role, 'DETECT');
@@ -54,20 +55,21 @@ test('v1/v2 observe, v3 decides, v4 acts', async () => {
   assert.equal(dryRun.status, 'dry-run');
 
   const successRunner = fakeRunner('success');
-  const success = await executePlan(decisionPackage, successRunner, { apply: true });
+  const success = await executePlan(decisionPackage, successRunner, { apply: true, branch: DEVELOPMENT_BRANCH });
   assert.equal(success.status, 'accepted');
   assert.equal(successRunner.events.filter((e) => e[0] === 'ci').length, 2);
   assert.equal(successRunner.events.some((e) => e[0] === 'accept'), true);
 
   const failureRunner = fakeRunner('failure');
-  const failed = await executePlan(decisionPackage, failureRunner, { apply: true });
+  const failed = await executePlan(decisionPackage, failureRunner, { apply: true, branch: DEVELOPMENT_BRANCH });
   assert.equal(failed.status, 'rolled-back');
   assert.equal(failureRunner.events.some((e) => e[0] === 'rollback'), true);
   assert.equal(failureRunner.events.some((e) => e[0] === 'accept'), false);
 });
 
-test('v4 rejects an unverified or non-v3 package', async () => {
+test('v4 rejects an unverified, non-v3, or non-development execution package', async () => {
   const runner = fakeRunner('success');
-  await assert.rejects(() => executePlan({ plan: { version: 3, status: 'planned', steps: [], policy: { autoApply: false } }, verification: { valid: false } }, runner, { apply: true }));
-  await assert.rejects(() => executePlan({ plan: { version: 2, status: 'planned', steps: [] }, verification: { valid: true } }, runner, { apply: true }));
+  await assert.rejects(() => executePlan({ plan: { version: 3, status: 'planned', steps: [], policy: { autoApply: false } }, verification: { valid: false } }, runner, { apply: true, branch: DEVELOPMENT_BRANCH }));
+  await assert.rejects(() => executePlan({ plan: { version: 2, status: 'planned', steps: [] }, verification: { valid: true } }, runner, { apply: true, branch: DEVELOPMENT_BRANCH }));
+  await assert.rejects(() => executePlan({ plan: { version: 3, status: 'planned', steps: [], policy: { autoApply: false } }, verification: { valid: true } }, runner, { apply: true, branch: 'main' }));
 });
