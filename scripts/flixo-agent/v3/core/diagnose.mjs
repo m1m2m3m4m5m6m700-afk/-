@@ -1,0 +1,2 @@
+const RULES=[{pattern:'jsqr',category:'DEPENDENCY',regex:/Cannot find (?:module|package).*jsqr/i},{pattern:'playwright',category:'ENVIRONMENT',regex:/Executable doesn't exist.*(chromium|chrome-headless-shell)|browserType\.launch/i},{pattern:'baseline',category:'CONTRACT',regex:/certification commit mismatch|baseline expired/i}];
+export function diagnose(log=''){const r=RULES.find(x=>x.regex.test(String(log)));return r?{known:true,pattern:r.pattern,category:r.category}:{known:false,pattern:null,category:'UNKNOWN'};}
