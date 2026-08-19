@@ -6,10 +6,16 @@ test.describe.configure({ mode: "serial", retries: 1, timeout: 45_000 });
 
 async function openTool(page: Page) {
   await page.goto("/tools/qr-generator", { waitUntil: "domcontentloaded", timeout: 10_000 });
+  await expect(page.locator('div[data-qr-ready="true"]')).toHaveCount(1, { timeout: 10_000 });
   await expect(page.locator("h1")).toHaveCount(1, { timeout: 10_000 });
-  await expect(page.locator('button[aria-pressed]')).toHaveCount(5, { timeout: 10_000 });
+  await expect(page.locator("[data-qr-mode-button]")).toHaveCount(5, { timeout: 10_000 });
   await expect(page.getByRole("button", { name: "Download PNG" })).toBeVisible({ timeout: 10_000 });
   await expect(page.getByRole("button", { name: "Download Vector SVG" })).toBeVisible({ timeout: 10_000 });
+}
+
+async function selectMode(page: Page, mode: "url" | "text" | "wifi" | "email" | "phone") {
+  await page.locator(`[data-qr-mode-button="${mode}"]`).click({ timeout: 5_000 });
+  await expect(page.locator(`[data-qr-mode="${mode}"]`)).toHaveCount(1, { timeout: 5_000 });
 }
 
 async function readDownloadBuffer(download: Download): Promise<Buffer> {
@@ -48,35 +54,38 @@ test.describe("QR browser integration certification", () => {
   });
 
   test("critical UI and downloads work for Arabic", async ({ page }) => {
-    await page.locator('button[aria-pressed]').nth(1).click();
-    const textarea = page.locator("textarea");
+    await selectMode(page, "text");
+    const textarea = page.locator('[data-qr-input="text"]');
     await expect(textarea).toBeVisible({ timeout: 5_000 });
     await textarea.fill("مرحبا Flixo — اختبار QR ✓");
     await verifyDownloads(page);
   });
 
   test("critical UI and downloads work for Wi-Fi escaping", async ({ page }) => {
-    await page.locator('button[aria-pressed]').nth(2).click();
-    const textInput = page.locator('input[type="text"]').first();
-    const password = page.locator('input[type="password"]');
-    await expect(textInput).toBeVisible({ timeout: 5_000 });
+    await selectMode(page, "wifi");
+    const ssid = page.locator('[data-qr-input="wifi-ssid"]');
+    const password = page.locator('[data-qr-input="wifi-password"]');
+    const encryption = page.locator('[data-qr-input="wifi-encryption"]');
+    await expect(ssid).toBeVisible({ timeout: 5_000 });
     await expect(password).toBeVisible({ timeout: 5_000 });
-    await page.locator('input[type="text"]').first().fill("Office;WiFi\\5G");
+    await expect(encryption).toBeVisible({ timeout: 5_000 });
+    await ssid.fill("Office;WiFi\\5G");
     await password.fill("p@ss:word,42");
-    await page.locator("select").selectOption("WPA");
+    await encryption.selectOption("WPA");
     await verifyDownloads(page);
   });
 
   test("critical UI and downloads work for long Unicode", async ({ page }) => {
-    await page.locator('button[aria-pressed]').nth(1).click();
-    const textarea = page.locator("textarea");
+    await selectMode(page, "text");
+    const textarea = page.locator('[data-qr-input="text"]');
     await expect(textarea).toBeVisible({ timeout: 5_000 });
     await textarea.fill("مرحبا Flixo — QR ✓ اختبار ".repeat(12));
     await verifyDownloads(page);
   });
 
   test("critical rapid changes do not block downloads", async ({ page }) => {
-    const input = page.locator('input[type="text"]').first();
+    await selectMode(page, "url");
+    const input = page.locator('[data-qr-input="url"]');
     await expect(input).toBeVisible({ timeout: 5_000 });
     await input.fill("https://example.com/old-result");
     await input.fill("https://example.com/final-result");
