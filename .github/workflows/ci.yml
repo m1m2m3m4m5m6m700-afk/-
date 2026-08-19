@@ -5,6 +5,8 @@ on:
     branches: [main, experimental]
     paths:
       - "src/**"
+      - "scripts/**"
+      - ".github/scripts/**"
       - "tests/**"
       - "public/**"
       - "package.json"
@@ -17,6 +19,8 @@ on:
     branches: [main, experimental]
     paths:
       - "src/**"
+      - "scripts/**"
+      - ".github/scripts/**"
       - "tests/**"
       - "public/**"
       - "package.json"
