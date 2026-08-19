@@ -29,7 +29,6 @@ concurrency:
 
 env:
   TOOL_SLUG: pdf-merge
-  NODE_VERSION_FILE: .nvmrc
 
 jobs:
   fast:
@@ -47,34 +46,19 @@ jobs:
         run: node scripts/validate-release-tools.mjs
       - name: Create gate evidence
         if: always()
-        env:
-          GATE_STATUS: ${{ job.status }}
+        env: { GATE_STATUS: ${{ job.status }} }
         run: |
           mkdir -p .artifacts/pdf-merge/fast
           node --input-type=module <<'NODE'
-          import fs from "node:fs";
-          import crypto from "node:crypto";
-          const evidencePath = ".artifacts/pdf-merge/fast/gate-evidence.json";
-          const evidence = {
-            schemaVersion: 1,
-            tool: "pdf-merge",
-            gate: "fast",
-            commit: process.env.GITHUB_SHA,
-            runId: process.env.GITHUB_RUN_ID,
-            status: process.env.GATE_STATUS,
-            createdAt: new Date().toISOString(),
-            expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-          };
-          fs.writeFileSync(evidencePath, JSON.stringify(evidence, null, 2) + "\n");
-          const sha256 = crypto.createHash("sha256").update(fs.readFileSync(evidencePath)).digest("hex");
-          fs.writeFileSync(".artifacts/pdf-merge/fast/gate-manifest.json", JSON.stringify({ ...evidence, evidenceFile: "gate-evidence.json", evidenceSha256: sha256 }, null, 2) + "\n");
+          import fs from "node:fs"; import crypto from "node:crypto";
+          const dir = ".artifacts/pdf-merge/fast"; const evidencePath = `${dir}/gate-evidence.json`;
+          const evidence = { schemaVersion:1, tool:"pdf-merge", gate:"fast", commit:process.env.GITHUB_SHA, runId:process.env.GITHUB_RUN_ID, status:process.env.GATE_STATUS, createdAt:new Date().toISOString(), expiresAt:new Date(Date.now()+30*24*60*60*1000).toISOString() };
+          fs.writeFileSync(evidencePath, JSON.stringify(evidence,null,2)+"\n"); const evidenceSha256=crypto.createHash("sha256").update(fs.readFileSync(evidencePath)).digest("hex");
+          fs.writeFileSync(`${dir}/gate-manifest.json`, JSON.stringify({...evidence,evidenceFile:"gate-evidence.json",evidenceSha256},null,2)+"\n");
           NODE
       - uses: actions/upload-artifact@v6
         if: always()
-        with:
-          name: pdf-merge-${{ github.sha }}-fast
-          path: .artifacts/pdf-merge/fast
-          if-no-files-found: error
+        with: { name: pdf-merge-${{ github.sha }}-fast, path: .artifacts/pdf-merge/fast, if-no-files-found: error }
 
   medium:
     name: PDF Merge — Medium Gate
@@ -84,75 +68,83 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
-        with:
-          node-version-file: .nvmrc
-          cache: npm
+        with: { node-version-file: .nvmrc, cache: npm }
       - run: npm ci
-      - name: Run independent correctness gate
-        run: |
-          mkdir -p .artifacts/pdf-merge/medium
-          node scripts/test-pdf-merge-correctness.mjs | tee .artifacts/pdf-merge/medium/correctness.json
+      - name: Medium validation
+        run: node scripts/validate-release-tools.mjs
       - name: Create gate evidence
         if: always()
-        env:
-          GATE_STATUS: ${{ job.status }}
+        env: { GATE_STATUS: ${{ job.status }} }
         run: |
+          mkdir -p .artifacts/pdf-merge/medium
           node --input-type=module <<'NODE'
-          import fs from "node:fs";
-          import crypto from "node:crypto";
-          const dir = ".artifacts/pdf-merge/medium";
-          const evidencePath = `${dir}/gate-evidence.json`;
-          const evidence = { schemaVersion: 1, tool: "pdf-merge", gate: "medium", commit: process.env.GITHUB_SHA, runId: process.env.GITHUB_RUN_ID, status: process.env.GATE_STATUS, createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() };
-          fs.writeFileSync(evidencePath, JSON.stringify(evidence, null, 2) + "\n");
-          const sha256 = crypto.createHash("sha256").update(fs.readFileSync(evidencePath)).digest("hex");
-          fs.writeFileSync(`${dir}/gate-manifest.json`, JSON.stringify({ ...evidence, evidenceFile: "gate-evidence.json", evidenceSha256: sha256 }, null, 2) + "\n");
+          import fs from "node:fs"; import crypto from "node:crypto";
+          const dir=".artifacts/pdf-merge/medium"; const evidencePath=`${dir}/gate-evidence.json`;
+          const evidence={schemaVersion:1,tool:"pdf-merge",gate:"medium",commit:process.env.GITHUB_SHA,runId:process.env.GITHUB_RUN_ID,status:process.env.GATE_STATUS,createdAt:new Date().toISOString(),expiresAt:new Date(Date.now()+30*24*60*60*1000).toISOString()};
+          fs.writeFileSync(evidencePath,JSON.stringify(evidence,null,2)+"\n"); const evidenceSha256=crypto.createHash("sha256").update(fs.readFileSync(evidencePath)).digest("hex");
+          fs.writeFileSync(`${dir}/gate-manifest.json`,JSON.stringify({...evidence,evidenceFile:"gate-evidence.json",evidenceSha256},null,2)+"\n");
           NODE
       - uses: actions/upload-artifact@v6
         if: always()
-        with:
-          name: pdf-merge-${{ github.sha }}-medium
-          path: .artifacts/pdf-merge/medium
-          if-no-files-found: error
+        with: { name: pdf-merge-${{ github.sha }}-medium, path: .artifacts/pdf-merge/medium, if-no-files-found: error }
+
+  correctness:
+    name: PDF Merge — Correctness
+    needs: medium
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version-file: .nvmrc, cache: npm }
+      - run: npm ci
+      - name: Run independent correctness gate
+        run: |
+          mkdir -p .artifacts/pdf-merge/correctness
+          node scripts/test-pdf-merge-correctness.mjs | tee .artifacts/pdf-merge/correctness/correctness.json
+      - name: Create gate evidence
+        if: always()
+        env: { GATE_STATUS: ${{ job.status }} }
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from "node:fs"; import crypto from "node:crypto";
+          const dir=".artifacts/pdf-merge/correctness"; const evidencePath=`${dir}/gate-evidence.json`;
+          const evidence={schemaVersion:1,tool:"pdf-merge",gate:"correctness",commit:process.env.GITHUB_SHA,runId:process.env.GITHUB_RUN_ID,status:process.env.GATE_STATUS,createdAt:new Date().toISOString(),expiresAt:new Date(Date.now()+30*24*60*60*1000).toISOString()};
+          fs.writeFileSync(evidencePath,JSON.stringify(evidence,null,2)+"\n"); const evidenceSha256=crypto.createHash("sha256").update(fs.readFileSync(evidencePath)).digest("hex");
+          fs.writeFileSync(`${dir}/gate-manifest.json`,JSON.stringify({...evidence,evidenceFile:"gate-evidence.json",evidenceSha256},null,2)+"\n");
+          NODE
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with: { name: pdf-merge-${{ github.sha }}-correctness, path: .artifacts/pdf-merge/correctness, if-no-files-found: error }
 
   browser:
     name: PDF Merge — Browser Critical
-    needs: medium
+    needs: correctness
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
-        with:
-          node-version-file: .nvmrc
-          cache: npm
+        with: { node-version-file: .nvmrc, cache: npm }
       - run: npm ci
       - run: npx playwright install chromium
         timeout-minutes: 8
-      - name: Run critical browser certification
-        run: npx playwright test tests/pdf-merge-certification.spec.ts --reporter=line
+      - run: npx playwright test tests/pdf-merge-certification.spec.ts --reporter=line
       - name: Create gate evidence
         if: always()
-        env:
-          GATE_STATUS: ${{ job.status }}
+        env: { GATE_STATUS: ${{ job.status }} }
         run: |
-          mkdir -p .artifacts/pdf-merge/browser
-          cp -R test-results .artifacts/pdf-merge/browser/test-results 2>/dev/null || true
+          mkdir -p .artifacts/pdf-merge/browser; cp -R test-results .artifacts/pdf-merge/browser/test-results 2>/dev/null || true
           node --input-type=module <<'NODE'
-          import fs from "node:fs";
-          import crypto from "node:crypto";
-          const dir = ".artifacts/pdf-merge/browser";
-          const evidencePath = `${dir}/gate-evidence.json`;
-          const evidence = { schemaVersion: 1, tool: "pdf-merge", gate: "browser", commit: process.env.GITHUB_SHA, runId: process.env.GITHUB_RUN_ID, status: process.env.GATE_STATUS, createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() };
-          fs.writeFileSync(evidencePath, JSON.stringify(evidence, null, 2) + "\n");
-          const sha256 = crypto.createHash("sha256").update(fs.readFileSync(evidencePath)).digest("hex");
-          fs.writeFileSync(`${dir}/gate-manifest.json`, JSON.stringify({ ...evidence, evidenceFile: "gate-evidence.json", evidenceSha256: sha256 }, null, 2) + "\n");
+          import fs from "node:fs"; import crypto from "node:crypto";
+          const dir=".artifacts/pdf-merge/browser"; const evidencePath=`${dir}/gate-evidence.json`;
+          const evidence={schemaVersion:1,tool:"pdf-merge",gate:"browser",commit:process.env.GITHUB_SHA,runId:process.env.GITHUB_RUN_ID,status:process.env.GATE_STATUS,createdAt:new Date().toISOString(),expiresAt:new Date(Date.now()+30*24*60*60*1000).toISOString()};
+          fs.writeFileSync(evidencePath,JSON.stringify(evidence,null,2)+"\n"); const evidenceSha256=crypto.createHash("sha256").update(fs.readFileSync(evidencePath)).digest("hex");
+          fs.writeFileSync(`${dir}/gate-manifest.json`,JSON.stringify({...evidence,evidenceFile:"gate-evidence.json",evidenceSha256},null,2)+"\n");
           NODE
       - uses: actions/upload-artifact@v6
         if: always()
-        with:
-          name: pdf-merge-${{ github.sha }}-browser
-          path: .artifacts/pdf-merge/browser
-          if-no-files-found: error
+        with: { name: pdf-merge-${{ github.sha }}-browser, path: .artifacts/pdf-merge/browser, if-no-files-found: error }
 
   stability:
     name: PDF Merge — Stability x3
@@ -162,126 +154,85 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
-        with:
-          node-version-file: .nvmrc
-          cache: npm
+        with: { node-version-file: .nvmrc, cache: npm }
       - run: npm ci
       - run: npx playwright install chromium
         timeout-minutes: 8
-      - name: Run stability certification three times
-        run: npx playwright test tests/pdf-merge-stability.spec.ts --repeat-each=3 --reporter=line
+      - run: npx playwright test tests/pdf-merge-stability.spec.ts --repeat-each=3 --reporter=line
       - name: Create gate evidence
         if: always()
-        env:
-          GATE_STATUS: ${{ job.status }}
+        env: { GATE_STATUS: ${{ job.status }} }
         run: |
-          mkdir -p .artifacts/pdf-merge/stability
-          cp -R test-results .artifacts/pdf-merge/stability/test-results 2>/dev/null || true
+          mkdir -p .artifacts/pdf-merge/stability; cp -R test-results .artifacts/pdf-merge/stability/test-results 2>/dev/null || true
           node --input-type=module <<'NODE'
-          import fs from "node:fs";
-          import crypto from "node:crypto";
-          const dir = ".artifacts/pdf-merge/stability";
-          const evidencePath = `${dir}/gate-evidence.json`;
-          const evidence = { schemaVersion: 1, tool: "pdf-merge", gate: "stability", commit: process.env.GITHUB_SHA, runId: process.env.GITHUB_RUN_ID, status: process.env.GATE_STATUS, repeatEach: 3, createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() };
-          fs.writeFileSync(evidencePath, JSON.stringify(evidence, null, 2) + "\n");
-          const sha256 = crypto.createHash("sha256").update(fs.readFileSync(evidencePath)).digest("hex");
-          fs.writeFileSync(`${dir}/gate-manifest.json`, JSON.stringify({ ...evidence, evidenceFile: "gate-evidence.json", evidenceSha256: sha256 }, null, 2) + "\n");
+          import fs from "node:fs"; import crypto from "node:crypto";
+          const dir=".artifacts/pdf-merge/stability"; const evidencePath=`${dir}/gate-evidence.json`;
+          const evidence={schemaVersion:1,tool:"pdf-merge",gate:"stability",commit:process.env.GITHUB_SHA,runId:process.env.GITHUB_RUN_ID,status:process.env.GATE_STATUS,repeatEach:3,createdAt:new Date().toISOString(),expiresAt:new Date(Date.now()+30*24*60*60*1000).toISOString()};
+          fs.writeFileSync(evidencePath,JSON.stringify(evidence,null,2)+"\n"); const evidenceSha256=crypto.createHash("sha256").update(fs.readFileSync(evidencePath)).digest("hex");
+          fs.writeFileSync(`${dir}/gate-manifest.json`,JSON.stringify({...evidence,evidenceFile:"gate-evidence.json",evidenceSha256},null,2)+"\n");
           NODE
       - uses: actions/upload-artifact@v6
         if: always()
-        with:
-          name: pdf-merge-${{ github.sha }}-stability
-          path: .artifacts/pdf-merge/stability
-          if-no-files-found: error
+        with: { name: pdf-merge-${{ github.sha }}-stability, path: .artifacts/pdf-merge/stability, if-no-files-found: error }
 
   full:
     name: PDF Merge — Full Certification
-    needs: [fast, medium, browser, stability]
+    needs: [fast, medium, correctness, browser, stability]
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
-        with:
-          node-version-file: .nvmrc
-          cache: npm
+        with: { node-version-file: .nvmrc, cache: npm }
       - run: npm ci
-      - name: Production build
-        run: npm run build
-      - name: Production dependency audit
-        run: npm audit --omit=dev --audit-level=high
+      - run: npm run build
+      - run: npm audit --omit=dev --audit-level=high
       - name: Create gate evidence
         if: always()
-        env:
-          GATE_STATUS: ${{ job.status }}
+        env: { GATE_STATUS: ${{ job.status }} }
         run: |
           mkdir -p .artifacts/pdf-merge/full
           node --input-type=module <<'NODE'
-          import fs from "node:fs";
-          import crypto from "node:crypto";
-          const dir = ".artifacts/pdf-merge/full";
-          const evidencePath = `${dir}/gate-evidence.json`;
-          const evidence = { schemaVersion: 1, tool: "pdf-merge", gate: "full", commit: process.env.GITHUB_SHA, runId: process.env.GITHUB_RUN_ID, status: process.env.GATE_STATUS, createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() };
-          fs.writeFileSync(evidencePath, JSON.stringify(evidence, null, 2) + "\n");
-          const sha256 = crypto.createHash("sha256").update(fs.readFileSync(evidencePath)).digest("hex");
-          fs.writeFileSync(`${dir}/gate-manifest.json`, JSON.stringify({ ...evidence, evidenceFile: "gate-evidence.json", evidenceSha256: sha256 }, null, 2) + "\n");
+          import fs from "node:fs"; import crypto from "node:crypto";
+          const dir=".artifacts/pdf-merge/full"; const evidencePath=`${dir}/gate-evidence.json`;
+          const evidence={schemaVersion:1,tool:"pdf-merge",gate:"full",commit:process.env.GITHUB_SHA,runId:process.env.GITHUB_RUN_ID,status:process.env.GATE_STATUS,createdAt:new Date().toISOString(),expiresAt:new Date(Date.now()+30*24*60*60*1000).toISOString()};
+          fs.writeFileSync(evidencePath,JSON.stringify(evidence,null,2)+"\n"); const evidenceSha256=crypto.createHash("sha256").update(fs.readFileSync(evidencePath)).digest("hex");
+          fs.writeFileSync(`${dir}/gate-manifest.json`,JSON.stringify({...evidence,evidenceFile:"gate-evidence.json",evidenceSha256},null,2)+"\n");
           NODE
       - uses: actions/upload-artifact@v6
         if: always()
-        with:
-          name: pdf-merge-${{ github.sha }}-full
-          path: .artifacts/pdf-merge/full
-          if-no-files-found: error
+        with: { name: pdf-merge-${{ github.sha }}-full, path: .artifacts/pdf-merge/full, if-no-files-found: error }
 
   release:
     name: PDF Merge — Release Decision
-    needs: [fast, medium, browser, stability, full]
+    needs: [fast, medium, correctness, browser, stability, full]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
-      - name: Download all gate evidence
-        uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v7
         with:
           pattern: pdf-merge-${{ github.sha }}-*
           path: .artifacts/pdf-merge
           merge-multiple: false
       - name: Verify evidence integrity and current-run binding
-        env:
-          GITHUB_SHA: ${{ github.sha }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
+        env: { GITHUB_SHA: ${{ github.sha }}, GITHUB_RUN_ID: ${{ github.run_id }} }
         run: node scripts/verify-pdf-merge-evidence.mjs
       - name: Write release manifest
+        env:
+          FAST: ${{ needs.fast.result }}
+          MEDIUM: ${{ needs.medium.result }}
+          CORRECTNESS: ${{ needs.correctness.result }}
+          BROWSER: ${{ needs.browser.result }}
+          STABILITY: ${{ needs.stability.result }}
+          FULL: ${{ needs.full.result }}
         run: |
           mkdir -p .artifacts/pdf-merge/release
           node --input-type=module <<'NODE'
           import fs from "node:fs";
-          fs.writeFileSync(".artifacts/pdf-merge/release/release-decision.json", JSON.stringify({
-            schemaVersion: 1,
-            tool: "pdf-merge",
-            commit: process.env.GITHUB_SHA,
-            runId: process.env.GITHUB_RUN_ID,
-            gates: {
-              fast: process.env.FAST,
-              medium: process.env.MEDIUM,
-              browser: process.env.BROWSER,
-              stability: process.env.STABILITY,
-              full: process.env.FULL
-            },
-            status: "CERTIFICATION_READY",
-            createdAt: new Date().toISOString()
-          }, null, 2) + "\n");
+          fs.writeFileSync(".artifacts/pdf-merge/release/release-decision.json", JSON.stringify({schemaVersion:1,tool:"pdf-merge",commit:process.env.GITHUB_SHA,runId:process.env.GITHUB_RUN_ID,gates:{fast:process.env.FAST,medium:process.env.MEDIUM,correctness:process.env.CORRECTNESS,browser:process.env.BROWSER,stability:process.env.STABILITY,full:process.env.FULL},status:"CERTIFICATION_READY",createdAt:new Date().toISOString()},null,2)+"\n");
           NODE
-        env:
-          FAST: ${{ needs.fast.result }}
-          MEDIUM: ${{ needs.medium.result }}
-          BROWSER: ${{ needs.browser.result }}
-          STABILITY: ${{ needs.stability.result }}
-          FULL: ${{ needs.full.result }}
       - uses: actions/upload-artifact@v6
         if: always()
-        with:
-          name: pdf-merge-${{ github.sha }}-release
-          path: .artifacts/pdf-merge/release
-          if-no-files-found: error
+        with: { name: pdf-merge-${{ github.sha }}-release, path: .artifacts/pdf-merge/release, if-no-files-found: error }
