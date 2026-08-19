@@ -44,10 +44,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  release-tools:
-    name: Public tools release candidate
+  fast-gate:
+    name: Fast gate (static + contracts)
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -69,12 +69,57 @@ jobs:
       - name: Validate lockfile
         run: node scripts/validate-lockfile.mjs
 
-      - name: Fast-fail gate
-        timeout-minutes: 15
-        shell: bash
-        run: |
-          set -euo pipefail
-          node scripts/verify-fast-gate.mjs
+      - name: Run fast gate
+        run: node scripts/verify-fast-gate.mjs fast
+
+  medium-gate:
+    name: Medium gate (deep validation)
+    runs-on: ubuntu-latest
+    needs: fast-gate
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate lockfile
+        run: node scripts/validate-lockfile.mjs
+
+      - name: Run medium gate
+        run: node scripts/verify-fast-gate.mjs medium
+
+  full-certification:
+    name: Full certification (browser + build + audit)
+    runs-on: ubuntu-latest
+    needs: medium-gate
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate lockfile
+        run: node scripts/validate-lockfile.mjs
 
       - name: Cache Playwright browsers
         uses: actions/cache@v4
@@ -134,15 +179,13 @@ jobs:
   qr-output-certification:
     name: QR output certification
     runs-on: macos-latest
+    needs: medium-gate
     timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@v5
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-
-      - name: Validate package/lock contract
-        run: node scripts/validate-package-lock-contract.mjs
 
       - name: Setup Node
         uses: actions/setup-node@v5
