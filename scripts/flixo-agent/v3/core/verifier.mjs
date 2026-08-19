@@ -1,0 +1,1 @@
+export function verify(plan){const errors=[];if(plan?.status!=='planned')errors.push('plan requires manual review');if(plan?.policy?.autoApply!==false)errors.push('v3 autoApply must remain false');for(const step of plan?.steps??[])if(!step.gate)errors.push(`missing gate for ${step.id}`);return {valid:errors.length===0,approved:false,errors};}
