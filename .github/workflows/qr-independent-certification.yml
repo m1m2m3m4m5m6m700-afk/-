@@ -41,7 +41,7 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
-      - run: npm ci
+      - run: npm ci --include=dev
       - name: Validate baseline contract
         run: node scripts/certification/validate-baseline.mjs
       - run: node scripts/certification/smoke-test.mjs
@@ -78,7 +78,7 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
-      - run: npm ci
+      - run: npm ci --include=dev
       - run: npm run validate:security-strict
       - run: npm run validate:performance
       - name: Evidence
@@ -113,7 +113,7 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
-      - run: npm ci
+      - run: npm ci --include=dev
       - run: npm run test:desktop
       - name: Evidence
         if: always()
@@ -150,7 +150,7 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
-      - run: npm ci
+      - run: npm ci --include=dev
       - run: node scripts/test-qr-payload-matrix.mjs
         env:
           TEST_CASE: ${{ matrix.case }}
@@ -183,7 +183,7 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
-      - run: npm ci
+      - run: npm ci --include=dev
       - run: npx playwright install chromium
       - run: npx playwright test tests/qr-output-certification.spec.ts --reporter=line
       - name: Evidence
@@ -216,7 +216,7 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
-      - run: npm ci
+      - run: npm ci --include=dev
       - run: npx playwright install chromium
       - run: npx playwright test tests/qr-output-stability.spec.ts --repeat-each=3 --reporter=line
       - name: Evidence
@@ -249,7 +249,7 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
-      - run: npm ci
+      - run: npm ci --include=dev
       - run: npm run test
       - run: npm run build
       - run: npm audit --omit=dev --audit-level=high
