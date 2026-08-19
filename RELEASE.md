@@ -92,14 +92,14 @@ Any critical contract, build, test, dependency, or deployment gate fails.
 
 | Field | Value |
 |---|---|
-| Date | YYYY-MM-DD |
+| Date | 2026-08-19 |
 | Branch | `develop` |
-| Tested SHA | |
-| GitHub Actions Run ID | |
-| Workflow | |
-| Overall status | `GREEN / CONDITIONAL / RED` |
-| Vercel deployment | |
-| Vercel status | `READY / ERROR / PENDING` |
+| Tested SHA | `b1e0416976ee1adb34ea5ec0e13479daabf38d18` |
+| GitHub Actions Run ID | Pending fresh run |
+| Workflow | `Tool Platform` |
+| Overall status | `PENDING` |
+| Vercel deployment | Pending fresh deployment |
+| Vercel status | `PENDING` |
 
 ### First Failure
 
