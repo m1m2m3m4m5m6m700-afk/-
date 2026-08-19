@@ -1,13 +1,14 @@
-import { verifyHypothesisSet } from '../core/verifier.mjs';
+import { verifyHypothesisSet, DEVELOPMENT_BRANCH } from '../core/verifier.mjs';
 
-/** v4 executes only a verified v3 decision package. It never diagnoses or plans. */
+/** v4 executes only a verified v3 decision package on the development branch. */
 export async function executePlan(decisionPackage, runner, options = {}) {
   const plan = decisionPackage?.plan;
   const verification = decisionPackage?.verification;
   if (!plan || plan.version !== 3 || plan.status !== 'planned') throw new Error('v4 requires a planned v3 repair plan');
   if (verification?.valid !== true) throw new Error('v4 requires a successful v3 verifier result');
   if (typeof runner?.createSandbox !== 'function' || typeof runner?.runCI !== 'function') throw new Error('v4 requires sandbox and CI runners');
-  if (options.apply !== true) return { status: 'dry-run', executed: [], autoApply: false };
+  if (options.apply !== true) return { status: 'dry-run', executed: [], autoApply: false, developmentBranch: DEVELOPMENT_BRANCH };
+  if (options.branch !== DEVELOPMENT_BRANCH) throw new Error(`v4 may execute only on development branch: ${DEVELOPMENT_BRANCH}`);
 
   const executed = [];
   for (const step of plan.steps ?? []) {
@@ -18,15 +19,15 @@ export async function executePlan(decisionPackage, runner, options = {}) {
       executed.push({ id: step.id, result });
       if (result?.conclusion !== 'success') {
         await runner.rollback(sandbox, step);
-        return { status: 'rolled-back', executed, failedStep: step.id, autoApply: true };
+        return { status: 'rolled-back', executed, failedStep: step.id, autoApply: true, developmentBranch: DEVELOPMENT_BRANCH };
       }
       await runner.accept(sandbox, step);
     } catch (error) {
       await runner.rollback(sandbox, step);
-      return { status: 'rolled-back', executed, failedStep: step.id, error: error instanceof Error ? error.message : String(error), autoApply: true };
+      return { status: 'rolled-back', executed, failedStep: step.id, error: error instanceof Error ? error.message : String(error), autoApply: true, developmentBranch: DEVELOPMENT_BRANCH };
     }
   }
-  return { status: 'accepted', executed, autoApply: true };
+  return { status: 'accepted', executed, autoApply: true, developmentBranch: DEVELOPMENT_BRANCH };
 }
 
 export function validateV3PlanForExecution(decisionPackage, hypothesisSet = []) {
@@ -42,3 +43,5 @@ export function validateV3PlanForExecution(decisionPackage, hypothesisSet = []) 
   if (!hypothesisVerification.valid) errors.push(...hypothesisVerification.errors);
   return { valid: errors.length === 0, errors };
 }
+
+export { DEVELOPMENT_BRANCH } from '../core/verifier.mjs';
