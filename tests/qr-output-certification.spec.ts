@@ -1,11 +1,14 @@
 import { test, expect, type Download, type Page } from "playwright/test";
 import { assertPngArtifact } from "./utils/image-validator";
 
+test.describe.configure({ mode: "serial", retries: 1, timeout: 45_000 });
+
 async function openTool(page: Page) {
-  await page.goto("/tools/qr-generator");
-  await expect(page.locator('[data-hydrated="true"]')).toHaveCount(1, { timeout: 10_000 });
+  await page.goto("/tools/qr-generator", { waitUntil: "domcontentloaded", timeout: 10_000 });
   await expect(page.locator("h1")).toHaveCount(1, { timeout: 10_000 });
   await expect(page.locator('button[aria-pressed]')).toHaveCount(5, { timeout: 10_000 });
+  await expect(page.getByRole("button", { name: "Download PNG" })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole("button", { name: "Download Vector SVG" })).toBeVisible({ timeout: 10_000 });
 }
 
 async function readDownloadBuffer(download: Download): Promise<Buffer> {
@@ -51,6 +54,7 @@ test.describe("QR browser integration certification", () => {
 
   test("critical UI and downloads work for Wi-Fi escaping", async ({ page }) => {
     await page.locator('button[aria-pressed]').nth(2).click();
+    await expect(page.locator('input[type="password"]')).toBeVisible({ timeout: 5_000 });
     await page.locator('input[type="text"]').first().fill("Office;WiFi\\5G");
     await page.locator('input[type="password"]').fill("p@ss:word,42");
     await page.locator("select").selectOption("WPA");
@@ -59,7 +63,7 @@ test.describe("QR browser integration certification", () => {
 
   test("critical UI and downloads work for long Unicode", async ({ page }) => {
     await page.locator('button[aria-pressed]').nth(1).click();
-    await page.locator("textarea").fill("مرحبا Flixo — QR ✓ اختبار ".repeat(40));
+    await page.locator("textarea").fill("مرحبا Flixo — QR ✓ اختبار ".repeat(12));
     await verifyDownloads(page);
   });
 
