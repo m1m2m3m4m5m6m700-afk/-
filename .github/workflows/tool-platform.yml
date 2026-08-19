@@ -1,4 +1,5 @@
 name: Tool Platform
+run-name: Tool Platform · ${{ github.sha }}
 
 on:
   pull_request:
