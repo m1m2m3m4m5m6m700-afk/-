@@ -3,7 +3,7 @@ import { diagnose } from './diagnose.mjs';
 import { diagnosePlaywright } from './rules/playwright.mjs';
 import buildRepairPlan from './planner.mjs';
 import { verifyRepairPlan } from './verifier.mjs';
-import { applyRepairPlan } from './executor.mjs';
+import { applyChange } from './executor.mjs';
 import { createGitHubAdapter } from './github.mjs';
 
 function parseArgs(argv) {
@@ -44,12 +44,7 @@ const result = {
   verification,
 };
 
-if (mode === 'diagnose') {
-  process.stdout.write(JSON.stringify(result, null, 2) + '\n');
-  process.exit(verification.valid ? 0 : 2);
-}
-
-if (mode === 'plan') {
+if (mode === 'diagnose' || mode === 'plan') {
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
   process.exit(verification.valid ? 0 : 2);
 }
@@ -74,37 +69,36 @@ if (pr.head.ref === 'main' || pr.head.ref === 'master') {
   throw new Error(`Repair mode refuses to write to protected branch ${pr.head.ref}`);
 }
 
-const local = await applyRepairPlan(plan, { dryRun: true });
-const execution = {
-  ...local,
-  github: dryRun ? 'not called (dry-run)' : 'commit-ready',
-};
+if (dryRun) {
+  result.execution = {
+    applied: false,
+    dryRun: true,
+    github: 'not called (dry-run)',
+    note: 'No files or GitHub refs were modified.',
+  };
+  process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+  process.exit(0);
+}
 
-if (!dryRun) {
-  const materialized = await Promise.all(
-    plan.changes.map(async (change) => {
-      const current = await adapter.getFileContent(change.file, pr.head.ref);
-      const currentResult = await applyRepairPlan({
-        approved: true,
-        changes: [change],
-      }, { rootDir: process.cwd(), dryRun: true }).catch(() => null);
+const materialized = [];
+for (const change of plan.changes) {
+  if (change.type === 'dependency-sync') {
+    throw new Error('dependency-sync execution requires an npm-backed lockfile step and is not yet enabled');
+  }
+  const current = await adapter.getFileContent(change.file, pr.head.ref);
+  const updated = applyChange(current.content, change);
+  materialized.push({ path: change.file, content: updated });
+}
 
-      if (!currentResult) {
-        throw new Error(`Could not materialize change safely for ${change.file}`);
-      }
-
-      // Local content is the execution source of truth; adapter only commits verified bytes.
-      return { path: change.file, content: current.content };
-    }),
-  );
-
-  execution.githubCommit = await adapter.createCommit({
+result.execution = {
+  applied: true,
+  dryRun: false,
+  githubCommit: await adapter.createCommit({
     branch: pr.head.ref,
     expectedHeadSha: pr.head.sha,
     message: plan.commitMessage || `fix(agent): repair ${diagnosis.knownPattern || diagnosis.category}`,
     changes: materialized,
-  });
-}
+  }),
+};
 
-result.execution = execution;
 process.stdout.write(JSON.stringify(result, null, 2) + '\n');
