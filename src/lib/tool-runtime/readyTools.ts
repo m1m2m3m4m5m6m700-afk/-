@@ -5,6 +5,7 @@ import { imageEnhancerRuntime } from "./tools/image-enhancer";
 import { VideoCompressorRuntime } from "./tools/video-compressor";
 import { VideoTrimmerRuntime } from "./tools/video-trimmer";
 import { qrGeneratorRuntime } from "./tools/qr-generator";
+import { pdfMergeRuntime } from "./tools/pdf-merge";
 import type { ReadyToolRuntimeDefinition } from "./types";
 
 /**
@@ -17,6 +18,7 @@ export const readyToolRuntimes = [
   VideoCompressorRuntime,
   VideoTrimmerRuntime,
   qrGeneratorRuntime,
+  pdfMergeRuntime,
 ] as const satisfies readonly ReadyToolRuntimeDefinition[];
 
 for (const runtime of readyToolRuntimes) {
