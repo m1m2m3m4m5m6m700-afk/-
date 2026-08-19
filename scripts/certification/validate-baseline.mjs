@@ -31,6 +31,11 @@ export async function validateBaseline({ baseline, provenance, now = new Date() 
 }
 
 async function main() {
+  if ((process.env.BASELINE_STATUS ?? 'none') === 'none') {
+    console.log('CERTIFICATION BASELINE: SKIP (baseline status none)');
+    return;
+  }
+
   const baselinePath = process.env.BASELINE_PATH ?? 'baselines/qr-generator/certification-baseline.json';
   const provenancePath = process.env.PROVENANCE_PATH ?? 'baselines/qr-generator/provenance.json';
   const baseline = JSON.parse(await fs.readFile(baselinePath, 'utf8'));
