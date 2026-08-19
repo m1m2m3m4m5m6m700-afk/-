@@ -13,20 +13,20 @@ export function isRepairEligible(report) {
   if (report.decision !== 'candidate-for-safe-dry-run') return false;
   const issue = report.issues?.find((candidate) => (
     candidate.confidence >= MIN_CONFIDENCE
-    && candidate.autoApplyAllowed === false
+    && candidate.autoApplyAllowed === true
     && ALLOWED_STRATEGIES.has(candidate.recommendedStrategy)
   ));
   return Boolean(issue);
 }
 
 export function allowedChangedPaths(files) {
-  return files.every((file) => ALLOWED_PATHS.has(file));
+  return files.length > 0 && files.every((file) => ALLOWED_PATHS.has(file));
 }
 
 export function selectRepair(report) {
   return report?.issues?.find((candidate) => (
     candidate.confidence >= MIN_CONFIDENCE
-    && candidate.autoApplyAllowed === false
+    && candidate.autoApplyAllowed === true
     && ALLOWED_STRATEGIES.has(candidate.recommendedStrategy)
   )) ?? null;
 }
@@ -108,9 +108,8 @@ function main() {
     }
 
     const changes = trackedChanges();
-    if (!changes.length) throw new Error('Repair produced no changes');
     if (!allowedChangedPaths(changes)) {
-      throw new Error(`Repair touched forbidden paths: ${changes.join(', ')}`);
+      throw new Error(`Repair touched forbidden or empty path set: ${changes.join(', ') || 'none'}`);
     }
 
     run('git', ['diff', '--check']);
