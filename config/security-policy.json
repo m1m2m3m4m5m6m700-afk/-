@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "ci": {
+    "productionAuditLevel": "high",
+    "criticalVulnerabilities": 0,
+    "highProductionVulnerabilities": 0,
+    "secretScanning": "required",
+    "codeql": "recommended",
+    "dast": "progressive"
+  },
+  "release": {
+    "securityGateMustPass": true,
+    "externalServiceQuotaIsNonCodeFailure": true
+  }
+}
