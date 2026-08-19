@@ -26,6 +26,7 @@ const rawPublicToolTestContracts = [
   { toolId: "image-enhancer", route: "/tools/image-enhancer", requiredChecks: strictChecks },
   { toolId: "video-compressor", route: "/tools/video-compressor", requiredChecks: strictChecks },
   { toolId: "video-trimmer", route: "/tools/video-trimmer", requiredChecks: strictChecks },
+  { toolId: "qr-generator", route: "/tools/qr-generator", requiredChecks: strictChecks },
 ] as const satisfies readonly ToolTestContract[];
 
 export const publicToolTestContracts: readonly ToolTestContract[] = Object.freeze(

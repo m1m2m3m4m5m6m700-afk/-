@@ -39,6 +39,21 @@ const manifestData = [
     lifecycle: "public" as const,
     capabilities: { input: "file" as const, output: "download" as const, localOnly: true },
   },
+  {
+    id: "qr-generator",
+    slug: "qr-generator",
+    name: "QR Generator",
+    category: "utilities" as const,
+    description: "Create QR codes locally for links, text, Wi-Fi, email, and phone numbers.",
+    lifecycle: "public" as const,
+    capabilities: {
+      input: "text" as const,
+      output: "download" as const,
+      localOnly: true,
+      policy: { requiresNetwork: false, requiresStorage: false, sensitiveInput: false },
+    },
+    dependencies: [],
+  },
 ] as const;
 
 const validatedManifestData = manifestData.map((manifest) => toolBaseManifestSchema.parse(manifest));
