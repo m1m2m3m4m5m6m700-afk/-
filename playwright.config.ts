@@ -3,13 +3,15 @@ import { defineConfig, devices } from "playwright/test";
 export default defineConfig({
   testDir: "./tests",
   fullyParallel: false,
-  timeout: 20 * 60 * 1000,
+  timeout: 5 * 60 * 1000,
   expect: { timeout: 15_000 },
   reporter: [["list"], ["html", { outputFolder: "playwright-report", open: "never" }]],
   use: {
     baseURL: "http://127.0.0.1:3000",
     headless: true,
     trace: "retain-on-failure",
+    actionTimeout: 30_000,
+    navigationTimeout: 30_000,
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
