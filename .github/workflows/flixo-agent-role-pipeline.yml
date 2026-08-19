@@ -27,3 +27,26 @@ jobs:
           node-version-file: .nvmrc
       - name: Run v1 → v2 → v3 → v4 integration
         run: node --test scripts/flixo-agent/tests/agent-role-pipeline.integration.test.mjs
+
+  preflight-repair:
+    name: Preflight Local Repair Integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      GITHUB_TOKEN: ''
+      GITHUB_ACTIONS: 'true'
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci --include=dev
+      - name: Assert no remote credentials are exposed
+        run: |
+          test -z "$GITHUB_TOKEN"
+          test "$GITHUB_ACTIONS" = "true"
+      - name: Run preflight repair integration
+        run: node --test scripts/flixo-agent/tests/preflight-repair.integration.test.mjs
