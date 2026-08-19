@@ -17,7 +17,9 @@ on:
       - "package-lock.json"
       - ".nvmrc"
   pull_request:
-    branches: [main]
+    branches:
+      - main
+      - fix/e2e-stability-pdf-chat-a11y
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - "src/lib/tool-platform/**"
