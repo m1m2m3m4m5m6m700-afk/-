@@ -33,10 +33,17 @@ export type ToolCertificationLevel =
   | "performance-verified"
   | "certified";
 
+export interface ToolCapabilityPolicy {
+  readonly requiresNetwork: boolean;
+  readonly requiresStorage: boolean;
+  readonly sensitiveInput: boolean;
+}
+
 export interface ToolCapabilities {
   readonly input: ToolInputKind;
   readonly output: ToolOutputKind;
   readonly localOnly: boolean;
+  readonly policy: ToolCapabilityPolicy;
 }
 
 export interface ToolCertificationRequirements {
@@ -55,6 +62,7 @@ export interface ToolManifest {
   readonly description: string;
   readonly lifecycle: ToolLifecycleState;
   readonly capabilities: ToolCapabilities;
+  readonly dependencies: readonly string[];
   readonly certification: ToolCertificationRequirements;
 }
 
