@@ -26,18 +26,19 @@
 - Repair must pass `npm ci --ignore-scripts` and `npm run validate:dependencies`.
 - Repairs never write directly to `main`.
 - Rollback is hardened: if an auto-fix branch was pushed but PR creation fails, Self-Heal now deletes the remote branch before escalating.
+- The auto-apply policy is now semantically explicit: only `lockfile-fixer` candidates with `autoApplyAllowed === true` and confidence >= 0.85 are executable; all others escalate.
 
 ### CI evidence and timeout hardening
 - GitHub Runner was reached successfully by CI Run #897.
 - Steps 1–9 completed successfully: CI contract, dependency contract, clean install, lockfile stability, production audit, and Chromium setup.
 - Run #897 remains stuck in `Run canonical test gate` with no final conclusion in the available evidence.
 - Root cause identified at the CI/test-harness level: Playwright allowed up to **20 minutes per test** with no independent shell timeout for the canonical test command, allowing a hung test to leave the runner unresolved.
-- Playwright hardening applied on `experimental` by commit `1bdd56e1a1e667e1e4f26aa18eef2d8b5cdb5bae`: test timeout reduced to 5 minutes, action/navigation timeouts set to 30 seconds.
+- Playwright hardening applied on `experimental`: test timeout reduced to 5 minutes, action/navigation timeouts set to 30 seconds.
 - CI hardening applied on `experimental`: canonical verification is executed through `npm run verify` under a 35-minute shell timeout with TERM/KILL escalation and always-on diagnostic artifacts.
-- CI contract validation was strengthened to require `scripts.verify` and to reject CI configurations that stop using the canonical `npm run verify` gate or omit the required timeout policy.
-- Promotion auto-merge permissions were corrected on `experimental`: the Promotion Gate requests `contents: write` plus `pull-requests: write` for the final merge operation.
-- The Promotion Gate was further hardened to require production-safe `main` protection: required status checks, pull-request review protection, and administrator enforcement must all be enabled before promotion can pass.
-- Current `experimental` head: `03e3262f0c660f6444b7a4e0156185ffbc18f808`.
+- CI contract validation rejects configurations that omit `scripts.verify` or the canonical `npm run verify` gate or required timeout policy.
+- Promotion auto-merge permissions were corrected: the Promotion Gate requests `contents: write` plus `pull-requests: write` for the final merge operation.
+- Promotion Gate requires production-safe `main` protection: required status checks, pull-request review protection, and administrator enforcement must all be enabled before promotion can pass.
+- Current `experimental` head: `468465cac3894fc52ab21c9a22fd949e01bf277d`.
 - Temporary validation PR #96 was created against `experimental`, but the current GitHub connector exposed only a Vercel failure status and no CI Run/check for that PR. PR #96 was closed without merge.
 
 ### Promotion governance
