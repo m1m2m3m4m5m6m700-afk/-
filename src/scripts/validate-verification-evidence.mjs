@@ -1,13 +1,16 @@
-import { readdir, readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 
 const ROOT = path.resolve("verification-evidence");
-const REQUIRED_TOOLS = new Set([
-  "zip-creator",
-  "archive-extractor",
-  "file-splitter",
-  "metadata-viewer",
-]);
+const baseline = JSON.parse(
+  await readFile("tests/fixtures/tool-certification-baseline.json", "utf8"),
+);
+const REQUIRED_TOOLS = new Set(baseline.certifiedTools ?? []);
+
+if (REQUIRED_TOOLS.size === 0) {
+  console.error("VERIFICATION EVIDENCE GATE: FAIL — certification baseline contains no tools.");
+  process.exit(1);
+}
 
 async function collect(dir) {
   const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
@@ -27,7 +30,7 @@ for (const file of files) {
   let value;
   try {
     value = JSON.parse(await readFile(file, "utf8"));
-  } catch (error) {
+  } catch {
     console.error(`VERIFICATION EVIDENCE GATE: invalid JSON: ${file}`);
     process.exitCode = 1;
     continue;
@@ -68,6 +71,7 @@ for (const { file, value } of records) {
   if (!REQUIRED_TOOLS.has(value.toolId)) {
     console.error(`VERIFICATION EVIDENCE GATE: FAIL — unregistered tool evidence: ${value.toolId}`);
     process.exitCode = 1;
+    continue;
   }
   passed.set(value.toolId, (passed.get(value.toolId) ?? 0) + 1);
 }
@@ -80,4 +84,4 @@ for (const toolId of REQUIRED_TOOLS) {
 }
 
 if (process.exitCode) process.exit(process.exitCode);
-console.log(`VERIFICATION EVIDENCE GATE: PASS — ${passed.size} tools have auditable passing evidence.`);
+console.log(`VERIFICATION EVIDENCE GATE: PASS — ${passed.size} certified tools have auditable passing evidence.`);
