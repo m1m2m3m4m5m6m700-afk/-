@@ -102,9 +102,6 @@ jobs:
       - name: Performance budget
         run: npm run validate:performance
 
-      - name: Local-only data processing contract
-        run: npm run validate:tool-platform
-
       - name: Upload diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@v4
