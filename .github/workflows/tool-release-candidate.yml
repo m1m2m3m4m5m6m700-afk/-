@@ -1,0 +1,364 @@
+name: Tool Release Candidate
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [develop]
+    paths:
+      - "src/lib/tool-platform/**"
+      - "src/lib/tool-runtime/**"
+      - "src/components/tools/**"
+      - "src/data/**"
+      - "src/routes/**"
+      - "tests/**"
+      - "scripts/validate-release-tools.mjs"
+      - "scripts/validate-tool-intake.mjs"
+      - "scripts/validate-certification-policy.mjs"
+      - "scripts/seal-evidence.mjs"
+      - "scripts/write-certification-report.mjs"
+      - "scripts/verify-fast-gate.mjs"
+      - "scripts/validate-package-lock-contract.mjs"
+      - "package.json"
+      - "package-lock.json"
+      - ".nvmrc"
+  pull_request:
+    branches:
+      - main
+      - fix/e2e-stability-pdf-chat-a11y
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "src/lib/tool-platform/**"
+      - "src/lib/tool-runtime/**"
+      - "src/components/tools/**"
+      - "src/data/**"
+      - "src/routes/**"
+      - "tests/**"
+      - "scripts/validate-release-tools.mjs"
+      - "scripts/validate-tool-intake.mjs"
+      - "scripts/validate-certification-policy.mjs"
+      - "scripts/seal-evidence.mjs"
+      - "scripts/write-certification-report.mjs"
+      - "scripts/verify-fast-gate.mjs"
+      - "scripts/validate-package-lock-contract.mjs"
+      - "package.json"
+      - "package-lock.json"
+      - ".nvmrc"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tool-release-candidate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fast-gate:
+    name: Fast gate (static + contracts + policy)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Validate package/lock contract before install
+        run: node scripts/validate-package-lock-contract.mjs
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate lockfile
+        run: node scripts/validate-lockfile.mjs
+
+      - name: Validate current tool intake
+        env:
+          TOOL_SLUG: qr-generator
+        run: node scripts/validate-tool-intake.mjs
+
+      - name: Enforce certification policy
+        env:
+          TOOL_SLUG: qr-generator
+        run: node scripts/validate-certification-policy.mjs
+
+      - name: Run fast gate
+        run: node scripts/verify-fast-gate.mjs fast
+
+      - name: Publish fast-gate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fast-gate-${{ github.sha }}
+          path: .artifacts/gates/fast-gate.json
+          if-no-files-found: warn
+
+  medium-gate:
+    name: Medium gate (deep validation)
+    runs-on: ubuntu-latest
+    needs: fast-gate
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate lockfile
+        run: node scripts/validate-lockfile.mjs
+
+      - name: Run medium gate
+        run: node scripts/verify-fast-gate.mjs medium
+
+      - name: Publish medium-gate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: medium-gate-${{ github.sha }}
+          path: .artifacts/gates/medium-gate.json
+          if-no-files-found: warn
+
+  environment-smoke:
+    name: Cross-environment smoke (Windows)
+    runs-on: windows-latest
+    needs: fast-gate
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate runtime and Playwright availability
+        shell: pwsh
+        run: |
+          node --version
+          npm --version
+          npx playwright --version
+          node scripts/validate-release-tools.mjs
+
+      - name: Install Chromium
+        timeout-minutes: 8
+        run: npx playwright install chromium
+
+      - name: Chromium launch smoke
+        timeout-minutes: 3
+        shell: pwsh
+        run: |
+          node --input-type=module -e "import { chromium } from 'playwright'; const b = await chromium.launch({headless:true}); await b.close(); console.log('Chromium launch: OK')"
+
+      - name: Publish environment evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: environment-smoke-${{ github.sha }}
+          path: .artifacts/gates
+          if-no-files-found: warn
+
+  full-certification:
+    name: Full certification (browser + E2E + build + audit)
+    runs-on: ubuntu-latest
+    needs: [medium-gate, environment-smoke]
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate lockfile
+        run: node scripts/validate-lockfile.mjs
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - name: Install Chromium
+        timeout-minutes: 8
+        run: npx playwright install chromium
+
+      - name: Verify Chromium can launch
+        timeout-minutes: 3
+        run: |
+          node --input-type=module <<'NODE'
+          import { chromium } from "playwright";
+          const browser = await chromium.launch({ headless: true });
+          await browser.close();
+          console.log("Chromium launch: OK");
+          NODE
+
+      - name: Run non-QR public tool operational suite three times
+        run: npx playwright test tests/desktop-tools.spec.ts tests/image-compressor.contract.spec.ts --grep-invert "QR Generator output correctness" --repeat-each=3 --reporter=line
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Production dependency audit
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Collect full evidence
+        if: always()
+        run: |
+          mkdir -p .artifacts/full
+          cp -R .artifacts/gates .artifacts/full/gates 2>/dev/null || true
+          node -e 'const fs=require("fs"); fs.writeFileSync(".artifacts/full/summary.json", JSON.stringify({commit:process.env.GITHUB_SHA, timestamp:new Date().toISOString(), job:process.env.GITHUB_JOB}, null, 2)+"\n")'
+
+      - name: Seal full evidence
+        if: always()
+        run: node scripts/seal-evidence.mjs .artifacts/full
+
+      - name: Publish full evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-certification-${{ github.sha }}
+          path: .artifacts/full
+          if-no-files-found: warn
+
+  qr-output-certification:
+    name: QR output certification (portable decoder)
+    runs-on: ubuntu-latest
+    needs: medium-gate
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install locked project dependencies
+        run: npm ci
+
+      - name: Install pinned test-only QR decoder
+        run: npm install --no-save --package-lock=false jsqr@1.4.0
+
+      - name: Verify independent decoder import
+        run: |
+          node --input-type=module <<'NODE'
+          import { createRequire } from "node:module";
+          const require = createRequire(import.meta.url);
+          const jsQR = require("jsqr");
+          if (typeof jsQR !== "function") {
+            throw new Error("jsQR decoder import failed");
+          }
+          console.log("Independent jsQR decoder: OK");
+          NODE
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - name: Install Chromium
+        timeout-minutes: 8
+        run: npx playwright install chromium
+
+      - name: Verify Chromium can launch
+        timeout-minutes: 3
+        run: |
+          node --input-type=module <<'NODE'
+          import { chromium } from "playwright";
+          const browser = await chromium.launch({ headless: true });
+          await browser.close();
+          console.log("Chromium launch: OK");
+          NODE
+
+      - name: Run independent QR output certification three times
+        run: npx playwright test tests/qr-output-certification.spec.ts --repeat-each=3 --reporter=line
+
+      - name: Collect and seal QR evidence
+        if: always()
+        run: |
+          mkdir -p .artifacts/qr
+          cp -R test-results .artifacts/qr/test-results 2>/dev/null || true
+          node -e 'const fs=require("fs"); fs.writeFileSync(".artifacts/qr/summary.json", JSON.stringify({commit:process.env.GITHUB_SHA, timestamp:new Date().toISOString(), job:process.env.GITHUB_JOB, decoder:"jsqr@1.4.0"}, null, 2)+"\n")'
+          node scripts/seal-evidence.mjs .artifacts/qr
+
+      - name: Publish QR evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qr-certification-${{ github.sha }}
+          path: .artifacts/qr
+          if-no-files-found: warn
+
+  release-decision:
+    name: Release decision + certification report
+    runs-on: ubuntu-latest
+    needs: [fast-gate, medium-gate, environment-smoke, full-certification, qr-output-certification]
+    if: ${{ always() }}
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Write machine-readable certification report
+        env:
+          TOOL_SLUG: qr-generator
+          PR_NUMBER: ${{ github.event.pull_request.number || '' }}
+          FAST_RESULT: ${{ needs.fast-gate.result }}
+          MEDIUM_RESULT: ${{ needs.medium-gate.result }}
+          WINDOWS_RESULT: ${{ needs.environment-smoke.result }}
+          FULL_RESULT: ${{ needs.full-certification.result }}
+          QR_RESULT: ${{ needs.qr-output-certification.result }}
+        run: |
+          node scripts/write-certification-report.mjs
+
+      - name: Seal certification evidence
+        if: always()
+        run: node scripts/seal-evidence.mjs .artifacts/release-tools
+
+      - name: Publish certification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: certification-${{ github.sha }}
+          path: .artifacts/release-tools
+          if-no-files-found: error
