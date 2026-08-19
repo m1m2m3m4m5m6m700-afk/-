@@ -71,17 +71,31 @@ async function verifyMainProtection() {
   try {
     const protection = await api(`/repos/${owner}/${repo}/branches/main/protection`);
     const required = protection.required_status_checks;
-    const hasRequired = Boolean(required && ((required.contexts ?? []).length || (required.checks ?? []).length));
-    if (!hasRequired) {
+    const reviews = protection.required_pull_request_reviews;
+    const admins = protection.enforce_admins;
+    const hasRequiredChecks = Boolean(required && ((required.contexts ?? []).length || (required.checks ?? []).length));
+    const hasPullRequestReview = Boolean(reviews && typeof reviews === 'object');
+    const adminsEnforced = Boolean(admins?.enabled);
+
+    if (!hasRequiredChecks) {
       throw new Error('main protection is enabled but has no required status checks.');
     }
+    if (!hasPullRequestReview) {
+      throw new Error('main protection is enabled but pull-request review protection is missing.');
+    }
+    if (!adminsEnforced) {
+      throw new Error('main protection is enabled but administrator enforcement is disabled.');
+    }
+
     return {
       enabled: true,
       requiredContexts: required.contexts ?? [],
       requiredChecks: required.checks ?? [],
+      pullRequestReviewsEnabled: true,
+      administratorsEnforced: true,
     };
   } catch (error) {
-    throw new Error(`main protection is not active or not readable: ${error.message}`);
+    throw new Error(`main protection is not production-safe: ${error.message}`);
   }
 }
 
