@@ -101,7 +101,9 @@ export function PdfMerge() {
 
       output.setTitle("Flixo merged PDF");
       const merged = await output.save({ useObjectStreams: false });
-      const blob = new Blob([merged], { type: "application/pdf" });
+      const mergedBuffer = new ArrayBuffer(merged.byteLength);
+      new Uint8Array(mergedBuffer).set(merged);
+      const blob = new Blob([mergedBuffer], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       objectUrlRef.current = url;
       setResult({ bytes: merged.byteLength, pages: pageCount, url });
