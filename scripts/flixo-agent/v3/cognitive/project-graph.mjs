@@ -1,0 +1,2 @@
+import fs from 'node:fs/promises'; import path from 'node:path';
+export async function buildProjectGraph(){const root=process.env.FLIXO_REPO_ROOT||process.cwd();let pkg={};try{pkg=JSON.parse(await fs.readFile(path.join(root,'package.json'),'utf8'));}catch{}const nodes=[{id:'project:package',type:'manifest'}];for(const [n,v] of Object.entries({...pkg.dependencies,...pkg.devDependencies}))nodes.push({id:`dependency:${n}`,type:'dependency',version:v});return {schemaVersion:3,independent:true,nodes,edges:[]};}
