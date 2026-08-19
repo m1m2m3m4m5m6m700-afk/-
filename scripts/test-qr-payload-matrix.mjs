@@ -23,9 +23,15 @@ const cases = [
   { id: "custom-color", options: { mode: "url", input: "https://example.com/color-variant" }, expected: "https://example.com/color-variant", color: { dark: "#123456", light: "#ffffff" } },
 ];
 
+const selectedCase = process.env.TEST_CASE?.trim();
+const selectedCases = selectedCase ? cases.filter((testCase) => testCase.id === selectedCase) : cases;
+if (selectedCase && selectedCases.length === 0) {
+  throw new Error(`Unknown TEST_CASE: ${selectedCase}. Expected one of: ${cases.map((testCase) => testCase.id).join(", ")}`);
+}
+
 const startedAt = performance.now();
 const results = [];
-for (const testCase of cases) {
+for (const testCase of selectedCases) {
   const payload = buildQrPayload(testCase.options);
   assert.equal(payload, testCase.expected, `${testCase.id}: payload mismatch`);
   if (testCase.skipGeneration) {
@@ -59,4 +65,4 @@ for (const testCase of cases) {
 }
 
 const durationMs = Math.round(performance.now() - startedAt);
-console.log(JSON.stringify({ status: "PASS", decoder: "jsqr@1.4.0", pngDecoder: "pngjs", cases: results, durationMs }, null, 2));
+console.log(JSON.stringify({ status: "PASS", decoder: "jsqr@1.4.0", pngDecoder: "pngjs", selectedCase: selectedCase ?? null, cases: results, durationMs }, null, 2));
