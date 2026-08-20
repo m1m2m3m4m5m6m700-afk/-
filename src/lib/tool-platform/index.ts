@@ -1,6 +1,7 @@
 export * from "./categories";
 export * from "./types";
 export * from "./promotion";
+export * from "./diagnostics";
 export {
   getPublicToolRegistration,
   getPublicToolRegistrationBySlug,
