@@ -27,9 +27,9 @@ jobs:
             echo "PR_AGENT_OPENAI_KEY is not configured; skipping optional advisory review."
           fi
 
-      - name: Run PR-Agent advisory review
+      - name: Run pinned PR-Agent advisory review
         if: steps.guard.outputs.enabled == 'true'
-        uses: the-pr-agent/pr-agent@main
+        uses: docker://pragent/pr-agent:0.41.0-github_action
         env:
           OPENAI_KEY: ${{ secrets.PR_AGENT_OPENAI_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
