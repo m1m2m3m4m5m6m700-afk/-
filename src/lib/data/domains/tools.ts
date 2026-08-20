@@ -26,7 +26,8 @@ export const tools: readonly Tool[] = Object.freeze(
 export const toolById = new Map<string, Tool>(tools.map((tool) => [tool.id, tool]));
 
 export const getTool = (id: string): Tool | undefined => {
-  return toolById.get(id) ?? getPublicToolRegistration(id)?.manifest && toTool(getPublicToolRegistration(id)!);
+  const registration = getPublicToolRegistration(id);
+  return toolById.get(id) ?? (registration ? toTool(registration) : undefined);
 };
 
 export const getToolBySlug = (slug: string): Tool | undefined => {
