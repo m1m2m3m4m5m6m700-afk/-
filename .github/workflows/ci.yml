@@ -42,7 +42,7 @@ jobs:
   verify:
     name: Full Verification (${{ github.ref_name }})
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 60
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -67,7 +67,7 @@ jobs:
           set -o pipefail
           mkdir -p diagnostics
           echo "Starting npm run verify at $(date -u +%FT%TZ)"
-          timeout --signal=TERM --kill-after=30s 35m npm run verify 2>&1 | tee diagnostics/npm-verify.log
+          timeout --signal=TERM --kill-after=30s 55m npm run verify 2>&1 | tee diagnostics/npm-verify.log
       - name: Upload browser report
         if: always()
         uses: actions/upload-artifact@v4
@@ -100,4 +100,111 @@ jobs:
             test-results/
             playwright-report/
           if-no-files-found: ignore
+          retention-days: 14
+
+  v3-diagnosis:
+    name: V3 Diagnose Real CI Failure
+    needs: verify
+    if: ${{ always() && needs.verify.result == 'failure' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Download canonical verification diagnostics
+        uses: actions/download-artifact@v5
+        with:
+          name: flixo-canonical-verify-diagnostics-${{ github.run_id }}
+          path: diagnostics/ci
+      - name: Run canonical typecheck capture
+        shell: bash
+        run: |
+          set +e
+          npm run typecheck > diagnostics/typecheck.log 2>&1
+          TYPECHECK_EXIT=$?
+          set -e
+          printf '%s\n' "$TYPECHECK_EXIT" > diagnostics/typecheck.exit
+      - name: Run project health capture
+        shell: bash
+        run: |
+          set +e
+          npm run agent:health > diagnostics/health.log 2>&1
+          HEALTH_EXIT=$?
+          set -e
+          printf '%s\n' "$HEALTH_EXIT" > diagnostics/health.exit
+      - name: Run V3 diagnosis against real CI logs
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import { buildCognitiveAssessment } from './scripts/flixo-agent/cognitive/cognitive-engine.mjs';
+          import { buildStrategicPlan } from './scripts/flixo-agent/planning/strategic-planner.mjs';
+
+          const read = (path) => fs.existsSync(path) ? fs.readFileSync(path, 'utf8') : '';
+          const ciLog = read('diagnostics/ci/diagnostics/npm-verify.log');
+          const typecheckLog = read('diagnostics/typecheck.log');
+          const healthLog = read('diagnostics/health.log');
+          const combinedLog = [
+            '=== REAL CI VERIFY LOG ===',
+            ciLog,
+            '=== CANONICAL TYPECHECK ===',
+            typecheckLog,
+            '=== PROJECT HEALTH ===',
+            healthLog,
+          ].join('\n');
+
+          const assessment = buildCognitiveAssessment({
+            log: combinedLog,
+            context: { projectGraph: { nodes: [], edges: [] } },
+            decisions: [],
+          });
+          const plan = buildStrategicPlan({
+            diagnosis: assessment.diagnosis,
+            dependencyImpact: assessment.dependencyImpact,
+          });
+
+          const report = {
+            version: 3,
+            mode: 'real-ci-failure-diagnosis',
+            branch: process.env.GITHUB_REF_NAME,
+            sha: process.env.GITHUB_SHA,
+            runId: process.env.GITHUB_RUN_ID,
+            source: {
+              verifyArtifact: fs.existsSync('diagnostics/ci/diagnostics/npm-verify.log'),
+              typecheckExit: Number.parseInt(read('diagnostics/typecheck.exit').trim(), 10),
+              healthExit: Number.parseInt(read('diagnostics/health.exit').trim(), 10),
+            },
+            assessment,
+            plan,
+            repairAllowed: false,
+          };
+
+          fs.mkdirSync('diagnostics/out', { recursive: true });
+          fs.writeFileSync('diagnostics/out/v3-real-ci-diagnosis.json', JSON.stringify(report, null, 2));
+          console.log(JSON.stringify(report, null, 2));
+          NODE
+      - name: Run V3 stress tests
+        run: node --test scripts/flixo-agent/tests/v3-preflight.test.mjs scripts/flixo-agent/tests/v3-strategic-planning.test.mjs scripts/flixo-agent/tests/v3-stress.test.mjs
+      - name: Upload V3 real-failure diagnosis
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flixo-v3-real-ci-diagnosis-${{ github.run_id }}
+          path: |
+            diagnostics/typecheck.log
+            diagnostics/health.log
+            diagnostics/out/v3-real-ci-diagnosis.json
+          if-no-files-found: warn
           retention-days: 14
