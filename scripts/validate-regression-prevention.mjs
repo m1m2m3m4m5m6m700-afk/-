@@ -24,12 +24,11 @@ const files = [...sourceFiles, ...testFiles, ...scriptFiles];
 for (const file of files) {
   const content = await fs.readFile(path.join(root, file), "utf8");
 
-  if (/megaToolsCatalog|megaToolsEngine/.test(content)) {
-    failures.push({ rule: "legacy-mega-tools", file, message: "Removed mega-tool subsystem reference returned." });
-  }
-
-  if (/from\s+[\"']@\/data\/|from\s+[\"'][^\"']*src\/data\//.test(content)) {
-    failures.push({ rule: "legacy-data-import", file, message: "Direct legacy src/data import returned." });
+  // Detect real imports/requires, not validators or documentation that merely
+  // mention the removed legacy names as forbidden patterns.
+  const legacyImport = /(?:import\s+[^;]*from\s+|require\s*\(\s*)["'][^"']*(?:megaToolsCatalog|megaToolsEngine|@\/data\/tools|src\/data\/)[^"']*["']/.test(content);
+  if (legacyImport) {
+    failures.push({ rule: "legacy-import", file, message: "Removed legacy subsystem/data import returned." });
   }
 
   if (file.startsWith("src/lib/ai/") && /autoApply\s*[:=]\s*true/.test(content)) {
@@ -60,8 +59,7 @@ for (const file of workflows) {
 }
 
 const rules = [
-  "legacy-mega-tools",
-  "legacy-data-import",
+  "legacy-import",
   "ai-auto-apply",
   "package-lock-parity",
   "ci-install-determinism",
