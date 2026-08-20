@@ -1,0 +1,47 @@
+name: AI Tools Contract
+
+on:
+  pull_request:
+    paths:
+      - ".github/agents/**"
+      - "scripts/security/**"
+      - "scripts/test-selection.mjs"
+      - "scripts/test-generation.mjs"
+      - "scripts/validate-ai-tools.mjs"
+      - "src/lib/ai/**"
+      - "src/lib/tool-platform/**"
+      - "tests/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ai-tools-contract:
+    name: AI Tools Contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --no-audit
+      - name: Validate free AI tool integration
+        run: node scripts/validate-ai-tools.mjs
+      - name: Validate AI contract and Failure Memory
+        run: npm run validate:ai
+      - name: Generate deterministic test-selection report
+        run: node scripts/test-selection.mjs
+      - name: Upload AI diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flixo-ai-tools-${{ github.run_id }}
+          path: .artifacts/
+          if-no-files-found: ignore
+          retention-days: 7
