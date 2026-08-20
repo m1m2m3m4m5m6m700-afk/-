@@ -42,12 +42,13 @@ function normalize(value: unknown): string {
     .trim();
 }
 
+/**
+ * The InternalDiagnosticEvent fingerprint is the canonical ID.
+ * Keep this fallback only for compatibility with legacy events that predate
+ * the fingerprint field.
+ */
 export function fingerprintEvent(event: InternalDiagnosticEvent): string {
-  // Prefer the fingerprint created at the diagnostic boundary so there is one
-  // canonical identity for an event throughout the system.
-  if (typeof event.fingerprint === "string" && event.fingerprint.length > 0) {
-    return event.fingerprint;
-  }
+  if (event.fingerprint) return event.fingerprint;
 
   const stable = [
     normalize(event.layer),
