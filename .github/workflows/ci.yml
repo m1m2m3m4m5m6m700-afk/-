@@ -38,6 +38,7 @@ concurrency:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   verify:
@@ -124,6 +125,51 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  error-intelligence:
+    name: Error Intelligence
+    needs: verify
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Download canonical verification diagnostics
+        if: ${{ needs.verify.result == 'failure' }}
+        uses: actions/download-artifact@v5
+        with:
+          name: flixo-canonical-verify-diagnostics-${{ github.run_id }}
+          path: diagnostics/ci
+      - name: Run Error Intelligence tests
+        run: node --test scripts/error-intelligence/tests/*.test.mjs
+      - name: Analyze real CI failure
+        if: ${{ needs.verify.result == 'failure' }}
+        shell: bash
+        run: |
+          LOG="diagnostics/ci/diagnostics/npm-verify.log"
+          if [ -f "$LOG" ]; then
+            mkdir -p diagnostics/error-intelligence
+            node scripts/error-intelligence/index.mjs "$LOG" | tee diagnostics/error-intelligence/report.json
+          else
+            echo "No canonical CI log artifact was available." > diagnostics/error-intelligence-missing.txt
+          fi
+      - name: Upload Error Intelligence evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flixo-error-intelligence-${{ github.run_id }}
+          path: |
+            diagnostics/error-intelligence/
+            history/
+            diagnostics/error-intelligence-missing.txt
+          if-no-files-found: warn
+          retention-days: 30
+
   v3-diagnosis:
     name: V3 Diagnose Real CI Failure
     needs: verify
@@ -166,6 +212,16 @@ jobs:
           HEALTH_EXIT=$?
           set -e
           printf '%s\n' "$HEALTH_EXIT" > diagnostics/health.exit
+      - name: Run Error Intelligence against real CI logs
+        shell: bash
+        run: |
+          LOG="diagnostics/ci/diagnostics/npm-verify.log"
+          if [ -f "$LOG" ]; then
+            mkdir -p diagnostics/out
+            node scripts/error-intelligence/index.mjs "$LOG" > diagnostics/out/error-intelligence.json
+          else
+            echo '{"errorType":"UNKNOWN","reason":"missing canonical CI log"}' > diagnostics/out/error-intelligence.json
+          fi
       - name: Run V3 diagnosis against real CI logs
         shell: bash
         run: |
@@ -178,13 +234,12 @@ jobs:
           const ciLog = read('diagnostics/ci/diagnostics/npm-verify.log');
           const typecheckLog = read('diagnostics/typecheck.log');
           const healthLog = read('diagnostics/health.log');
+          const intelligence = read('diagnostics/out/error-intelligence.json');
           const combinedLog = [
-            '=== REAL CI VERIFY LOG ===',
-            ciLog,
-            '=== CANONICAL TYPECHECK ===',
-            typecheckLog,
-            '=== PROJECT HEALTH ===',
-            healthLog,
+            '=== REAL CI VERIFY LOG ===', ciLog,
+            '=== ERROR INTELLIGENCE ===', intelligence,
+            '=== CANONICAL TYPECHECK ===', typecheckLog,
+            '=== PROJECT HEALTH ===', healthLog,
           ].join('\n');
 
           const assessment = buildCognitiveAssessment({
@@ -192,27 +247,21 @@ jobs:
             context: { projectGraph: { nodes: [], edges: [] } },
             decisions: [],
           });
-          const plan = buildStrategicPlan({
-            diagnosis: assessment.diagnosis,
-            dependencyImpact: assessment.dependencyImpact,
-          });
-
+          const plan = buildStrategicPlan({ diagnosis: assessment.diagnosis, dependencyImpact: assessment.dependencyImpact });
           const report = {
             version: 3,
             mode: 'real-ci-failure-diagnosis',
             branch: process.env.GITHUB_REF_NAME,
             sha: process.env.GITHUB_SHA,
             runId: process.env.GITHUB_RUN_ID,
+            errorIntelligence: intelligence ? JSON.parse(intelligence) : null,
             source: {
               verifyArtifact: fs.existsSync('diagnostics/ci/diagnostics/npm-verify.log'),
               typecheckExit: Number.parseInt(read('diagnostics/typecheck.exit').trim(), 10),
               healthExit: Number.parseInt(read('diagnostics/health.exit').trim(), 10),
             },
-            assessment,
-            plan,
-            repairAllowed: false,
+            assessment, plan, repairAllowed: false,
           };
-
           fs.mkdirSync('diagnostics/out', { recursive: true });
           fs.writeFileSync('diagnostics/out/v3-real-ci-diagnosis.json', JSON.stringify(report, null, 2));
           console.log(JSON.stringify(report, null, 2));
@@ -227,6 +276,7 @@ jobs:
           path: |
             diagnostics/typecheck.log
             diagnostics/health.log
+            diagnostics/out/error-intelligence.json
             diagnostics/out/v3-real-ci-diagnosis.json
           if-no-files-found: warn
           retention-days: 14
