@@ -13,11 +13,8 @@ const required = [
 
 const failures = [];
 for (const file of required) {
-  try {
-    await fs.access(path.join(root, file));
-  } catch {
-    failures.push(`Missing ${file}`);
-  }
+  try { await fs.access(path.join(root, file)); }
+  catch { failures.push(`Missing ${file}`); }
 }
 
 const read = async (file) => fs.readFile(path.join(root, file), "utf8");
@@ -28,7 +25,6 @@ if (!failures.length) {
   const redactor = await read("scripts/security/redact-secrets.mjs");
   const selection = await read("scripts/test-selection.mjs");
   const generation = await read("scripts/test-generation.mjs");
-
   for (const [name, source] of [["triage", triage], ["review", review], ["ciFailure", ciFailure]]) {
     const hasSafeApplyContract = source.includes('"autoApply": false') || source.includes("`autoApply` must always be `false`") || source.includes("autoApply=false");
     if (!hasSafeApplyContract) failures.push(`${name} agent missing autoApply=false guardrail`);
@@ -44,23 +40,19 @@ async function scan(dir) {
   const entries = await fs.readdir(path.join(root, dir), { withFileTypes: true });
   for (const entry of entries) {
     const relative = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      await scan(relative);
-      continue;
-    }
+    if (relative === "scripts/validate-ai-tools.mjs") continue;
+    if (entry.isDirectory()) { await scan(relative); continue; }
     if (!/\.(ts|tsx|mjs|js)$/.test(entry.name)) continue;
     const content = await fs.readFile(path.join(root, relative), "utf8");
     if (content.includes("megaToolsCatalog") || content.includes("megaToolsEngine")) legacy.push(relative);
   }
 }
-for (const dir of scanRoots) {
-  try { await scan(dir); } catch { /* best-effort scan */ }
-}
+for (const dir of scanRoots) { try { await scan(dir); } catch {} }
 if (legacy.length) failures.push(`Legacy mega-tool references remain: ${legacy.join(", ")}`);
 
 if (failures.length) {
   console.error(`Advanced AI tools validation failed with ${failures.length} issue(s).`);
-  for (const failure of failures) console.error(`- ${failure}`);
+  failures.forEach((failure) => console.error(`- ${failure}`));
   process.exit(1);
 }
 console.log("Advanced AI tools validation: PASS");
