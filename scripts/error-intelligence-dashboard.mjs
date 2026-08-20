@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises';
+import path from 'node:path';
 
 const reportPath = process.env.ERROR_REPORT_PATH ?? '.artifacts/errors/error-report.json';
 const memoryPath = process.env.ERROR_MEMORY_PATH ?? '.artifacts/errors/failure-memory.json';
@@ -46,7 +47,6 @@ const lines = [
   '> Safety invariant: recommendations are advisory only; autoApply remains false.',
 ];
 
-await fs.mkdir(new URL('.', `file://${process.cwd()}/`).pathname).catch(() => {});
-await fs.mkdir(require('node:path').dirname(out), { recursive: true });
+await fs.mkdir(path.dirname(out), { recursive: true });
 await fs.writeFile(out, `${lines.join('\n')}\n`);
 console.log(`DASHBOARD: ${out}`);
