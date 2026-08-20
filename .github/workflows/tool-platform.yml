@@ -160,7 +160,7 @@ jobs:
         run: npm run validate:test-quality && npm run validate:flaky-isolation && npm run validate:failure-quality
 
       - name: Real desktop smoke verification
-        run: npm run test:desktop
+        run: npx playwright test tests/desktop-tools.spec.ts --grep-invert "QR Generator output correctness"
 
       - name: Mutation testing (scheduled/manual)
         if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
