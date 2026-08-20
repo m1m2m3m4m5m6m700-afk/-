@@ -7,7 +7,7 @@ const PATTERNS = [
   { type: 'BUILD', re: /Build failed|vite .*failed|Module build failed|RollupError/i, priority: 85 },
   { type: 'SECURITY', re: /vulnerability|CVE-\d{4}-\d+|npm audit|CodeQL|secret scanning/i, priority: 80 },
   { type: 'LOCALIZATION', re: /localization|translation|missing key|i18n|fallback/i, priority: 75 },
-  { type: 'WORKFLOW', re: /GitHub Actions|workflow|YAML|validate-ci-contract|runner/i, priority: 70 },
+  { type: 'WORKFLOW', re: /GitHub Actions|workflow contract|workflow file|YAML parse|validate-ci-contract|runner image|runner environment/i, priority: 70 },
 ];
 
 function extractFile(text) {
