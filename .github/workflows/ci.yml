@@ -48,7 +48,7 @@ jobs:
       - name: Install Chromium for operational tests
         run: npx playwright install --with-deps chromium
       - name: Run canonical test gate
-        run: npm test
+        run: npm run verify
       - name: Upload browser report
         if: always()
         uses: actions/upload-artifact@v4
