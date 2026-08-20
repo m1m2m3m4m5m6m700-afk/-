@@ -43,6 +43,12 @@ function normalize(value: unknown): string {
 }
 
 export function fingerprintEvent(event: InternalDiagnosticEvent): string {
+  // Prefer the fingerprint created at the diagnostic boundary so there is one
+  // canonical identity for an event throughout the system.
+  if (typeof event.fingerprint === "string" && event.fingerprint.length > 0) {
+    return event.fingerprint;
+  }
+
   const stable = [
     normalize(event.layer),
     normalize(event.provider),
