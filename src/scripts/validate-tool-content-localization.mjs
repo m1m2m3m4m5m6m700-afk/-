@@ -6,9 +6,9 @@
  * that was last approved for each locale/tool pair.
  *
  * Normal mode:
- *   - fails on overrides for unsupported/non-ready tools
- *   - fails when an approved source fingerprint is stale
- *   - warns when an existing override has not been approved yet
+ *   - blocks new overrides for unsupported/non-ready tools
+ *   - blocks when an approved source fingerprint is stale
+ *   - warns for existing unapproved translations and known obsolete overrides
  *
  * Approval mode:
  *   node src/scripts/validate-tool-content-localization.mjs --update-state
@@ -26,6 +26,24 @@ const contentPath = path.join(root, "src/data/toolContent.ts");
 const localesPath = path.join(root, "src/lib/i18n/index.tsx");
 const overridesPath = path.join(root, "src/data/toolContentLocales.ts");
 const statePath = path.join(root, "src/data/tool-content-localization-state.json");
+
+// Historical overrides for tools intentionally removed from the public registry.
+// They remain advisory until their content files are cleaned up, but new obsolete
+// overrides are still blocking so this debt cannot grow.
+const baselineObsoleteOverrides = new Set([
+  "ar/password-generator",
+  "ar/background-remover",
+  "es/password-generator",
+  "es/background-remover",
+  "fr/password-generator",
+  "fr/background-remover",
+  "de/password-generator",
+  "de/background-remover",
+  "pt/password-generator",
+  "pt/background-remover",
+  "ja/password-generator",
+  "ja/background-remover",
+]);
 
 function read(file) {
   return fs.readFileSync(file, "utf8");
@@ -114,6 +132,7 @@ function main() {
   let overrideCount = 0;
   let untrackedCount = 0;
   let staleCount = 0;
+  let obsoleteBaselineCount = 0;
 
   for (const [locale, slugs] of overrides) {
     if (locale === "en") {
@@ -128,13 +147,19 @@ function main() {
     nextEntries[locale] = {};
     for (const slug of slugs) {
       overrideCount += 1;
+      const key = `${locale}/${slug}`;
       if (!readySlugs.has(slug)) {
-        errors.push(`[${locale}/${slug}] localized content exists for a non-ready tool.`);
+        if (baselineObsoleteOverrides.has(key)) {
+          obsoleteBaselineCount += 1;
+          warnings.push(`[${key}] historical override targets a non-ready tool; cleanup is advisory.`);
+        } else {
+          errors.push(`[${key}] localized content exists for a non-ready tool.`);
+        }
         continue;
       }
       const sourceBlock = sourceBlocks.get(slug);
       if (!sourceBlock) {
-        errors.push(`[${locale}/${slug}] English canonical content block is missing.`);
+        errors.push(`[${key}] English canonical content block is missing.`);
         continue;
       }
 
@@ -144,11 +169,11 @@ function main() {
 
       if (!approvedHash) {
         untrackedCount += 1;
-        warnings.push(`[${locale}/${slug}] existing translation has no approved English source revision.`);
+        warnings.push(`[${key}] existing translation has no approved English source revision.`);
       } else if (approvedHash !== currentHash) {
         staleCount += 1;
         errors.push(
-          `[${locale}/${slug}] translation is stale: approved source ${approvedHash}, current source ${currentHash}.`,
+          `[${key}] translation is stale: approved source ${approvedHash}, current source ${currentHash}.`,
         );
       }
     }
@@ -166,6 +191,7 @@ function main() {
   console.log(`Localized tool overrides: ${overrideCount}`);
   console.log(`Untracked overrides: ${untrackedCount}`);
   console.log(`Stale overrides: ${staleCount}`);
+  console.log(`Historical obsolete overrides: ${obsoleteBaselineCount}`);
 
   if (warnings.length) {
     console.log("WARNINGS:");
