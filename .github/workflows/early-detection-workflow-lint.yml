@@ -31,7 +31,19 @@ jobs:
         run: |
           curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash \
             | bash -s -- 1.7.12
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          if command -v actionlint >/dev/null 2>&1; then
+            echo "actionlint available on PATH"
+          elif [ -x ./actionlint ]; then
+            echo "actionlint downloaded to workspace"
+          else
+            echo "actionlint installation failed"
+            exit 1
+          fi
 
       - name: Validate workflows
-        run: actionlint
+        run: |
+          if command -v actionlint >/dev/null 2>&1; then
+            actionlint
+          else
+            ./actionlint
+          fi
