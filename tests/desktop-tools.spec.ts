@@ -36,11 +36,12 @@ async function setColorInput(locator: ReturnType<Page["locator"]>, value: string
 
 async function assertQrDownloads(page: Page, expectedPayload: string) {
   expect(expectedPayload).not.toBe("");
-  await expect(page.locator('img[alt]').first()).toBeVisible({ timeout: 30_000 });
+  const qrImage = page.locator('img[alt="Generated QR Code"]');
+  await expect(qrImage).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole("button", { name: "Download PNG" })).toBeEnabled({ timeout: 30_000 });
   await expect(page.getByRole("button", { name: "Download Vector SVG" })).toBeEnabled({ timeout: 30_000 });
 
-  const previewSrc = await page.locator('img[alt]').first().getAttribute("src");
+  const previewSrc = await qrImage.getAttribute("src");
   expect(previewSrc).toMatch(/^data:image\/png;base64,/i);
 
   const pngDownloadPromise = page.waitForEvent("download");
@@ -211,7 +212,7 @@ test.describe("relaunched public tools", () => {
       const input = page.locator('[data-qr-input="url"]');
       await input.fill("https://example.com/old-result");
       await input.fill("https://example.com/final-result");
-      await expect(page.locator('img[alt]').first()).toBeVisible({ timeout: 30_000 });
+      await expect(page.locator('img[alt="Generated QR Code"]')).toBeVisible({ timeout: 30_000 });
       await assertQrDownloads(page, "https://example.com/final-result");
     });
 
