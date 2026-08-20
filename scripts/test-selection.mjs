@@ -3,12 +3,22 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 const root = process.cwd();
-const base = process.env.FLIXO_TEST_BASE || "HEAD~1";
-const head = process.env.FLIXO_TEST_HEAD || "HEAD";
+const base = process.env.FLIXO_TEST_BASE || process.env.GITHUB_BASE_SHA || null;
+const head = process.env.FLIXO_TEST_HEAD || process.env.GITHUB_SHA || "HEAD";
 
 function gitChangedFiles() {
-  const output = execFileSync("git", ["diff", "--name-only", `${base}...${head}`], { encoding: "utf8" });
-  return output.split(/\r?\n/).filter(Boolean);
+  if (base) {
+    try {
+      const output = execFileSync("git", ["diff", "--name-only", `${base}...${head}`], { encoding: "utf8" });
+      return output.split(/\r?\n/).filter(Boolean);
+    } catch {
+      // Pull-request checkouts commonly use fetch-depth=1. Fall back to the checked-out tree
+      // instead of crashing the selector merely because the comparison commit is unavailable.
+    }
+  }
+  return execFileSync("git", ["show", "--format=", "--name-only", head], { encoding: "utf8" })
+    .split(/\r?\n/)
+    .filter(Boolean);
 }
 
 const changed = gitChangedFiles();
