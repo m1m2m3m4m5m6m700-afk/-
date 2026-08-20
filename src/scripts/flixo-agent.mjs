@@ -5,18 +5,28 @@
  * المهام:
  *   status       - عرض حالة الأدوات
  *   docs         - تحديث ملف PROJECT_STATUS.md
- *   health       - تشغيل الفحوصات الأساسية
+ *   health       - تشغيل الفحوصات الأساسية بالتوازي
  *   localization - قراءة تقرير نواقص الترجمة وإنتاج تعليمات الوكيل
- *   report       - تقرير شامل (JSON)
+ *   report       - تقرير شامل مع تشغيل الفحوصات المستقلة بالتوازي
  */
-import { execSync } from "child_process";
+import { execFile } from "child_process";
+import { promisify } from "util";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
+const execFileAsync = promisify(execFile);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const REPO_ROOT = path.resolve(__dirname, "../..");
+
+async function runCommand(command, args = []) {
+  return execFileAsync(command, args, {
+    cwd: REPO_ROOT,
+    encoding: "utf-8",
+    maxBuffer: 16 * 1024 * 1024,
+  });
+}
 
 function loadTools() {
   const toolsPath = path.join(REPO_ROOT, "src/data/tools.ts");
@@ -94,36 +104,39 @@ function taskDocs() {
   return { task: "docs", outputPath, total, byStatus: statusCount };
 }
 
-function taskHealth() {
-  logSection("🩺 المهمة: الفحص الصحي");
+async function taskHealth() {
+  logSection("🩺 المهمة: الفحص الصحي المتوازي");
   const checks = [
-    { name: "Localization agent", cmd: "node src/scripts/validate-localization-agent.mjs" },
-    { name: "TypeScript", cmd: "npm run typecheck" },
-    { name: "Lint", cmd: "npm run lint" },
-    { name: "Build", cmd: "npm run build" },
+    { name: "Localization agent", command: "node", args: ["src/scripts/validate-localization-agent.mjs"] },
+    { name: "TypeScript", command: "npm", args: ["run", "typecheck", "--silent"] },
+    { name: "Lint", command: "npm", args: ["run", "lint", "--silent"] },
+    { name: "Build", command: "npm", args: ["run", "build", "--silent"] },
   ];
-  const results = {};
-  let allPassed = true;
-  for (const check of checks) {
-    logInfo(`تشغيل فحص: ${check.name}`);
+
+  for (const check of checks) logInfo(`بدء فحص متوازٍ: ${check.name}`);
+
+  const settled = await Promise.all(checks.map(async (check) => {
     try {
-      execSync(check.cmd, { cwd: REPO_ROOT, stdio: "pipe", encoding: "utf-8" });
-      results[check.name] = { passed: true };
+      await runCommand(check.command, check.args);
       logSuccess(`✅ ${check.name} - ناجح`);
+      return [check.name, { passed: true }];
     } catch (error) {
-      results[check.name] = { passed: false, output: error.stdout || error.stderr || String(error) };
-      allPassed = false;
+      const output = error.stdout || error.stderr || String(error);
       logError(`❌ ${check.name} - فشل`);
+      return [check.name, { passed: false, output }];
     }
-  }
-  return { task: "health", allPassed, passedCount: Object.values(results).filter((r) => r.passed).length, totalChecks: checks.length, results };
+  }));
+
+  const results = Object.fromEntries(settled);
+  const passedCount = Object.values(results).filter((r) => r.passed).length;
+  return { task: "health", allPassed: passedCount === checks.length, passedCount, totalChecks: checks.length, results };
 }
 
-function taskLocalization() {
+async function taskLocalization() {
   logSection("🌐 المهمة: فحص الترجمة وإبلاغ الوكيل");
   let exitCode = 0;
   try {
-    execSync("node src/scripts/validate-localization-agent.mjs", { cwd: REPO_ROOT, stdio: "inherit", encoding: "utf-8" });
+    await runCommand("node", ["src/scripts/validate-localization-agent.mjs"]);
   } catch (error) {
     exitCode = error.status ?? 1;
   }
@@ -140,11 +153,13 @@ function taskLocalization() {
   return { task: "localization", exitCode, reportPath, instructionPath, report };
 }
 
-function taskReport() {
-  logSection("📊 المهمة: تقرير شامل");
-  const status = taskStatus();
-  const health = taskHealth();
-  const localization = taskLocalization();
+async function taskReport() {
+  logSection("📊 المهمة: تقرير شامل متوازي");
+  const statusPromise = Promise.resolve(taskStatus());
+  const healthPromise = taskHealth();
+  const localizationPromise = taskLocalization();
+  const [status, health, localization] = await Promise.all([statusPromise, healthPromise, localizationPromise]);
+
   const report = {
     task: "report",
     timestamp: new Date().toISOString(),
@@ -177,9 +192,14 @@ if (!taskMap[taskName]) {
   logError(`مهمة غير معروفة: ${taskName}`);
   process.exit(1);
 }
+
 try {
-  const result = taskMap[taskName]();
+  const result = await taskMap[taskName]();
   if (taskName === "localization" && result.exitCode !== 0) process.exit(result.exitCode);
+  if ((taskName === "health" || taskName === "report") && !result.health?.allPassed && taskName === "report") {
+    process.exitCode = 1;
+  }
+  if (taskName === "health" && !result.allPassed) process.exitCode = 1;
   console.log(`\n✅ اكتملت المهمة: ${taskName}`);
 } catch (error) {
   logError(`فشل تنفيذ المهمة: ${error.message}`);
