@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import crypto from "node:crypto";
+import { execFileSync } from "node:child_process";
 
 const outDir = ".artifacts/errors";
 const outFile = `${outDir}/error-report.json`;
@@ -61,5 +62,17 @@ const report = {
 };
 
 await fs.mkdir(outDir, { recursive: true });
-await fs.writeFile(outFile, JSON.stringify(report, null, 2));
+await fs.writeFile(outFile, `${JSON.stringify(report, null, 2)}\n`);
+
+try {
+  execFileSync(process.execPath, ["scripts/error-intelligence-engine.mjs"], {
+    stdio: "inherit",
+    env: { ...process.env, ERROR_REPORT_PATH: outFile },
+  });
+} catch (error) {
+  console.error("ERROR INTELLIGENCE: engine failed; normalized report was still preserved.");
+  if (error?.status) console.error(`ERROR INTELLIGENCE: exit=${error.status}`);
+  process.exitCode = 1;
+}
+
 console.log(`Error report written to ${outFile}`);
