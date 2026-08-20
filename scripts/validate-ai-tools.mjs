@@ -44,11 +44,12 @@ async function scan(dir) {
     if (entry.isDirectory()) { await scan(relative); continue; }
     if (!/\.(ts|tsx|mjs|js)$/.test(entry.name)) continue;
     const content = await fs.readFile(path.join(root, relative), "utf8");
-    if (content.includes("megaToolsCatalog") || content.includes("megaToolsEngine")) legacy.push(relative);
+    const legacyImport = /(?:import\s+[^;]*from\s+|require\s*\(\s*)["'][^"']*(?:megaToolsCatalog|megaToolsEngine|@\/data\/tools|src\/data\/tools)[^"']*["']/.test(content);
+    if (legacyImport) legacy.push(relative);
   }
 }
 for (const dir of scanRoots) { try { await scan(dir); } catch {} }
-if (legacy.length) failures.push(`Legacy mega-tool references remain: ${legacy.join(", ")}`);
+if (legacy.length) failures.push(`Legacy mega-tool imports remain: ${legacy.join(", ")}`);
 
 if (failures.length) {
   console.error(`Advanced AI tools validation failed with ${failures.length} issue(s).`);
