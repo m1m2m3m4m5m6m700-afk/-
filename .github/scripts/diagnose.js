@@ -214,6 +214,16 @@ function extractJson(text) {
   try { return JSON.parse(candidate); } catch { return null; }
 }
 
+function redactSecrets(text) {
+  return text
+    .replace(/(Authorization:\s*Bearer\s+)[^\s\r\n]+/gi, '$1[REDACTED]')
+    .replace(/(Bearer\s+)[A-Za-z0-9._-]{12,}/gi, '$1[REDACTED]')
+    .replace(/\b(?:sk|sk-proj)-[A-Za-z0-9_-]{12,}\b/g, '[REDACTED_OPENAI_KEY]')
+    .replace(/\bAIza[A-Za-z0-9_-]{20,}\b/g, '[REDACTED_GEMINI_KEY]')
+    .replace(/\bgh[pousr]_[A-Za-z0-9_]{20,}\b/g, '[REDACTED_GITHUB_TOKEN]')
+    .replace(/(OPENAI_API_KEY|GEMINI_API_KEY|OPENROUTER_API_KEY)\s*[:=]\s*[^\s\r\n]+/gi, '$1=[REDACTED]');
+}
+
 async function callAiProvider(provider, prompt, signal) {
   if (!provider.apiKey) return { ok: false, retryable: false };
   if (provider.id === 'gemini') {
@@ -254,7 +264,7 @@ async function aiDiagnose({ failedJobs, issues, corpus, baseRef }) {
     `Base branch: ${baseRef}`,
     `Failed jobs: ${JSON.stringify(failedJobs.map((job) => ({ name: job.job, failedSteps: job.steps.filter((step) => step.conclusion === 'failure').map((step) => step.name) })))}`,
     `Deterministic findings: ${JSON.stringify(issues)}`,
-    `CI logs (truncated):\n${corpus.slice(-30000)}`,
+    `CI logs (redacted and truncated):\n${redactSecrets(corpus).slice(-30000)}`,
   ].join('\n\n');
 
   const controller = new AbortController();
