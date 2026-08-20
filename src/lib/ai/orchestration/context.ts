@@ -12,6 +12,10 @@ import {
 } from "../../tool-platform/publicDesktopTools";
 import type { PublicToolRegistration } from "../../tool-platform/types";
 
+export const AI_CONTEXT_MAX_TOOLS = 3;
+export const AI_CONTEXT_MAX_DESCRIPTION_CHARS = 240;
+export const AI_CONTEXT_MAX_TOTAL_CHARS = 1200;
+
 export interface AIOrchestrationContext {
   taskId: string;
   inputLength: number;
@@ -33,14 +37,20 @@ export interface AIOrchestrationContext {
   };
 }
 
+function truncate(value: string, maxChars: number): string {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  if (normalized.length <= maxChars) return normalized;
+  return `${normalized.slice(0, Math.max(0, maxChars - 1)).trimEnd()}…`;
+}
+
 function summarize(registration: PublicToolRegistration) {
   const manifest = registration.manifest;
   return {
     id: manifest.id,
     slug: manifest.slug,
-    name: manifest.name,
-    category: manifest.category,
-    description: manifest.description,
+    name: truncate(manifest.name, 80),
+    category: truncate(manifest.category, 80),
+    description: truncate(manifest.description, AI_CONTEXT_MAX_DESCRIPTION_CHARS),
     localOnly: manifest.capabilities.localOnly,
   } as const;
 }
@@ -62,6 +72,21 @@ function rank(text: string, registration: PublicToolRegistration): number {
   return score;
 }
 
+function fitTotalContext(candidates: ReturnType<typeof summarize>[]): ReturnType<typeof summarize>[] {
+  let total = 0;
+  const fitted: ReturnType<typeof summarize>[] = [];
+
+  for (const candidate of candidates) {
+    const serialized = `- ${candidate.name} (${candidate.slug}): ${candidate.description}\n`;
+    if (fitted.length >= AI_CONTEXT_MAX_TOOLS) break;
+    if (total + serialized.length > AI_CONTEXT_MAX_TOTAL_CHARS) break;
+    fitted.push(candidate);
+    total += serialized.length;
+  }
+
+  return fitted;
+}
+
 export function buildAIOrchestrationContext(
   taskId: string,
   input: string,
@@ -75,18 +100,20 @@ export function buildAIOrchestrationContext(
     .map((registration) => ({ registration, score: rank(input, registration) }))
     .filter(({ score }) => score > 0)
     .sort((a, b) => b.score - a.score)
-    .slice(0, 3)
+    .slice(0, AI_CONTEXT_MAX_TOOLS)
     .map(({ registration }) => registration);
 
-  const candidates = requested && !ranked.some((item) => item.manifest.id === requested.manifest.id)
+  const registrations = requested && !ranked.some((item) => item.manifest.id === requested.manifest.id)
     ? [requested, ...ranked]
     : ranked;
+
+  const candidates = fitTotalContext(registrations.map(summarize));
 
   return {
     taskId,
     inputLength: input.length,
-    candidateTools: candidates.map(summarize),
-    selectedTool: requested?.manifest.slug ?? candidates[0]?.manifest.slug ?? null,
+    candidateTools: candidates,
+    selectedTool: requested?.manifest.slug ?? candidates[0]?.slug ?? null,
     policy: {
       readOnly: true,
       canInvokeTools: false,
