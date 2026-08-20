@@ -33,7 +33,7 @@ jobs:
       - name: Regression prevention
         run: npm run validate:regression-prevention
       - name: Engineering completeness
-        run: npm run validate:engineering-completeness
+        run: node scripts/validate-engineering-completeness.mjs
       - name: DR drill
         run: npm run test:dr:drill
       - name: Incident drill
