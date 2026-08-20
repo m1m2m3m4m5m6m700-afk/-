@@ -22,13 +22,31 @@ const buildRelevantPaths = [
   "index.html",
 ];
 
+function gitObjectExists(ref) {
+  try {
+    execFileSync("git", ["cat-file", "-e", `${ref}^{commit}`], {
+      stdio: ["ignore", "ignore", "ignore"],
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+if (!gitObjectExists(previous) || !gitObjectExists(current)) {
+  console.log("Vercel build required: previous/current Git commit is unavailable in the checkout.");
+  process.exit(1);
+}
+
 let changed = "";
 try {
   changed = execFileSync("git", ["diff", "--name-only", previous, current, "--"], {
     encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
   });
 } catch {
   // A diff failure is unsafe to treat as ignorable: build the deployment.
+  console.log("Vercel build required: Git diff could not be resolved safely.");
   process.exit(1);
 }
 
