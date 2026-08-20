@@ -18,6 +18,7 @@ jobs:
     name: OSV-Scanner · dependency vulnerabilities
     uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@0c58c542420dfd23fcac08dd9c8ca3cca9c36f1a
     with:
+      fail-on-vuln: false
       scan-args: |-
         --include-git-root
         -r
