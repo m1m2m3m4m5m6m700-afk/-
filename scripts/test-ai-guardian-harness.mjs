@@ -4,19 +4,18 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const repoRoot = process.cwd();
-const diagnose = path.join(repoRoot, '.github/scripts/diagnose.js');
-const source = fs.readFileSync(diagnose, 'utf8');
+const diagnoseSourcePath = path.join(repoRoot, '.github/scripts/diagnose.js');
+const source = fs.readFileSync(diagnoseSourcePath, 'utf8');
 
 const requiredContracts = [
   ['AI feature flag', "FLIXO_AI_ERROR_DIAGNOSIS !== 'false'"],
   ['allowed strategy guard', "allowedStrategies.has(parsed.recommendedStrategy)"],
   ['confidence clamp', 'clampConfidence(parsed.confidence)'],
-  ['main safety', "Do not suggest modifying main"],
+  ['main safety', 'Do not suggest modifying main'],
   ['dry-run policy', "defaultMode: 'dry-run'"],
   ['production merge protection', 'productionAutoMerge: false'],
   ['secret redaction', 'redactSecrets(corpus)'],
 ];
-
 for (const [name, needle] of requiredContracts) {
   if (!source.includes(needle)) throw new Error(`Missing diagnosis safety contract: ${name}`);
 }
@@ -60,7 +59,9 @@ fs.writeFileSync(preload, `globalThis.fetch = async () => ({
 
 function runScenario(name) {
   const scenarioDir = path.join(tempRoot, name);
-  fs.mkdirSync(scenarioDir, { recursive: true });
+  fs.mkdirSync(path.join(scenarioDir, '.github/scripts'), { recursive: true });
+  fs.mkdirSync(path.join(scenarioDir, '.github/self-healing/logs'), { recursive: true });
+  fs.copyFileSync(diagnoseSourcePath, path.join(scenarioDir, '.github/scripts/diagnose.js'));
   const env = {
     ...process.env,
     PATH: `${binDir}${path.delimiter}${process.env.PATH}`,
@@ -73,12 +74,11 @@ function runScenario(name) {
     HARNESS_SCENARIO: name,
     NODE_OPTIONS: `--import=${preload}`,
   };
-  const result = spawnSync(process.execPath, [diagnose], { cwd: scenarioDir, env, encoding: 'utf8', timeout: 30000 });
+  const result = spawnSync(process.execPath, [path.join(scenarioDir, '.github/scripts/diagnose.js')], { cwd: scenarioDir, env, encoding: 'utf8', timeout: 30000 });
   if (result.status !== 0) throw new Error(`${name} diagnosis failed:\n${result.stderr || result.stdout}`);
   const reportPath = path.join(scenarioDir, '.github/diagnosis-report.json');
   if (!fs.existsSync(reportPath)) throw new Error(`${name}: diagnosis-report.json was not created`);
-  const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
-  return report;
+  return JSON.parse(fs.readFileSync(reportPath, 'utf8'));
 }
 
 const unknown = runScenario('unknown');
@@ -93,7 +93,6 @@ if (lockfile.aiDiagnosis.recommendedStrategy !== 'lockfile-fixer') throw new Err
 if (lockfile.aiDiagnosis.confidence < 0.85) throw new Error('lockfile: confidence did not reach safe threshold');
 if (lockfile.decision !== 'candidate-for-safe-dry-run') throw new Error('lockfile: safety policy did not produce the expected dry-run decision');
 if (lockfile.recommendedStrategy !== 'lockfile-fixer') throw new Error('lockfile: deterministic policy and AI did not agree');
-if (source.includes('main') && !source.includes('Do not suggest modifying main')) throw new Error('main safety contract missing');
 
 console.log(JSON.stringify({
   status: 'PASS',
