@@ -62,6 +62,12 @@ export const toolCapabilitiesSchema = z.object({
   }).default({}),
 });
 
+export const toolSeoMetadataSchema = z.object({
+  title: z.string().min(1),
+  description: z.string().min(1),
+  keywords: z.array(z.string().min(1)).min(1),
+});
+
 export const toolBaseManifestSchema = z.object({
   id: z.string().min(1),
   slug: z.string().min(1),
@@ -71,6 +77,7 @@ export const toolBaseManifestSchema = z.object({
   lifecycle: toolLifecycleStateSchema,
   capabilities: toolCapabilitiesSchema,
   dependencies: z.array(z.string().min(1)).default([]),
+  seo: toolSeoMetadataSchema,
 });
 
 export const toolTestContractSchema = z.object({
