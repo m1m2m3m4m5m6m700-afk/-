@@ -56,7 +56,7 @@ jobs:
       - name: Check live endpoint configuration
         id: config
         env:
-          FLIXO_AI_SMOKE_ENDPOINT: ${{ secrets.FLIXO_AI_SMOKE_ENDPOINT }}
+          FLIXO_AI_SMOKE_ENDPOINT: https://git-reset-remove-legacy-mega-tools-flexo1.vercel.app/api/ai-live-smoke
           FLIXO_AI_SMOKE_TOKEN: ${{ secrets.FLIXO_AI_SMOKE_TOKEN }}
         shell: bash
         run: |
@@ -71,7 +71,7 @@ jobs:
       - name: Run live AI quality smoke
         if: steps.config.outputs.configured == 'true'
         env:
-          FLIXO_AI_SMOKE_ENDPOINT: ${{ secrets.FLIXO_AI_SMOKE_ENDPOINT }}
+          FLIXO_AI_SMOKE_ENDPOINT: https://git-reset-remove-legacy-mega-tools-flexo1.vercel.app/api/ai-live-smoke
           FLIXO_AI_SMOKE_TOKEN: ${{ secrets.FLIXO_AI_SMOKE_TOKEN }}
           FLIXO_AI_SMOKE_TIMEOUT_MS: "30000"
           FLIXO_AI_EXPECTED_VERCEL_SHA: ${{ github.event.pull_request.head.sha || inputs.expected_sha || github.sha }}
@@ -86,7 +86,7 @@ jobs:
             "schemaVersion": 1,
             "status": "NOT_CONFIGURED",
             "certificationEligible": false,
-            "reason": "FLIXO_AI_SMOKE_ENDPOINT and/or FLIXO_AI_SMOKE_TOKEN secret is not configured for this repository/workflow."
+            "reason": "FLIXO_AI_SMOKE_TOKEN secret is not configured for this repository/workflow."
           }
           JSON
 
