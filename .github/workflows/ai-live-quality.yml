@@ -7,6 +7,7 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - "src/lib/ai/**"
+      - "src/routes/api/ai-live-smoke.ts"
       - "src/scripts/validate-ai-contract.mjs"
       - "src/scripts/test-ai-output-quality.mjs"
       - "src/scripts/run-ai-live-quality-smoke.mjs"
@@ -56,20 +57,22 @@ jobs:
         id: config
         env:
           FLIXO_AI_SMOKE_ENDPOINT: ${{ secrets.FLIXO_AI_SMOKE_ENDPOINT }}
+          FLIXO_AI_SMOKE_TOKEN: ${{ secrets.FLIXO_AI_SMOKE_TOKEN }}
         shell: bash
         run: |
-          if [ -n "$FLIXO_AI_SMOKE_ENDPOINT" ]; then
+          if [ -n "$FLIXO_AI_SMOKE_ENDPOINT" ] && [ -n "$FLIXO_AI_SMOKE_TOKEN" ]; then
             echo "configured=true" >> "$GITHUB_OUTPUT"
-            echo "Live AI endpoint configured."
+            echo "Live AI endpoint and token configured."
           else
             echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "Live AI endpoint is not configured; this run is NOT CERTIFIED."
+            echo "Live AI endpoint/token is not configured; this run is NOT CERTIFIED."
           fi
 
       - name: Run live AI quality smoke
         if: steps.config.outputs.configured == 'true'
         env:
           FLIXO_AI_SMOKE_ENDPOINT: ${{ secrets.FLIXO_AI_SMOKE_ENDPOINT }}
+          FLIXO_AI_SMOKE_TOKEN: ${{ secrets.FLIXO_AI_SMOKE_TOKEN }}
           FLIXO_AI_SMOKE_TIMEOUT_MS: "30000"
         run: node src/scripts/run-ai-live-quality-smoke.mjs
 
@@ -82,7 +85,7 @@ jobs:
             "schemaVersion": 1,
             "status": "NOT_CONFIGURED",
             "certificationEligible": false,
-            "reason": "FLIXO_AI_SMOKE_ENDPOINT secret is not configured for this repository/workflow."
+            "reason": "FLIXO_AI_SMOKE_ENDPOINT and/or FLIXO_AI_SMOKE_TOKEN secret is not configured for this repository/workflow."
           }
           JSON
 
