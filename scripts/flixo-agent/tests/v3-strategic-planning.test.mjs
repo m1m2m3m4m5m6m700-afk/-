@@ -67,9 +67,10 @@ test('strategic planner supports conditional multi-step execution', () => {
     dependencyImpact: { packageManifestChanged: true },
   });
 
-  assert.equal(plan.steps.length >= 1, true);
-  assert.equal(nextEligibleStep(plan, []).id, plan.steps[0].id);
-  assert.equal(nextEligibleStep(plan, [plan.steps[0].id]), null);
+  assert.equal(plan.steps.length, 2);
+  assert.equal(nextEligibleStep(plan, []).id, 'dependency-repair');
+  assert.equal(nextEligibleStep(plan, ['dependency-repair']).id, 'baseline-contract-repair');
+  assert.equal(nextEligibleStep(plan, ['dependency-repair', 'baseline-contract-repair']), null);
 });
 
 test('unknown failures are escalated instead of guessed', () => {
