@@ -10,6 +10,8 @@ const MAX_BODY_CHARS = 16_000;
 const REQUIRED_TOKEN_ENV = "FLIXO_AI_SMOKE_TOKEN";
 const RATE_WINDOW_MS = 60_000;
 const MAX_REQUESTS_PER_WINDOW = 60;
+const BUILD_SHA_HEADER = "x-flixo-ai-build-sha";
+const BUILD_SHA = process.env.VERCEL_GIT_COMMIT_SHA?.trim() || "unknown";
 
 let windowStartedAt = 0;
 let windowRequests = 0;
@@ -20,14 +22,18 @@ function constantTimeEquals(expected: string, received: string): boolean {
   return left.length === right.length && timingSafeEqual(left, right);
 }
 
+function noStoreHeaders(extra: Record<string, string> = {}): HeadersInit {
+  return { "cache-control": "no-store", [BUILD_SHA_HEADER]: BUILD_SHA, ...extra };
+}
+
 function unauthorized(): Response {
-  return Response.json({ error: "Unauthorized." }, { status: 401, headers: { "cache-control": "no-store" } });
+  return Response.json({ error: "Unauthorized." }, { status: 401, headers: noStoreHeaders() });
 }
 
 function rateLimited(): Response {
   return Response.json(
     { error: "Smoke endpoint rate limit exceeded." },
-    { status: 429, headers: { "cache-control": "no-store", "retry-after": "60" } },
+    { status: 429, headers: noStoreHeaders({ "retry-after": "60" }) },
   );
 }
 
@@ -50,7 +56,7 @@ export const Route = createFileRoute("/api/ai-live-smoke")({
     handlers: {
       POST: async ({ request }) => {
         const configuredToken = process.env[REQUIRED_TOKEN_ENV]?.trim() ?? "";
-        if (!configuredToken) return new Response(null, { status: 404, headers: { "cache-control": "no-store" } });
+        if (!configuredToken) return new Response(null, { status: 404, headers: noStoreHeaders() });
 
         const suppliedToken = request.headers.get("x-flixo-ai-smoke-token")?.trim() ?? "";
         if (!constantTimeEquals(configuredToken, suppliedToken)) return unauthorized();
@@ -58,38 +64,38 @@ export const Route = createFileRoute("/api/ai-live-smoke")({
 
         const contentLength = Number(request.headers.get("content-length"));
         if (Number.isFinite(contentLength) && contentLength > MAX_BODY_CHARS) {
-          return Response.json({ error: "Request body too large." }, { status: 413, headers: { "cache-control": "no-store" } });
+          return Response.json({ error: "Request body too large." }, { status: 413, headers: noStoreHeaders() });
         }
 
         let body: unknown;
         try {
           const raw = await request.text();
           if (raw.length > MAX_BODY_CHARS) {
-            return Response.json({ error: "Request body too large." }, { status: 413, headers: { "cache-control": "no-store" } });
+            return Response.json({ error: "Request body too large." }, { status: 413, headers: noStoreHeaders() });
           }
           body = JSON.parse(raw) as unknown;
         } catch {
-          return Response.json({ error: "Invalid JSON body." }, { status: 400, headers: { "cache-control": "no-store" } });
+          return Response.json({ error: "Invalid JSON body." }, { status: 400, headers: noStoreHeaders() });
         }
 
         if (!body || typeof body !== "object") {
-          return Response.json({ error: "Expected a JSON object." }, { status: 400, headers: { "cache-control": "no-store" } });
+          return Response.json({ error: "Expected a JSON object." }, { status: 400, headers: noStoreHeaders() });
         }
 
         const record = body as Record<string, unknown>;
         const prompt = typeof record.prompt === "string" ? record.prompt.trim() : typeof record.input === "string" ? record.input.trim() : "";
         const taskId = isTaskId(record.taskId) ? record.taskId : DEFAULT_TASK;
 
-        if (!prompt) return Response.json({ error: "Missing prompt." }, { status: 400, headers: { "cache-control": "no-store" } });
+        if (!prompt) return Response.json({ error: "Missing prompt." }, { status: 400, headers: noStoreHeaders() });
         if (prompt.length > MAX_PROMPT_CHARS) {
-          return Response.json({ error: "Prompt too long." }, { status: 413, headers: { "cache-control": "no-store" } });
+          return Response.json({ error: "Prompt too long." }, { status: 413, headers: noStoreHeaders() });
         }
 
         const result = await aiService.generate(taskId, prompt);
         if (!result.ok) {
           return Response.json(
             { ok: false, error: result.message, retryable: result.retryable, kind: result.kind },
-            { status: result.retryable ? 503 : 422, headers: { "cache-control": "no-store" } },
+            { status: result.retryable ? 503 : 422, headers: noStoreHeaders() },
           );
         }
 
@@ -99,7 +105,7 @@ export const Route = createFileRoute("/api/ai-live-smoke")({
             output: result.content,
             content: result.content,
           },
-          { headers: { "cache-control": "no-store" } },
+          { headers: noStoreHeaders() },
         );
       },
     },
