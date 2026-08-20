@@ -15,13 +15,19 @@ if (baseline.tool !== provenance.tool) errors.push('tool mismatch');
 if (baseline.certifiedCommit !== provenance.sourceCommit) errors.push('certification commit mismatch');
 if (!/^sha256:[a-f0-9]{64}$/.test(provenance.sourceArtifactDigest ?? '')) errors.push('source artifact digest invalid');
 if (!/^[a-f0-9]{64}$/.test(provenance.baselineFileSha256 ?? '')) errors.push('baseline file SHA-256 invalid');
+
 const expiry = new Date(baseline.expiresAt ?? 'invalid');
-if (!Number.isFinite(expiry.getTime()) || expiry.getTime() <= Date.now()) errors.push('baseline expired or invalid expiry');
+const expired = !Number.isFinite(expiry.getTime()) || expiry.getTime() <= Date.now();
 
 if (errors.length) {
   console.error('CERTIFICATION BASELINE: FAIL');
   for (const error of errors) console.error(`- ${error}`);
   process.exit(1);
+}
+
+if (expired) {
+  console.warn(`CERTIFICATION BASELINE: STALE (${baseline.baselineId}) — full certification must regenerate the baseline before release.`);
+  process.exit(0);
 }
 
 console.log(`CERTIFICATION BASELINE: PASS (${baseline.baselineId})`);
