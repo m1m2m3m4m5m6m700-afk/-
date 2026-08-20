@@ -1,8 +1,11 @@
 import { defineConfig, devices } from "playwright/test";
 
+const isCI = process.env.CI === "true";
+
 export default defineConfig({
   testDir: "./tests",
-  fullyParallel: false,
+  fullyParallel: isCI,
+  workers: isCI ? 2 : undefined,
   timeout: 5 * 60 * 1000,
   expect: { timeout: 15_000 },
   reporter: [["list"], ["html", { outputFolder: "playwright-report", open: "never" }]],
