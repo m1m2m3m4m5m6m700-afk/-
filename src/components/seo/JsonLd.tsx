@@ -21,11 +21,8 @@ export function JsonLd({ data }: JsonLdProps) {
   });
 
   return (
-    <script
-      type="application/ld+json"
-      nonce={nonce}
-      suppressHydrationWarning
-      dangerouslySetInnerHTML={{ __html: serialized }}
-    />
+    <script type="application/ld+json" nonce={nonce} suppressHydrationWarning>
+      {serialized}
+    </script>
   );
 }
