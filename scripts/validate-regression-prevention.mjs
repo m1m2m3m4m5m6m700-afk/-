@@ -31,7 +31,7 @@ for (const file of files) {
   }
 
   if (/(?:import\s+[^;]*from\s+|require\s*\(\s*)["'][^"']*@\/data\/tools["']/.test(content)) {
-    warnings.push({ rule: "tools-compat-shim", file, message: "Uses the transitional @/data/tools compatibility shim; migrate when this consumer is next touched." });
+    warnings.push({ rule: "tools-compat-shim", file, message: "Uses the transitional @/data/tools compatibility shim." });
   }
 
   if (file.startsWith("src/lib/ai/") && /autoApply\s*[:=]\s*true/.test(content)) {
@@ -57,19 +57,20 @@ const workflows = await walk(".github/workflows", (name) => /\.(yml|yaml)$/.test
 for (const file of workflows) {
   const content = await fs.readFile(path.join(root, file), "utf8");
   if (content.includes("npm ci") && !content.includes("--no-audit")) {
-    warnings.push({ rule: "ci-install-determinism", file, message: "CI npm ci should prefer --no-audit; security audit should run separately." });
+    warnings.push({ rule: "ci-install-determinism", file, message: "CI npm ci should prefer --no-audit; audit should run separately." });
   }
 }
 
-const rules = [
-  "deleted-legacy-import",
-  "ai-auto-apply",
-  "package-lock-parity",
-];
+const rules = ["deleted-legacy-import", "ai-auto-apply", "package-lock-parity"];
+
+const warningCounts = warnings.reduce((acc, warning) => {
+  acc[warning.rule] = (acc[warning.rule] ?? 0) + 1;
+  return acc;
+}, {});
 
 if (warnings.length) {
-  console.warn(`REGRESSION PREVENTION: ${warnings.length} advisory warning(s)`);
-  for (const warning of warnings) console.warn(`- [${warning.rule}] ${warning.file}: ${warning.message}`);
+  console.warn(`REGRESSION PREVENTION: ${warnings.length} advisory warning(s) summarized:`);
+  for (const [rule, count] of Object.entries(warningCounts)) console.warn(`- ${rule}: ${count}`);
 }
 
 if (failures.length) {
