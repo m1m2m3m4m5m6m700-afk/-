@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
@@ -18,10 +19,10 @@ const violations = [];
 
 function walk(dir) {
   for (const entry of readdirSync(dir)) {
-    const path = join(dir, entry);
+    const path = join(dir, entry.name);
     const stat = statSync(path);
     if (stat.isDirectory()) walk(path);
-    else if (/\.(?:ts|tsx|mjs)$/.test(entry)) inspect(path);
+    else if (/\.(?:ts|tsx|mjs)$/.test(entry.name)) inspect(path);
   }
 }
 
@@ -41,6 +42,13 @@ for (const rootDir of roots) {
 if (violations.length > 0) {
   console.error("Tool Platform boundary contract: FAIL");
   for (const violation of violations) console.error(`- ${violation}`);
+  process.exit(1);
+}
+
+try {
+  execFileSync(process.execPath, [join(root, "src/scripts/validate-data-boundaries.mjs")], { stdio: "inherit" });
+} catch {
+  console.error("Data domain boundary contract: FAIL");
   process.exit(1);
 }
 
