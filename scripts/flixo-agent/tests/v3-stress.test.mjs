@@ -46,6 +46,14 @@ test('typecheck outranks incidental localization wording', () => {
   assert.equal(result.layer, 'TYPECHECK');
 });
 
+test('precedence matrix resists incidental noise around every guarded root', () => {
+  const noise = ['i18n locale ar-EG', 'npm test', 'GitHub Actions workflow', 'warning: unrelated message'];
+  for (const [pattern, cleanLog] of cases) {
+    const result = diagnose([cleanLog, ...noise].join('\n'));
+    assert.equal(result.knownPattern, pattern, pattern);
+  }
+});
+
 test('multi-signal assessment remains deterministic', () => {
   const log = [
     'error TS2322 in PdfMerge.tsx',
@@ -127,5 +135,13 @@ test('auto-apply is never enabled by default in any stress plan', () => {
     });
     assert.equal(plan.policy.autoApply, false);
     for (const step of plan.steps) assert.equal(step.autoApply, false);
+  }
+});
+
+test('deterministic classification remains stable under 10000 repeated evaluations', () => {
+  const log = 'error TS2322 in PdfMerge.tsx with i18n metadata and workflow notes';
+  const expected = JSON.stringify(diagnose(log));
+  for (let i = 0; i < 10_000; i += 1) {
+    assert.equal(JSON.stringify(diagnose(log)), expected);
   }
 });
