@@ -98,7 +98,7 @@ function taskHealth() {
   logSection("🩺 المهمة: الفحص الصحي");
   const checks = [
     { name: "Localization agent", cmd: "node src/scripts/validate-localization-agent.mjs" },
-    { name: "TypeScript", cmd: "npx tsc --noEmit" },
+    { name: "TypeScript", cmd: "npm run typecheck" },
     { name: "Lint", cmd: "npm run lint" },
     { name: "Build", cmd: "npm run build" },
   ];
