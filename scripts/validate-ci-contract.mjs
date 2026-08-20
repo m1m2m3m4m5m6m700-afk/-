@@ -142,8 +142,11 @@ if (!fs.existsSync(workflowsDir)) {
       if (!/npm\s+run\s+verify\b/.test(workflow)) {
         failures.push(".github/workflows/ci.yml: canonical verification gate must execute npm run verify");
       }
-      if (!/timeout\s+--signal=TERM\s+--kill-after=30s\s+35m\s+/.test(workflow)) {
-        failures.push(".github/workflows/ci.yml: canonical verification gate must have a 35-minute shell timeout with TERM/KILL escalation");
+      if (!/timeout\s+--signal=TERM\s+--kill-after=30s\s+55m\s+/.test(workflow)) {
+        failures.push(".github/workflows/ci.yml: canonical verification gate must have a 55-minute shell timeout with TERM/KILL escalation");
+      }
+      if (!/timeout-minutes:\s*60\b/.test(workflow)) {
+        failures.push(".github/workflows/ci.yml: verification job must allow a 60-minute runner timeout");
       }
     }
   }
