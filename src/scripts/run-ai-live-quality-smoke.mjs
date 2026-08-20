@@ -9,18 +9,39 @@ const corpus = JSON.parse(await fs.readFile(path.join(root, "tests/fixtures/ai-l
 const extraCorpus = JSON.parse(await fs.readFile(path.join(root, "tests/fixtures/ai-live-quality-extra.json"), "utf8"));
 const cases = [...(corpus.cases ?? []), ...(extraCorpus.cases ?? [])];
 
+const evidenceDir = path.join(root, ".artifacts", "gates");
+
+async function writeInfrastructureEvidence(status, reason, details = {}) {
+  await fs.mkdir(evidenceDir, { recursive: true });
+  await fs.writeFile(
+    path.join(evidenceDir, "ai-live-quality.json"),
+    JSON.stringify({
+      schemaVersion: 2,
+      generatedAt: new Date().toISOString(),
+      endpoint,
+      status,
+      certificationEligible: false,
+      reason,
+      details,
+    }, null, 2),
+  );
+}
+
 if (!endpoint) {
   console.error("LIVE AI QUALITY SMOKE: NOT RUN");
   console.error("Set FLIXO_AI_SMOKE_ENDPOINT to the protected Flixo smoke endpoint.");
+  await writeInfrastructureEvidence("NOT_CONFIGURED", "FLIXO_AI_SMOKE_ENDPOINT is missing.");
   process.exit(2);
 }
 if (!token) {
   console.error("LIVE AI QUALITY SMOKE: NOT RUN");
   console.error("Set FLIXO_AI_SMOKE_TOKEN to the matching protected endpoint token.");
+  await writeInfrastructureEvidence("NOT_CONFIGURED", "FLIXO_AI_SMOKE_TOKEN is missing.");
   process.exit(2);
 }
 if (cases.length !== 46) {
   console.error(`LIVE AI QUALITY SMOKE: expected 46 cases, found ${cases.length}.`);
+  await writeInfrastructureEvidence("INVALID_CORPUS", "Expected exactly 46 live quality cases.", { actualCases: cases.length });
   process.exit(2);
 }
 
@@ -121,15 +142,18 @@ for (const testCase of cases) {
   }
 
   if (status === 401) {
-    console.error("LIVE AI QUALITY SMOKE: endpoint authentication failed (HTTP 401). Redeploy the Preview after updating FLIXO_AI_SMOKE_TOKEN, then rerun the smoke.");
+    console.error("LIVE AI QUALITY SMOKE: endpoint authentication failed (HTTP 401). The Preview token does not match GitHub's token or was not available to the deployment.");
+    await writeInfrastructureEvidence("AUTHENTICATION_FAILED", "Smoke endpoint rejected the GitHub token with HTTP 401.", { httpStatus: 401 });
     process.exit(2);
   }
   if (status === 403) {
     console.error("LIVE AI QUALITY SMOKE: endpoint forbidden (HTTP 403). Check the Preview deployment protection settings and smoke token routing.");
+    await writeInfrastructureEvidence("FORBIDDEN", "Smoke endpoint returned HTTP 403.", { httpStatus: 403 });
     process.exit(2);
   }
   if (status === 404) {
     console.error("LIVE AI QUALITY SMOKE: endpoint not found or smoke token not configured on the deployment (HTTP 404). Redeploy the target Preview.");
+    await writeInfrastructureEvidence("ENDPOINT_NOT_FOUND", "Smoke endpoint returned HTTP 404.", { httpStatus: 404 });
     process.exit(2);
   }
 
@@ -146,7 +170,7 @@ const manual = results.reduce((sum, result) => sum + result.manualReview.length,
 const overallHardScore = results.length ? results.reduce((sum, result) => sum + result.hardScore, 0) / results.length : 0;
 
 const report = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   generatedAt: new Date().toISOString(),
   endpoint,
   cases: results.length,
@@ -159,8 +183,8 @@ const report = {
   results,
 };
 
-await fs.mkdir(path.join(root, ".artifacts", "gates"), { recursive: true });
-await fs.writeFile(path.join(root, ".artifacts", "gates", "ai-live-quality.json"), JSON.stringify(report, null, 2));
+await fs.mkdir(evidenceDir, { recursive: true });
+await fs.writeFile(path.join(evidenceDir, "ai-live-quality.json"), JSON.stringify(report, null, 2));
 
 console.log(`LIVE AI QUALITY SMOKE: ${report.passed}/${report.cases} hard-check cases passed; hard score ${(overallHardScore * 100).toFixed(1)}%; manual-review items: ${manual}.`);
 if (failed.length) {
