@@ -1,5 +1,6 @@
 name: CI
 
+# clean-baseline-proof: trigger full verification on experimental
 on:
   push:
     branches: [main, experimental]
