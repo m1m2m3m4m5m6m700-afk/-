@@ -6,6 +6,7 @@ on:
       - 'scripts/error-intelligence-*.mjs'
       - 'scripts/test-error-intelligence.mjs'
       - 'scripts/merge-finding-reports.mjs'
+      - 'scripts/test-failure-memory-load.mjs'
       - 'src/lib/ai/failure-memory/**'
   workflow_dispatch:
 
@@ -29,6 +30,14 @@ jobs:
         run: node scripts/test-error-intelligence.mjs
       - name: Normalize finding reports
         run: node scripts/merge-finding-reports.mjs
+      - name: Dashboard
+        run: node scripts/error-intelligence-dashboard.mjs
+      - name: Adaptive learning report
+        run: node scripts/error-intelligence-adaptive-report.mjs
+      - name: V3 plan-only bridge
+        run: node scripts/error-intelligence-v3-bridge.mjs
+      - name: Self-Heal advisory bridge
+        run: node scripts/error-intelligence-self-heal-bridge.mjs
       - name: Upload intelligence evidence
         if: always()
         uses: actions/upload-artifact@v4
