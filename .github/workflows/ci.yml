@@ -65,10 +65,36 @@ jobs:
       - name: Run canonical verification gate with timing
         shell: bash
         run: |
-          set -o pipefail
+          set +e
           mkdir -p diagnostics
-          echo "Starting timed verification at $(date -u +%FT%TZ)"
-          timeout --signal=TERM --kill-after=30s 55m node scripts/verify-timing.mjs 2>&1 | tee diagnostics/npm-verify.log
+          START_MS=$(date +%s%3N)
+          timeout --signal=TERM --kill-after=30s 55m npm run verify 2>&1 | tee diagnostics/npm-verify.log
+          VERIFY_EXIT=${PIPESTATUS[0]}
+          END_MS=$(date +%s%3N)
+          set -e
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const started = Number(process.env.START_MS);
+          const ended = Number(process.env.END_MS);
+          const exitCode = Number(process.env.VERIFY_EXIT);
+          const report = {
+            version: 2,
+            sha: process.env.GITHUB_SHA || null,
+            ref: process.env.GITHUB_REF_NAME || null,
+            runId: process.env.GITHUB_RUN_ID || null,
+            durationMs: Math.max(0, ended - started),
+            stages: [{ name: 'npm run verify', exitCode, signal: null, durationMs: Math.max(0, ended - started) }],
+            passed: exitCode === 0,
+          };
+          fs.mkdirSync('diagnostics', { recursive: true });
+          fs.writeFileSync('diagnostics/verify-timing.json', JSON.stringify(report, null, 2), 'utf8');
+          console.log(JSON.stringify(report, null, 2));
+          NODE
+          exit "$VERIFY_EXIT"
+        env:
+          START_MS: ${{ steps.timing.outputs.start_ms }}
+          END_MS: ${{ steps.timing.outputs.end_ms }}
+          VERIFY_EXIT: ${{ steps.timing.outputs.verify_exit }}
       - name: Upload browser report
         if: always()
         uses: actions/upload-artifact@v4
