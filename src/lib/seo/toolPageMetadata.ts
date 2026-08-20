@@ -96,7 +96,7 @@ export function resolvePageSeo(slug?: string, customData?: Partial<ToolSeoData>,
   const canonicalUrl = slug ? getToolCanonicalUrl(slug, locale) : stripQueryAndHash(pageUrl);
   const origin = typeof window !== "undefined" && window.location?.origin ? window.location.origin : SITE_URL;
   const tool = slug ? getToolRecord(slug) : undefined;
-  const isPublicTool = !slug || tool?.status === "ready";
+  const isPublicTool = !slug || !tool || !("status" in tool) || tool.status === "ready";
   const robots = isPublicTool && localizationComplete ? DEFAULT_ROBOTS : NOINDEX_ROBOTS;
 
   return { title, description, keywords, robots, pageUrl, canonicalUrl, ogImage: getDefaultOgImageUrl(origin), locale };
@@ -118,20 +118,16 @@ export function buildToolHeadMetadata(slug: string, overrides?: Partial<ToolSeoD
       { title: shortTitle },
       { name: "description", content: seo.description },
       { name: "keywords", content: seo.keywords.join(", ") },
-      { name: "robots", content: seo.robots },
-      { property: "og:title", content: seo.title },
+      { property: "og:title", content: shortTitle },
       { property: "og:description", content: seo.description },
       { property: "og:type", content: "website" },
       { property: "og:url", content: seo.canonicalUrl },
-      { property: "og:site_name", content: SITE_NAME },
       { property: "og:image", content: seo.ogImage },
+      { property: "og:site_name", content: SITE_NAME },
       { property: "og:locale", content: ogLocale },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: SITE_TWITTER_HANDLE },
-      { name: "twitter:title", content: seo.title },
-      { name: "twitter:description", content: seo.description },
-      { name: "twitter:image", content: seo.ogImage },
-    ] satisfies SeoMetaTag[],
+    ],
     links,
   };
 }
