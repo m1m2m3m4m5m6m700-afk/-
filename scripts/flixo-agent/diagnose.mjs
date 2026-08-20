@@ -20,11 +20,6 @@ const PATTERNS = [
     expression: /baseline\.(?:certifiedCommit|certification\.commit)|baseline.*(?:contract|schema|validation)/i,
   },
   {
-    id: 'arabic',
-    layer: 'LOCALIZATION',
-    expression: /arabic|العربية|locale.*(?:ar|ar-EG)|i18n|localization/i,
-  },
-  {
     id: 'typescript',
     layer: 'TYPECHECK',
     expression: /TS\d{4}|typescript|tsc.*(?:error|failed)/i,
@@ -38,6 +33,11 @@ const PATTERNS = [
     id: 'build',
     layer: 'BUILD',
     expression: /vite build|build.*(?:error|failed)/i,
+  },
+  {
+    id: 'arabic',
+    layer: 'LOCALIZATION',
+    expression: /(?:arabic|العربية|locale.*(?:ar|ar-EG)|localization|i18n(?:\s+(?:error|failed))?)/i,
   },
   {
     id: 'workflow',
