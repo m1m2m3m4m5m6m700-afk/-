@@ -124,7 +124,7 @@ class AIService {
         taskId,
         kind: result.kind,
         retryable: result.retryable,
-        diagnosticCode: `${result.kind}:${provider.name}`,
+        diagnosticCode: `${result.kind}:${provider.id}`,
       });
 
       // Only fall through when the failure is retryable AND there is another
