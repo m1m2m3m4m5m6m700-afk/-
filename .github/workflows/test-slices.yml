@@ -68,7 +68,7 @@ jobs:
           - name: search-catalog
             command: npm run validate:search-catalog
           - name: seo
-            command: npm run validate:seo
+            command: node src/scripts/validate-seo.mjs
           - name: tool-content
             command: npm run validate:tool-content
           - name: localization
