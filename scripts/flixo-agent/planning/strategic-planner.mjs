@@ -36,6 +36,16 @@ export function buildStrategicPlan(assessment) {
     ));
   }
 
+  if (diagnosis.knownPattern === 'typescript') {
+    plans.push(step(
+      'typecheck-repair-review',
+      'Repair the deterministic TypeScript failure',
+      'Apply the smallest source-level type correction identified by the compiler and preserve runtime behavior.',
+      ['npm run typecheck', 'affected tool tests'],
+      { gate: 'Fast', risk: 'medium', autoApply: false },
+    ));
+  }
+
   if (diagnosis.knownPattern === 'playwright') {
     plans.push(step(
       'browser-environment-repair',
