@@ -21,7 +21,7 @@ import crypto from "node:crypto";
 
 const root = process.cwd();
 const updateState = process.argv.includes("--update-state");
-const toolsPath = path.join(root, "src/data/tools.ts");
+const canonicalToolsPath = path.join(root, "src/lib/tool-platform/publicDesktopTools.ts");
 const contentPath = path.join(root, "src/data/toolContent.ts");
 const localesPath = path.join(root, "src/lib/i18n/index.tsx");
 const overridesPath = path.join(root, "src/data/toolContentLocales.ts");
@@ -36,34 +36,13 @@ function hash(value) {
 }
 
 function loadReadySlugs() {
-  const source = read(toolsPath);
-  const startMarker = "export const tools: Tool[] = [";
-  const endMarker = "];\n\nexport const toolById";
-  const start = source.indexOf(startMarker);
-  const end = source.indexOf(endMarker, start);
-  if (start < 0 || end < 0) throw new Error("Could not locate tools[] registry.");
-
-  const body = source
-    .slice(start + startMarker.length, end)
-    .replace(/\.\.\.chromeTools,?/g, "")
-    .replace(/\.\.\.([A-Za-z0-9_]+),?/g, "");
-
-  const t = (id, name, categoryId, description, status = "placeholder", tags, slug) => ({
-    id,
-    name,
-    categoryId,
-    description,
-    status,
-    tags,
-    slug,
-  });
-
-  const tools = Function("t", `return [${body}];`)(t);
-  return new Set(
-    tools
-      .filter((tool) => tool.status === "ready" && tool.slug)
-      .map((tool) => tool.slug),
-  );
+  const source = read(canonicalToolsPath);
+  const slugs = new Set();
+  const manifestRe = /\bid:\s*"([^"]+)"[\s\S]*?\bslug:\s*"([^"]+)"[\s\S]*?\blifecycle:\s*"public"/g;
+  let match;
+  while ((match = manifestRe.exec(source)) !== null) slugs.add(match[2]);
+  if (!slugs.size) throw new Error("Could not locate canonical public tool registrations.");
+  return slugs;
 }
 
 function loadLocales() {
