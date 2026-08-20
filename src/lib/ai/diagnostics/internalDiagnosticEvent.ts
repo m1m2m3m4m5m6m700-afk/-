@@ -6,6 +6,8 @@
  */
 
 import { createHash } from "node:crypto";
+import { createConfiguredFailureMemory } from "./failureMemory";
+import { correlateIncident } from "./failureCorrelation";
 
 export type InternalDiagnosticLayer = "rpc" | "aiService" | "provider" | "toolContext" | "ci";
 
@@ -35,7 +37,9 @@ function normalize(value: string | undefined): string {
     .trim();
 }
 
-export function createInternalDiagnosticEvent(input: Omit<InternalDiagnosticEvent, "version" | "event" | "fingerprint">): InternalDiagnosticEvent {
+export function createInternalDiagnosticEvent(
+  input: Omit<InternalDiagnosticEvent, "version" | "event" | "fingerprint">,
+): InternalDiagnosticEvent {
   const fingerprintSource = [
     input.layer,
     input.provider,
@@ -54,9 +58,24 @@ export function createInternalDiagnosticEvent(input: Omit<InternalDiagnosticEven
 }
 
 /**
- * Default sink is structured stderr output. A future Failure Correlation sink
- * can replace this without changing aiService or provider contracts.
+ * Structured sink. Persistence is opt-in through FLIXO_FAILURE_MEMORY_PATH so
+ * local/CI/test runs can use durable memory without forcing filesystem writes
+ * in serverless production instances.
  */
 export function emitInternalDiagnosticEvent(event: InternalDiagnosticEvent): void {
   console.warn("[FLIXO_AI_DIAGNOSTIC]", JSON.stringify(event));
+
+  const memory = createConfiguredFailureMemory();
+  if (!memory) return;
+
+  try {
+    const incident = correlateIncident(event, memory.get(event.fingerprint));
+    memory.upsert({ schemaVersion: 1, ...incident });
+  } catch (error) {
+    // Memory must never make an AI request fail; diagnostics stay best-effort.
+    console.warn(
+      "[FLIXO_AI_DIAGNOSTIC_MEMORY] persistence-failed",
+      error instanceof Error ? error.message : String(error),
+    );
+  }
 }
