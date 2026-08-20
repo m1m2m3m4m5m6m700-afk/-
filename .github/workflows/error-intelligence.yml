@@ -1,0 +1,39 @@
+name: Error Intelligence
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/error-intelligence-*.mjs'
+      - 'scripts/test-error-intelligence.mjs'
+      - 'scripts/merge-finding-reports.mjs'
+      - 'src/lib/ai/failure-memory/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  intelligence:
+    name: Error Intelligence Self-Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --no-audit
+      - name: Self-test
+        run: node scripts/test-error-intelligence.mjs
+      - name: Normalize finding reports
+        run: node scripts/merge-finding-reports.mjs
+      - name: Upload intelligence evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flixo-error-intelligence-${{ github.run_id }}
+          path: .artifacts/errors/
+          if-no-files-found: ignore
+          retention-days: 14
