@@ -1,0 +1,54 @@
+name: Error Intelligence
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze CI Failure
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source SHA
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Download canonical verification evidence
+        uses: actions/download-artifact@v5
+        with:
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+          name: flixo-canonical-verify-diagnostics-${{ github.event.workflow_run.id }}
+          path: diagnostics/ci
+      - name: Run Error Intelligence Suite
+        shell: bash
+        run: |
+          mkdir -p diagnostics/error-intelligence
+          LOG="diagnostics/ci/diagnostics/npm-verify.log"
+          if [ ! -f "$LOG" ]; then
+            echo "Canonical CI log was not published; emitting bounded UNKNOWN evidence."
+            printf 'workflow_run=%s\nconclusion=%s\n' "${{ github.event.workflow_run.id }}" "${{ github.event.workflow_run.conclusion }}" > diagnostics/error-intelligence/missing-log.txt
+            exit 0
+          fi
+          node scripts/error-intelligence/index.mjs "$LOG" | tee diagnostics/error-intelligence/report.json
+      - name: Upload Error Intelligence evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flixo-error-intelligence-${{ github.event.workflow_run.id }}
+          path: |
+            diagnostics/error-intelligence/
+            history/
+          if-no-files-found: warn
+          retention-days: 30
