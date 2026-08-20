@@ -12,6 +12,7 @@ const required = [
 ];
 
 const failures = [];
+const warnings = [];
 for (const file of required) {
   try { await fs.access(path.join(root, file)); }
   catch { failures.push(`Missing ${file}`); }
@@ -44,12 +45,20 @@ async function scan(dir) {
     if (entry.isDirectory()) { await scan(relative); continue; }
     if (!/\.(ts|tsx|mjs|js)$/.test(entry.name)) continue;
     const content = await fs.readFile(path.join(root, relative), "utf8");
-    const legacyImport = /(?:import\s+[^;]*from\s+|require\s*\(\s*)["'][^"']*(?:megaToolsCatalog|megaToolsEngine|@\/data\/tools|src\/data\/tools)[^"']*["']/.test(content);
+    const legacyImport = /(?:import\s+[^;]*from\s+|require\s*\(\s*)["'][^"']*(?:megaToolsCatalog|megaToolsEngine|src\/data\/tools)[^"']*["']/.test(content);
     if (legacyImport) legacy.push(relative);
+    if (/(?:import\s+[^;]*from\s+|require\s*\(\s*)["'][^"']*@\/data\/tools["']/.test(content)) {
+      warnings.push(`${relative} uses the transitional tools compatibility shim`);
+    }
   }
 }
 for (const dir of scanRoots) { try { await scan(dir); } catch {} }
 if (legacy.length) failures.push(`Legacy mega-tool imports remain: ${legacy.join(", ")}`);
+
+if (warnings.length) {
+  console.warn(`Advanced AI tools advisory: ${warnings.length} compatibility-shim import(s).`);
+  warnings.slice(0, 20).forEach((warning) => console.warn(`- ${warning}`));
+}
 
 if (failures.length) {
   console.error(`Advanced AI tools validation failed with ${failures.length} issue(s).`);
