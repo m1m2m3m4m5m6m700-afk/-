@@ -20,16 +20,29 @@ permissions:
 
 jobs:
   diagnose:
-    if: ${{ secrets.QWEN_API_KEY != '' }}
     runs-on: ubuntu-latest
     steps:
+      - name: Check optional Qwen secret
+        id: guard
+        env:
+          QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
+        run: |
+          if [ -n "$QWEN_API_KEY" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "QWEN_API_KEY is not configured; skipping optional advisory run."
+          fi
+
       - name: Checkout target ref
+        if: steps.guard.outputs.enabled == 'true'
         uses: actions/checkout@v5
         with:
           ref: ${{ inputs.ref }}
           fetch-depth: 1
 
       - name: Run Qwen Code (advisory only)
+        if: steps.guard.outputs.enabled == 'true'
         id: qwen
         uses: QwenLM/qwen-code-action@v1
         with:
@@ -47,6 +60,7 @@ jobs:
           upload_artifacts: true
 
       - name: Write advisory result
+        if: steps.guard.outputs.enabled == 'true'
         env:
           SUMMARY: ${{ steps.qwen.outputs.summary }}
         run: |
@@ -56,6 +70,7 @@ jobs:
           printf '%s\n' 'requiresHumanReview=true' >> .artifacts/ai-advisor/policy.txt
 
       - name: Upload advisory artifact
+        if: steps.guard.outputs.enabled == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: qwen-diagnosis
