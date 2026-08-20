@@ -67,8 +67,14 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p diagnostics
-          echo "Starting timed verification at $(date -u +%FT%TZ)"
-          timeout --signal=TERM --kill-after=30s 55m node scripts/verify-timing.mjs 2>&1 | tee diagnostics/npm-verify.log
+          START_MS=$(date +%s%3N)
+          set +e
+          timeout --signal=TERM --kill-after=30s 55m npm run verify 2>&1 | tee diagnostics/npm-verify.log
+          VERIFY_EXIT=${PIPESTATUS[0]}
+          set -e
+          END_MS=$(date +%s%3N)
+          node scripts/verify-timing.mjs --record "$START_MS" "$END_MS" "$VERIFY_EXIT"
+          exit "$VERIFY_EXIT"
       - name: Upload browser report
         if: always()
         uses: actions/upload-artifact@v4
@@ -156,9 +162,14 @@ jobs:
           const ciLog = read('diagnostics/ci/diagnostics/npm-verify.log');
           const typecheckLog = read('diagnostics/typecheck.log');
           const healthLog = read('diagnostics/health.log');
+          const evidence = [
+            '=== SHARED VERIFICATION EVIDENCE ===',
+            ciLog.match(/FLIXO_AI_EVIDENCE (.*)/)?.[1] || '',
+          ].join('\n');
           const combinedLog = [
             '=== REAL CI VERIFY LOG ===',
             ciLog,
+            evidence,
             '=== CANONICAL TYPECHECK ===',
             typecheckLog,
             '=== PROJECT HEALTH ===',
@@ -196,7 +207,7 @@ jobs:
           console.log(JSON.stringify(report, null, 2));
           NODE
       - name: Run V3 stress tests
-        run: node --test scripts/flixo-agent/tests/v3-preflight.test.mjs scripts/flixo-agent/tests/v3-strategic-planning.test.mjs scripts/flixo-agent/tests/v3-stress.test.mjs
+        run: node --test scripts/flixo-agent/tests/v3-preflight.test.mjs scripts/flixo-agent/tests/v3-strategic-planning.test.mjs scripts/flixo-agent/tests/v3-stress.test.mjs scripts/flixo-agent/tests/v4-safety.test.mjs
       - name: Upload V3 real-failure diagnosis
         if: always()
         uses: actions/upload-artifact@v4
