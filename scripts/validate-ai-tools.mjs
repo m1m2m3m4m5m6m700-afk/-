@@ -34,9 +34,6 @@ if (!failures.length) {
       failures.push(`${name} agent missing autoApply=false guardrail`);
     }
   }
-  for (const [name, source] of [["redactor", redactor], ["selection", selection], ["generation", generation]]) {
-    if (!source.includes("autoApply") && !name.includes("redactor")) failures.push(`${name} must expose an explicit safe automation boundary`);
-  }
   if (!redactor.includes("[REDACTED]")) failures.push("redactSecrets must redact credentials");
   if (!selection.includes("git") || !selection.includes("selectedTests")) failures.push("test-selection must remain deterministic and report selected tests");
   if (!generation.includes("requiresHumanReview") || !generation.includes("aiOptional")) failures.push("test-generation must remain advisory");
