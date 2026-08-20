@@ -2,7 +2,6 @@ import { createFileRoute, notFound } from "@tanstack/react-router";
 import { useState } from "react";
 import { AITaskInterface } from "@/components/assistant/AITaskInterface";
 import { CategoryGrid } from "@/components/landing/CategoryGrid";
-import { MegaToolHub } from "@/components/landing/MegaToolHub";
 import { WhyFlixo } from "@/components/landing/WhyFlixo";
 import { FAQ } from "@/components/landing/FAQ";
 import { SponsorSection } from "@/components/landing/SponsorSection";
@@ -40,10 +39,6 @@ function LocalizedIndexContent() {
       </div>
 
       <WhyFlixo />
-
-      <div className="mx-auto max-w-7xl px-5 py-8 sm:px-6 lg:px-8">
-        <MegaToolHub />
-      </div>
 
       <FAQ />
       <div className="mx-auto max-w-5xl px-5 pb-24 sm:px-6 lg:px-8">
