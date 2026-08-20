@@ -30,9 +30,8 @@ if (!failures.length) {
   const generation = await read("scripts/test-generation.mjs");
 
   for (const [name, source] of [["triage", triage], ["review", review], ["ciFailure", ciFailure]]) {
-    if (!source.includes("autoApply": false) && !source.includes("autoApply` must always be `false`")) {
-      failures.push(`${name} agent missing autoApply=false guardrail`);
-    }
+    const hasSafeApplyContract = source.includes('"autoApply": false') || source.includes("`autoApply` must always be `false`") || source.includes("autoApply=false");
+    if (!hasSafeApplyContract) failures.push(`${name} agent missing autoApply=false guardrail`);
   }
   if (!redactor.includes("[REDACTED]")) failures.push("redactSecrets must redact credentials");
   if (!selection.includes("git") || !selection.includes("selectedTests")) failures.push("test-selection must remain deterministic and report selected tests");
