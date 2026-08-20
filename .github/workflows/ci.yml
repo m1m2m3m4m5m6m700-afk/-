@@ -13,6 +13,17 @@ on:
       - "tsconfig*.json"
       - ".nvmrc"
       - ".github/workflows/**"
+  pull_request:
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "public/**"
+      - "package.json"
+      - "package-lock.json"
+      - "vite.config.ts"
+      - "tsconfig*.json"
+      - ".nvmrc"
+      - ".github/workflows/**"
   workflow_dispatch:
 
 concurrency:
@@ -63,6 +74,8 @@ jobs:
           npm run validate:accessibility &&
           npm run validate:security &&
           node src/scripts/validate-build-output.mjs
+      - name: Production dependency audit
+        run: npm run audit:production
       - name: Upload diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@v4
