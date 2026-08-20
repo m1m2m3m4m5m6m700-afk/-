@@ -4,7 +4,6 @@ import { join, relative } from "node:path";
 
 const root = process.cwd();
 const forbiddenImports = [
-  "@/data/tools",
   "@/data/toolSeo",
 ];
 
@@ -16,6 +15,7 @@ const roots = [
 ];
 
 const violations = [];
+const shimUses = [];
 
 function walk(dir) {
   for (const entry of readdirSync(dir)) {
@@ -32,6 +32,9 @@ function inspect(path) {
     if (source.includes(`from \"${importPath}\"`) || source.includes(`from '${importPath}'`)) {
       violations.push(`${relative(root, path)} imports ${importPath}`);
     }
+  }
+  if (source.includes('from "@/data/tools"') || source.includes("from '@/data/tools'")) {
+    shimUses.push(relative(root, path));
   }
 }
 
@@ -50,6 +53,10 @@ try {
 } catch {
   console.error("Data domain boundary contract: FAIL");
   process.exit(1);
+}
+
+if (shimUses.length) {
+  console.warn(`Tool Platform compatibility shim usage: ${shimUses.length} file(s). Migrate touched consumers to @/lib/data.`);
 }
 
 console.log("Tool Platform boundary contract: PASS");
