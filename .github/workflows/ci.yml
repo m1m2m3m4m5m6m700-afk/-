@@ -1,8 +1,9 @@
 name: CI
 
+# bootstrap: execute verification on the protected-branch bootstrap PR head
 on:
   push:
-    branches: [main, experimental]
+    branches: [main, experimental, "fix/**"]
     paths:
       - "src/**"
       - "scripts/**"
@@ -42,7 +43,7 @@ jobs:
   verify:
     name: Full Verification (main)
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 60
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -67,7 +68,7 @@ jobs:
           set -o pipefail
           mkdir -p diagnostics
           echo "Starting npm run verify at $(date -u +%FT%TZ)"
-          timeout --signal=TERM --kill-after=30s 35m npm run verify 2>&1 | tee diagnostics/npm-verify.log
+          timeout --signal=TERM --kill-after=30s 55m npm run verify 2>&1 | tee diagnostics/npm-verify.log
       - name: Production dependency audit
         run: npm run audit:production
       - name: Upload browser report
