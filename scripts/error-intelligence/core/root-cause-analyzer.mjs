@@ -1,12 +1,20 @@
-import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
 
 function changedFiles() {
-  try {
-    return execFileSync('git', ['diff', '--name-only', 'HEAD~1', 'HEAD'], { encoding: 'utf8' }).split(/\r?\n/).filter(Boolean);
-  } catch {
-    return [];
+  const candidates = [
+    ['git', ['diff', '--name-only', 'HEAD~1', 'HEAD']],
+    ['git', ['diff', '--name-only', 'HEAD^', 'HEAD']],
+  ];
+  for (const [command, args] of candidates) {
+    try {
+      const result = execFileSync(command, args, { encoding: 'utf8' });
+      const files = result.split(/\r?\n/).filter(Boolean);
+      if (files.length) return files;
+    } catch {
+      // PR merge checkouts can be shallow or contain only one commit.
+    }
   }
+  return [];
 }
 
 function infer(errorType, log) {
