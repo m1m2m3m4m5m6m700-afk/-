@@ -74,6 +74,7 @@ jobs:
           FLIXO_AI_SMOKE_ENDPOINT: ${{ secrets.FLIXO_AI_SMOKE_ENDPOINT }}
           FLIXO_AI_SMOKE_TOKEN: ${{ secrets.FLIXO_AI_SMOKE_TOKEN }}
           FLIXO_AI_SMOKE_TIMEOUT_MS: "30000"
+          FLIXO_AI_EXPECTED_VERCEL_SHA: ${{ github.event.pull_request.head.sha || inputs.expected_sha || github.sha }}
         run: node src/scripts/run-ai-live-quality-smoke.mjs
 
       - name: Write not-configured evidence
