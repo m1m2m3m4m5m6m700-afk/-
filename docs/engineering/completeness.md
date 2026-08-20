@@ -7,9 +7,11 @@ Last reviewed: 2026-08-20
 | Threat Model | PASS | `docs/engineering/threat-model.md` |
 | Build Provenance | STRUCTURAL PASS | `docs/engineering/provenance.md` |
 | Observability Contract | PASS | `docs/engineering/observability.md` |
-| Disaster Recovery | DRILL PENDING | `docs/engineering/disaster-recovery.md` |
-| Chaos / Fault Injection | PASS (contract) | `docs/engineering/chaos.md` |
-| Incident Response | DRILL PENDING | `docs/engineering/incident-response.md` |
-| Live AI Certification | PENDING | real provider + exact-SHA evidence required |
+| Disaster Recovery | DRILL-PASS (isolated) | `scripts/drills/dr-drill.mjs` + drill artifact |
+| Chaos / Fault Injection | PASS | `docs/engineering/chaos.md` + `test:fault-injection` |
+| Incident Response | DRILL-PASS (isolated) | `scripts/drills/incident-drill.mjs` + incident artifact |
+| CI Full Proof | GATE ADDED | `.github/workflows/final-engineering-gate.yml` |
+| Live AI Certification | PENDING | exact 46/46 + 401=0 + Same-SHA evidence required |
+| Main Governance | CONTRACT ADDED | `docs/engineering/governance.md`; repository settings verification pending |
 
-A layer is marked PASS only when its deterministic contract is present and its validator can execute. DRILL PENDING means the design is implemented but an operational exercise must still produce evidence.
+A PASS above for DR/IR means the isolated deterministic drill completed successfully. Production certification still requires a real restore/incident exercise against the production recovery path.
