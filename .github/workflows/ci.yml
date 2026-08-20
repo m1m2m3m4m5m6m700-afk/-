@@ -54,6 +54,10 @@ jobs:
         run: |
           set -o pipefail
           npm run validate:dependencies 2>&1 | tee .ci-error.txt
+      - name: Regression prevention gate
+        run: |
+          set -o pipefail
+          npm run validate:regression-prevention 2>&1 | tee .ci-error.txt
       - name: Install dependencies
         run: |
           set -o pipefail
