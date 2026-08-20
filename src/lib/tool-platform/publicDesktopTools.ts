@@ -1,5 +1,6 @@
 import type { PublicToolRegistration } from "./types";
 import { certificationRequirements, publicToolTestContracts } from "./testContracts";
+import { getToolSeoMetadata } from "./seoRegistry";
 import { toolBaseManifestSchema } from "./schemas";
 
 const manifestData = [
@@ -11,6 +12,7 @@ const manifestData = [
     description: "Compress images locally in your browser with quality and format controls.",
     lifecycle: "public" as const,
     capabilities: { input: "file" as const, output: "download" as const, localOnly: true },
+    seo: getToolSeoMetadata("image-compressor"),
   },
   {
     id: "image-enhancer",
@@ -20,6 +22,7 @@ const manifestData = [
     description: "Enhance image resolution and visual quality locally with adjustable controls.",
     lifecycle: "public" as const,
     capabilities: { input: "file" as const, output: "download" as const, localOnly: true },
+    seo: getToolSeoMetadata("image-enhancer"),
   },
   {
     id: "video-compressor",
@@ -29,6 +32,7 @@ const manifestData = [
     description: "Compress supported videos locally with adjustable H.264 quality settings.",
     lifecycle: "public" as const,
     capabilities: { input: "file" as const, output: "download" as const, localOnly: true },
+    seo: getToolSeoMetadata("video-compressor"),
   },
   {
     id: "video-trimmer",
@@ -38,6 +42,7 @@ const manifestData = [
     description: "Trim supported videos to precise start and end times locally in your browser.",
     lifecycle: "public" as const,
     capabilities: { input: "file" as const, output: "download" as const, localOnly: true },
+    seo: getToolSeoMetadata("video-trimmer"),
   },
   {
     id: "qr-generator",
@@ -53,10 +58,14 @@ const manifestData = [
       policy: { requiresNetwork: false, requiresStorage: false, sensitiveInput: false },
     },
     dependencies: [],
+    seo: getToolSeoMetadata("qr-generator"),
   },
 ] as const;
 
-const validatedManifestData = manifestData.map((manifest) => toolBaseManifestSchema.parse(manifest));
+const validatedManifestData = manifestData.map((manifest) => {
+  if (!manifest.seo) throw new Error(`Missing canonical SEO metadata: ${manifest.id}`);
+  return toolBaseManifestSchema.parse({ ...manifest, seo: manifest.seo });
+});
 
 export const publicToolRegistrations: readonly PublicToolRegistration[] = Object.freeze(
   validatedManifestData.map((manifest) => {
