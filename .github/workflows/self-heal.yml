@@ -29,6 +29,19 @@ jobs:
       FAILED_BRANCH: ${{ github.event.workflow_run.head_branch }}
       REPOSITORY: ${{ github.repository }}
       GITHUB_REF_NAME: experimental
+      FLIXO_AI_ERROR_DIAGNOSIS: "true"
+      FLIXO_AI_PROVIDER: ${{ vars.FLIXO_AI_PROVIDER }}
+      FLIXO_AI_FALLBACK_PROVIDER: ${{ vars.FLIXO_AI_FALLBACK_PROVIDER }}
+      FLIXO_AI_TIMEOUT_MS: ${{ vars.FLIXO_AI_TIMEOUT_MS }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+      OPENAI_BASE_URL: ${{ vars.OPENAI_BASE_URL }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+      GEMINI_BASE_URL: ${{ vars.GEMINI_BASE_URL }}
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      OPENROUTER_FREE_MODEL: ${{ vars.OPENROUTER_FREE_MODEL }}
+      OPENROUTER_BASE_URL: ${{ vars.OPENROUTER_BASE_URL }}
     steps:
       - name: Checkout exact failed experimental revision
         uses: actions/checkout@v5
