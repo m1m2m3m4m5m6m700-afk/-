@@ -50,6 +50,16 @@ jobs:
           echo "health_exit=$HEALTH_EXIT" >> "$GITHUB_STEP_SUMMARY"
           exit 0
 
+      - name: Run canonical typecheck diagnosis
+        shell: bash
+        run: |
+          set +e
+          npm run typecheck > diagnosis-typecheck.log 2>&1
+          TYPECHECK_EXIT=$?
+          set -e
+          echo "typecheck_exit=$TYPECHECK_EXIT" >> "$GITHUB_STEP_SUMMARY"
+          exit 0
+
       - name: Run V3 cognitive diagnosis
         shell: bash
         run: |
@@ -58,9 +68,17 @@ jobs:
           import { buildCognitiveAssessment } from './scripts/flixo-agent/cognitive/cognitive-engine.mjs';
           import { buildStrategicPlan } from './scripts/flixo-agent/planning/strategic-planner.mjs';
 
-          const log = fs.readFileSync('diagnosis-health.log', 'utf8');
+          const healthLog = fs.readFileSync('diagnosis-health.log', 'utf8');
+          const typecheckLog = fs.readFileSync('diagnosis-typecheck.log', 'utf8');
+          const combinedLog = [
+            '=== CANONICAL TYPECHECK ===',
+            typecheckLog,
+            '=== PROJECT HEALTH ===',
+            healthLog,
+          ].join('\n');
+
           const assessment = buildCognitiveAssessment({
-            log,
+            log: combinedLog,
             context: { projectGraph: { nodes: [], edges: [] } },
             decisions: [],
           });
@@ -70,11 +88,15 @@ jobs:
           });
 
           const report = {
-            version: 1,
+            version: 2,
             mode: 'read-only-project-diagnosis',
             branch: process.env.GITHUB_REF_NAME,
             sha: process.env.GITHUB_SHA,
             generatedAt: new Date().toISOString(),
+            signals: {
+              health: { exitCode: fs.readFileSync('diagnosis-health.log', 'utf8').includes('health_exit=0') ? 0 : null },
+              typecheck: { failed: /\bTS\d{4}\b|error TS\d{4}|Found \d+ errors?/i.test(typecheckLog) },
+            },
             assessment,
             plan,
             repairAllowed: false,
@@ -95,6 +117,7 @@ jobs:
           name: flixo-v3-project-diagnosis-${{ github.run_id }}
           path: |
             diagnosis-health.log
+            diagnosis-typecheck.log
             diagnostics/v3-project-diagnosis.json
           if-no-files-found: warn
           retention-days: 14
