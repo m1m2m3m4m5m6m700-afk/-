@@ -1,0 +1,96 @@
+name: AI Live Quality
+run-name: AI Live Quality · ${{ github.sha }}
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "src/lib/ai/**"
+      - "src/scripts/validate-ai-contract.mjs"
+      - "src/scripts/test-ai-output-quality.mjs"
+      - "src/scripts/run-ai-live-quality-smoke.mjs"
+      - "tests/fixtures/ai-*-quality*.json"
+      - ".github/workflows/ai-live-quality.yml"
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: "Exact commit SHA to verify"
+        required: true
+        type: string
+
+concurrency:
+  group: ai-live-quality-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  live-smoke:
+    name: Live AI Quality Smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || inputs.expected_sha || github.sha }}
+
+      - name: Verify checked-out commit identity
+        run: |
+          expected="${{ github.event.pull_request.head.sha || inputs.expected_sha || github.sha }}"
+          actual="$(git rev-parse HEAD)"
+          echo "Expected SHA: $expected"
+          echo "Actual SHA:   $actual"
+          test "$actual" = "$expected"
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check live endpoint configuration
+        id: config
+        env:
+          FLIXO_AI_SMOKE_ENDPOINT: ${{ secrets.FLIXO_AI_SMOKE_ENDPOINT }}
+        shell: bash
+        run: |
+          if [ -n "$FLIXO_AI_SMOKE_ENDPOINT" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+            echo "Live AI endpoint configured."
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "Live AI endpoint is not configured; this run is NOT CERTIFIED."
+          fi
+
+      - name: Run live AI quality smoke
+        if: steps.config.outputs.configured == 'true'
+        env:
+          FLIXO_AI_SMOKE_ENDPOINT: ${{ secrets.FLIXO_AI_SMOKE_ENDPOINT }}
+          FLIXO_AI_SMOKE_TIMEOUT_MS: "30000"
+        run: node src/scripts/run-ai-live-quality-smoke.mjs
+
+      - name: Write not-configured evidence
+        if: steps.config.outputs.configured != 'true'
+        run: |
+          mkdir -p .artifacts/gates
+          cat > .artifacts/gates/ai-live-quality.json <<'JSON'
+          {
+            "schemaVersion": 1,
+            "status": "NOT_CONFIGURED",
+            "certificationEligible": false,
+            "reason": "FLIXO_AI_SMOKE_ENDPOINT secret is not configured for this repository/workflow."
+          }
+          JSON
+
+      - name: Upload AI live quality evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-live-quality-${{ github.run_id }}
+          path: .artifacts/gates/ai-live-quality.json
+          if-no-files-found: error
+          retention-days: 30
