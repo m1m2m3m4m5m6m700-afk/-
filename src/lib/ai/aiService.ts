@@ -20,6 +20,7 @@
  */
 
 import { getAIConfig, isAIConfigured } from "./config";
+import { emitInternalDiagnosticEvent, createInternalDiagnosticEvent } from "./diagnostics/internalDiagnosticEvent";
 import { getProviderChain } from "./providers";
 import type { AIProvider } from "./providers/types";
 import { getTaskPrompt } from "./prompts";
@@ -32,8 +33,6 @@ import type {
   AIMessage,
 } from "./types";
 
-/** Trim + collapse whitespace; strip NUL bytes (built via charCode to avoid a
- * control-character literal in a RegExp, which trips no-control-regex). */
 function sanitizeInput(input: string): string {
   const nul = String.fromCharCode(0);
   return input
@@ -124,23 +123,37 @@ class AIService {
       return fail("not_configured", "No AI provider is available.", false);
     }
 
-    // Try the primary provider; on a retryable failure, walk the fallback chain.
     let lastFailure: AIGenerateResult = fail(
       "unknown",
       "AI generation failed for an unknown reason.",
       false,
     );
-    for (let i = 0; i < chain.length; i++) {
+
+    for (let i = 0; i < chain.length; i += 1) {
       const provider: AIProvider = chain[i];
-      // Skip providers that aren't configured (e.g. fallback without a key).
       if (!provider.isConfigured()) continue;
 
       const result = await provider.generate(messages, options);
       if (result.ok) return result;
       lastFailure = result;
 
-      // Only fall through when the failure is retryable AND there is another
-      // configured provider to try.
+      emitInternalDiagnosticEvent(
+        createInternalDiagnosticEvent({
+          occurredAt: new Date().toISOString(),
+          taskId,
+          layer: "provider",
+          provider: provider.id,
+          model: options.model ?? config.providers[provider.id]?.defaultModel,
+          errorKind: result.kind,
+          retryable: result.retryable,
+          attempt: i + 1,
+          metadata: {
+            toolContextEnabled: process.env.FLIXO_AI_TOOL_CONTEXT === "1",
+            inputLength: input.length,
+          },
+        }),
+      );
+
       if (!result.retryable || i === chain.length - 1) break;
     }
 
