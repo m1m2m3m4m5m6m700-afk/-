@@ -1,9 +1,5 @@
 /** Canonical SEO metadata for public Tool Platform registrations. */
-export interface ToolSeoMetadata {
-  readonly title: string;
-  readonly description: string;
-  readonly keywords: readonly string[];
-}
+import type { ToolSeoMetadata } from "./types";
 
 export const toolSeoRegistry: Readonly<Record<string, ToolSeoMetadata>> = Object.freeze({
   "image-compressor": {
