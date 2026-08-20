@@ -112,7 +112,6 @@ async function taskHealth() {
     { name: "Lint", command: "npm", args: ["run", "lint", "--silent"] },
     { name: "Build", command: "npm", args: ["run", "build", "--silent"] },
   ];
-
   for (const check of checks) logInfo(`بدء فحص متوازٍ: ${check.name}`);
 
   const settled = await Promise.all(checks.map(async (check) => {
@@ -126,7 +125,6 @@ async function taskHealth() {
       return [check.name, { passed: false, output }];
     }
   }));
-
   const results = Object.fromEntries(settled);
   const passedCount = Object.values(results).filter((r) => r.passed).length;
   return { task: "health", allPassed: passedCount === checks.length, passedCount, totalChecks: checks.length, results };
@@ -157,8 +155,18 @@ async function taskReport() {
   logSection("📊 المهمة: تقرير شامل متوازي");
   const statusPromise = Promise.resolve(taskStatus());
   const healthPromise = taskHealth();
-  const localizationPromise = taskLocalization();
-  const [status, health, localization] = await Promise.all([statusPromise, healthPromise, localizationPromise]);
+  const [status, health] = await Promise.all([statusPromise, healthPromise]);
+
+  const localizationPath = path.join(REPO_ROOT, "reports", "localization-agent-report.json");
+  const instructionPath = path.join(REPO_ROOT, "reports", "LOCALIZATION_AGENT_TASK.md");
+  const localizationReport = fs.existsSync(localizationPath) ? JSON.parse(fs.readFileSync(localizationPath, "utf8")) : null;
+  const localization = {
+    task: "localization",
+    exitCode: localizationReport?.ok === false ? 1 : 0,
+    reportPath: localizationPath,
+    instructionPath,
+    report: localizationReport,
+  };
 
   const report = {
     task: "report",
@@ -196,9 +204,7 @@ if (!taskMap[taskName]) {
 try {
   const result = await taskMap[taskName]();
   if (taskName === "localization" && result.exitCode !== 0) process.exit(result.exitCode);
-  if ((taskName === "health" || taskName === "report") && !result.health?.allPassed && taskName === "report") {
-    process.exitCode = 1;
-  }
+  if ((taskName === "health" || taskName === "report") && !result.health?.allPassed && taskName === "report") process.exitCode = 1;
   if (taskName === "health" && !result.allPassed) process.exitCode = 1;
   console.log(`\n✅ اكتملت المهمة: ${taskName}`);
 } catch (error) {
