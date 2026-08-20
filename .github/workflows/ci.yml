@@ -72,7 +72,7 @@ jobs:
           VERIFY_EXIT=${PIPESTATUS[0]}
           END_MS=$(date +%s%3N)
           set -e
-          node --input-type=module <<'NODE'
+          START_MS="$START_MS" END_MS="$END_MS" VERIFY_EXIT="$VERIFY_EXIT" node --input-type=module <<'NODE'
           import fs from 'node:fs';
           const started = Number(process.env.START_MS);
           const ended = Number(process.env.END_MS);
@@ -91,10 +91,6 @@ jobs:
           console.log(JSON.stringify(report, null, 2));
           NODE
           exit "$VERIFY_EXIT"
-        env:
-          START_MS: ${{ steps.timing.outputs.start_ms }}
-          END_MS: ${{ steps.timing.outputs.end_ms }}
-          VERIFY_EXIT: ${{ steps.timing.outputs.verify_exit }}
       - name: Upload browser report
         if: always()
         uses: actions/upload-artifact@v4
