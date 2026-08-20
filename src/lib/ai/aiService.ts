@@ -23,6 +23,7 @@ import { getAIConfig, isAIConfigured } from "./config";
 import { getProviderChain } from "./providers";
 import type { AIProvider } from "./providers/types";
 import { getTaskPrompt } from "./prompts";
+import { buildAIOrchestrationContext } from "./orchestration/context";
 import type {
   AITaskId,
   AIGenerateOptions,
@@ -46,6 +47,25 @@ function sanitizeInput(input: string): string {
 
 function fail(kind: AIErrorKind, message: string, retryable: boolean): AIGenerateResult {
   return { ok: false, kind, message, retryable };
+}
+
+function withOptionalToolContext(systemPrompt: string, taskId: AITaskId, input: string): string {
+  if (process.env.FLIXO_AI_TOOL_CONTEXT !== "1") return systemPrompt;
+
+  const context = buildAIOrchestrationContext(taskId, input);
+  if (context.candidateTools.length === 0) return systemPrompt;
+
+  const toolLines = context.candidateTools
+    .map((tool) => `- ${tool.name} (${tool.slug}): ${tool.description}`)
+    .join("\n");
+
+  return [
+    systemPrompt,
+    "",
+    "Canonical FLIXO tool context (read-only; advisory only):",
+    toolLines,
+    "Do not invoke tools, modify data, or apply changes based on this context.",
+  ].join("\n");
 }
 
 class AIService {
@@ -85,9 +105,10 @@ class AIService {
     }
 
     const prompt = getTaskPrompt(taskId);
+    const systemPrompt = withOptionalToolContext(prompt.system, taskId, input);
     const override = config.taskOverrides[taskId];
     const messages: AIMessage[] = [
-      { role: "system", content: prompt.system },
+      { role: "system", content: systemPrompt },
       { role: "user", content: prompt.buildUserPrompt(input) },
     ];
 
