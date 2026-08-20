@@ -1,0 +1,36 @@
+name: Failure Correlation Contract
+
+on:
+  pull_request:
+    branches: [main, experimental]
+    paths:
+      - "src/lib/ai/diagnostics/**"
+      - "src/scripts/test-failure-correlation.ts"
+      - ".github/workflows/failure-correlation.yml"
+  push:
+    branches: [experimental]
+    paths:
+      - "src/lib/ai/diagnostics/**"
+      - "src/scripts/test-failure-correlation.ts"
+      - ".github/workflows/failure-correlation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: failure-correlation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    name: Failure Correlation Contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+      - name: Run deterministic correlation contract
+        run: node --experimental-strip-types src/scripts/test-failure-correlation.ts
