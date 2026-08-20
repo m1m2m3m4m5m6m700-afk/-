@@ -6,6 +6,8 @@ const endpoint = process.env.FLIXO_AI_SMOKE_ENDPOINT;
 const token = process.env.FLIXO_AI_SMOKE_TOKEN;
 const timeoutMs = Number(process.env.FLIXO_AI_SMOKE_TIMEOUT_MS ?? 30000);
 const corpus = JSON.parse(await fs.readFile(path.join(root, "tests/fixtures/ai-live-quality-prompts.json"), "utf8"));
+const extraCorpus = JSON.parse(await fs.readFile(path.join(root, "tests/fixtures/ai-live-quality-extra.json"), "utf8"));
+const cases = [...(corpus.cases ?? []), ...(extraCorpus.cases ?? [])];
 
 if (!endpoint) {
   console.error("LIVE AI QUALITY SMOKE: NOT RUN");
@@ -15,6 +17,10 @@ if (!endpoint) {
 if (!token) {
   console.error("LIVE AI QUALITY SMOKE: NOT RUN");
   console.error("Set FLIXO_AI_SMOKE_TOKEN to the matching protected endpoint token.");
+  process.exit(2);
+}
+if (cases.length !== 46) {
+  console.error(`LIVE AI QUALITY SMOKE: expected 46 cases, found ${cases.length}.`);
   process.exit(2);
 }
 
@@ -86,7 +92,7 @@ function evaluate(testCase, status, body, latencyMs) {
   return { id: testCase.id, category: testCase.category, status, latencyMs, hardScore, passed: failures.length === 0, failures, manualReview, responsePreview: text.slice(0, 500) };
 }
 
-for (const testCase of corpus.cases ?? []) {
+for (const testCase of cases) {
   const started = Date.now();
   let status = 0;
   let body = {};
@@ -101,7 +107,7 @@ for (const testCase of corpus.cases ?? []) {
         accept: "application/json",
         "x-flixo-ai-smoke-token": token,
       },
-      body: JSON.stringify({ message: testCase.prompt, locale: testCase.locale, history: [] }),
+      body: JSON.stringify({ message: testCase.prompt, prompt: testCase.prompt, locale: testCase.locale, history: [] }),
       signal: controller.signal,
     });
     status = response.status;
@@ -113,6 +119,20 @@ for (const testCase of corpus.cases ?? []) {
   } finally {
     clearTimeout(timer);
   }
+
+  if (status === 401) {
+    console.error("LIVE AI QUALITY SMOKE: endpoint authentication failed (HTTP 401). Redeploy the Preview after updating FLIXO_AI_SMOKE_TOKEN, then rerun the smoke.");
+    process.exit(2);
+  }
+  if (status === 403) {
+    console.error("LIVE AI QUALITY SMOKE: endpoint forbidden (HTTP 403). Check the Preview deployment protection settings and smoke token routing.");
+    process.exit(2);
+  }
+  if (status === 404) {
+    console.error("LIVE AI QUALITY SMOKE: endpoint not found or smoke token not configured on the deployment (HTTP 404). Redeploy the target Preview.");
+    process.exit(2);
+  }
+
   const result = evaluate(testCase, status, body, Date.now() - started);
   if (failures.length) result.failures.unshift(...failures);
   if (testCase.checks?.mustReturnInputError && status < 400 && !body?.error) result.failures.push("expected input validation error");
