@@ -1,10 +1,15 @@
-import { tools, type Tool } from "@/data/tools";
+import { publicToolRegistrations } from "@/lib/tool-platform/publicDesktopTools";
+import type { PublicToolRegistration } from "@/lib/tool-platform/types";
 import { verifiedDesktopTools } from "@/lib/desktop-tools/verifiedCatalog";
 
 export type SearchResult<T> = {
   item: T;
   score: number;
   matchedTerms: string[];
+};
+
+export type PublicSearchTool = PublicToolRegistration["manifest"] & {
+  readonly tags?: readonly string[];
 };
 
 const normalize = (value: string) =>
@@ -27,28 +32,6 @@ const singularize = (token: string): string => {
   return token;
 };
 
-const levenshteinDistance = (a: string, b: string): number => {
-  const matrix: number[][] = Array.from({ length: a.length + 1 }, () =>
-    Array(b.length + 1).fill(0),
-  );
-
-  for (let i = 0; i <= a.length; i += 1) matrix[i][0] = i;
-  for (let j = 0; j <= b.length; j += 1) matrix[0][j] = j;
-
-  for (let i = 1; i <= a.length; i += 1) {
-    for (let j = 1; j <= b.length; j += 1) {
-      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-      matrix[i][j] = Math.min(
-        matrix[i - 1][j] + 1,
-        matrix[i][j - 1] + 1,
-        matrix[i - 1][j - 1] + cost,
-      );
-    }
-  }
-
-  return matrix[a.length][b.length];
-};
-
 const scoreSignal = (queryToken: string, signal: string): number => {
   if (!signal) return 0;
   if (signal === queryToken) return 4;
@@ -66,25 +49,39 @@ const getSignalScore = (queryToken: string, signals: string[]): number =>
 
 const uniq = (values: string[]) => Array.from(new Set(values.filter(Boolean)));
 
-/**
- * Canonical public search catalog.
- *
- * Only tools with a real runtime and `ready` status are searchable. Verified
- * desktop extensions replace roadmap entries with the same id so the public
- * catalog has one authoritative version of each tool.
- */
-const verifiedById = new Map(verifiedDesktopTools.map((tool) => [tool.id, tool]));
-const publicToolCatalog: Tool[] = tools.map((tool) => verifiedById.get(tool.id) ?? tool);
+const verifiedById = new Map(
+  verifiedDesktopTools.map((tool) => [
+    tool.id,
+    {
+      ...tool,
+      lifecycle: "public" as const,
+      capabilities: {
+        input: "file" as const,
+        output: "download" as const,
+        localOnly: true,
+        policy: { requiresNetwork: false, requiresStorage: false, sensitiveInput: false },
+      },
+      dependencies: [],
+      certification: publicToolRegistrations[0]?.manifest.certification,
+    },
+  ] as const),
+);
+
+const registeredTools = publicToolRegistrations.map(({ manifest }) => manifest as PublicSearchTool);
+const mergedTools = registeredTools.map((tool) => verifiedById.get(tool.id) ?? tool);
+
 for (const verifiedTool of verifiedDesktopTools) {
-  if (!publicToolCatalog.some((tool) => tool.id === verifiedTool.id)) publicToolCatalog.push(verifiedTool);
+  if (!mergedTools.some((tool) => tool.id === verifiedTool.id)) {
+    mergedTools.push(verifiedById.get(verifiedTool.id)!);
+  }
 }
 
-export const searchableTools: readonly Tool[] = Object.freeze(
-  publicToolCatalog.filter((tool) => tool.status === "ready" && Boolean(tool.slug)),
+export const searchableTools: readonly PublicSearchTool[] = Object.freeze(
+  mergedTools.filter((tool) => tool.lifecycle === "public" && Boolean(tool.slug)),
 );
 
 export const searchableToolSlugs: readonly string[] = Object.freeze(
-  searchableTools.map((tool) => tool.slug as string),
+  searchableTools.map((tool) => tool.slug),
 );
 
 export function searchItems<T>(
@@ -118,23 +115,17 @@ export function searchItems<T>(
     .slice(0, options.limit ?? 20);
 }
 
-/** Search the public Flixo tool catalog — never planned/placeholder tools. */
-export function searchFlixoTools(query: string, limit = 20): SearchResult<Tool>[] {
-  return searchItems(searchableTools as Tool[], query, {
+export function searchFlixoTools(query: string, limit = 20): SearchResult<PublicSearchTool>[] {
+  return searchItems(searchableTools as PublicSearchTool[], query, {
     getSignals: (tool) => [
       tool.name,
       tool.description,
-      ...(tool.tags ?? []),
-      tool.slug ?? "",
+      tool.slug,
     ],
     limit,
   });
 }
 
-/**
- * Backward-compatible slug search, now restricted to the public ready catalog.
- * A caller cannot accidentally surface a planned/placeholder slug here.
- */
 export function searchToolSlugs(query: string, slugs: string[] = [...searchableToolSlugs]): SearchResult<string>[] {
   const allowed = new Set(searchableToolSlugs);
   const publicSlugs = slugs.filter((slug) => allowed.has(slug));
