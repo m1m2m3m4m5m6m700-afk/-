@@ -143,8 +143,8 @@ if (!fs.existsSync(workflowsDir)) {
       const verifyTiming = fs.existsSync(verifyTimingPath) ? readText(verifyTimingPath) : "";
       const hasDirectVerify = /npm\s+run\s+verify\b/.test(workflow);
       const hasCanonicalWrapper = /node\s+scripts\/verify-timing\.mjs/.test(workflow)
-        && /\[\"verify:project""\s*,?\s*\[\"run""\s*,?\s*\"verify:project""\]/.test(verifyTiming)
-        && /\[\"test:after-verify""\s*,?\s*\[\"run""\s*,?\s*\"test:after-verify""\]/.test(verifyTiming);
+        && /\["verify:project"\s*,\s*\["run"\s*,\s*"verify:project"\]\s*\]/.test(verifyTiming)
+        && /\["test:after-verify"\s*,\s*\["run"\s*,\s*"test:after-verify"\]\s*\]/.test(verifyTiming);
 
       if (!hasDirectVerify && !hasCanonicalWrapper) {
         failures.push(
