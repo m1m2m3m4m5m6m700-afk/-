@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "directLegacyImports": 14,
+  "compatibilityShimImports": 33,
+  "policy": {
+    "blockOnNewDebt": true,
+    "blockOnSecurityOrContractFailure": true,
+    "allowKnownDebtWhileNonIncreasing": true
+  }
+}
