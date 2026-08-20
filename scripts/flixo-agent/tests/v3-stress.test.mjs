@@ -29,7 +29,7 @@ for (const [pattern, log] of cases) {
 
 test('known pattern catalog contains all guarded roots', () => {
   const ids = new Set(knownPatterns().map((entry) => entry.id));
-  for (const expected of ['typescript', 'lockfile', 'playwright', 'baseline', 'lint', 'build', 'workflow']) {
+  for (const expected of ['typescript', 'lockfile', 'playwright', 'baseline', 'lint', 'build', 'workflow', 'arabic', 'jsqr']) {
     assert.equal(ids.has(expected), true);
   }
 });
@@ -46,12 +46,32 @@ test('typecheck outranks incidental localization wording', () => {
   assert.equal(result.layer, 'TYPECHECK');
 });
 
-test('precedence matrix resists incidental noise around every guarded root', () => {
-  const noise = ['i18n locale ar-EG', 'npm test', 'GitHub Actions workflow', 'warning: unrelated message'];
+test('precedence matrix handles only incidental noise for each root', () => {
+  const noiseByPattern = {
+    typescript: ['i18n locale ar-EG', 'npm test', 'warning: unrelated message'],
+    lockfile: ['i18n locale ar-EG', 'npm test', 'warning: unrelated message', 'Cannot find module jsqr'],
+    playwright: ['i18n locale ar-EG', 'npm test', 'warning: unrelated message'],
+    baseline: ['i18n locale ar-EG', 'npm test', 'warning: unrelated message'],
+    workflow: ['i18n locale ar-EG', 'npm test', 'warning: unrelated message'],
+    lint: ['i18n locale ar-EG', 'npm test', 'warning: unrelated message'],
+    build: ['i18n locale ar-EG', 'npm test', 'warning: unrelated message'],
+  };
+
   for (const [pattern, cleanLog] of cases) {
-    const result = diagnose([cleanLog, ...noise].join('\n'));
+    const result = diagnose([cleanLog, ...(noiseByPattern[pattern] ?? [])].join('\n'));
     assert.equal(result.knownPattern, pattern, pattern);
   }
+});
+
+test('explicit precedence rules survive conflicting signals', () => {
+  const typecheckVsLockfile = diagnose('error TS2322 in PdfMerge.tsx\npackage-lock.json is unchanged\ni18n locale ar-EG\nGitHub workflow succeeded');
+  assert.equal(typecheckVsLockfile.knownPattern, 'typescript');
+
+  const lockfileVsJsqr = diagnose('npm ERR! ERESOLVE package-lock.json mismatch\nCannot find module jsqr\nworkflow succeeded');
+  assert.equal(lockfileVsJsqr.knownPattern, 'lockfile');
+
+  const workflowVsArabic = diagnose('GitHub Actions workflow failed to parse .github/workflows/ci.yml\ni18n locale ar-EG');
+  assert.equal(workflowVsArabic.knownPattern, 'workflow');
 });
 
 test('multi-signal assessment remains deterministic', () => {
@@ -128,9 +148,10 @@ test('next eligible step respects dependencies', () => {
 });
 
 test('auto-apply is never enabled by default in any stress plan', () => {
-  for (const pattern of ['lockfile', 'playwright', 'baseline']) {
+  for (const pattern of ['lockfile', 'playwright', 'baseline', 'typescript']) {
+    const layer = pattern === 'baseline' ? 'CONTRACT' : pattern === 'lockfile' ? 'DEPENDENCY' : pattern === 'playwright' ? 'WORKFLOW' : 'TYPECHECK';
     const plan = buildStrategicPlan({
-      diagnosis: { known: true, knownPattern: pattern, layer: pattern === 'baseline' ? 'CONTRACT' : pattern === 'lockfile' ? 'DEPENDENCY' : 'WORKFLOW' },
+      diagnosis: { known: true, knownPattern: pattern, layer },
       dependencyImpact: { packageManifestChanged: pattern === 'lockfile' },
     });
     assert.equal(plan.policy.autoApply, false);
