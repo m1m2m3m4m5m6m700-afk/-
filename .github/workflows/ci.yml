@@ -62,6 +62,10 @@ jobs:
         run: |
           set -o pipefail
           npm ci --no-audit 2>&1 | tee .ci-error.txt
+      - name: Error Intelligence self-test
+        run: |
+          set -o pipefail
+          node scripts/test-error-intelligence.mjs 2>&1 | tee .ci-error.txt
       - name: Lockfile unchanged after install
         run: |
           set -o pipefail
