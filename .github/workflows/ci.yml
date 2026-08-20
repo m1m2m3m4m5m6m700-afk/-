@@ -23,10 +23,10 @@ permissions:
   contents: read
 
 jobs:
-  verify:
-    name: Full Verification (main)
+  foundation:
+    name: Foundation Verification
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -40,32 +40,79 @@ jobs:
       - name: Validate dependency contract
         run: npm run validate:dependencies
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --no-audit
       - name: Lockfile unchanged after install
         run: git diff --exit-code -- package.json package-lock.json
-      - name: Production dependency audit
-        run: npm run audit:production
-      - name: Install Chromium for operational tests
-        run: npx playwright install --with-deps chromium
-      - name: Run canonical test gate
-        run: npm run verify
-      - name: Upload browser report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: flixo-playwright-report
-          path: playwright-report
-          if-no-files-found: ignore
-          retention-days: 7
+      - name: Time foundation gate
+        run: node scripts/verify-timing.mjs npm run validate:foundation
+      - name: Static verification after build
+        run: >-
+          npm run validate:registry &&
+          npm run diagnose:tool-platform &&
+          npm run validate:tool-runtime &&
+          npm run validate:search-catalog &&
+          npm run validate:seo &&
+          npm run validate:tool-content &&
+          npm run validate:localization &&
+          npm run validate:localization-surface &&
+          npm run validate:tool-content-localization &&
+          npm run validate:pdf-catalog &&
+          npm run validate:tool-review &&
+          npm run validate:ai &&
+          npm run validate:search-intent &&
+          npm run validate:accessibility &&
+          npm run validate:security &&
+          node src/scripts/validate-build-output.mjs
       - name: Upload diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: ci-diagnostics-${{ github.run_id }}
+          name: ci-foundation-diagnostics-${{ github.run_id }}
           path: |
             ~/.npm/_logs/
             diagnostics/
             test-results/
-            playwright-report/
           if-no-files-found: ignore
           retention-days: 14
+
+  e2e:
+    name: Playwright — ${{ matrix.slice }}
+    needs: foundation
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - slice: pdf
+            spec: tests/pdf-tools.spec.ts
+          - slice: desktop
+            spec: tests/desktop-tools.spec.ts
+          - slice: chat
+            spec: tests/chat.spec.ts
+          - slice: accessibility
+            spec: tests/accessibility.spec.ts
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --no-audit
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run Playwright slice
+        run: node scripts/verify-timing.mjs npx playwright test ${{ matrix.spec }}
+      - name: Upload browser report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flixo-playwright-${{ matrix.slice }}-${{ github.run_id }}
+          path: |
+            playwright-report
+            test-results
+          if-no-files-found: ignore
+          retention-days: 7
