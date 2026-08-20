@@ -7,16 +7,21 @@ import {
 import type { ToolCategoryId } from "@/lib/tool-platform/categories";
 import type { PublicToolRegistration, ToolManifest } from "@/lib/tool-platform/types";
 
+export type ToolStatus = "ready" | "planned" | "placeholder";
+
 export type Tool = ToolManifest & {
   /** Compatibility-only aliases for older data consumers. */
   readonly categoryId: ToolCategoryId;
-  readonly status: "ready";
+  readonly status: ToolStatus;
+  /** Derived discovery tags; canonical source is ToolManifest.seo.keywords. */
+  readonly tags: readonly string[];
 };
 
 const toTool = (registration: PublicToolRegistration): Tool => ({
   ...registration.manifest,
   categoryId: registration.manifest.category,
   status: "ready",
+  tags: registration.manifest.seo?.keywords ?? [],
 });
 
 export const tools: readonly Tool[] = Object.freeze(
