@@ -27,7 +27,7 @@ for (const id of duplicates(contractIds)) issues.push(`Duplicate test contract: 
 if (!tools.includes("publicToolRegistrations")) issues.push("Canonical publicToolRegistrations export is missing.");
 if (!tools.includes("toolBaseManifestSchema")) issues.push("Canonical manifest schema validation is missing.");
 if (!contracts.includes("publicToolTestContracts")) issues.push("Canonical public tool test contracts export is missing.");
-if (!categories.includes("export const categoryCatalog")) issues.push("Canonical category catalog export is missing.");
+if (!categories.includes("export const categories")) issues.push("Canonical category registry is missing its categories export.");
 
 const report = {
   schemaVersion: 2,
