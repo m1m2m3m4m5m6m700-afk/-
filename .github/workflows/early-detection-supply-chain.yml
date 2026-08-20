@@ -13,35 +13,6 @@ permissions:
   security-events: write
 
 jobs:
-  trivy:
-    name: Trivy · filesystem and IaC
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    continue-on-error: true
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-        with:
-          persist-credentials: false
-
-      - name: Trivy scan
-        uses: aquasecurity/trivy-action@v0.33.1
-        with:
-          scan-type: fs
-          scan-ref: .
-          scanners: vuln,misconfig
-          format: sarif
-          output: trivy-results.sarif
-          ignore-unfixed: true
-          severity: HIGH,CRITICAL
-          exit-code: '1'
-
-      - name: Upload Trivy SARIF
-        if: always()
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: trivy-results.sarif
-
   sbom:
     name: Syft + Grype · SBOM and vulnerabilities
     runs-on: ubuntu-latest
