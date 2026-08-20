@@ -28,6 +28,23 @@ jobs:
         run: npm ci --no-audit
       - name: Self-test
         run: node scripts/test-error-intelligence.mjs
+      - name: Create standard diagnostic fixture
+        run: |
+          mkdir -p .artifacts/errors
+          cat > .artifacts/errors/error-report.json <<'JSON'
+          {
+            "schemaVersion": 1,
+            "source": "error-intelligence-ci-fixture",
+            "status": "failure",
+            "errorType": "timeout",
+            "severity": "medium",
+            "message": "synthetic timeout fixture for diagnostic bridge validation",
+            "commitSha": "${GITHUB_SHA}",
+            "autoApply": false,
+            "requiresHumanReview": true
+          }
+          JSON
+          node scripts/error-intelligence-engine.mjs
       - name: Normalize finding reports
         run: node scripts/merge-finding-reports.mjs
       - name: Dashboard
