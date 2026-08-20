@@ -21,6 +21,7 @@
 
 import { getAIConfig, isAIConfigured } from "./config";
 import { emitInternalDiagnosticEvent, createInternalDiagnosticEvent } from "./diagnostics/internalDiagnosticEvent";
+import { persistInternalDiagnosticEvent } from "./diagnostics/diagnosticPersistence";
 import { getProviderChain } from "./providers";
 import type { AIProvider } from "./providers/types";
 import { getTaskPrompt } from "./prompts";
@@ -137,22 +138,23 @@ class AIService {
       if (result.ok) return result;
       lastFailure = result;
 
-      emitInternalDiagnosticEvent(
-        createInternalDiagnosticEvent({
-          occurredAt: new Date().toISOString(),
-          taskId,
-          layer: "provider",
-          provider: provider.id,
-          model: options.model ?? config.providers[provider.id]?.defaultModel,
-          errorKind: result.kind,
-          retryable: result.retryable,
-          attempt: i + 1,
-          metadata: {
-            toolContextEnabled: process.env.FLIXO_AI_TOOL_CONTEXT === "1",
-            inputLength: input.length,
-          },
-        }),
-      );
+      const diagnosticEvent = createInternalDiagnosticEvent({
+        occurredAt: new Date().toISOString(),
+        taskId,
+        layer: "provider",
+        provider: provider.id,
+        model: options.model ?? config.providers[provider.id]?.defaultModel,
+        errorKind: result.kind,
+        retryable: result.retryable,
+        attempt: i + 1,
+        metadata: {
+          toolContextEnabled: process.env.FLIXO_AI_TOOL_CONTEXT === "1",
+          inputLength: input.length,
+        },
+      });
+
+      emitInternalDiagnosticEvent(diagnosticEvent);
+      persistInternalDiagnosticEvent(diagnosticEvent);
 
       if (!result.retryable || i === chain.length - 1) break;
     }
