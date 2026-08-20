@@ -1,0 +1,42 @@
+name: AI Architecture Guards
+
+on:
+  pull_request:
+    branches: [main, experimental]
+    paths:
+      - "src/lib/ai/**"
+      - "src/components/**"
+      - "src/routes/**"
+      - "scripts/validate-ai-architecture-guards.mjs"
+      - ".github/workflows/ai-architecture-guards.yml"
+  push:
+    branches: [experimental]
+    paths:
+      - "src/lib/ai/**"
+      - "src/components/**"
+      - "src/routes/**"
+      - "scripts/validate-ai-architecture-guards.mjs"
+      - ".github/workflows/ai-architecture-guards.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ai-architecture-guards-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  guards:
+    name: AI Architecture Guards
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+      - name: Run dependency-free architecture guards
+        run: node scripts/validate-ai-architecture-guards.mjs
