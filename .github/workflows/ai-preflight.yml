@@ -1,0 +1,66 @@
+name: AI Preflight
+
+on:
+  pull_request:
+    branches: [experimental]
+    paths:
+      - "scripts/ai-preflight-diagnose.mjs"
+      - "scripts/scan-secrets.mjs"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/ai-preflight.yml"
+  push:
+    branches: [experimental]
+    paths:
+      - "scripts/ai-preflight-diagnose.mjs"
+      - "scripts/scan-secrets.mjs"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/ai-preflight.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ai-preflight-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    name: Optimized AI Preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Run optimized preflight
+        env:
+          FLIXO_AI_MONTHLY_CALL_CAP: 500
+          FLIXO_AI_PREFLIGHT_TIMEOUT_MS: 9000
+        run: node scripts/ai-preflight-diagnose.mjs --fast --advisory --no-ai
+      - name: Run preflight a second time to verify deterministic cache path
+        env:
+          FLIXO_AI_MONTHLY_CALL_CAP: 500
+          FLIXO_AI_PREFLIGHT_TIMEOUT_MS: 9000
+        run: node scripts/ai-preflight-diagnose.mjs --fast --advisory --no-ai
+      - name: Upload preflight evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flixo-ai-preflight-${{ github.run_id }}
+          path: |
+            .artifacts/diagnostics/ai-preflight-report.json
+            .artifacts/diagnostics/ai-cache.json
+            .artifacts/diagnostics/ai-usage.json
+            .artifacts/diagnostics/preflight.tsbuildinfo
+            .artifacts/diagnostics/eslint-cache
+          if-no-files-found: ignore
+          retention-days: 14
