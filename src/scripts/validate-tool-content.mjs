@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 const root = process.cwd();
-const toolsSource = fs.readFileSync(path.join(root, "src/data/tools.ts"), "utf8");
+const toolsSource = fs.readFileSync(path.join(root, "src/lib/tool-platform/publicDesktopTools.ts"), "utf8");
 const toolContentSource = fs.readFileSync(path.join(root, "src/data/toolContent.ts"), "utf8");
 const toolSeoSource = fs.readFileSync(path.join(root, "src/data/toolSeo.ts"), "utf8");
 const toolLayoutSource = fs.readFileSync(
@@ -39,24 +39,14 @@ function extractBetween(source, startMarker, endMarker) {
 }
 
 function loadTools(source) {
-  const body = extractBetween(
-    source,
-    "export const tools: Tool[] = [",
-    "];\n\nexport const toolById",
-  );
-  const sanitizedBody = body
-    .replace(/\.\.\.chromeTools,/g, "")
-    .replace(/\.\.\.([A-Za-z0-9_]+),/g, "");
-  const t = (id, name, categoryId, description, status = "placeholder", tags, slug) => ({
-    id,
-    name,
-    categoryId,
-    description,
-    status,
-    tags,
-    slug,
-  });
-  return Function("t", `return [${sanitizedBody}];`)(t);
+  const tools = [];
+  const pattern = /\bid:\s*"([^"]+)"[\s\S]*?\bslug:\s*"([^"]+)"[\s\S]*?\bname:\s*"([^"]+)"[\s\S]*?\bcategory:\s*"([^"]+)"[\s\S]*?\blifecycle:\s*"public"/g;
+  let match;
+  while ((match = pattern.exec(source)) !== null) {
+    tools.push({ id: match[1], slug: match[2], name: match[3], categoryId: match[4], status: "ready" });
+  }
+  if (!tools.length) throw new Error("Canonical public tool registry contains no public tools.");
+  return tools;
 }
 
 function loadToolSeoRegistry(source) {
