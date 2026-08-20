@@ -47,39 +47,52 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - name: Validate CI contract
-        run: npm run validate-ci-contract 2>&1 | tee .ci-error.txt
+        run: |
+          set -o pipefail
+          npm run validate-ci-contract 2>&1 | tee .ci-error.txt
       - name: Validate dependency contract
-        run: npm run validate:dependencies 2>&1 | tee .ci-error.txt
+        run: |
+          set -o pipefail
+          npm run validate:dependencies 2>&1 | tee .ci-error.txt
       - name: Install dependencies
-        run: npm ci --no-audit 2>&1 | tee .ci-error.txt
+        run: |
+          set -o pipefail
+          npm ci --no-audit 2>&1 | tee .ci-error.txt
       - name: Lockfile unchanged after install
-        run: git diff --exit-code -- package.json package-lock.json 2>&1 | tee .ci-error.txt
+        run: |
+          set -o pipefail
+          git diff --exit-code -- package.json package-lock.json 2>&1 | tee .ci-error.txt
       - name: Time foundation gate
-        run: node scripts/verify-timing.mjs npm run validate:foundation 2>&1 | tee .ci-error.txt
+        run: |
+          set -o pipefail
+          node scripts/verify-timing.mjs npm run validate:foundation 2>&1 | tee .ci-error.txt
       - name: Static verification after build
-        run: >-
-          npm run validate:registry &&
-          npm run diagnose:tool-platform &&
-          npm run validate:tool-runtime &&
-          npm run validate:search-catalog &&
-          npm run validate:seo &&
-          npm run validate:tool-content &&
-          npm run validate:localization &&
-          npm run validate:localization-surface &&
-          npm run validate:tool-content-localization &&
-          npm run validate:pdf-catalog &&
-          npm run validate:tool-review &&
-          npm run validate:ai &&
-          npm run validate:search-intent &&
-          npm run validate:accessibility &&
-          npm run validate:security &&
-          node src/scripts/validate-build-output.mjs 2>&1 | tee .ci-error.txt
+        run: |
+          set -o pipefail
+          (
+            npm run validate:registry &&
+            npm run diagnose:tool-platform &&
+            npm run validate:tool-runtime &&
+            npm run validate:search-catalog &&
+            npm run validate:seo &&
+            npm run validate:tool-content &&
+            npm run validate:localization &&
+            npm run validate:localization-surface &&
+            npm run validate:tool-content-localization &&
+            npm run validate:pdf-catalog &&
+            npm run validate:tool-review &&
+            npm run validate:ai &&
+            npm run validate:search-intent &&
+            npm run validate:accessibility &&
+            npm run validate:security &&
+            node src/scripts/validate-build-output.mjs
+          ) 2>&1 | tee .ci-error.txt
       - name: Production dependency audit
-        run: npm run audit:production 2>&1 | tee .ci-error.txt
+        run: |
+          set -o pipefail
+          npm run audit:production 2>&1 | tee .ci-error.txt
       - name: Generate normalized error report
         if: failure()
-        env:
-          CI_ERROR_LOG: ${{ env.CI_ERROR_LOG }}
         run: node scripts/collect-error-report.mjs
       - name: Upload diagnostics on failure
         if: failure()
@@ -121,13 +134,21 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - name: Install dependencies
-        run: npm ci --no-audit 2>&1 | tee .ci-error.txt
+        run: |
+          set -o pipefail
+          npm ci --no-audit 2>&1 | tee .ci-error.txt
       - name: Install Chromium
-        run: npx playwright install --with-deps chromium 2>&1 | tee .ci-error.txt
+        run: |
+          set -o pipefail
+          npx playwright install --with-deps chromium 2>&1 | tee .ci-error.txt
       - name: Run Playwright slice
-        run: node scripts/verify-timing.mjs npx playwright test ${{ matrix.spec }} 2>&1 | tee .ci-error.txt
+        run: |
+          set -o pipefail
+          node scripts/verify-timing.mjs npx playwright test ${{ matrix.spec }} 2>&1 | tee .ci-error.txt
       - name: Generate normalized error report
         if: failure()
+        env:
+          CI_ERROR_MESSAGE: "Playwright slice '${{ matrix.slice }}' failed."
         run: node scripts/collect-error-report.mjs
       - name: Upload browser report
         if: always()
