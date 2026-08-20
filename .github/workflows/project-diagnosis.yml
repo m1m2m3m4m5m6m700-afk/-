@@ -47,6 +47,7 @@ jobs:
           npm run agent:health > diagnosis-health.log 2>&1
           HEALTH_EXIT=$?
           set -e
+          printf '%s\n' "$HEALTH_EXIT" > diagnosis-health.exit
           echo "health_exit=$HEALTH_EXIT" >> "$GITHUB_STEP_SUMMARY"
           exit 0
 
@@ -57,6 +58,7 @@ jobs:
           npm run typecheck > diagnosis-typecheck.log 2>&1
           TYPECHECK_EXIT=$?
           set -e
+          printf '%s\n' "$TYPECHECK_EXIT" > diagnosis-typecheck.exit
           echo "typecheck_exit=$TYPECHECK_EXIT" >> "$GITHUB_STEP_SUMMARY"
           exit 0
 
@@ -70,6 +72,8 @@ jobs:
 
           const healthLog = fs.readFileSync('diagnosis-health.log', 'utf8');
           const typecheckLog = fs.readFileSync('diagnosis-typecheck.log', 'utf8');
+          const healthExit = Number.parseInt(fs.readFileSync('diagnosis-health.exit', 'utf8').trim(), 10);
+          const typecheckExit = Number.parseInt(fs.readFileSync('diagnosis-typecheck.exit', 'utf8').trim(), 10);
           const combinedLog = [
             '=== CANONICAL TYPECHECK ===',
             typecheckLog,
@@ -94,8 +98,8 @@ jobs:
             sha: process.env.GITHUB_SHA,
             generatedAt: new Date().toISOString(),
             signals: {
-              health: { exitCode: fs.readFileSync('diagnosis-health.log', 'utf8').includes('health_exit=0') ? 0 : null },
-              typecheck: { failed: /\bTS\d{4}\b|error TS\d{4}|Found \d+ errors?/i.test(typecheckLog) },
+              health: { exitCode: healthExit, failed: healthExit !== 0 },
+              typecheck: { exitCode: typecheckExit, failed: typecheckExit !== 0 },
             },
             assessment,
             plan,
@@ -117,7 +121,9 @@ jobs:
           name: flixo-v3-project-diagnosis-${{ github.run_id }}
           path: |
             diagnosis-health.log
+            diagnosis-health.exit
             diagnosis-typecheck.log
+            diagnosis-typecheck.exit
             diagnostics/v3-project-diagnosis.json
           if-no-files-found: warn
           retention-days: 14
