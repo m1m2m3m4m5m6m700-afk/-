@@ -63,6 +63,9 @@ export const categories: ToolCategoryPresentation[] = [
   { id: "future", name: "Future Features", description: "Experiments and requested tools on the Flixo roadmap.", icon: Rocket, anchor: "future", order: 15, toolIds: ["workflow-builder", "tool-api", "team-workspace", "ai-assistant", "tool-request-center", "community-voting", "favorites", "recent-tools", "tool-history", "personalized-dashboard", "roadmap", "whats-new", "usage-analytics", "admin-dashboard", "plugin-system", "multi-language", "pwa", "desktop-app", "mobile-app"] },
 ];
 
+/** Canonical compatibility alias: one source of truth, no duplicated catalog. */
+export const categoryCatalog = categories;
+
 export const categoryById = new Map<ToolCategoryId, ToolCategoryPresentation>(categories.map((category) => [category.id, category]));
 export const sortedCategories = [...categories].sort((a, b) => a.order - b.order);
 export const getCategory = (id: ToolCategoryId): ToolCategoryPresentation | undefined => categoryById.get(id);
