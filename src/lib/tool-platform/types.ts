@@ -11,6 +11,9 @@ export type ToolLifecycleState =
   | "public"
   | "deprecated";
 
+/** Compatibility status used by legacy consumers; canonical tools currently expose ready. */
+export type ToolStatus = "ready" | "planned" | "placeholder";
+
 export type ToolInputKind = "file" | "files" | "text" | "url" | "none";
 export type ToolOutputKind = "download" | "preview" | "text" | "none";
 export type ToolTestCheck =
@@ -71,6 +74,10 @@ export interface ToolManifest {
   readonly dependencies: readonly string[];
   readonly seo: ToolSeoMetadata;
   readonly certification: ToolCertificationRequirements;
+  /** Search/SEO compatibility metadata retained at the manifest boundary. */
+  readonly tags: readonly string[];
+  /** Compatibility status projection for older consumers. */
+  readonly status?: ToolStatus;
 }
 
 export interface ToolTestContract {
