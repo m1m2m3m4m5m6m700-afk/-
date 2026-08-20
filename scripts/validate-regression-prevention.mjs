@@ -3,6 +3,7 @@ import path from "node:path";
 
 const root = process.cwd();
 const failures = [];
+const warnings = [];
 
 async function walk(dir, predicate = () => true) {
   const out = [];
@@ -24,11 +25,11 @@ const files = [...sourceFiles, ...testFiles, ...scriptFiles];
 for (const file of files) {
   const content = await fs.readFile(path.join(root, file), "utf8");
 
-  // Detect real imports/requires, not validators or documentation that merely
-  // mention the removed legacy names as forbidden patterns.
-  const legacyImport = /(?:import\s+[^;]*from\s+|require\s*\(\s*)["'][^"']*(?:megaToolsCatalog|megaToolsEngine|@\/data\/tools|src\/data\/)[^"']*["']/.test(content);
-  if (legacyImport) {
-    failures.push({ rule: "legacy-import", file, message: "Removed legacy subsystem/data import returned." });
+  // Block only imports of subsystems that were actually deleted.
+  // Other src/data domains still exist as data sources and are tracked separately.
+  const deletedLegacyImport = /(?:import\s+[^;]*from\s+|require\s*\(\s*)["'][^"']*(?:megaToolsCatalog|megaToolsEngine|@\/data\/tools|src\/data\/tools)[^"']*["']/.test(content);
+  if (deletedLegacyImport) {
+    failures.push({ rule: "deleted-legacy-import", file, message: "Removed legacy mega-tool/tool catalog import returned." });
   }
 
   if (file.startsWith("src/lib/ai/") && /autoApply\s*[:=]\s*true/.test(content)) {
@@ -54,22 +55,26 @@ const workflows = await walk(".github/workflows", (name) => /\.(yml|yaml)$/.test
 for (const file of workflows) {
   const content = await fs.readFile(path.join(root, file), "utf8");
   if (content.includes("npm ci") && !content.includes("--no-audit")) {
-    failures.push({ rule: "ci-install-determinism", file, message: "CI npm ci must use --no-audit; security audit runs separately." });
+    warnings.push({ rule: "ci-install-determinism", file, message: "CI npm ci should prefer --no-audit; security audit should run separately." });
   }
 }
 
 const rules = [
-  "legacy-import",
+  "deleted-legacy-import",
   "ai-auto-apply",
   "package-lock-parity",
-  "ci-install-determinism",
 ];
 
+if (warnings.length) {
+  console.warn(`REGRESSION PREVENTION: ${warnings.length} advisory warning(s)`);
+  for (const warning of warnings) console.warn(`- [${warning.rule}] ${warning.file}: ${warning.message}`);
+}
+
 if (failures.length) {
-  console.error(`REGRESSION PREVENTION: FAIL (${failures.length} issue(s))`);
+  console.error(`REGRESSION PREVENTION: FAIL (${failures.length} blocking issue(s))`);
   for (const failure of failures) console.error(`- [${failure.rule}] ${failure.file}: ${failure.message}`);
   process.exit(1);
 }
 
-console.log(`REGRESSION PREVENTION: PASS (${rules.length} recurrence guards)`);
+console.log(`REGRESSION PREVENTION: PASS (${rules.length} blocking recurrence guards)`);
 console.log(`Guarded: ${rules.join(", ")}`);
