@@ -193,11 +193,112 @@ if (securityEvidence) {
 }
 
 const baseRef = run.pull_requests?.[0]?.base?.ref ?? 'main';
+const allowedStrategies = new Set(['lockfile-fixer', 'test-retry-fixer', 'environment-review', 'human-review', 'none']);
+const clampConfidence = (value) => Math.max(0, Math.min(1, Number(value) || 0));
+
+function providerConfig() {
+  const read = (name) => process.env[name]?.trim() || undefined;
+  const openai = { id: 'openai', apiKey: read('OPENAI_API_KEY'), model: read('OPENAI_MODEL') || 'gpt-4o-mini', baseUrl: read('OPENAI_BASE_URL') || 'https://api.openai.com/v1' };
+  const gemini = { id: 'gemini', apiKey: read('GEMINI_API_KEY'), model: read('GEMINI_MODEL') || 'gemini-2.5-flash-lite', baseUrl: read('GEMINI_BASE_URL') || 'https://generativelanguage.googleapis.com' };
+  const openrouter = { id: 'openrouter', apiKey: read('OPENROUTER_API_KEY'), model: read('OPENROUTER_FREE_MODEL') || 'openrouter/free', baseUrl: read('OPENROUTER_BASE_URL') || 'https://openrouter.ai/api/v1' };
+  const active = ['openai', 'gemini', 'openrouter'].includes(read('FLIXO_AI_PROVIDER') || '') ? read('FLIXO_AI_PROVIDER') : 'openai';
+  const fallback = ['openai', 'gemini', 'openrouter'].includes(read('FLIXO_AI_FALLBACK_PROVIDER') || '') ? read('FLIXO_AI_FALLBACK_PROVIDER') : undefined;
+  const ordered = [...new Set([active, fallback].filter(Boolean))];
+  return { providers: { openai, gemini, openrouter }, ordered, timeoutMs: Number.parseInt(read('FLIXO_AI_TIMEOUT_MS') || '20000', 10) || 20000 };
+}
+
+function extractJson(text) {
+  const fenced = text.match(/```json\s*([\s\S]*?)```/i);
+  const candidate = fenced?.[1] || text.match(/\{[\s\S]*\}/)?.[0];
+  if (!candidate) return null;
+  try { return JSON.parse(candidate); } catch { return null; }
+}
+
+async function callAiProvider(provider, prompt, signal) {
+  if (!provider.apiKey) return { ok: false, retryable: false };
+  if (provider.id === 'gemini') {
+    const response = await fetch(`${provider.baseUrl}/v1beta/models/${encodeURIComponent(provider.model)}:generateContent?key=${encodeURIComponent(provider.apiKey)}`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, signal,
+      body: JSON.stringify({ systemInstruction: { parts: [{ text: 'You are Flixo CI Error Diagnosis. Analyze evidence only. Never authorize code changes. Return JSON only.' }] }, contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { temperature: 0.1, maxOutputTokens: 700 } }),
+    });
+    if (!response.ok) return { ok: false, retryable: response.status === 408 || response.status === 429 || response.status >= 500 };
+    const data = await response.json();
+    const text = data.candidates?.[0]?.content?.parts?.map((part) => part.text || '').join('') || '';
+    return { ok: Boolean(text), text, retryable: !text };
+  }
+  const response = await fetch(`${provider.baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${provider.apiKey}`, ...(provider.id === 'openrouter' ? { 'http-referer': 'https://flixoai.vercel.app', 'x-title': 'Flixo' } : {}) },
+    signal,
+    body: JSON.stringify({ model: provider.model, messages: [{ role: 'system', content: 'You are Flixo CI Error Diagnosis. Analyze evidence only. Never authorize code changes. Return JSON only.' }, { role: 'user', content: prompt }], temperature: 0.1, max_tokens: 700 }),
+  });
+  if (!response.ok) return { ok: false, retryable: response.status === 408 || response.status === 429 || response.status >= 500 };
+  const data = await response.json();
+  const text = typeof data.choices?.[0]?.message?.content === 'string' ? data.choices[0].message.content : '';
+  return { ok: Boolean(text), text, retryable: !text };
+}
+
+async function aiDiagnose({ failedJobs, issues, corpus, baseRef }) {
+  const enabled = process.env.FLIXO_AI_ERROR_DIAGNOSIS !== 'false';
+  const config = providerConfig();
+  const configured = config.ordered.map((id) => config.providers[id]).filter((provider) => provider.apiKey);
+  if (!enabled) return { status: 'disabled', reason: 'FLIXO_AI_ERROR_DIAGNOSIS=false' };
+  if (!configured.length) return { status: 'unavailable', reason: 'No supported AI provider credentials are available to the workflow.' };
+
+  const prompt = [
+    'Analyze this failed CI run and return exactly one JSON object with keys:',
+    'rootCause, explanation, confidence, recommendedStrategy, evidence, needsHumanReview.',
+    'recommendedStrategy must be one of: lockfile-fixer, test-retry-fixer, environment-review, human-review, none.',
+    'confidence must be a number from 0 to 1. Never claim certainty from weak evidence.',
+    'Do not invent missing log details. Do not suggest modifying main. Auto-repair is only separately authorized by deterministic policy.',
+    `Base branch: ${baseRef}`,
+    `Failed jobs: ${JSON.stringify(failedJobs.map((job) => ({ name: job.job, failedSteps: job.steps.filter((step) => step.conclusion === 'failure').map((step) => step.name) })))}`,
+    `Deterministic findings: ${JSON.stringify(issues)}`,
+    `CI logs (truncated):\n${corpus.slice(-30000)}`,
+  ].join('\n\n');
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), config.timeoutMs);
+  try {
+    let lastError = 'AI provider unavailable';
+    for (const provider of configured) {
+      try {
+        const result = await callAiProvider(provider, prompt, controller.signal);
+        if (!result.ok) { lastError = `${provider.id} unavailable`; continue; }
+        const parsed = extractJson(result.text);
+        if (!parsed || typeof parsed !== 'object') { lastError = `${provider.id} returned invalid JSON`; continue; }
+        const recommendation = allowedStrategies.has(parsed.recommendedStrategy) ? parsed.recommendedStrategy : 'human-review';
+        const confidence = clampConfidence(parsed.confidence);
+        return {
+          status: 'success', provider: provider.id, model: provider.model,
+          rootCause: typeof parsed.rootCause === 'string' ? parsed.rootCause.slice(0, 1000) : 'Unknown',
+          explanation: typeof parsed.explanation === 'string' ? parsed.explanation.slice(0, 2000) : '',
+          confidence,
+          recommendedStrategy: recommendation,
+          evidence: Array.isArray(parsed.evidence) ? parsed.evidence.slice(0, 8) : [],
+          needsHumanReview: parsed.needsHumanReview !== false || confidence < 0.85 || recommendation === 'human-review',
+        };
+      } catch (error) {
+        lastError = `${provider.id}: ${error instanceof Error ? error.message : String(error)}`;
+      }
+      if (controller.signal.aborted) break;
+    }
+    return { status: 'failed', reason: lastError };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+const aiDiagnosis = await aiDiagnose({ failedJobs, issues, corpus: failedCorpus || corpus, baseRef });
+
 const conflictingHighRisk = issues.some((issue) => issue.severity === 'critical');
 const lockfileCandidate = issues.find((issue) => issue.recommendedStrategy === 'lockfile-fixer' && issue.autoApplyAllowed === true);
+const aiAgreesWithSafeRepair = aiDiagnosis.status === 'success'
+  && aiDiagnosis.recommendedStrategy === 'lockfile-fixer'
+  && aiDiagnosis.confidence >= 0.85;
 
 const report = {
-  version: 2,
+  version: 3,
   runId,
   repository: repo,
   headSha: run.head_sha ?? null,
@@ -213,11 +314,12 @@ const report = {
   workspace: { packageJsonExists, packageLockExists },
   runHistoryMatches,
   issues,
-  decision: lockfileCandidate && !conflictingHighRisk
+  aiDiagnosis,
+  decision: lockfileCandidate && !conflictingHighRisk && (aiDiagnosis.status !== 'success' || aiAgreesWithSafeRepair)
     ? 'candidate-for-safe-dry-run'
     : 'human-review-required',
-  recommendedStrategy: lockfileCandidate && !conflictingHighRisk ? 'lockfile-fixer' : 'human-review',
-  confidence: lockfileCandidate?.confidence ?? Math.max(0, ...issues.map((issue) => issue.confidence)),
+  recommendedStrategy: lockfileCandidate && !conflictingHighRisk && (aiDiagnosis.status !== 'success' || aiAgreesWithSafeRepair) ? 'lockfile-fixer' : 'human-review',
+  confidence: Math.max(lockfileCandidate?.confidence ?? 0, aiDiagnosis.status === 'success' ? aiDiagnosis.confidence : 0),
   policy: {
     minimumConfidence: 0.85,
     srcAutoMutation: false,
@@ -225,7 +327,7 @@ const report = {
     productionAutoMerge: false,
     defaultMode: 'dry-run',
     automaticStrategies: ['lockfile-fixer'],
-    automaticStrategyRequirement: 'autoApplyAllowed === true and confidence >= 0.85',
+    automaticStrategyRequirement: 'deterministic allow-list + confidence >= 0.85; AI recommendation can only confirm, never grant, repair permission',
   },
 };
 
