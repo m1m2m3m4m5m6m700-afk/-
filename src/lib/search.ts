@@ -32,6 +32,28 @@ const singularize = (token: string): string => {
   return token;
 };
 
+const levenshteinDistance = (a: string, b: string): number => {
+  const matrix: number[][] = Array.from({ length: a.length + 1 }, () =>
+    Array(b.length + 1).fill(0),
+  );
+
+  for (let i = 0; i <= a.length; i += 1) matrix[i][0] = i;
+  for (let j = 0; j <= b.length; j += 1) matrix[0][j] = j;
+
+  for (let i = 1; i <= a.length; i += 1) {
+    for (let j = 1; j <= b.length; j += 1) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      matrix[i][j] = Math.min(
+        matrix[i - 1][j] + 1,
+        matrix[i][j - 1] + 1,
+        matrix[i - 1][j - 1] + cost,
+      );
+    }
+  }
+
+  return matrix[a.length][b.length];
+};
+
 const scoreSignal = (queryToken: string, signal: string): number => {
   if (!signal) return 0;
   if (signal === queryToken) return 4;
@@ -117,16 +139,15 @@ export function searchItems<T>(
 
 export function searchFlixoTools(query: string, limit = 20): SearchResult<PublicSearchTool>[] {
   return searchItems(searchableTools as PublicSearchTool[], query, {
-    getSignals: (tool) => [
-      tool.name,
-      tool.description,
-      tool.slug,
-    ],
+    getSignals: (tool) => [tool.name, tool.description, tool.slug],
     limit,
   });
 }
 
-export function searchToolSlugs(query: string, slugs: string[] = [...searchableToolSlugs]): SearchResult<string>[] {
+export function searchToolSlugs(
+  query: string,
+  slugs: string[] = [...searchableToolSlugs],
+): SearchResult<string>[] {
   const allowed = new Set(searchableToolSlugs);
   const publicSlugs = slugs.filter((slug) => allowed.has(slug));
   return searchItems(publicSlugs, query, {
