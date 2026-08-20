@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "id": "localization-en-ar-simple",
+      "category": "localization",
+      "locale": "ar",
+      "prompt": "أجب بالعربية فقط: ما فائدة دمج ملفات PDF في ملف واحد؟",
+      "checks": {
+        "mustContain": ["PDF"],
+        "mustNotClaimToolUse": true,
+        "language": "ar"
+      }
+    }
+  ]
+}
