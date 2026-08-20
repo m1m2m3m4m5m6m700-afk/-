@@ -1,0 +1,62 @@
+name: AI Advisor · Qwen Diagnosis
+
+on:
+  workflow_dispatch:
+    inputs:
+      prompt:
+        description: "Diagnostic request"
+        required: true
+        type: string
+      ref:
+        description: "Git ref to inspect"
+        required: false
+        default: "reset/remove-legacy-mega-tools"
+        type: string
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+jobs:
+  diagnose:
+    if: ${{ secrets.QWEN_API_KEY != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout target ref
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 1
+
+      - name: Run Qwen Code (advisory only)
+        id: qwen
+        uses: QwenLM/qwen-code-action@v1
+        with:
+          openai_api_key: ${{ secrets.QWEN_API_KEY }}
+          openai_model: ${{ vars.QWEN_MODEL || 'qwen-coder-plus-latest' }}
+          prompt: |
+            You are FLIXO's advisory engineering diagnostician.
+            Follow QWEN.md strictly.
+            Never apply, commit, merge, deploy, or change secrets.
+            Read .artifacts/errors/error-report.json when present.
+            Diagnose the requested issue, identify root cause, affected files,
+            smallest safe patch, and exact verification commands.
+            Request:
+            ${{ inputs.prompt }}
+          upload_artifacts: true
+
+      - name: Write advisory result
+        env:
+          SUMMARY: ${{ steps.qwen.outputs.summary }}
+        run: |
+          mkdir -p .artifacts/ai-advisor
+          printf '%s\n' "$SUMMARY" > .artifacts/ai-advisor/qwen-summary.md
+          printf '%s\n' 'autoApply=false' > .artifacts/ai-advisor/policy.txt
+          printf '%s\n' 'requiresHumanReview=true' >> .artifacts/ai-advisor/policy.txt
+
+      - name: Upload advisory artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: qwen-diagnosis
+          path: .artifacts/ai-advisor/
