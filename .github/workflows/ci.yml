@@ -65,10 +65,31 @@ jobs:
       - name: Run canonical verification gate with timing
         shell: bash
         run: |
+          set +e
           set -o pipefail
           mkdir -p diagnostics
+          START_MS=$(node -p 'Date.now()')
           echo "Starting timed verification at $(date -u +%FT%TZ)"
-          timeout --signal=TERM --kill-after=30s 55m node scripts/verify-timing.mjs 2>&1 | tee diagnostics/npm-verify.log
+          timeout --signal=TERM --kill-after=30s 55m npm run verify 2>&1 | tee diagnostics/npm-verify.log
+          VERIFY_EXIT=${PIPESTATUS[0]}
+          END_MS=$(node -p 'Date.now()')
+          DURATION_MS=$((END_MS - START_MS))
+          node --input-type=module <<NODE
+          import fs from 'node:fs';
+          const report = {
+            version: 1,
+            sha: process.env.GITHUB_SHA || null,
+            ref: process.env.GITHUB_REF_NAME || null,
+            runId: process.env.GITHUB_RUN_ID || null,
+            startedAt: new Date(${START_MS}).toISOString(),
+            durationMs: ${DURATION_MS},
+            stages: [{ name: 'verify', exitCode: ${VERIFY_EXIT}, durationMs: ${DURATION_MS} }],
+            passed: ${VERIFY_EXIT} === 0,
+          };
+          fs.writeFileSync('diagnostics/verify-timing.json', JSON.stringify(report, null, 2) + '\\n');
+          console.log(JSON.stringify(report, null, 2));
+          NODE
+          exit ${VERIFY_EXIT}
       - name: Upload browser report
         if: always()
         uses: actions/upload-artifact@v4
@@ -100,7 +121,6 @@ jobs:
             test-results/
             playwright-report/
           if-no-files-found: ignore
-          retention-days: 14
 
   v3-diagnosis:
     name: V3 Diagnose Real CI Failure
