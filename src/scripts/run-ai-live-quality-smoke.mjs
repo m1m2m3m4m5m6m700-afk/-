@@ -3,12 +3,18 @@ import path from "node:path";
 
 const root = process.cwd();
 const endpoint = process.env.FLIXO_AI_SMOKE_ENDPOINT;
+const token = process.env.FLIXO_AI_SMOKE_TOKEN;
 const timeoutMs = Number(process.env.FLIXO_AI_SMOKE_TIMEOUT_MS ?? 30000);
 const corpus = JSON.parse(await fs.readFile(path.join(root, "tests/fixtures/ai-live-quality-prompts.json"), "utf8"));
 
 if (!endpoint) {
   console.error("LIVE AI QUALITY SMOKE: NOT RUN");
-  console.error("Set FLIXO_AI_SMOKE_ENDPOINT to a deployed Flixo chat endpoint. No provider secret is read or stored by this script.");
+  console.error("Set FLIXO_AI_SMOKE_ENDPOINT to the protected Flixo smoke endpoint.");
+  process.exit(2);
+}
+if (!token) {
+  console.error("LIVE AI QUALITY SMOKE: NOT RUN");
+  console.error("Set FLIXO_AI_SMOKE_TOKEN to the matching protected endpoint token.");
   process.exit(2);
 }
 
@@ -17,6 +23,8 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function textFromBody(body) {
   if (typeof body?.reply === "string") return body.reply.trim();
+  if (typeof body?.output === "string") return body.output.trim();
+  if (typeof body?.content === "string") return body.content.trim();
   if (typeof body?.error === "string") return body.error.trim();
   return "";
 }
@@ -88,7 +96,11 @@ for (const testCase of corpus.cases ?? []) {
   try {
     const response = await fetch(endpoint, {
       method: "POST",
-      headers: { "content-type": "application/json", accept: "application/json" },
+      headers: {
+        "content-type": "application/json",
+        accept: "application/json",
+        "x-flixo-ai-smoke-token": token,
+      },
       body: JSON.stringify({ message: testCase.prompt, locale: testCase.locale, history: [] }),
       signal: controller.signal,
     });
