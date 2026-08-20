@@ -23,7 +23,7 @@
     "validate:failure-quality": "node src/scripts/strict-failure-quality.mjs",
     "validate:performance": "node src/scripts/strict-performance.mjs",
     "validate:regression-prevention": "node scripts/validate-regression-prevention.mjs",
-    "validate:foundation": "npm run validate:project-contract && npm run validate:test-quality && npm run validate:tool-platform && npm run validate:tool-platform-lifecycle && npm run validate:tool-platform-boundaries && npm run diagnose:tool-platform && npm run typecheck && npm run lint && npm run build && npm run validate:route-tree && npm run validate:flaky-isolation && npm run validate:failure-quality && npm run validate:security-strict && npm run test:property-fuzz && npm run test:fault-injection && npm run audit:production",
+    "validate:foundation": "npm run validate:regression-prevention && npm run validate:project-contract && npm run validate:test-quality && npm run validate:tool-platform && npm run validate:tool-platform-lifecycle && npm run validate:tool-platform-boundaries && npm run diagnose:tool-platform && npm run typecheck && npm run lint && npm run build && npm run validate:route-tree && npm run validate:flaky-isolation && npm run validate:failure-quality && npm run validate:security-strict && npm run test:property-fuzz && npm run test:fault-injection && npm run audit:production",
     "verify:foundation": "npm run validate:foundation",
     "verify:tool": "npm run verify:foundation && npm run validate:tool-platform-regression && npm run test:desktop",
     "verify:strict": "npm run verify:foundation && npm run validate:performance",
