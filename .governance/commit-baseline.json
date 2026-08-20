@@ -1,10 +1,11 @@
 {
-  "version": 1,
-  "directLegacyImports": 14,
+  "version": 2,
+  "directLegacyImports": 47,
   "compatibilityShimImports": 33,
   "policy": {
     "blockOnNewDebt": true,
     "blockOnSecurityOrContractFailure": true,
-    "allowKnownDebtWhileNonIncreasing": true
+    "allowKnownDebtWhileNonIncreasing": true,
+    "baselineReason": "Rebased to the measured merge-state debt after the canonical-registry migration; future commits may not increase these counts."
   }
 }
