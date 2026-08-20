@@ -10,15 +10,19 @@ const diagnostics = [];
 const add = (severity, code, message, context = {}) =>
   diagnostics.push({ severity, code, message, ...context });
 
-const toolsSource = await read("src/data/tools.ts");
 const publicSource = await read("src/lib/tool-platform/publicDesktopTools.ts");
-const testsSource = await read("src/lib/tool-platform/testContracts.ts");
+const contractsSource = await read("src/lib/tool-platform/testContracts.ts");
+const categoriesSource = await read("src/lib/tool-platform/categories.ts");
 const typesSource = await read("src/lib/tool-platform/types.ts");
 
-const toolIds = [...toolsSource.matchAll(/t\(\s*"([^"]+)"\s*,\s*"([^"]+)"\s*,/g)].map((m) => m[1]);
-const readyTools = [...toolsSource.matchAll(/t\(\s*"([^"]+)"\s*,[\s\S]*?,\s*"ready"\s*,[\s\S]*?,\s*"([^"]+)"\)/g)].map((m) => ({ id: m[1], slug: m[2] }));
-const publicTools = [...publicSource.matchAll(/id:\s*"([^"]+)"[\s\S]*?slug:\s*"([^"]+)"/g)].map((m) => ({ id: m[1], slug: m[2] }));
-const routes = [...testsSource.matchAll(/\{\s*toolId:\s*"([^"]+)"\s*,\s*route:\s*"([^"]+)"/g)].map((m) => ({ toolId: m[1], route: m[2] }));
+const publicTools = [...publicSource.matchAll(/id:\s*"([^"]+)"[\s\S]*?slug:\s*"([^"]+)"/g)].map((m) => ({
+  id: m[1],
+  slug: m[2],
+}));
+const contracts = [...contractsSource.matchAll(/toolId:\s*"([^"]+)"\s*,\s*route:\s*"([^"]+)"/g)].map((m) => ({
+  toolId: m[1],
+  route: m[2],
+}));
 
 const countDuplicates = (values) => {
   const seen = new Set();
@@ -30,69 +34,82 @@ const countDuplicates = (values) => {
   return [...duplicates];
 };
 
-for (const duplicate of countDuplicates(toolIds)) {
-  add("error", "DUPLICATE_TOOL_ID", `Duplicate catalog tool id: ${duplicate}`, { toolId: duplicate });
-}
 for (const duplicate of countDuplicates(publicTools.map((tool) => tool.id))) {
   add("error", "DUPLICATE_PUBLIC_TOOL_ID", `Duplicate public tool id: ${duplicate}`, { toolId: duplicate });
 }
 for (const duplicate of countDuplicates(publicTools.map((tool) => tool.slug))) {
-  add("error", "DUPLICATE_PUBLIC_TOOL_SLUG", `Duplicate public tool slug: ${duplicate}`, { route: `/tools/${duplicate}` });
+  add("error", "DUPLICATE_PUBLIC_TOOL_SLUG", `Duplicate public tool slug: ${duplicate}`, {
+    route: `/tools/${duplicate}`,
+  });
 }
-for (const duplicate of countDuplicates(routes.map((entry) => entry.route))) {
-  add("error", "DUPLICATE_TOOL_ROUTE", `Duplicate tool test route: ${duplicate}`, { route: duplicate });
+for (const duplicate of countDuplicates(contracts.map((entry) => entry.route))) {
+  add("error", "DUPLICATE_TOOL_ROUTE", `Duplicate tool test route: ${duplicate}`, {
+    route: duplicate,
+  });
+}
+for (const duplicate of countDuplicates(contracts.map((entry) => entry.toolId))) {
+  add("error", "DUPLICATE_TEST_CONTRACT", `Duplicate test contract: ${duplicate}`, {
+    toolId: duplicate,
+  });
 }
 
-const catalogIds = new Set(toolIds);
 const publicIds = new Set(publicTools.map((tool) => tool.id));
 const publicSlugs = new Set(publicTools.map((tool) => tool.slug));
-const testIds = new Set(routes.map((entry) => entry.toolId));
+const contractIds = new Set(contracts.map((entry) => entry.toolId));
 
 for (const tool of publicTools) {
-  if (!catalogIds.has(tool.id)) {
-    add("error", "PUBLIC_TOOL_NOT_IN_CATALOG", `Public registration references unknown catalog tool: ${tool.id}`, { toolId: tool.id });
+  if (!contractIds.has(tool.id)) {
+    add("error", "PUBLIC_TOOL_MISSING_TEST", `Public tool has no test contract: ${tool.id}`, {
+      toolId: tool.id,
+      route: `/tools/${tool.slug}`,
+    });
   }
-  const matchingRoute = routes.find((entry) => entry.toolId === tool.id);
-  if (!matchingRoute) {
-    add("error", "PUBLIC_TOOL_MISSING_TEST", `Public tool has no test contract: ${tool.id}`, { toolId: tool.id, route: `/tools/${tool.slug}` });
-  } else if (matchingRoute.route !== `/tools/${tool.slug}`) {
+  const matching = contracts.find((entry) => entry.toolId === tool.id);
+  if (matching && matching.route !== `/tools/${tool.slug}`) {
     add("error", "TOOL_ROUTE_SLUG_MISMATCH", `Route does not match public slug for ${tool.id}.`, {
       toolId: tool.id,
-      route: matchingRoute.route,
+      route: matching.route,
       details: { expected: `/tools/${tool.slug}` },
     });
   }
 }
 
-for (const entry of routes) {
-  if (!catalogIds.has(entry.toolId)) {
-    add("error", "TEST_TOOL_NOT_IN_CATALOG", `Test contract references unknown catalog tool: ${entry.toolId}`, { toolId: entry.toolId, route: entry.route });
-  }
-}
-
-for (const tool of readyTools) {
-  if (!publicIds.has(tool.id)) {
-    add("warning", "READY_TOOL_NOT_PUBLIC_REGISTRY", `Ready tool is not in the public/certified registration surface: ${tool.id}.`, {
-      toolId: tool.id,
-      route: `/tools/${tool.slug}`,
+for (const entry of contracts) {
+  if (!publicIds.has(entry.toolId)) {
+    add("error", "TEST_TOOL_NOT_REGISTERED", `Test contract references unknown public tool: ${entry.toolId}`, {
+      toolId: entry.toolId,
+      route: entry.route,
     });
   }
 }
 
-if (!typesSource.includes('export type ToolDiagnosticSeverity = "info" | "warning" | "error";') && !typesSource.includes("ToolDiagnosticSeverity")) {
-  add("warning", "DIAGNOSTICS_NOT_IN_CORE_TYPES", "Central diagnostics contract exists outside Tool platform types; consider consolidating it later.");
+if (!publicSource.includes("publicToolRegistrations")) {
+  add("error", "CANONICAL_REGISTRY_EXPORT_MISSING", "publicToolRegistrations export is missing from the canonical registry.");
+}
+if (!publicSource.includes("toolBaseManifestSchema")) {
+  add("error", "MANIFEST_SCHEMA_MISSING", "Canonical manifests are not validated through toolBaseManifestSchema.");
+}
+if (!contractsSource.includes("publicToolTestContracts")) {
+  add("error", "TEST_CONTRACT_EXPORT_MISSING", "publicToolTestContracts export is missing.");
+}
+if (!categoriesSource.includes("export const categoryCatalog")) {
+  add("error", "CATEGORY_CATALOG_MISSING", "Canonical categoryCatalog export is missing.");
+}
+if (!typesSource.includes("export interface PublicToolRegistration")) {
+  add("error", "PUBLIC_REGISTRATION_TYPE_MISSING", "PublicToolRegistration type is missing from Tool Platform types.");
 }
 
 const errors = diagnostics.filter((entry) => entry.severity === "error");
 const warnings = diagnostics.filter((entry) => entry.severity === "warning");
 const report = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   generatedAt: new Date().toISOString(),
+  source: "src/lib/tool-platform",
   counts: {
-    catalogTools: toolIds.length,
-    readyTools: readyTools.length,
     publicTools: publicTools.length,
-    testContracts: routes.length,
+    testContracts: contracts.length,
+    uniquePublicSlugs: publicSlugs.size,
+    uniqueTestToolIds: contractIds.size,
     errors: errors.length,
     warnings: warnings.length,
   },
