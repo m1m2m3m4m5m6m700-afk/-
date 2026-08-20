@@ -1,0 +1,31 @@
+name: Engineering Completeness
+
+on:
+  pull_request:
+    paths:
+      - "docs/engineering/**"
+      - "scripts/validate-engineering-completeness.mjs"
+      - ".github/workflows/engineering-completeness.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  engineering-completeness:
+    name: Engineering completeness contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Validate engineering completeness
+        run: node scripts/validate-engineering-completeness.mjs
+      - name: Validate no secret-like material in engineering docs
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -RInE '(AIza[0-9A-Za-z_-]{20,}|gh[pousr]_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_-]{20,}|Bearer[[:space:]]+[A-Za-z0-9._-]{20,})' docs/engineering
