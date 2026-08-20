@@ -10,7 +10,7 @@ on:
       - "package-lock.json"
       - ".github/workflows/ai-preflight.yml"
   push:
-    branches: [experimental]
+    branches: [experimental, feat/ai-preflight-p0]
     paths:
       - "scripts/ai-preflight-diagnose.mjs"
       - "scripts/scan-secrets.mjs"
@@ -46,7 +46,7 @@ jobs:
           FLIXO_AI_MONTHLY_CALL_CAP: 500
           FLIXO_AI_PREFLIGHT_TIMEOUT_MS: 9000
         run: node scripts/ai-preflight-diagnose.mjs --fast --advisory --no-ai
-      - name: Run preflight a second time to verify deterministic cache path
+      - name: Run preflight a second time to verify deterministic fast-path
         env:
           FLIXO_AI_MONTHLY_CALL_CAP: 500
           FLIXO_AI_PREFLIGHT_TIMEOUT_MS: 9000
