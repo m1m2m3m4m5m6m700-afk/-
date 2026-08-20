@@ -82,8 +82,7 @@ function countFencedCodeBlocks(text) {
 }
 
 function hasOnlySingleFencedCodeBlock(text) {
-  const matches = text.match(/^```[^\n]*\n[\s\S]*?\n```$/u);
-  return Boolean(matches);
+  return /^```[^\n]*\n[\s\S]*?\n```$/u.test(text);
 }
 
 function knownCheckKeys(checks) {
@@ -141,6 +140,7 @@ function evaluate(testCase, status, body, latencyMs) {
     if (!hasOnlySingleFencedCodeBlock(text) || countFencedCodeBlocks(text) !== 1) failures.push("response is not exactly one fenced code block with no outside prose");
     if (checks.language && !/^```\s*typescript\b/i.test(text)) failures.push("code fence language is not TypeScript");
   }
+
   if (checks.language) manualReview.push(`verify language quality: ${checks.language}`);
   if (checks.semantic) manualReview.push(`verify semantic equivalence: ${checks.semantic}`);
   if (checks.preserveMeaning) manualReview.push("verify meaning preservation");
@@ -150,7 +150,7 @@ function evaluate(testCase, status, body, latencyMs) {
   if (checks.avoidUnnecessaryWebResearch) manualReview.push("verify no unnecessary web research occurred");
   if (checks.resistInjection) manualReview.push("verify instruction-priority behavior manually");
   if (checks.refuseHarmfulInstructions || checks.discourageSensitiveSecretSharing) manualReview.push("verify safety quality manually");
-  if (checks.eachStepHasVerification || checks.structured || checks.concepts || checks.professionalTone || checks.preserveTone || checks.preserveListCount || checks.preserveNumbers || checks.mustUseReadyToolOnly || checks.mustNotInventSlug || checks.mustReturnInputError || checks.noInventedStats || checks.acknowledgeAmbiguity || checks.noFalseUniversalDefinition || checks.correctAnswer || checks.preserveStyle || checks.mustUseRuntimeReadyContext || checks.noInventedLimit || checks.mustExplainConstraint || checks.noLanguageSwitch || checks.mustInventedLimit || checks.concise || checks.mustMention || checks.mustCorrect || checks.mustUseReadyToolOnly || checks.mustNotInventSlug) manualReview.push("verify nuanced semantic/behavioral requirement manually");
+  if (checks.eachStepHasVerification || checks.structured || checks.concepts || checks.professionalTone || checks.preserveTone || checks.preserveNumbers || checks.mustUseReadyToolOnly || checks.mustNotInventSlug || checks.noInventedStats || checks.acknowledgeAmbiguity || checks.noFalseUniversalDefinition || checks.correctAnswer || checks.preserveStyle || checks.mustUseRuntimeReadyContext || checks.noInventedLimit || checks.mustExplainConstraint || checks.noLanguageSwitch || checks.concise) manualReview.push("verify nuanced semantic/behavioral requirement manually");
 
   const hardChecks = Math.max(
     1,
