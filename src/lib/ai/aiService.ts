@@ -21,7 +21,6 @@
 
 import { getAIConfig, isAIConfigured } from "./config";
 import { emitInternalDiagnosticEvent, createInternalDiagnosticEvent } from "./diagnostics/internalDiagnosticEvent";
-import { persistInternalDiagnosticEvent } from "./diagnostics/diagnosticPersistence";
 import { getProviderChain } from "./providers";
 import type { AIProvider } from "./providers/types";
 import { getTaskPrompt } from "./prompts";
@@ -154,7 +153,6 @@ class AIService {
       });
 
       emitInternalDiagnosticEvent(diagnosticEvent);
-      persistInternalDiagnosticEvent(diagnosticEvent);
 
       if (!result.retryable || i === chain.length - 1) break;
     }

@@ -6,7 +6,7 @@
  * on the local filesystem.
  */
 
-import { mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, randomUUID, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import type { IncidentFingerprint, IncidentResolutionStatus } from "./failureCorrelation";
 
@@ -48,17 +48,20 @@ function readStore(file: string): FailureMemoryRecord[] {
 
 function atomicWrite(file: string, records: FailureMemoryRecord[]): void {
   mkdirSync(dirname(file), { recursive: true });
-  const temp = `${file}.${process.pid}.tmp`;
-  writeFileSync(
-    temp,
-    JSON.stringify({ schemaVersion: 1, records }, null, 2) + "\n",
-    "utf8",
-  );
-  renameSync(temp, file);
+  const temp = `${file}.${process.pid}.${randomUUID()}.tmp`;
   try {
-    unlinkSync(temp);
-  } catch {
-    // renameSync already moved the file; nothing else to do.
+    writeFileSync(
+      temp,
+      JSON.stringify({ schemaVersion: 1, records }, null, 2) + "\n",
+      { encoding: "utf8", flag: "wx" },
+    );
+    renameSync(temp, file);
+  } finally {
+    try {
+      unlinkSync(temp);
+    } catch {
+      // renameSync already moved the file; nothing else to do.
+    }
   }
 }
 
