@@ -18,7 +18,7 @@ function parseCanonicalTools(source) {
 
 function parseSeoRegistry(source) {
   const entries = [];
-  const pattern = /"([^"]+)":\s*\{\s*title:\s*"([^"]*)",\s*description:\s*"([^"]*)",\s*keywords:\s*\[([\s\S]*?)\]\s*\}/g;
+  const pattern = /"([^"]+)":\s*\{\s*title:\s*"([^"]*)",\s*description:\s*"([^"]*)",\s*keywords:\s*\[([\s\S]*?)\]\s*,?\s*\}/g;
   let match;
   while ((match = pattern.exec(source))) {
     const keywords = [...match[4].matchAll(/"([^"]+)"/g)].map((item) => item[1]);
