@@ -54,7 +54,12 @@ export function createToolDiagnostic(
 export function createToolError(
   code: string,
   message: string,
-  context: Omit<ToolErrorEnvelope["error"], "code" | "message"> = {},
+  context: {
+    retryable?: boolean;
+    toolId?: string;
+    route?: string;
+    stage?: string;
+  } = {},
 ): ToolErrorEnvelope {
   return Object.freeze({
     ok: false as const,
