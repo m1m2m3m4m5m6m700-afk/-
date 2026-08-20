@@ -1,78 +1,47 @@
-import fs from "node:fs";
+import fs from "node:fs/promises";
 import path from "node:path";
 
 const root = process.cwd();
-const catalog = fs.readFileSync(path.join(root, "src/data/megaToolsCatalog.ts"), "utf8");
-const engine = fs.readFileSync(path.join(root, "src/lib/megaToolsEngine.ts"), "utf8");
+const issues = [];
 
-const strict = process.argv.includes("--strict");
+const exists = async (relative) => {
+  try {
+    await fs.access(path.join(root, relative));
+    return true;
+  } catch {
+    return false;
+  }
+};
 
-const declaredHandlers = [
-  "inspect",
-  "extract-text",
-  "rotate",
-  "page-numbers",
-  "watermark",
-  "remove-metadata",
-  "duplicate",
-  "extract-range",
-  "split-even",
-  "blank-cover",
-  "flatten",
-  "poster",
+const legacyPaths = [
+  "src/data/megaToolsCatalog.ts",
+  "src/lib/megaToolsEngine.ts",
+  "src/scripts/validate-mega-tools.mjs",
+  "tests/mega-tools.spec.ts",
 ];
 
-const implementedHandlers = declaredHandlers.filter((handler) =>
-  engine.includes(`tool.handler === "${handler}"`),
-);
-const roadmapHandlers = declaredHandlers.filter(
-  (handler) => !implementedHandlers.includes(handler),
-);
-
-const catalogHandlers = declaredHandlers.filter((handler) =>
-  catalog.includes(`["${handler}"`),
-);
-const missingFromCatalog = declaredHandlers.filter(
-  (handler) => !catalogHandlers.includes(handler),
-);
-
-const presetsMatch = catalog.match(/export const PRESETS = \[(.*?)\] as const/s);
-const presetCount = presetsMatch ? (presetsMatch[1].match(/\[\"/g) ?? []).length : 0;
-const declaredPdfVariants = (catalog.match(/slug: `mega-pdf-/g) ?? []).length;
-
-const issues = [];
-const advisories = [];
-
-if (missingFromCatalog.length) {
-  issues.push(`Missing declared PDF handlers from catalog: ${missingFromCatalog.join(", ")}`);
+for (const file of legacyPaths) {
+  if (await exists(file)) issues.push(`Legacy PDF/MegaTool file still exists: ${file}`);
 }
 
-if (presetCount !== 11) {
-  issues.push(`Expected 11 presets, found ${presetCount}.`);
+const pdfTest = await fs.readFile(path.join(root, "tests/pdf-tools.spec.ts"), "utf8");
+if (pdfTest.includes("megaToolsCatalog") || pdfTest.includes("megaToolsEngine")) {
+  issues.push("PDF regression test still references removed MegaTool runtime.");
 }
 
-if (declaredPdfVariants !== 0) {
-  issues.push("PDF mega variants must remain generated from the canonical handler/preset catalog.");
+const runtimeRoot = path.join(root, "src/lib/tool-runtime/tools");
+const runtimeFiles = await fs.readdir(runtimeRoot);
+const pdfRuntimeFiles = runtimeFiles.filter((file) => /pdf/i.test(file));
+
+if (pdfRuntimeFiles.length === 0) {
+  console.log("PDF catalog audit: no canonical public PDF runtime is registered; legacy MegaTool PDF surface is absent.");
+} else {
+  console.log(`PDF catalog audit: ${pdfRuntimeFiles.length} canonical PDF runtime file(s) discovered.`);
 }
-
-if (roadmapHandlers.length) {
-  advisories.push(
-    `Roadmap PDF handlers are cataloged but not implemented: ${roadmapHandlers.join(", ")}`,
-  );
-}
-
-const expectedVariants = implementedHandlers.length * presetCount;
-const message = `PDF catalog audit: ${implementedHandlers.length} implemented handlers × ${presetCount} presets = ${expectedVariants} executable variants.`;
-console.log(message);
-
-for (const advisory of advisories) console.warn(`Advisory: ${advisory}`);
 
 if (issues.length) {
-  throw new Error(`PDF catalog validation failed:\n- ${issues.join("\n- ")}`);
+  console.error(`PDF catalog validation failed:\n- ${issues.join("\n- ")}`);
+  process.exit(1);
 }
 
-if (strict && advisories.length) {
-  throw new Error(`PDF catalog strict validation failed:\n- ${advisories.join("\n- ")}`);
-}
-
-console.log(strict ? "PDF catalog strict validation passed." : "PDF catalog advisory validation passed.");
+console.log("PDF catalog validation passed: canonical runtime boundary is clean.");
