@@ -19,17 +19,23 @@ function parseVersion(value) {
   return match ? match.slice(1).map(Number) : null;
 }
 
+function compareVersions(a, b) {
+  for (let index = 0; index < 3; index += 1) {
+    if (a[index] !== b[index]) return a[index] - b[index];
+  }
+  return 0;
+}
+
 function compatibleRange(manifestRange, lockRange) {
   if (manifestRange === lockRange) return true;
   const manifestVersion = parseVersion(manifestRange);
   const lockVersion = parseVersion(lockRange);
   if (!manifestVersion || !lockVersion) return false;
 
-  // For caret ranges with the same major version, a higher manifest floor is
-  // still compatible with the lock root declaration. npm ci remains the
-  // authoritative resolver for the concrete package version.
   if (String(manifestRange).startsWith("^") && String(lockRange).startsWith("^")) {
-    return manifestVersion[0] === lockVersion[0] && lockVersion[1] <= manifestVersion[1] + 1000;
+    // The lock root must not require a newer minimum than the manifest.
+    // Both ranges also need to remain within the same caret major version.
+    return manifestVersion[0] === lockVersion[0] && compareVersions(lockVersion, manifestVersion) <= 0;
   }
 
   return false;
