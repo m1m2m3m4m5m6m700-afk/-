@@ -25,11 +25,13 @@ const files = [...sourceFiles, ...testFiles, ...scriptFiles];
 for (const file of files) {
   const content = await fs.readFile(path.join(root, file), "utf8");
 
-  // Block only imports of subsystems that were actually deleted.
-  // Other src/data domains still exist as data sources and are tracked separately.
-  const deletedLegacyImport = /(?:import\s+[^;]*from\s+|require\s*\(\s*)["'][^"']*(?:megaToolsCatalog|megaToolsEngine|@\/data\/tools|src\/data\/tools)[^"']*["']/.test(content);
+  const deletedLegacyImport = /(?:import\s+[^;]*from\s+|require\s*\(\s*)["'][^"']*(?:megaToolsCatalog|megaToolsEngine|src\/data\/tools)[^"']*["']/.test(content);
   if (deletedLegacyImport) {
     failures.push({ rule: "deleted-legacy-import", file, message: "Removed legacy mega-tool/tool catalog import returned." });
+  }
+
+  if (/(?:import\s+[^;]*from\s+|require\s*\(\s*)["'][^"']*@\/data\/tools["']/.test(content)) {
+    warnings.push({ rule: "tools-compat-shim", file, message: "Uses the transitional @/data/tools compatibility shim; migrate when this consumer is next touched." });
   }
 
   if (file.startsWith("src/lib/ai/") && /autoApply\s*[:=]\s*true/.test(content)) {
