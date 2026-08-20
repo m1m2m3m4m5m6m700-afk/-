@@ -11,6 +11,13 @@ test('diagnose identifies lockfile failures deterministically', () => {
   assert.equal(result.layer, 'DEPENDENCY');
 });
 
+test('diagnose prioritizes a TypeScript failure over localization keywords', () => {
+  const result = diagnose('i18n metadata loaded\nerror TS2322: Type Uint8Array<ArrayBufferLike> is not assignable to type BlobPart');
+  assert.equal(result.known, true);
+  assert.equal(result.knownPattern, 'typescript');
+  assert.equal(result.layer, 'TYPECHECK');
+});
+
 test('cognitive engine preserves deterministic diagnosis and historical ranking', () => {
   const assessment = buildCognitiveAssessment({
     log: "npm ERR! ERESOLVE package-lock.json mismatch in jsqr QR Node Matrix",
