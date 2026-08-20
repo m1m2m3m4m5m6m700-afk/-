@@ -139,8 +139,17 @@ if (!fs.existsSync(workflowsDir)) {
     }
 
     if (relativeWorkflow === path.join(".github", "workflows", "ci.yml")) {
-      if (!/npm\s+run\s+verify\b/.test(workflow)) {
-        failures.push(".github/workflows/ci.yml: canonical verification gate must execute npm run verify");
+      const verifyTimingPath = path.join(root, "scripts", "verify-timing.mjs");
+      const verifyTiming = fs.existsSync(verifyTimingPath) ? readText(verifyTimingPath) : "";
+      const hasDirectVerify = /npm\s+run\s+verify\b/.test(workflow);
+      const hasCanonicalWrapper = /node\s+scripts\/verify-timing\.mjs/.test(workflow)
+        && /\[\"verify:project""\s*,?\s*\[\"run""\s*,?\s*\"verify:project""\]/.test(verifyTiming)
+        && /\[\"test:after-verify""\s*,?\s*\[\"run""\s*,?\s*\"test:after-verify""\]/.test(verifyTiming);
+
+      if (!hasDirectVerify && !hasCanonicalWrapper) {
+        failures.push(
+          ".github/workflows/ci.yml: canonical verification gate must execute npm run verify directly or through scripts/verify-timing.mjs with verify:project + test:after-verify",
+        );
       }
       if (!/timeout\s+--signal=TERM\s+--kill-after=30s\s+55m\s+/.test(workflow)) {
         failures.push(".github/workflows/ci.yml: canonical verification gate must have a 55-minute shell timeout with TERM/KILL escalation");
