@@ -82,3 +82,12 @@ export const publicToolRegistrations: readonly PublicToolRegistration[] = Object
     });
   }),
 );
+
+const publicToolById = new Map(publicToolRegistrations.map((registration) => [registration.manifest.id, registration]));
+const publicToolBySlug = new Map(publicToolRegistrations.map((registration) => [registration.manifest.slug, registration]));
+
+export const getPublicToolRegistration = (id: string): PublicToolRegistration | undefined =>
+  publicToolById.get(id);
+
+export const getPublicToolRegistrationBySlug = (slug: string): PublicToolRegistration | undefined =>
+  publicToolBySlug.get(slug);
