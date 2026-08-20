@@ -1,0 +1,28 @@
+name: Optional AI Review · PR-Agent
+
+on:
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  pull-requests: write
+  contents: read
+
+jobs:
+  review:
+    name: PR-Agent Review
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run PR-Agent
+        uses: the-pr-agent/pr-agent@main
+        env:
+          OPENAI_KEY: ${{ secrets.OPENAI_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          github_action_config.auto_review: "true"
+          github_action_config.auto_describe: "true"
+          github_action_config.auto_improve: "false"
+          github_action_config.pr_actions: '["opened", "reopened", "ready_for_review", "review_requested"]'
+          require_human_review: "true"
+
+# Optional/advisory only. Keep auto-improve disabled so the agent cannot write fixes.
+# PR-Agent is open source; LLM usage depends on the configured provider/key.
