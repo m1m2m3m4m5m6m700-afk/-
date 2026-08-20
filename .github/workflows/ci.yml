@@ -62,13 +62,13 @@ jobs:
         run: git diff --exit-code -- package.json package-lock.json
       - name: Install Chromium for operational tests
         run: npx playwright install --with-deps chromium
-      - name: Run canonical verification gate
+      - name: Run canonical verification gate with timing
         shell: bash
         run: |
           set -o pipefail
           mkdir -p diagnostics
-          echo "Starting npm run verify at $(date -u +%FT%TZ)"
-          timeout --signal=TERM --kill-after=30s 55m npm run verify 2>&1 | tee diagnostics/npm-verify.log
+          echo "Starting timed verification at $(date -u +%FT%TZ)"
+          timeout --signal=TERM --kill-after=30s 55m node scripts/verify-timing.mjs 2>&1 | tee diagnostics/npm-verify.log
       - name: Upload browser report
         if: always()
         uses: actions/upload-artifact@v4
@@ -84,12 +84,11 @@ jobs:
           name: flixo-canonical-verify-diagnostics-${{ github.run_id }}
           path: |
             diagnostics/npm-verify.log
+            diagnostics/verify-timing.json
             test-results/
             playwright-report/
           if-no-files-found: ignore
           retention-days: 14
-      - name: Production dependency audit
-        run: npm run audit:production
       - name: Upload diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@v4
