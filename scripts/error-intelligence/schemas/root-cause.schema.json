@@ -1,0 +1,15 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "type":"object",
+  "required":["version","rootCause","affectedFiles","confidence","escalationRequired"],
+  "properties":{
+    "version":{"type":"integer"},
+    "rootCause":{"type":"string"},
+    "affectedFiles":{"type":"array","items":{"type":"string"}},
+    "confidence":{"type":"number","minimum":0,"maximum":1},
+    "deterministic":{"type":"boolean"},
+    "escalationRequired":{"type":"boolean"},
+    "dependencyImpact":{"type":"object"}
+  },
+  "additionalProperties":true
+}
