@@ -11,7 +11,7 @@ The FLIXO AI quality system has two separate states:
 
 A commit is **Live AI Certified** only when all of the following are true:
 
-1. `npm run test:ai:live` executes against a configured `FLIXO_AI_SMOKE_ENDPOINT`.
+1. `node src/scripts/run-ai-live-quality-smoke.mjs` executes against a configured `FLIXO_AI_SMOKE_ENDPOINT`.
 2. The endpoint is backed by a real configured AI provider.
 3. All live prompt cases pass their hard checks.
 4. The overall hard score meets the corpus threshold.
