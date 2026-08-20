@@ -1,0 +1,28 @@
+name: AI Guardian Harness
+
+on:
+  push:
+    branches: [test/ai-guardian]
+    paths:
+      - '.github/scripts/diagnose.js'
+      - 'scripts/test-ai-guardian-harness.mjs'
+      - '.github/workflows/ai-guardian-harness.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  harness:
+    name: Synthetic AI Diagnosis Harness
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+      - name: Run isolated AI Guardian harness
+        run: node scripts/test-ai-guardian-harness.mjs
