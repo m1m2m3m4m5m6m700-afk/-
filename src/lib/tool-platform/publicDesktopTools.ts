@@ -64,7 +64,12 @@ const manifestData = [
 
 const validatedManifestData = manifestData.map((manifest) => {
   if (!manifest.seo) throw new Error(`Missing canonical SEO metadata: ${manifest.id}`);
-  return toolBaseManifestSchema.parse({ ...manifest, seo: manifest.seo });
+  return toolBaseManifestSchema.parse({
+    ...manifest,
+    seo: manifest.seo,
+    tags: manifest.seo.keywords,
+    status: "ready",
+  });
 });
 
 export const publicToolRegistrations: readonly PublicToolRegistration[] = Object.freeze(
@@ -72,14 +77,8 @@ export const publicToolRegistrations: readonly PublicToolRegistration[] = Object
     const test = publicToolTestContracts.find((entry) => entry.toolId === manifest.id);
     if (!test) throw new Error(`Missing test contract: ${manifest.id}`);
     return Object.freeze({
-      manifest: Object.freeze({ ...manifest, certification: certificationRequirements }),
+      manifest: Object.freeze({ ...manifest, certification: certificationRequirements, status: "ready" as const }),
       test,
     });
   }),
 );
-
-export const getPublicToolRegistration = (toolId: string): PublicToolRegistration | undefined =>
-  publicToolRegistrations.find((entry) => entry.manifest.id === toolId);
-
-export const getPublicToolRegistrationBySlug = (slug: string): PublicToolRegistration | undefined =>
-  publicToolRegistrations.find((entry) => entry.manifest.slug === slug);
