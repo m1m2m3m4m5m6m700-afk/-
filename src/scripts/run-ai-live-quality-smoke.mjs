@@ -5,6 +5,7 @@ const root = process.cwd();
 const endpoint = process.env.FLIXO_AI_SMOKE_ENDPOINT;
 const token = process.env.FLIXO_AI_SMOKE_TOKEN;
 const timeoutMs = Number(process.env.FLIXO_AI_SMOKE_TIMEOUT_MS ?? 30000);
+const expectedBuildSha = process.env.FLIXO_AI_EXPECTED_VERCEL_SHA?.trim();
 const corpus = JSON.parse(await fs.readFile(path.join(root, "tests/fixtures/ai-live-quality-prompts.json"), "utf8"));
 const extraCorpus = JSON.parse(await fs.readFile(path.join(root, "tests/fixtures/ai-live-quality-extra.json"), "utf8"));
 const cases = [...(corpus.cases ?? []), ...(extraCorpus.cases ?? [])];
@@ -113,6 +114,8 @@ function evaluate(testCase, status, body, latencyMs) {
   return { id: testCase.id, category: testCase.category, status, latencyMs, hardScore, passed: failures.length === 0, failures, manualReview, responsePreview: text.slice(0, 500) };
 }
 
+let observedBuildSha = "";
+
 for (const testCase of cases) {
   const started = Date.now();
   let status = 0;
@@ -132,6 +135,7 @@ for (const testCase of cases) {
       signal: controller.signal,
     });
     status = response.status;
+    observedBuildSha = response.headers.get("x-flixo-ai-build-sha")?.trim() ?? observedBuildSha;
     body = await response.json().catch(() => ({}));
   } catch (error) {
     failures = [error instanceof Error ? error.message : "request failed"];
@@ -143,17 +147,17 @@ for (const testCase of cases) {
 
   if (status === 401) {
     console.error("LIVE AI QUALITY SMOKE: endpoint authentication failed (HTTP 401). The Preview token does not match GitHub's token or was not available to the deployment.");
-    await writeInfrastructureEvidence("AUTHENTICATION_FAILED", "Smoke endpoint rejected the GitHub token with HTTP 401.", { httpStatus: 401 });
+    await writeInfrastructureEvidence("AUTHENTICATION_FAILED", "Smoke endpoint rejected the GitHub token with HTTP 401.", { httpStatus: 401, observedBuildSha });
     process.exit(2);
   }
   if (status === 403) {
     console.error("LIVE AI QUALITY SMOKE: endpoint forbidden (HTTP 403). Check the Preview deployment protection settings and smoke token routing.");
-    await writeInfrastructureEvidence("FORBIDDEN", "Smoke endpoint returned HTTP 403.", { httpStatus: 403 });
+    await writeInfrastructureEvidence("FORBIDDEN", "Smoke endpoint returned HTTP 403.", { httpStatus: 403, observedBuildSha });
     process.exit(2);
   }
   if (status === 404) {
     console.error("LIVE AI QUALITY SMOKE: endpoint not found or smoke token not configured on the deployment (HTTP 404). Redeploy the target Preview.");
-    await writeInfrastructureEvidence("ENDPOINT_NOT_FOUND", "Smoke endpoint returned HTTP 404.", { httpStatus: 404 });
+    await writeInfrastructureEvidence("ENDPOINT_NOT_FOUND", "Smoke endpoint returned HTTP 404.", { httpStatus: 404, observedBuildSha });
     process.exit(2);
   }
 
@@ -165,6 +169,12 @@ for (const testCase of cases) {
   await sleep(75);
 }
 
+if (expectedBuildSha && observedBuildSha !== expectedBuildSha) {
+  console.error(`LIVE AI QUALITY SMOKE: PREVIEW SHA MISMATCH. Expected ${expectedBuildSha}, got ${observedBuildSha || "missing"}.`);
+  await writeInfrastructureEvidence("PREVIEW_SHA_MISMATCH", "The protected endpoint responded, but it is not running the expected Vercel deployment SHA.", { expectedBuildSha, observedBuildSha });
+  process.exit(2);
+}
+
 const failed = results.filter((result) => !result.passed);
 const manual = results.reduce((sum, result) => sum + result.manualReview.length, 0);
 const overallHardScore = results.length ? results.reduce((sum, result) => sum + result.hardScore, 0) / results.length : 0;
@@ -173,6 +183,8 @@ const report = {
   schemaVersion: 2,
   generatedAt: new Date().toISOString(),
   endpoint,
+  expectedBuildSha: expectedBuildSha || null,
+  observedBuildSha: observedBuildSha || null,
   cases: results.length,
   passed: results.length - failed.length,
   failed: failed.length,
