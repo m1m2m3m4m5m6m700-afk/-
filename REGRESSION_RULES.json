@@ -1,9 +1,9 @@
 {
-  "version": 2,
+  "version": 3,
   "rules": [
     {"id":"no-focused-tests","pattern":"\\b(?:test|it|describe)\\.only\\s*\\(","flags":"g","guardMode":"critical"},
     {"id":"no-ts-ignore","pattern":"@ts-(?:ignore|nocheck)","flags":"g","guardMode":"critical","pathPrefixes":["src/scripts/"]},
-    {"id":"no-console-log","pattern":"\\bconsole\\.log\\s*\\(","flags":"g","guardMode":"advisory"},
-    {"id":"no-secret-env-literals","pattern":"(?:password|secret|token|api[_-]?key)\\s*[:=]\\s*[\"'][^\"']{12,}[\"']","flags":"gi","guardMode":"critical"}
-  ]
+    {"id":"no-console-log","pattern":"\\bconsole\\.log\\s*\\(","flags":"g","guardMode":"advisory"}
+  ],
+  "notes": "Secret literals are owned by check-secrets.mjs, which performs context-aware high-confidence and entropy analysis; duplicate regex coverage here created cascading false positives."
 }
