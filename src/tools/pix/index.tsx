@@ -8,7 +8,6 @@ type Snapshot = { imageData: ImageData; textLayers: TextLayer[]; filters: Filter
 
 const DEFAULT_FILTERS: FilterSettings = { brightness: 0, contrast: 0, saturation: 0, hue: 0, blur: 0 };
 const cloneFilters = (value: FilterSettings): FilterSettings => ({ ...value });
-const cloneLayers = (layers: TextLayer[]): TextLayer[] => layers.map((layer) => ({ ...layer }));
 
 function applyLiquify(ctx: CanvasRenderingContext2D, cx: number, cy: number, dx: number, dy: number, radius: number, intensity: number) {
   const width = ctx.canvas.width, height = ctx.canvas.height;
@@ -58,121 +57,230 @@ function generateDispersionParticles(ctx: CanvasRenderingContext2D, cx: number, 
   return particles;
 }
 
-export default function PixTool() {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null), workingCanvasRef = useRef<HTMLCanvasElement | null>(null), imageUrlRef = useRef<string | null>(null);
-  const animationRef = useRef<number | null>(null), lastMousePos = useRef<{ x: number; y: number } | null>(null), historyRef = useRef<Snapshot[]>([]), historyIndexRef = useRef(-1);
-  const [image, setImage] = useState<HTMLImageElement | null>(null), [activeTool, setActiveTool] = useState<ToolMode>('tune'), [filters, setFilters] = useState<FilterSettings>(DEFAULT_FILTERS);
-  const [liquifyRadius, setLiquifyRadius] = useState(40), [liquifyStrength, setLiquifyStrength] = useState(0.5), [particles, setParticles] = useState<Particle[]>([]);
-  const [textLayers, setTextLayers] = useState<TextLayer[]>([]), [newText, setNewText] = useState('Pix Studio'), [textColor, setTextColor] = useState('#ffffff');
-  const [isInteracting, setIsInteracting] = useState(false), [historyIndex, setHistoryIndex] = useState(-1);
+function buildFilter(value: FilterSettings) {
+  return `brightness(${100 + value.brightness}%) contrast(${100 + value.contrast}%) saturate(${100 + value.saturation}%) hue-rotate(${value.hue}deg) blur(${value.blur}px)`;
+}
 
-  const captureSnapshot = useCallback((nextLayers = textLayers, nextFilters = filters): Snapshot | null => {
+export default function PixTool() {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const workingCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const imageUrlRef = useRef<string | null>(null);
+  const lastMousePos = useRef<{ x: number; y: number } | null>(null);
+  const historyRef = useRef<Snapshot[]>([]);
+  const historyIndexRef = useRef(-1);
+  const [image, setImage] = useState<HTMLImageElement | null>(null);
+  const [activeTool, setActiveTool] = useState<ToolMode>('tune');
+  const [filters, setFilters] = useState<FilterSettings>(DEFAULT_FILTERS);
+  const [liquifyRadius, setLiquifyRadius] = useState(40);
+  const [liquifyStrength, setLiquifyStrength] = useState(0.5);
+  const [particles, setParticles] = useState<Particle[]>([]);
+  const [textLayers, setTextLayers] = useState<TextLayer[]>([]);
+  const [newText, setNewText] = useState('Pix Studio');
+  const [textColor, setTextColor] = useState('#ffffff');
+  const [isInteracting, setIsInteracting] = useState(false);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [historyLength, setHistoryLength] = useState(0);
+
+  const captureSnapshot = useCallback((nextLayers: TextLayer[], nextFilters: FilterSettings): Snapshot | null => {
     const canvas = workingCanvasRef.current, ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return null;
     return { imageData: ctx.getImageData(0, 0, canvas.width, canvas.height), textLayers: nextLayers.map((layer) => ({ ...layer })), filters: cloneFilters(nextFilters) };
-  }, [filters, textLayers]);
+  }, []);
 
-  const saveState = useCallback((nextLayers = textLayers, nextFilters = filters) => {
+  const saveState = useCallback((nextLayers: TextLayer[], nextFilters: FilterSettings) => {
     const snapshot = captureSnapshot(nextLayers, nextFilters);
     if (!snapshot) return;
     const next = [...historyRef.current.slice(0, historyIndexRef.current + 1), snapshot];
-    historyRef.current = next; historyIndexRef.current = next.length - 1; setHistoryIndex(historyIndexRef.current);
-  }, [captureSnapshot, filters, textLayers]);
+    historyRef.current = next;
+    historyIndexRef.current = next.length - 1;
+    setHistoryIndex(historyIndexRef.current);
+    setHistoryLength(next.length);
+  }, [captureSnapshot]);
 
   const restoreSnapshot = useCallback((index: number) => {
     const snapshot = historyRef.current[index], working = workingCanvasRef.current, ctx = working?.getContext('2d');
     if (!snapshot || !working || !ctx) return;
     ctx.putImageData(snapshot.imageData, 0, 0);
     setTextLayers(snapshot.textLayers.map((layer) => ({ ...layer })));
-    setFilters(cloneFilters(snapshot.filters)); setParticles([]);
-    historyIndexRef.current = index; setHistoryIndex(index);
+    setFilters(cloneFilters(snapshot.filters));
+    setParticles([]);
+    historyIndexRef.current = index;
+    setHistoryIndex(index);
   }, []);
 
-  const draw = useCallback(() => {
+  const redraw = useCallback(() => {
     const display = canvasRef.current, working = workingCanvasRef.current;
     if (!display || !working || !image) return;
     const ctx = display.getContext('2d');
     if (!ctx) return;
-    if (display.width !== working.width) display.width = working.width;
-    if (display.height !== working.height) display.height = working.height;
+    display.width = working.width;
+    display.height = working.height;
     ctx.clearRect(0, 0, display.width, display.height);
     ctx.save();
-    ctx.filter = `brightness(${100 + filters.brightness}%) contrast(${100 + filters.contrast}%) saturate(${100 + filters.saturation}%) hue-rotate(${filters.hue}deg) blur(${filters.blur}px)`;
-    ctx.drawImage(working, 0, 0); ctx.restore();
-    textLayers.forEach((layer) => { ctx.save(); ctx.font = `700 ${layer.fontSize}px sans-serif`; ctx.fillStyle = layer.color; ctx.fillText(layer.text, layer.x, layer.y); ctx.restore(); });
-    if (particles.length === 0) return;
-    let active = false;
-    const next = particles.map((particle) => {
-      if (particle.life >= particle.maxLife) return particle;
-      active = true;
-      const current = { ...particle, x: particle.x + particle.vx, y: particle.y + particle.vy, life: particle.life + 1 };
-      ctx.save(); ctx.globalAlpha = current.alpha * Math.max(0, 1 - current.life / current.maxLife); ctx.fillStyle = current.color; ctx.fillRect(current.x, current.y, current.size, current.size); ctx.restore();
-      return current;
+    ctx.filter = buildFilter(filters);
+    ctx.drawImage(working, 0, 0);
+    ctx.restore();
+    textLayers.forEach((layer) => {
+      ctx.save();
+      ctx.font = `700 ${layer.fontSize}px sans-serif`;
+      ctx.fillStyle = layer.color;
+      ctx.fillText(layer.text, layer.x, layer.y);
+      ctx.restore();
     });
-    if (active) { setParticles(next); animationRef.current = requestAnimationFrame(draw); } else { setParticles([]); animationRef.current = null; }
+    particles.forEach((particle) => {
+      ctx.save();
+      ctx.globalAlpha = particle.alpha * Math.max(0, 1 - particle.life / particle.maxLife);
+      ctx.fillStyle = particle.color;
+      ctx.fillRect(particle.x, particle.y, particle.size, particle.size);
+      ctx.restore();
+    });
   }, [filters, image, particles, textLayers]);
 
-  useEffect(() => { draw(); }, [draw]);
-  useEffect(() => () => { if (animationRef.current !== null) cancelAnimationFrame(animationRef.current); if (imageUrlRef.current) URL.revokeObjectURL(imageUrlRef.current); }, []);
+  useEffect(() => { redraw(); }, [redraw]);
+
+  useEffect(() => () => {
+    if (imageUrlRef.current) URL.revokeObjectURL(imageUrlRef.current);
+  }, []);
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (!(event.ctrlKey || event.metaKey)) return;
-      if (event.key.toLowerCase() === 'z') { event.preventDefault(); restoreSnapshot(historyIndexRef.current + (event.shiftKey ? 1 : -1)); }
-      else if (event.key.toLowerCase() === 'y') { event.preventDefault(); restoreSnapshot(historyIndexRef.current + 1); }
+      if (event.key.toLowerCase() === 'z') {
+        event.preventDefault();
+        restoreSnapshot(historyIndexRef.current + (event.shiftKey ? 1 : -1));
+      } else if (event.key.toLowerCase() === 'y') {
+        event.preventDefault();
+        restoreSnapshot(historyIndexRef.current + 1);
+      }
     };
-    window.addEventListener('keydown', onKeyDown); return () => window.removeEventListener('keydown', onKeyDown);
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
   }, [restoreSnapshot]);
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]; if (!file) return;
-    const url = URL.createObjectURL(file); if (imageUrlRef.current) URL.revokeObjectURL(imageUrlRef.current); imageUrlRef.current = url;
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    if (imageUrlRef.current) URL.revokeObjectURL(imageUrlRef.current);
+    imageUrlRef.current = url;
     const img = new Image();
     img.onload = () => {
-      const working = document.createElement('canvas'); working.width = img.naturalWidth; working.height = img.naturalHeight;
-      const ctx = working.getContext('2d'); if (!ctx) return; ctx.drawImage(img, 0, 0);
-      workingCanvasRef.current = working; setImage(img); setActiveTool('tune'); setFilters(cloneFilters(DEFAULT_FILTERS)); setTextLayers([]); setParticles([]);
-      historyRef.current = [{ imageData: ctx.getImageData(0, 0, working.width, working.height), textLayers: [], filters: cloneFilters(DEFAULT_FILTERS) }];
-      historyIndexRef.current = 0; setHistoryIndex(0);
+      const working = document.createElement('canvas');
+      working.width = img.naturalWidth;
+      working.height = img.naturalHeight;
+      const ctx = working.getContext('2d');
+      if (!ctx) return;
+      ctx.drawImage(img, 0, 0);
+      workingCanvasRef.current = working;
+      setImage(img);
+      setActiveTool('tune');
+      setFilters(cloneFilters(DEFAULT_FILTERS));
+      setTextLayers([]);
+      setParticles([]);
+      const initial: Snapshot = { imageData: ctx.getImageData(0, 0, working.width, working.height), textLayers: [], filters: cloneFilters(DEFAULT_FILTERS) };
+      historyRef.current = [initial];
+      historyIndexRef.current = 0;
+      setHistoryIndex(0);
+      setHistoryLength(1);
     };
-    img.src = url; event.currentTarget.value = '';
+    img.src = url;
+    event.currentTarget.value = '';
   };
 
   const getCanvasPoint = (event: React.PointerEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current; if (!canvas) return null; const rect = canvas.getBoundingClientRect();
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) return null;
     return { x: (event.clientX - rect.left) * (canvas.width / rect.width), y: (event.clientY - rect.top) * (canvas.height / rect.height) };
   };
 
   const handlePointerDown = (event: React.PointerEvent<HTMLCanvasElement>) => {
-    const point = getCanvasPoint(event); if (!point) return;
-    setIsInteracting(true); lastMousePos.current = point; event.currentTarget.setPointerCapture(event.pointerId);
+    const point = getCanvasPoint(event);
+    if (!point) return;
+    setIsInteracting(true);
+    lastMousePos.current = point;
+    event.currentTarget.setPointerCapture(event.pointerId);
     if (activeTool === 'dispersion') {
-      const ctx = workingCanvasRef.current?.getContext('2d'); if (!ctx) return;
-      const created = generateDispersionParticles(ctx, point.x, point.y, liquifyRadius); setParticles((previous) => [...previous, ...created]); saveState();
+      const ctx = workingCanvasRef.current?.getContext('2d');
+      if (!ctx) return;
+      const created = generateDispersionParticles(ctx, point.x, point.y, liquifyRadius);
+      setParticles(created);
+      saveState(textLayers, filters);
     }
   };
+
   const handlePointerMove = (event: React.PointerEvent<HTMLCanvasElement>) => {
     if (!isInteracting || activeTool !== 'liquify' || !lastMousePos.current) return;
-    const point = getCanvasPoint(event), ctx = workingCanvasRef.current?.getContext('2d'); if (!point || !ctx) return;
+    const point = getCanvasPoint(event), ctx = workingCanvasRef.current?.getContext('2d');
+    if (!point || !ctx) return;
     applyLiquify(ctx, point.x, point.y, point.x - lastMousePos.current.x, point.y - lastMousePos.current.y, liquifyRadius, liquifyStrength);
-    lastMousePos.current = point; draw();
+    lastMousePos.current = point;
+    redraw();
   };
-  const finishInteraction = () => { if (isInteracting && activeTool === 'liquify') saveState(); setIsInteracting(false); lastMousePos.current = null; };
-  const updateFilter = (key: keyof FilterSettings, value: number) => { const nextFilters = { ...filters, [key]: value }; setFilters(nextFilters); saveState(textLayers, nextFilters); };
+
+  const finishInteraction = () => {
+    if (isInteracting && activeTool === 'liquify') saveState(textLayers, filters);
+    setIsInteracting(false);
+    lastMousePos.current = null;
+  };
+
+  const updateFilter = (key: keyof FilterSettings, value: number) => {
+    const nextFilters = { ...filters, [key]: value };
+    setFilters(nextFilters);
+    saveState(textLayers, nextFilters);
+  };
+
   const addTextLayer = () => {
-    const canvas = workingCanvasRef.current, text = newText.trim(); if (!canvas || !text) return;
-    const nextLayers = [...textLayers, { id: crypto.randomUUID(), text, x: Math.max(20, canvas.width / 2 - 80), y: Math.max(48, canvas.height / 2), color: textColor, fontSize: Math.max(18, Math.min(96, Math.round(canvas.width / 16))) }];
-    setTextLayers(nextLayers); saveState(nextLayers, filters);
+    const canvas = workingCanvasRef.current;
+    const text = newText.trim();
+    if (!canvas || !text) return;
+    const nextLayers = [...textLayers, {
+      id: crypto.randomUUID(),
+      text,
+      x: Math.max(20, canvas.width / 2 - 80),
+      y: Math.max(48, canvas.height / 2),
+      color: textColor,
+      fontSize: Math.max(18, Math.min(96, Math.round(canvas.width / 16))),
+    }];
+    setTextLayers(nextLayers);
+    saveState(nextLayers, filters);
   };
+
   const resetEditor = () => restoreSnapshot(0);
+
   const exportImage = async () => {
-    const working = workingCanvasRef.current; if (!working) return;
-    const output = document.createElement('canvas'); output.width = working.width; output.height = working.height; const ctx = output.getContext('2d'); if (!ctx) return;
-    ctx.filter = `brightness(${100 + filters.brightness}%) contrast(${100 + filters.contrast}%) saturate(${100 + filters.saturation}%) hue-rotate(${filters.hue}deg) blur(${filters.blur}px)`; ctx.drawImage(working, 0, 0);
-    textLayers.forEach((layer) => { ctx.save(); ctx.font = `700 ${layer.fontSize}px sans-serif`; ctx.fillStyle = layer.color; ctx.fillText(layer.text, layer.x, layer.y); ctx.restore(); });
-    particles.forEach((particle) => { ctx.save(); ctx.globalAlpha = particle.alpha * Math.max(0, 1 - particle.life / particle.maxLife); ctx.fillStyle = particle.color; ctx.fillRect(particle.x, particle.y, particle.size, particle.size); ctx.restore(); });
-    const blob = await new Promise<Blob | null>((resolve) => output.toBlob(resolve, 'image/png', 1)); if (!blob || blob.size <= 20) return;
-    const url = URL.createObjectURL(blob), link = document.createElement('a'); link.download = 'pix-studio-export.png'; link.href = url; link.click(); setTimeout(() => URL.revokeObjectURL(url), 0);
+    const working = workingCanvasRef.current;
+    if (!working) return;
+    const output = document.createElement('canvas');
+    output.width = working.width;
+    output.height = working.height;
+    const ctx = output.getContext('2d');
+    if (!ctx) return;
+    ctx.filter = buildFilter(filters);
+    ctx.drawImage(working, 0, 0);
+    textLayers.forEach((layer) => {
+      ctx.save();
+      ctx.font = `700 ${layer.fontSize}px sans-serif`;
+      ctx.fillStyle = layer.color;
+      ctx.fillText(layer.text, layer.x, layer.y);
+      ctx.restore();
+    });
+    particles.forEach((particle) => {
+      ctx.save();
+      ctx.globalAlpha = particle.alpha * Math.max(0, 1 - particle.life / particle.maxLife);
+      ctx.fillStyle = particle.color;
+      ctx.fillRect(particle.x, particle.y, particle.size, particle.size);
+      ctx.restore();
+    });
+    const blob = await new Promise<Blob | null>((resolve) => output.toBlob(resolve, 'image/png', 1));
+    if (!blob || blob.size <= 20) return;
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.download = 'pix-studio-export.png';
+    link.href = url;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
   };
 
   return <div className="mx-auto flex min-h-[650px] max-w-7xl flex-col gap-6 p-4 lg:flex-row" dir="rtl">
@@ -186,7 +294,7 @@ export default function PixTool() {
       {activeTool === 'liquify' && <div className="space-y-4"><p className="text-xs text-zinc-500">اسحب على الصورة لتشكيل البكسلات محليًا.</p><label className="block text-xs text-zinc-400">Brush radius: {liquifyRadius}<input aria-label="Liquify radius" type="range" min="10" max="120" value={liquifyRadius} onChange={(event) => setLiquifyRadius(Number(event.target.value))} className="mt-2 w-full accent-indigo-500" /></label><label className="block text-xs text-zinc-400">Strength: {Math.round(liquifyStrength * 100)}%<input aria-label="Liquify strength" type="range" min="0.1" max="1" step="0.05" value={liquifyStrength} onChange={(event) => setLiquifyStrength(Number(event.target.value))} className="mt-2 w-full accent-indigo-500" /></label></div>}
       {activeTool === 'dispersion' && <div className="space-y-4"><p className="text-xs text-zinc-500">انقر على الصورة لاستخراج الجسيمات من المنطقة المحددة.</p><label className="block text-xs text-zinc-400">Particle radius: {liquifyRadius}<input aria-label="Dispersion radius" type="range" min="10" max="120" value={liquifyRadius} onChange={(event) => setLiquifyRadius(Number(event.target.value))} className="mt-2 w-full accent-indigo-500" /></label></div>}
       {activeTool === 'text' && <div className="space-y-4"><input aria-label="Text layer" value={newText} onChange={(event) => setNewText(event.target.value)} placeholder="أدخل النص هنا..." className="w-full rounded-lg border border-zinc-800 bg-zinc-950 p-2 text-sm text-white focus:border-indigo-500 focus:outline-none" /><div className="flex gap-2"><input aria-label="Text color" type="color" value={textColor} onChange={(event) => setTextColor(event.target.value)} className="h-9 w-12 cursor-pointer rounded-md bg-transparent" /><button type="button" onClick={addTextLayer} className="flex-1 rounded-lg bg-zinc-800 text-xs font-bold text-white hover:bg-zinc-700">إضافة نص</button></div></div>}
-      <div className="mt-6 grid grid-cols-3 gap-2"><button type="button" onClick={() => restoreSnapshot(historyIndexRef.current - 1)} disabled={historyIndex <= 0} className="rounded-lg bg-zinc-800 py-2 text-xs text-white disabled:opacity-40">تراجع Undo</button><button type="button" onClick={() => restoreSnapshot(historyIndexRef.current + 1)} disabled={historyIndex >= historyRef.current.length - 1} className="rounded-lg bg-zinc-800 py-2 text-xs text-white disabled:opacity-40">إعادة Redo</button><button type="button" onClick={resetEditor} disabled={historyIndex === 0} className="rounded-lg bg-zinc-800 py-2 text-xs text-white disabled:opacity-40">Reset</button></div>
+      <div className="mt-6 grid grid-cols-3 gap-2"><button type="button" onClick={() => restoreSnapshot(historyIndex - 1)} disabled={historyIndex <= 0} className="rounded-lg bg-zinc-800 py-2 text-xs text-white disabled:opacity-40">تراجع Undo</button><button type="button" onClick={() => restoreSnapshot(historyIndex + 1)} disabled={historyIndex >= historyLength - 1} className="rounded-lg bg-zinc-800 py-2 text-xs text-white disabled:opacity-40">إعادة Redo</button><button type="button" onClick={resetEditor} disabled={historyIndex === 0} className="rounded-lg bg-zinc-800 py-2 text-xs text-white disabled:opacity-40">Reset</button></div>
       <button type="button" onClick={() => void exportImage()} className="mt-3 w-full rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-indigo-500">تصدير الصورة PNG عالي الدقة</button>
     </aside>}
   </div>;
