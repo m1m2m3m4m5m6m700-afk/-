@@ -29,6 +29,7 @@ function setupBase(dir) {
   cpSync(join(ROOT, "scripts/diagnostics/_core.mjs"), join(dir, "scripts/diagnostics/_core.mjs"));
   cpSync(join(ROOT, "scripts/error-sink.mjs"), join(dir, "scripts/error-sink.mjs"));
   cpSync(join(ROOT, "scripts/utils/get-head-sha.mjs"), join(dir, "scripts/utils/get-head-sha.mjs"));
+  cpSync(join(ROOT, "scripts/utils/failure-correlator.mjs"), join(dir, "scripts/utils/failure-correlator.mjs"));
   for (const [name] of SCANNERS) cpSync(join(ROOT, "scripts/diagnostics", `${name}.mjs`), join(dir, "scripts/diagnostics", `${name}.mjs`));
   mkdirSync(join(dir, "src"), { recursive: true });
   writeFileSync(join(dir, "package.json"), JSON.stringify({ name: "mutation-fixture", version: "1.0.0", dependencies: {}, devDependencies: {} }, null, 2));
