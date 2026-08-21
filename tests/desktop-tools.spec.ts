@@ -1,4 +1,5 @@
 import { test, expect, type Download, type Page } from "playwright/test";
+import QRCode from "qrcode";
 
 import { assertPngArtifact } from "./utils/image-validator";
 
@@ -25,40 +26,6 @@ async function readDownloadText(download: Download): Promise<string> {
   return (await readDownloadBuffer(download)).toString("utf8");
 }
 
-async function decodeQrDataUrl(page: Page, dataUrl: string): Promise<string> {
-  return page.evaluate(async (source) => {
-    type DetectedCode = { rawValue: string };
-    type Detector = { detect(source: ImageBitmapSource): Promise<DetectedCode[]> };
-    type DetectorConstructor = {
-      new (options?: { formats?: string[] }): Detector;
-      getSupportedFormats(): Promise<string[]>;
-    };
-
-    const barcodeDetector = (
-      globalThis as unknown as { BarcodeDetector?: DetectorConstructor }
-    ).BarcodeDetector;
-    if (!barcodeDetector) {
-      throw new Error("QR output verification requires BarcodeDetector support in the CI browser.");
-    }
-
-    const formats = await barcodeDetector.getSupportedFormats();
-    if (!formats.includes("qr_code")) {
-      throw new Error(`CI browser does not support QR decoding. Supported formats: ${formats.join(", ")}`);
-    }
-
-    const image = new Image();
-    image.src = source;
-    await image.decode();
-
-    const detector = new barcodeDetector({ formats: ["qr_code"] });
-    const detected = await detector.detect(image);
-    if (detected.length !== 1 || !detected[0]?.rawValue) {
-      throw new Error(`Expected exactly one QR payload, detected ${detected.length}.`);
-    }
-    return detected[0].rawValue;
-  }, dataUrl);
-}
-
 async function setColorInput(locator: ReturnType<Page["locator"]>, value: string) {
   await locator.evaluate((element, nextValue) => {
     const input = element as HTMLInputElement;
@@ -68,7 +35,11 @@ async function setColorInput(locator: ReturnType<Page["locator"]>, value: string
   }, value);
 }
 
-async function assertQrDownloads(page: Page, expectedPayload: string) {
+async function assertQrDownloads(
+  page: Page,
+  expectedPayload: string,
+  colors: { dark: string; light: string } = { dark: "#0f172a", light: "#ffffff" },
+) {
   await expect(page.locator('img[alt]').first()).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole("button", { name: "Download PNG" })).toBeEnabled({ timeout: 30_000 });
   await expect(page.getByRole("button", { name: "Download Vector SVG" })).toBeEnabled({ timeout: 30_000 });
@@ -81,11 +52,13 @@ async function assertQrDownloads(page: Page, expectedPayload: string) {
 
   const pngBuffer = await readDownloadBuffer(pngDownload);
   assertPngArtifact(pngBuffer, 300, 300);
-  const pngDecoded = await decodeQrDataUrl(
-    page,
-    `data:image/png;base64,${pngBuffer.toString("base64")}`,
-  );
-  expect(pngDecoded).toBe(expectedPayload);
+  const expectedPngDataUrl = await QRCode.toDataURL(expectedPayload, {
+    width: 300,
+    margin: 2,
+    color: colors,
+    errorCorrectionLevel: "M",
+  });
+  expect(pngBuffer.toString("base64")).toBe(expectedPngDataUrl.split(",")[1]);
 
   const svgDownloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Download Vector SVG" }).click();
@@ -97,9 +70,14 @@ async function assertQrDownloads(page: Page, expectedPayload: string) {
   expect(svgText).toContain("<svg");
   expect(svgText).toContain("xmlns=");
   expect(svgText).not.toMatch(/<script|javascript:|on[a-z]+\s*=/i);
-  const svgDataUrl = `data:image/svg+xml;base64,${Buffer.from(svgText, "utf8").toString("base64")}`;
-  const svgDecoded = await decodeQrDataUrl(page, svgDataUrl);
-  expect(svgDecoded).toBe(expectedPayload);
+  const expectedSvg = await QRCode.toString(expectedPayload, {
+    type: "svg",
+    width: 300,
+    margin: 2,
+    color: colors,
+    errorCorrectionLevel: "M",
+  });
+  expect(svgText).toBe(expectedSvg);
 }
 
 test.describe("relaunched public tools", () => {
@@ -118,22 +96,17 @@ test.describe("relaunched public tools", () => {
       mimeType: "image/png",
       buffer: onePixelPng,
     });
-
     await expect(page.getByRole("button", { name: /Download/i })).toBeEnabled({ timeout: 30_000 });
     const downloadPromise = page.waitForEvent("download");
     await page.getByRole("button", { name: /Download/i }).click();
-
     const download = await downloadPromise;
     await expect.poll(() => download.failure()).toBeNull();
     expect(download.suggestedFilename()).toMatch(/-compressed\.png$/i);
-
     const output = await download.createReadStream();
     if (!output) throw new Error("Image Compressor did not provide a downloadable output stream.");
-
     const chunks: Buffer[] = [];
     for await (const chunk of output) chunks.push(Buffer.from(chunk));
-    const buffer = Buffer.concat(chunks);
-    assertPngArtifact(buffer, 1, 1);
+    assertPngArtifact(Buffer.concat(chunks), 1, 1);
   });
 
   test("Image Enhancer loads and accepts an image input", async ({ page }) => {
@@ -151,22 +124,17 @@ test.describe("relaunched public tools", () => {
       mimeType: "image/png",
       buffer: onePixelPng,
     });
-
     await expect(page.getByRole("button", { name: /Download/i })).toBeEnabled({ timeout: 30_000 });
     const downloadPromise = page.waitForEvent("download");
     await page.getByRole("button", { name: /Download/i }).click();
-
     const download = await downloadPromise;
     await expect.poll(() => download.failure()).toBeNull();
     expect(download.suggestedFilename()).toMatch(/-4x\.png$/i);
-
     const output = await download.createReadStream();
     if (!output) throw new Error("Image Enhancer did not provide a downloadable output stream.");
-
     const chunks: Buffer[] = [];
     for await (const chunk of output) chunks.push(Buffer.from(chunk));
-    const buffer = Buffer.concat(chunks);
-    assertPngArtifact(buffer, 4, 4);
+    assertPngArtifact(Buffer.concat(chunks), 4, 4);
   });
 
   test("Video Compressor loads, validates video input, and enables processing", async ({ page }) => {
@@ -202,50 +170,49 @@ test.describe("relaunched public tools", () => {
 
     test("URL payload decodes exactly from both PNG and SVG", async ({ page }) => {
       const expected = "https://example.com/flixo?qr=1&lang=ar";
-      await page.locator('input[type="text"]').first().fill(expected);
+      await page.locator('[data-qr-input="url"]').fill(expected);
       await assertQrDownloads(page, expected);
     });
 
     test("plain Unicode text decodes exactly from both PNG and SVG", async ({ page }) => {
       await page.locator('button[aria-pressed]').nth(1).click();
       const expected = "مرحبا Flixo QR ✓ — تحقق من الناتج";
-      await page.locator("textarea").fill(expected);
+      await page.locator('[data-qr-input="text"]').fill(expected);
       await assertQrDownloads(page, expected);
     });
 
     test("Wi-Fi payload preserves required escaping exactly", async ({ page }) => {
       await page.locator('button[aria-pressed]').nth(2).click();
-      await page.locator('input[type="text"]').first().fill("Office;WiFi\\5G");
-      await page.locator('input[type="password"]').fill("p@ss:word,42");
-      await page.locator("select").selectOption("WPA");
-
+      await page.locator('[data-qr-input="wifi-ssid"]').fill("Office;WiFi\\5G");
+      await page.locator('[data-qr-input="wifi-password"]').fill("p@ss:word,42");
+      await page.locator('[data-qr-input="wifi-encryption"]').selectOption("WPA");
       const expected = "WIFI:T:WPA;S:Office\\;WiFi\\\\5G;P:p@ss\\:word\\,42;;";
       await assertQrDownloads(page, expected);
     });
 
     test("email payload preserves address and encoded subject", async ({ page }) => {
       await page.locator('button[aria-pressed]').nth(3).click();
-      await page.locator('input[type="email"]').fill("test@example.com");
-      await page.locator('input[type="text"]').first().fill("Hello Flixo ✓");
+      await page.locator('[data-qr-input="email-to"]').fill("test@example.com");
+      await page.locator('[data-qr-input="email-subject"]').fill("Hello Flixo ✓");
       await assertQrDownloads(page, "mailto:test@example.com?subject=Hello%20Flixo%20%E2%9C%93");
     });
 
     test("phone payload decodes exactly", async ({ page }) => {
       await page.locator('button[aria-pressed]').nth(4).click();
       const expected = "tel:+201001234567";
-      await page.locator('input[type="tel"]').fill("+201001234567");
+      await page.locator('[data-qr-input="phone"]').fill("+201001234567");
       await assertQrDownloads(page, expected);
     });
 
     test("long Unicode text remains decodable without payload corruption", async ({ page }) => {
       await page.locator('button[aria-pressed]').nth(1).click();
       const expected = "مرحبا Flixo — " + "QR ✓ اختبار ".repeat(40);
-      await page.locator("textarea").fill(expected);
+      await page.locator('[data-qr-input="text"]').fill(expected);
       await assertQrDownloads(page, expected);
     });
 
     test("rapid input changes do not leave a stale QR result", async ({ page }) => {
-      const input = page.locator('input[type="text"]').first();
+      const input = page.locator('[data-qr-input="url"]');
       await input.fill("https://example.com/old-result");
       await input.fill("https://example.com/final-result");
       await expect(page.locator('img[alt]').first()).toBeVisible({ timeout: 30_000 });
@@ -254,15 +221,16 @@ test.describe("relaunched public tools", () => {
 
     test("custom dark/light colors still produce a decodable QR payload", async ({ page }) => {
       const expected = "https://example.com/color-variant";
-      await page.locator('input[type="text"]').first().fill(expected);
+      await page.locator('[data-qr-input="url"]').fill(expected);
       const colors = page.locator('input[type="color"]');
       await setColorInput(colors.nth(0), "#123456");
       await setColorInput(colors.nth(1), "#ffffff");
-      await assertQrDownloads(page, expected);
+      await expect.poll(async () => await colors.nth(0).inputValue()).toBe("#123456");
+      await assertQrDownloads(page, expected, { dark: "#123456", light: "#ffffff" });
     });
 
     test("empty input disables both output downloads", async ({ page }) => {
-      await page.locator('input[type="text"]').first().fill("");
+      await page.locator('[data-qr-input="url"]').fill("");
       await expect(page.getByRole("button", { name: "Download PNG" })).toBeDisabled();
       await expect(page.getByRole("button", { name: "Download Vector SVG" })).toBeDisabled();
     });
