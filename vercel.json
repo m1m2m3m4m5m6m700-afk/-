@@ -4,5 +4,29 @@
   "buildCommand": "npm run build",
   "installCommand": "npm ci",
   "devCommand": "npm run dev",
-  "cleanUrls": true
+  "cleanUrls": true,
+  "headers": [
+    { "source": "/:lang((?:en|zh|hi|es|fr|ar|bn|pt|ru|ur|id|de|ja|sw|mr|te|tr|ta|ko|vi))", "headers": [{ "key": "Cache-Control", "value": "public, max-age=3600, s-maxage=86400, stale-while-revalidate=86400" }] },
+    { "source": "/:lang((?:en|zh|hi|es|fr|ar|bn|pt|ru|ur|id|de|ja|sw|mr|te|tr|ta|ko|vi))/:path*", "headers": [{ "key": "Cache-Control", "value": "public, max-age=3600, s-maxage=86400, stale-while-revalidate=86400" }] },
+    { "source": "/ar/:path*", "headers": [{ "key": "Content-Language", "value": "ar" }] },
+    { "source": "/ur/:path*", "headers": [{ "key": "Content-Language", "value": "ur" }] },
+    { "source": "/zh/:path*", "headers": [{ "key": "Content-Language", "value": "zh" }] },
+    { "source": "/hi/:path*", "headers": [{ "key": "Content-Language", "value": "hi" }] },
+    { "source": "/es/:path*", "headers": [{ "key": "Content-Language", "value": "es" }] },
+    { "source": "/fr/:path*", "headers": [{ "key": "Content-Language", "value": "fr" }] },
+    { "source": "/bn/:path*", "headers": [{ "key": "Content-Language", "value": "bn" }] },
+    { "source": "/pt/:path*", "headers": [{ "key": "Content-Language", "value": "pt" }] },
+    { "source": "/ru/:path*", "headers": [{ "key": "Content-Language", "value": "ru" }] },
+    { "source": "/id/:path*", "headers": [{ "key": "Content-Language", "value": "id" }] },
+    { "source": "/de/:path*", "headers": [{ "key": "Content-Language", "value": "de" }] },
+    { "source": "/ja/:path*", "headers": [{ "key": "Content-Language", "value": "ja" }] },
+    { "source": "/sw/:path*", "headers": [{ "key": "Content-Language", "value": "sw" }] },
+    { "source": "/mr/:path*", "headers": [{ "key": "Content-Language", "value": "mr" }] },
+    { "source": "/te/:path*", "headers": [{ "key": "Content-Language", "value": "te" }] },
+    { "source": "/tr/:path*", "headers": [{ "key": "Content-Language", "value": "tr" }] },
+    { "source": "/ta/:path*", "headers": [{ "key": "Content-Language", "value": "ta" }] },
+    { "source": "/ko/:path*", "headers": [{ "key": "Content-Language", "value": "ko" }] },
+    { "source": "/vi/:path*", "headers": [{ "key": "Content-Language", "value": "vi" }] },
+    { "source": "/en/:path*", "headers": [{ "key": "Content-Language", "value": "en" }] }
+  ]
 }
