@@ -3,10 +3,12 @@ import { assertDownload, assertImageResult, uploadFixture } from './helpers/imag
 
 test('image-cropper: creates a valid resized crop', async ({ page }) => {
   await page.goto('/en/image-cropper');
-  await expect(page.getByRole('heading', { level: 1, name: 'Image Cropper' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Crop & Resize' })).toBeVisible();
   await uploadFixture(page);
   await page.getByRole('button', { name: 'Run tool' }).click();
   const result = await assertImageResult(page);
   expect(result.type).toMatch(/^image\//);
-  await assertDownload(page, /\.(png|jpg|webp)$/);
+  expect(result.width).toBeGreaterThan(0);
+  expect(result.height).toBeGreaterThan(0);
+  await assertDownload(page, /\.png$/);
 });
