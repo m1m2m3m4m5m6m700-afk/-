@@ -52,7 +52,7 @@ if (!workflow) {
   if (!/PARALLEL CI GATE: PASS/m.test(workflow)) failures.push("ci.yml: final parallel gate marker is required");
   if (!/diagnostics:/m.test(workflow) || !/node scripts\/diagnose-ci-failure\.mjs/m.test(workflow)) failures.push("ci.yml: failure diagnostics engine is required");
   if (!/node scripts\/scan-secrets\.mjs/m.test(workflow)) failures.push("ci.yml: secrets scan is required");
-  if (!/github\/codeql-action\/(init|analyze)@v3/m.test(workflow)) failures.push("ci.yml: CodeQL is required");
+  if (!/github\/codeql-action\/(init|analyze)@v4/m.test(workflow)) failures.push("ci.yml: CodeQL v4 is required");
 }
 
 if (vercel) {
