@@ -29,9 +29,13 @@ import {
 } from './routes/image-tools';
 import { indexRoute } from './routes/index';
 import { rootRoute } from './routes/__root';
+import { localeHomeRoute } from './routes/$lang';
+import { localizedToolRoute } from './routes/$lang/$tool';
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
+  localeHomeRoute,
+  localizedToolRoute,
   enImageCompressorRoute,
   arImageCompressorRoute,
   enBackgroundRemoverRoute,
