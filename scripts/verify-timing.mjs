@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { getExactHeadSha } from "./utils/get-head-sha.mjs";
 
 const root = process.cwd();
 const outputPath = process.env.FLIXO_VERIFY_TIMING_FILE || path.join(root, "diagnostics", "verify-timing.json");
@@ -19,16 +20,9 @@ function runStage(name, args) {
       env: process.env,
     });
     child.on("close", (code, signal) => {
-      resolve({
-        name,
-        exitCode: typeof code === "number" ? code : 1,
-        signal: signal || null,
-        durationMs: Date.now() - startedAt,
-      });
+      resolve({ name, exitCode: typeof code === "number" ? code : 1, signal: signal || null, durationMs: Date.now() - startedAt });
     });
-    child.on("error", () => {
-      resolve({ name, exitCode: 1, signal: null, durationMs: Date.now() - startedAt });
-    });
+    child.on("error", () => resolve({ name, exitCode: 1, signal: null, durationMs: Date.now() - startedAt }));
   });
 }
 
@@ -41,8 +35,8 @@ for (const [name, args] of stages) {
 }
 
 const report = {
-  version: 2,
-  sha: process.env.GITHUB_SHA || null,
+  version: 3,
+  sha: getExactHeadSha(),
   ref: process.env.GITHUB_REF_NAME || null,
   runId: process.env.GITHUB_RUN_ID || null,
   startedAt: new Date(startedAt).toISOString(),
@@ -51,6 +45,7 @@ const report = {
   passed: results.length === stages.length && results.every((stage) => stage.exitCode === 0),
 };
 
+if (!/^[0-9a-f]{40}$/i.test(report.sha)) throw new Error("Verification report requires exact HEAD SHA");
 fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 fs.writeFileSync(outputPath, JSON.stringify(report, null, 2), "utf8");
 console.log(JSON.stringify(report, null, 2));
