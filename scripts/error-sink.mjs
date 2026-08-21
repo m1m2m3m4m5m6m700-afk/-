@@ -1,6 +1,7 @@
 import { appendFileSync, existsSync, mkdirSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync, closeSync } from "node:fs";
 import { join } from "node:path";
 import { getExactHeadSha } from "./utils/get-head-sha.mjs";
+import { correlateEntries } from "./utils/failure-correlator.mjs";
 
 const ROOT = process.cwd();
 const LOG = join(ROOT, "errors.log.json");
@@ -38,7 +39,12 @@ function atomicWrite(path, content) {
   try { fd = openSync(tmp, "wx"); writeFileSync(fd, content, "utf8"); closeSync(fd); fd = null; renameSync(tmp, path); }
   finally { if (fd !== null) { try { closeSync(fd); } catch {} } try { unlinkSync(tmp); } catch {} }
 }
-function save(entries) { const payload = `${JSON.stringify(entries, null, 2)}\n`; acquireLock(); try { atomicWrite(LOG, payload); atomicWrite(ELOG, payload); } finally { releaseLock(); } }
+function save(entries) {
+  const payload = `${JSON.stringify(correlateEntries(entries), null, 2)}\n`;
+  acquireLock();
+  try { atomicWrite(LOG, payload); atomicWrite(ELOG, payload); }
+  finally { releaseLock(); }
+}
 function appendDecision(line) { acquireLock(); try { appendFileSync(DEC, line); appendFileSync(EDEC, line); } finally { releaseLock(); } }
 function parseArgs(argv) { const a = {}; for (let i = 2; i < argv.length; i += 1) { const k = argv[i], v = argv[i + 1]; if (k?.startsWith("--")) { a[k.slice(2)] = v?.startsWith("--") ? true : v; i += v?.startsWith("--") ? 0 : 1; } } return a; }
 
@@ -52,6 +58,6 @@ if (command === "record") {
   const session = { timestamp: new Date().toISOString(), sha: sha(), scanner: "session", severity: "INFO", message: "diagnostic session started", details: { sessionId: `diag-${Date.now()}` } };
   const entries = load(); entries.push(session); save(entries); appendDecision(`\n\n## Diagnostic session ${session.details.sessionId}\n- SHA: ${session.sha}\n- Started: ${session.timestamp}\n`); process.stdout.write(session.details.sessionId + "\n");
 } else if (command === "summary") {
-  const entries = load(), latestSha = sha(), current = entries.filter((e) => e.sha === latestSha); const critical = current.filter((e) => e.severity === "CRITICAL").length; const failed = current.filter((e) => e.severity === "CRITICAL").map((e) => e.scanner);
+  const entries = correlateEntries(load()), latestSha = sha(), current = entries.filter((e) => e.sha === latestSha); const critical = current.filter((e) => e.severity === "CRITICAL").length; const failed = current.filter((e) => e.severity === "CRITICAL").map((e) => e.scanner);
   process.stdout.write(JSON.stringify({ sha: latestSha, entries: current.length, critical, failed }, null, 2) + "\n"); process.exitCode = critical ? 1 : 0;
 } else { process.stderr.write("error-sink usage: record|begin|summary\n"); process.exitCode = 2; }
