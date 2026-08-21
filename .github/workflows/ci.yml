@@ -29,6 +29,8 @@ on:
       - "vercel.json"
       - "scripts/**"
       - ".github/workflows/**"
+  schedule:
+    - cron: "23 2 * * 1"
   workflow_dispatch:
 
 concurrency:
@@ -40,30 +42,28 @@ permissions:
 
 jobs:
   verify:
-    name: Full Verification
+    name: Verify
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-      - name: Setup Node
-        uses: actions/setup-node@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
           cache: npm
       - name: Validate CI contract
         run: npm run validate-ci-contract
-      - name: Validate dependency contract
+      - name: Validate dependencies
         run: npm run validate:dependencies
       - name: Install dependencies
         run: npm ci
-      - name: Lockfile unchanged after install
+      - name: Lockfile unchanged
         run: git diff --exit-code -- package.json package-lock.json
-      - name: Production dependency audit
+      - name: Production audit
         run: npm run audit:production
-      - name: Install Chromium for operational tests
+      - name: Install Chromium
         run: npx playwright install --with-deps chromium
-      - name: Run canonical test gate
+      - name: Canonical verification
         run: npm run verify
       - name: Upload browser report
         if: always()
@@ -85,3 +85,26 @@ jobs:
             playwright-report/
           if-no-files-found: ignore
           retention-days: 14
+
+  security:
+    name: Security
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+      - name: Secrets scan
+        run: node scripts/scan-secrets.mjs
+      - name: CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          build-mode: none
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:javascript-typescript
