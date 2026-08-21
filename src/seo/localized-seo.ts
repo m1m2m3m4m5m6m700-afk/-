@@ -10,11 +10,25 @@ const siteOrigin = (): string => {
   return '';
 };
 
+const OG_LOCALES: Record<LocaleCode, string> = {
+  en: 'en_US', zh: 'zh_CN', hi: 'hi_IN', es: 'es_ES', fr: 'fr_FR', ar: 'ar_SA', bn: 'bn_BD',
+  pt: 'pt_PT', ru: 'ru_RU', ur: 'ur_PK', id: 'id_ID', de: 'de_DE', ja: 'ja_JP', sw: 'sw_KE',
+  mr: 'mr_IN', te: 'te_IN', tr: 'tr_TR', ta: 'ta_IN', ko: 'ko_KR', vi: 'vi_VN',
+};
+
 export const absoluteLocaleUrl = (locale: LocaleCode, toolPath: string): string => {
   const path = localePath(locale, toolPath);
   const origin = siteOrigin();
   return origin ? `${origin}${path}` : path;
 };
+
+export const buildOgImageUrl = (locale: LocaleCode, toolId: string): string => {
+  const origin = siteOrigin();
+  const path = `/og/${locale}/${toolId}.svg`;
+  return origin ? `${origin}${path}` : path;
+};
+
+export const getOgLocale = (locale: LocaleCode): string => OG_LOCALES[locale];
 
 export const buildHreflangLinks = (toolPath: string) => [
   ...SUPPORTED_LANGUAGES.map((language) => ({ rel: 'alternate', hreflang: language.code, href: absoluteLocaleUrl(language.code, toolPath) })),
