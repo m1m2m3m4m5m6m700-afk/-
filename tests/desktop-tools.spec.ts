@@ -29,7 +29,9 @@ async function readDownloadText(download: Download): Promise<string> {
 async function setColorInput(locator: ReturnType<Page["locator"]>, value: string) {
   await locator.evaluate((element, nextValue) => {
     const input = element as HTMLInputElement;
-    input.value = nextValue;
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+    if (!setter) throw new Error("Unable to access the native input value setter.");
+    setter.call(input, nextValue);
     input.dispatchEvent(new Event("input", { bubbles: true }));
     input.dispatchEvent(new Event("change", { bubbles: true }));
   }, value);
@@ -143,18 +145,17 @@ test.describe("relaunched public tools", () => {
     await expect(page.getByText(/sample\.mp4/)).toBeVisible();
   });
 
-  test("Video Trimmer loads, accepts a candidate video file, and surfaces validation feedback", async ({ page }) =>
-    {
-      await openTool(page, "video-trimmer");
-      const button = page.getByRole("button", { name: /Trim Video/i });
-      await expect(button).toBeDisabled();
-      await page.locator('input[type="file"]').setInputFiles({
-        name: "invalid.mp4",
-        mimeType: "video/mp4",
-        buffer: Buffer.from("not-a-real-video"),
-      });
-      await expect(page.getByRole("alert")).toBeVisible({ timeout: 30_000 });
+  test("Video Trimmer loads, accepts a candidate video file, and surfaces validation feedback", async ({ page }) => {
+    await openTool(page, "video-trimmer");
+    const button = page.getByRole("button", { name: /Trim Video/i });
+    await expect(button).toBeDisabled();
+    await page.locator('input[type="file"]').setInputFiles({
+      name: "invalid.mp4",
+      mimeType: "video/mp4",
+      buffer: Buffer.from("not-a-real-video"),
     });
+    await expect(page.getByRole("alert")).toBeVisible({ timeout: 30_000 });
+  });
 
   test.describe("QR Generator output correctness", () => {
     test.beforeEach(async ({ page }) => {
