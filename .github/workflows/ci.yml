@@ -39,6 +39,7 @@ concurrency:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   verify:
@@ -108,3 +109,29 @@ jobs:
       - uses: github/codeql-action/analyze@v3
         with:
           category: /language:javascript-typescript
+
+  diagnosis:
+    name: Failure Diagnosis
+    needs: [verify, security]
+    if: ${{ always() && (needs.verify.result == 'failure' || needs.security.result == 'failure') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v5
+      - name: Run CI Failure Diagnostic Engine
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/diagnose-ci-failure.mjs
+      - name: Upload Diagnostic Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-failure-diagnosis-${{ github.run_id }}
+          path: |
+            .artifacts/diagnostics/ci-failure-diagnosis.json
+            history/ci-failures.json
+          if-no-files-found: ignore
+          retention-days: 14
