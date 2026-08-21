@@ -75,8 +75,8 @@ for (const required of [
   "playwright-report",
   "test-results",
   "node scripts/scan-secrets.mjs",
-  "github/codeql-action/init@v3",
-  "github/codeql-action/analyze@v3",
+  "github/codeql-action/init@v4",
+  "github/codeql-action/analyze@v4",
 ]) if (!workflow.includes(required)) fail(`Parallel CI is missing required contract: ${required}`);
 
 const runtimeTypes = await read("src/lib/tool-runtime/types.ts");
