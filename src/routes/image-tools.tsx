@@ -21,6 +21,8 @@ import ExifCleanerTool from '../tools/exif-cleaner';
 import SvgOptimizerTool from '../tools/svg-optimizer';
 import MockupGeneratorTool from '../tools/mockup-generator';
 import ImageToSvgTool from '../tools/image-to-svg';
+import ImageCropperTool from '../tools/image-cropper';
+import ImageOcrTool from '../tools/image-ocr';
 
 function imageToolRoute(path: string, title: string, description: string, component: () => ReactElement) {
   return createRoute({
@@ -44,12 +46,14 @@ export const enImageUpscalerRoute = imageToolRoute('/en/image-upscaler', 'Image 
 export const enImageConverterRoute = imageToolRoute('/en/image-converter', 'Image Converter', 'Convert PNG, JPG, and WebP images in your browser.', ImageConverterTool);
 export const enImageToTextRoute = imageToolRoute('/en/image-to-text', 'Image to Text OCR', 'Extract text from images in your browser with OCR.', ImageToTextTool);
 export const enObjectRemoverRoute = imageToolRoute('/en/object-remover', 'Object Remover', 'Remove a rectangular object region with local reconstruction.', ObjectRemoverTool);
-export const enCropResizeRoute = imageToolRoute('/en/crop-resize', 'Crop & Resize', 'Crop images and export them at exact dimensions.', CropResizeTool);
+export const enCropResizeRoute = imageToolRoute('/en/crop-resize', 'Crop & Resize', 'Legacy route for crop/resize.', CropResizeTool);
 export const enWatermarkRemoverRoute = imageToolRoute('/en/watermark-remover', 'Watermark Remover', 'Cover a selected watermark region locally.', WatermarkRemoverTool);
-export const enRasterToSvgRoute = imageToolRoute('/en/raster-to-svg', 'Raster to SVG', 'Convert a small raster image to pixel-based SVG.', RasterToSvgTool);
+export const enRasterToSvgRoute = imageToolRoute('/en/raster-to-svg', 'Raster to SVG', 'Legacy raster-to-SVG route.', RasterToSvgTool);
+export const enImageCropperRoute = imageToolRoute('/en/image-cropper', 'Image Cropper', 'Crop and resize images for exact dimensions.', ImageCropperTool);
+export const enImageOcrRoute = imageToolRoute('/en/image-ocr', 'Image OCR', 'Extract text from images with OCR.', ImageOcrTool);
 export const enPhotoColorizerRoute = imageToolRoute('/en/photo-colorizer', 'Photo Colorizer', 'Colorize photos through a configured AI endpoint.', PhotoColorizerTool);
 export const enBackgroundBlurRoute = imageToolRoute('/en/background-blur', 'Background Blur', 'Blur background regions locally.', BackgroundBlurTool);
-export const enPassportPhotoMakerRoute = imageToolRoute('/en/passport-photo-maker', 'Passport Photo Maker', 'Create a standard 413×531 portrait crop.', PassportPhotoMakerTool);
+export const enPassportPhotoMakerRoute = imageToolRoute('/en/passport-photo-maker', 'Passport Photo Maker', 'Create a standard portrait crop.', PassportPhotoMakerTool);
 export const enWatermarkAdderRoute = imageToolRoute('/en/watermark-adder', 'Watermark Adder', 'Add text watermarks locally.', WatermarkAdderTool);
 export const enMemeGeneratorRoute = imageToolRoute('/en/meme-generator', 'Meme Generator', 'Create top-and-bottom captioned memes.', MemeGeneratorTool);
 export const enCollageMakerRoute = imageToolRoute('/en/collage-maker', 'Collage Maker', 'Combine multiple images into a collage.', CollageMakerTool);
