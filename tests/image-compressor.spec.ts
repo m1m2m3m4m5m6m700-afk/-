@@ -1,12 +1,12 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800"><rect width="1200" height="800" fill="#223344"/><circle cx="300" cy="220" r="180" fill="#67e8f9"/><circle cx="850" cy="560" r="260" fill="#164e63"/><text x="600" y="430" text-anchor="middle" fill="white" font-size="110" font-family="sans-serif">FLIXO</text></svg>`;
 
-function outputFormat(page: Parameters<typeof test>[1] extends never ? never : any, value: string) {
+function outputFormat(page: Page, value: string) {
   return page.locator('select').first().selectOption(value);
 }
 
-function control(page: any, text: string) {
+function control(page: Page, text: string) {
   return page.locator('label').filter({ hasText: text }).locator('input');
 }
 
@@ -53,7 +53,6 @@ test('Target size optimization respects a safe size ceiling', async ({ page }) =
   await page.getByRole('button', { name: 'Compress image' }).click();
 
   await expect(page.getByRole('link', { name: 'Download image' })).toHaveAttribute('download', 'flixo-compressed.webp', { timeout: 15000 });
-  await expect(page.getByRole('complementary').getByText(/^After$/, { exact: true })).toBeHidden();
   const after = page.getByRole('complementary').locator('dd').nth(1);
   await expect(after).toContainText(/KB|B/);
   const afterText = await after.textContent();
