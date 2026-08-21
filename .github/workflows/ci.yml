@@ -93,7 +93,7 @@ jobs:
       - run: npx playwright test --shard=${{ matrix.shard }}/6
       - name: Upload E2E diagnostics
         if: ${{ failure() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: e2e-diagnostics-shard-${{ matrix.shard }}-of-6
           path: |
