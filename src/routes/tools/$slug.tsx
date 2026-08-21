@@ -2,6 +2,7 @@ import { createFileRoute, notFound } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { ToolLayout } from "@/components/tools/ToolLayout";
+import { PdfMerge } from "@/components/tools/PdfMerge";
 import { getReadyToolRuntime } from "@/lib/tool-runtime/readyTools";
 import { getPublicToolRegistrationBySlug } from "@/lib/tool-platform";
 import { trackPageView } from "@/lib/analytics";
@@ -32,6 +33,14 @@ function ToolSlugRoute() {
   useEffect(() => {
     trackPageView(`/tools/${slug}`);
   }, [slug]);
+
+  if (slug === "pdf-merge" && import.meta.env.DEV) {
+    return (
+      <SiteLayout>
+        <PdfMerge />
+      </SiteLayout>
+    );
+  }
 
   if (!runtime || !registration) throw notFound();
 
