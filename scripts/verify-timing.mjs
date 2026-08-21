@@ -6,22 +6,20 @@ import { getExactHeadSha } from "./utils/get-head-sha.mjs";
 const root = process.cwd();
 const outputPath = process.env.FLIXO_VERIFY_TIMING_FILE || path.join(root, "diagnostics", "verify-timing.json");
 const stages = [
+  ["diagnose:self-test", ["scripts/diagnostics/test-scanners.mjs"]],
   ["diagnose:all", ["run", "diagnose:all"]],
   ["verify:project", ["run", "verify:project"]],
   ["test:after-verify", ["run", "test:after-verify"]],
+  ["diagnose:rule-aging", ["scripts/diagnostics/telemetry-rule-aging.mjs"]],
 ];
 
 function runStage(name, args) {
   return new Promise((resolve) => {
     const startedAt = Date.now();
-    const child = spawn(process.platform === "win32" ? "npm.cmd" : "npm", args, {
-      cwd: root,
-      stdio: "inherit",
-      env: process.env,
-    });
-    child.on("close", (code, signal) => {
-      resolve({ name, exitCode: typeof code === "number" ? code : 1, signal: signal || null, durationMs: Date.now() - startedAt });
-    });
+    const command = args[0] === "run" ? (process.platform === "win32" ? "npm.cmd" : "npm") : process.execPath;
+    const commandArgs = args[0] === "run" ? args : args;
+    const child = spawn(command, commandArgs, { cwd: root, stdio: "inherit", env: process.env });
+    child.on("close", (code, signal) => resolve({ name, exitCode: typeof code === "number" ? code : 1, signal: signal || null, durationMs: Date.now() - startedAt }));
     child.on("error", () => resolve({ name, exitCode: 1, signal: null, durationMs: Date.now() - startedAt }));
   });
 }
@@ -35,7 +33,7 @@ for (const [name, args] of stages) {
 }
 
 const report = {
-  version: 3,
+  version: 4,
   sha: getExactHeadSha(),
   ref: process.env.GITHUB_REF_NAME || null,
   runId: process.env.GITHUB_RUN_ID || null,
