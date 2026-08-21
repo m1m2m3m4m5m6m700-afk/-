@@ -1,0 +1,4 @@
+import { readFileSync } from "node:fs";
+import { main, files, rel } from "./_core.mjs";
+const patterns=[/AKIA[0-9A-Z]{16}/g,/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/g,/github_pat_[A-Za-z0-9_]{20,}/g,/sk-[A-Za-z0-9]{20,}/g,/xox[baprs]-[A-Za-z0-9-]{20,}/g,/AIza[0-9A-Za-z_-]{20,}/g,/(?:password|secret|token|api[_-]?key)\s*[:=]\s*["'][^"'\n]{12,}["']/gi];
+await main("check-secrets",()=>{const findings=[];for(const f of files(".",/\.(ts|tsx|js|jsx|mjs|json|env|yml|yaml|md)$/)){const s=readFileSync(f,"utf8");for(const p of patterns)if(p.test(s)){findings.push(rel(f));p.lastIndex=0;break;}}return {severity:findings.length?"CRITICAL":"INFO",message:findings.length?"Potential secret material detected":"Secret scan PASS",findings};});

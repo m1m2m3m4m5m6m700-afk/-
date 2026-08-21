@@ -1,0 +1,4 @@
+import ts from "typescript";
+import { readFileSync } from "node:fs";
+import { main, files, rel } from "./_core.mjs";
+await main("check-ast-architecture",()=>{const findings=[];for(const f of files("src",/\.(ts|tsx)$/)){const source=ts.createSourceFile(f,readFileSync(f,"utf8"),ts.ScriptTarget.Latest,true);function visit(node){if(ts.isImportDeclaration(node)&&ts.isStringLiteral(node.moduleSpecifier)){const spec=node.moduleSpecifier.text;if((f.includes("/components/")||f.includes("/pages/"))&&/(^|\/)(server|api)(\/|$)/.test(spec))findings.push(`${rel(f)}: forbidden server import ${spec}`);if(f.includes("/lib/")&&/\.\/components\//.test(spec))findings.push(`${rel(f)}: lib-to-component boundary violation ${spec}`);}ts.forEachChild(node,visit)}visit(source)}return{severity:findings.length?"CRITICAL":"INFO",message:findings.length?"Module boundary violations detected":"AST architecture PASS",findings};});

@@ -1,0 +1,3 @@
+import { existsSync, readFileSync } from "node:fs";
+import { main } from "./_core.mjs";
+await main("check-test-quality",()=>{if(!existsSync("playwright.config.ts"))return{severity:"CRITICAL",message:"playwright.config.ts missing",findings:["Missing Playwright config"]};const s=readFileSync("playwright.config.ts","utf8");const required=[/fullyParallel\s*:\s*false\b/,/reuseExistingServer\s*:\s*false\b/,/trace\s*:\s*["']retain-on-failure["']/];const findings=required.filter(r=>!r.test(s)).map(r=>`Missing Playwright contract: ${r}`);return{severity:findings.length?"CRITICAL":"INFO",message:findings.length?"Playwright serial execution contract failed":"Playwright test-quality PASS",findings};});

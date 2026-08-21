@@ -1,0 +1,3 @@
+import { readFileSync } from "node:fs";
+import { main, files, rel } from "./_core.mjs";
+await main("check-antipatterns",()=>{const findings=[];for(const f of files("src",/\.(ts|tsx|js|jsx|mjs)$/)){const s=readFileSync(f,"utf8");if(/console\.log\s*\(/.test(s)) findings.push(`${rel(f)}: console.log`);if(/\.then\s*\([^)]*\)\s*;/.test(s)&&!/\.catch\s*\(/.test(s)) findings.push(`${rel(f)}: promise chain without catch`);if(/new Promise\s*\([^)]*setTimeout/.test(s)) findings.push(`${rel(f)}: timer-backed promise should be audited for cleanup`);}return {severity:findings.length?"CRITICAL":"INFO",message:findings.length?"Runtime antipatterns detected":"Antipattern scan PASS",findings};});

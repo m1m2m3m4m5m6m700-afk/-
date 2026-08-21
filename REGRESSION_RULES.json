@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "rules": [
+    {"id":"no-focused-tests","pattern":"\\b(?:test|it|describe)\\.only\\s*\\(","flags":"g"},
+    {"id":"no-ts-ignore","pattern":"@ts-(?:ignore|nocheck)","flags":"g"},
+    {"id":"no-console-log","pattern":"\\bconsole\\.log\\s*\\(","flags":"g"},
+    {"id":"no-secret-env-literals","pattern":"(?:password|secret|token|api[_-]?key)\\s*[:=]\\s*[\"'][^\"']{12,}[\"']","flags":"gi"}
+  ]
+}

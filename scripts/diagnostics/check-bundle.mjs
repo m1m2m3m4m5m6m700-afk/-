@@ -1,0 +1,5 @@
+import { existsSync, readdirSync, statSync } from "node:fs";
+import { join } from "node:path";
+import { main } from "./_core.mjs";
+const thresholds={js:350000,css:250000,html:150000};
+await main("check-bundle",()=>{const dir=existsSync("dist")?"dist":".output";if(!existsSync(dir))return{severity:"WARNING",message:"No build output present; size check deferred","findings":[`Missing ${dir}`]};const findings=[];function walk(d){for(const e of readdirSync(d,{withFileTypes:true})){const p=join(d,e.name);if(e.isDirectory())walk(p);else{const ext=e.name.split(".").pop()?.toLowerCase();if(ext&&thresholds[ext]&&statSync(p).size>thresholds[ext])findings.push(`${p} exceeds ${thresholds[ext]} bytes`)}}}walk(dir);return{severity:findings.length?"CRITICAL":"INFO",message:findings.length?"Bundle safety threshold exceeded":"Bundle size PASS",findings};});

@@ -1,0 +1,3 @@
+import { execFileSync } from "node:child_process";
+import { main } from "./_core.mjs";
+await main("check-git-integrity",()=>{const sha=execFileSync("git",["rev-parse","HEAD"],{encoding:"utf8"}).trim();const status=execFileSync("git",["status","--porcelain","--untracked-files=all"],{encoding:"utf8"}).trim().split("\n").filter(Boolean);const findings=status.filter(x=>!/(^|\s)(errors\.log\.json|DECISION_LOG\.md)$/.test(x));return{severity:findings.length?"CRITICAL":"INFO",message:findings.length?"Workspace is not clean":"Git integrity PASS",findings,details:{sha,trackedExceptions:status.filter(x=>!findings.includes(x))}};});
