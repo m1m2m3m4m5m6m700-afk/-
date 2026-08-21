@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { convertImage, cropResizeImage, imageInfo, removeBackground, rasterToSvg, resizeImage, watermarkRemove, fillRemoveRegion } from './engine';
+import { convertImage, cropResizeImage, downloadBlob, imageInfo, removeBackground, rasterToSvg, resizeImage, watermarkRemove, fillRemoveRegion } from './engine';
 import type { LocalToolId } from './engine';
 
 const DEFINITIONS: Record<Exclude<LocalToolId, 'ai-image-generator' | 'image-compressor'>, { title: string; description: string; accept: string }> = {
@@ -245,7 +245,10 @@ export function ImageToolPage({ toolId }: Props) {
               <>
                 {result.text !== undefined ? <pre style={{ whiteSpace: 'pre-wrap' }}>{result.text || 'No text detected.'}</pre> : previewUrl && <img src={previewUrl} alt="Tool result" style={{ maxWidth: '100%', borderRadius: 12 }} />}
                 {result.info && <p className="privacy-note">Output: {result.info.width} × {result.info.height}px · {Math.round(result.blob.size / 1024)} KB · {result.blob.type || 'application/octet-stream'}</p>}
-                <a className="primary-button" href={downloadUrl} download={result.fileName}>Download {result.fileName}</a>
+                <div className="button-row">
+                  <a className="primary-button" href={downloadUrl} download={result.fileName}>Download {result.fileName}</a>
+                  <button className="primary-button" type="button" onClick={() => downloadBlob(result.blob, result.fileName)}>Download now</button>
+                </div>
               </>
             ) : <p>No result yet.</p>}
           </aside>
