@@ -5,6 +5,7 @@ import path from "node:path";
 const root = process.cwd();
 const outputPath = process.env.FLIXO_VERIFY_TIMING_FILE || path.join(root, "diagnostics", "verify-timing.json");
 const stages = [
+  ["diagnose:all", ["run", "diagnose:all"]],
   ["verify:project", ["run", "verify:project"]],
   ["test:after-verify", ["run", "test:after-verify"]],
 ];
@@ -40,7 +41,7 @@ for (const [name, args] of stages) {
 }
 
 const report = {
-  version: 1,
+  version: 2,
   sha: process.env.GITHUB_SHA || null,
   ref: process.env.GITHUB_REF_NAME || null,
   runId: process.env.GITHUB_RUN_ID || null,
