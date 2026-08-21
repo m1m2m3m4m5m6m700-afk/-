@@ -1,6 +1,6 @@
 import { createRoute } from '@tanstack/react-router';
 import { useEffect } from 'react';
-import { getLanguageConfig, isLocaleCode } from '../../config/i18n';
+import { getLanguageConfig, isLocaleCode, SUPPORTED_LANGUAGES } from '../../config/i18n';
 import { getLocale, localePath } from '../../i18n';
 import { TOOLS_REGISTRY } from '../../config/tools';
 import { rootRoute } from '../__root';
@@ -11,8 +11,10 @@ export const localizedToolRoute = createRoute({
   head: ({ params }) => {
     const locale = getLocale(params.lang); const tool = TOOLS_REGISTRY.find((item) => item.id === params.tool);
     if (!tool) return { meta: [{ title: '404 | FLIXO' }, { name: 'robots', content: 'noindex,nofollow' }] };
+    const validLocale = isLocaleCode(params.lang) ? params.lang : 'en';
     const translated = locale.tools[tool.id] ?? { title: tool.title, description: tool.description };
-    const canonicalPath = localePath(isLocaleCode(params.lang) ? params.lang : 'en', tool.path);
+    const canonicalPath = localePath(validLocale, tool.path);
+    const links = SUPPORTED_LANGUAGES.map((language) => ({ rel: 'alternate', hrefLang: language.code, href: localePath(language.code, tool.path) }));
     return { meta: [
       { title: `${translated.title} | FLIXO` },
       { name: 'description', content: translated.description },
@@ -20,8 +22,7 @@ export const localizedToolRoute = createRoute({
       { property: 'og:title', content: `${translated.title} | FLIXO` },
       { property: 'og:description', content: translated.description },
       { property: 'og:type', content: 'website' },
-      { rel: 'canonical', href: canonicalPath },
-    ] };
+    ], links: [{ rel: 'canonical', href: canonicalPath }, ...links] };
   },
   component: function LocalizedToolPage() {
     const { lang, tool } = localizedToolRoute.useParams();
