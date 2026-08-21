@@ -2,58 +2,88 @@ import { expect, test } from '@playwright/test';
 
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAIklEQVR4nGP8////fwYkwMTAwMAgqhnIIKoZiBBABozoWgBvpAkdy756fgAAAABJRU5ErkJggg==', 'base64');
 
-async function canvasPixels(page: import('@playwright/test').Page) {
+async function gpuPixels(page: import('@playwright/test').Page) {
   return page.locator('canvas[aria-label="Seed preview"]').evaluate((element) => {
     const canvas = element as HTMLCanvasElement;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('2D context unavailable for verification.');
-    return Array.from(ctx.getImageData(0, 0, canvas.width, canvas.height).data);
+    const gl = canvas.getContext('webgl');
+    if (!gl) throw new Error('WebGL context unavailable for verification.');
+    const pixels = new Uint8Array(canvas.width * canvas.height * 4);
+    gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+    return Array.from(pixels);
   });
 }
 
-test('Seed: WebGL preview changes pixels and exports a non-empty PNG', async ({ page }) => {
+async function loadSeed(page: import('@playwright/test').Page) {
   await page.goto('/en/seed');
   await expect(page.getByRole('heading', { level: 1, name: 'Seed' })).toBeVisible();
   await page.locator('input[type="file"]').first().setInputFiles({ name: 'seed-fixture.png', mimeType: 'image/png', buffer: PNG });
+  await expect(page.locator('canvas[aria-label="Seed preview"]')).toBeVisible();
+  await expect.poll(() => page.locator('canvas[aria-label="Seed preview"]').evaluate((e) => Boolean((e as HTMLCanvasElement).getContext('webgl')))).toBe(true);
+  await page.waitForTimeout(100);
+}
 
-  const canvas = page.locator('canvas[aria-label="Seed preview"]');
-  await expect(canvas).toBeVisible();
-  await expect.poll(() => canvas.evaluate((element) => Boolean((element as HTMLCanvasElement).getContext('webgl')))).toBe(true);
-
-  const baseline = await canvasPixels(page);
-  await page.locator('input[type="range"]').first().fill('50');
-  await expect(page.getByText('50', { exact: true })).toBeVisible();
-  await page.waitForTimeout(80);
-  const adjusted = await canvasPixels(page);
+test('Seed: WebGL preview changes pixels and exports a non-empty PNG', async ({ page }) => {
+  await loadSeed(page);
+  const baseline = await gpuPixels(page);
+  await page.getByRole('slider', { name: 'brightness' }).fill('50');
+  await page.waitForTimeout(100);
+  const adjusted = await gpuPixels(page);
   expect(adjusted).not.toEqual(baseline);
 
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export PNG' }).click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toBe('seed-edited.png');
-  const path = await download.path();
-  expect(path).toBeTruthy();
+  expect((await download.createReadStream()) ?? null).toBeTruthy();
 });
 
-test('Seed: Undo and Redo restore and reapply a change', async ({ page }) => {
-  await page.goto('/en/seed');
-  await page.locator('input[type="file"]').first().setInputFiles({ name: 'seed-fixture.png', mimeType: 'image/png', buffer: PNG });
-  const canvas = page.locator('canvas[aria-label="Seed preview"]');
-  await expect(canvas).toBeVisible();
+test('Seed: advanced pipeline controls alter non-destructive state and export', async ({ page }) => {
+  await loadSeed(page);
+  await page.getByRole('button', { name: /Advanced/ }).click();
 
-  const baseline = await canvasPixels(page);
-  await page.locator('input[type="range"]').first().fill('35');
-  await page.waitForTimeout(80);
-  const edited = await canvasPixels(page);
+  await page.getByRole('slider', { name: 'Curves' }).fill('35');
+  await page.getByRole('slider', { name: 'Brush strength' }).fill('40');
+  await page.getByRole('slider', { name: 'Perspective X' }).fill('10');
+  await page.getByRole('slider', { name: 'Perspective Y' }).fill('-8');
+  await page.getByRole('slider', { name: 'Lens Blur' }).fill('8');
+  await page.getByRole('slider', { name: 'Bokeh' }).fill('20');
+  await page.getByRole('spinbutton', { name: 'Healing X' }).fill('1');
+  await page.getByRole('spinbutton', { name: 'Healing Y' }).fill('1');
+
+  const exportPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export PNG' }).click();
+  const download = await exportPromise;
+  expect(download.suggestedFilename()).toBe('seed-edited.png');
+  expect((await download.createReadStream()) ?? null).toBeTruthy();
+});
+
+test('Seed: Undo and Redo restore and reapply a GPU color change', async ({ page }) => {
+  await loadSeed(page);
+  const baseline = await gpuPixels(page);
+  await page.getByRole('slider', { name: 'brightness' }).fill('35');
+  await page.waitForTimeout(100);
+  const edited = await gpuPixels(page);
   expect(edited).not.toEqual(baseline);
 
   await page.getByRole('button', { name: 'Undo' }).click();
-  await page.waitForTimeout(80);
-  expect(await canvasPixels(page)).toEqual(baseline);
+  await page.waitForTimeout(100);
+  expect(await gpuPixels(page)).toEqual(baseline);
 
   await page.getByRole('button', { name: 'Redo' }).click();
-  await page.waitForTimeout(80);
-  expect(await canvasPixels(page)).toEqual(edited);
+  await page.waitForTimeout(100);
+  expect(await gpuPixels(page)).toEqual(edited);
+});
+
+test('Seed: accepts a second image for Double Exposure', async ({ page }) => {
+  await loadSeed(page);
+  await page.getByRole('button', { name: /Advanced/ }).click();
+  const files = page.locator('input[aria-label="Double Exposure file"]');
+  await files.setInputFiles({ name: 'exposure.png', mimeType: 'image/png', buffer: PNG });
+  await page.getByRole('slider', { name: 'Exposure opacity' }).fill('60');
+  const exportPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export PNG' }).click();
+  const download = await exportPromise;
+  expect(download.suggestedFilename()).toBe('seed-edited.png');
 });
 
 test('Seed: shows a clear error when GPU rendering is unavailable', async ({ page }) => {
