@@ -4,7 +4,7 @@ const isCI = process.env.CI === "true";
 
 export default defineConfig({
   testDir: "./tests",
-  fullyParallel: isCI,
+  fullyParallel: false,
   workers: isCI ? 2 : undefined,
   timeout: 5 * 60 * 1000,
   expect: { timeout: 15_000 },

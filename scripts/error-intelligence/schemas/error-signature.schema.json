@@ -1,0 +1,12 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "type":"object",
+  "required":["version","signature","hash"],
+  "properties":{
+    "version":{"type":"integer"},
+    "signature":{"type":"string","minLength":8},
+    "hash":{"type":"string","pattern":"^[a-f0-9]{16}$"},
+    "normalizedInput":{"type":"string"}
+  },
+  "additionalProperties":false
+}

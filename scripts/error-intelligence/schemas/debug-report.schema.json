@@ -1,0 +1,16 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "type":"object",
+  "required":["version","summary","proposedFix","confidence","policy"],
+  "properties":{
+    "version":{"type":"integer"},
+    "signature":{"type":["string","null"]},
+    "summary":{"type":"string"},
+    "reproduction":{"type":"object"},
+    "proposedFix":{"type":"string"},
+    "confidence":{"type":"integer","minimum":0,"maximum":100},
+    "rootCause":{"type":"object"},
+    "policy":{"type":"object","required":["readOnly","autoApplyAllowed"]}
+  },
+  "additionalProperties":true
+}
