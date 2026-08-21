@@ -47,7 +47,10 @@ if (!workflow) {
   if (!/^name:\s*CI\s*$/m.test(workflow)) failures.push("ci.yml: workflow name must be CI");
   if (!/pull_request:/m.test(workflow)) failures.push("ci.yml: pull_request trigger is required");
   if (!/node-version-file:\s*\.nvmrc/m.test(workflow)) failures.push("ci.yml: Node must come from .nvmrc");
-  if (!/npm run verify\b/m.test(workflow)) failures.push("ci.yml: canonical npm run verify gate is required");
+  if (!/max-parallel:\s*24/m.test(workflow)) failures.push("ci.yml: parallel check matrix must allow up to 24 concurrent checks");
+  if (!/gate:/m.test(workflow)) failures.push("ci.yml: final gate job is required");
+  if (!/PARALLEL CI GATE: PASS/m.test(workflow)) failures.push("ci.yml: final parallel gate marker is required");
+  if (!/diagnostics:/m.test(workflow) || !/node scripts\/diagnose-ci-failure\.mjs/m.test(workflow)) failures.push("ci.yml: failure diagnostics engine is required");
   if (!/node scripts\/scan-secrets\.mjs/m.test(workflow)) failures.push("ci.yml: secrets scan is required");
   if (!/github\/codeql-action\/(init|analyze)@v3/m.test(workflow)) failures.push("ci.yml: CodeQL is required");
 }
