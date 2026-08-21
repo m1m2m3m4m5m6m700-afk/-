@@ -15,7 +15,7 @@ const tools = [
 const expectedHreflang = 21;
 
 for (const [locale, dir] of languages) {
-  test(`40? no: ${locale} validates all 22 localized tool routes`, async ({ page }) => {
+  test(`${locale} validates all 22 localized tool routes`, async ({ page }) => {
     for (const tool of tools) {
       const response = await page.goto(`/${locale}/${tool}`, { waitUntil: 'domcontentloaded' });
       expect(response?.ok(), `${locale}/${tool} should return 2xx`).toBeTruthy();
@@ -43,7 +43,6 @@ for (const [locale, dir] of languages) {
     }
   });
 }
-
 
 test('matrix size is exactly 440 localized routes', () => {
   expect(languages.length * tools.length).toBe(440);
