@@ -44,6 +44,8 @@ jobs:
     name: Full Verification (${{ github.ref_name }})
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    env:
+      NODE_OPTIONS: --import=${{ github.workspace }}/scripts/register-error-sink.mjs
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -136,6 +138,8 @@ jobs:
     permissions:
       contents: read
       actions: read
+    env:
+      NODE_OPTIONS: --import=${{ github.workspace }}/scripts/register-error-sink.mjs
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -231,5 +235,7 @@ jobs:
             diagnostics/typecheck.log
             diagnostics/health.log
             diagnostics/out/v3-real-ci-diagnosis.json
+            errors.log.json
+            DECISION_LOG.md
           if-no-files-found: warn
           retention-days: 14
