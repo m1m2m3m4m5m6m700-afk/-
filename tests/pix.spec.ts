@@ -4,11 +4,12 @@ import { PNG, uploadFixture } from './helpers/image-tool-fixture';
 test.describe('Pix Studio', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/en/pix');
-    await expect(page.getByRole('heading', { name: 'Pix Studio' })).toBeVisible();
+    await expect(page.getByText('افتح صورة للبدء في Pix Studio')).toBeVisible();
   });
 
   test('opens an image and exposes all editor modes', async ({ page }) => {
     await page.locator('#pix-image-file').setInputFiles({ name: 'pix-fixture.png', mimeType: 'image/png', buffer: PNG });
+    await expect(page.getByRole('heading', { name: 'Pix Studio' })).toBeVisible();
     await expect(page.getByLabel('Pix Studio preview')).toBeVisible();
     await expect(page.getByRole('button', { name: 'tune' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'liquify' })).toBeVisible();
