@@ -86,6 +86,7 @@ export function MegaToolHub() {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search this section…"
+              aria-label="Search this section"
               className="h-11 w-full rounded-2xl border border-border bg-background/80 ps-9 pe-4 text-sm outline-none transition focus:border-primary/40"
             />
           </div>
