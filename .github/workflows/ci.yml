@@ -81,7 +81,7 @@ jobs:
           - name: tool-regression
             command: npm run validate:tool-platform-regression
           - name: route-tree
-            command: npm run validate:route-tree
+            command: npm run generate:routes && npm run validate:route-tree
           - name: flaky-isolation
             command: npm run validate:flaky-isolation
           - name: failure-quality
@@ -130,6 +130,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Run isolated check
+        shell: bash
         run: ${{ matrix.command }}
 
   typecheck:
