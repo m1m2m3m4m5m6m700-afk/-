@@ -8,10 +8,10 @@ export type ToolConfig = {
 
 export const TOOLS_REGISTRY: readonly ToolConfig[] = Object.freeze([
   {
-    id: "calculator",
-    title: "Scientific Calculator",
-    path: "/",
-    description: "Fast scientific calculator with memory, history, functions, powers, roots and angle modes.",
+    id: 'image-compressor',
+    title: 'Compress Images Online',
+    path: '/en/image-compressor',
+    description: 'Reduce JPG, PNG, and WebP file size in your browser with quality and dimension controls.',
     isReady: true,
   },
 ]);
