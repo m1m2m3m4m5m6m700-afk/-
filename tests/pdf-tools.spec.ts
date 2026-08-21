@@ -46,6 +46,7 @@ test("implemented PDF mega-tool variants return a real result", async ({ page })
 
   for (const tool of pdfTools) {
     try {
+      const downloadPromise = page.waitForEvent("download");
       const outcome = await page.evaluate(async (definition) => {
         const { runMegaTool } = await import("/src/lib/megaToolsEngine.ts");
         const fixture = (window as unknown as { __flixoPdfFixture: File }).__flixoPdfFixture;
@@ -60,16 +61,25 @@ test("implemented PDF mega-tool variants return a real result", async ({ page })
             throw new Error(`Invalid PDF download filename: ${result.filename}`);
           }
           if (!result.url) throw new Error("Tool returned an empty download URL.");
-          const response = await fetch(result.url);
-          if (!response.ok) throw new Error(`Download URL returned HTTP ${response.status}.`);
-          const blob = await response.blob();
-          if (blob.size === 0) throw new Error("Tool returned an empty PDF blob.");
-          URL.revokeObjectURL(result.url);
-          return { type: result.type, ok: true, bytes: blob.size };
+          const anchor = document.createElement("a");
+          anchor.href = result.url;
+          anchor.download = result.filename;
+          anchor.style.display = "none";
+          document.body.appendChild(anchor);
+          anchor.click();
+          anchor.remove();
+          return { type: result.type, ok: true, filename: result.filename };
         }
         throw new Error(`Unexpected PDF result type: ${result.type}`);
       }, tool);
 
+      if (outcome.type === "download") {
+        const download = await downloadPromise;
+        expect(download.failure()).resolves.toBeNull();
+        expect(download.suggestedFilename()).toBe(outcome.filename);
+      } else {
+        await expect(downloadPromise).rejects.toThrow();
+      }
       expect(outcome.ok).toBe(true);
     } catch (error) {
       failures.push({
