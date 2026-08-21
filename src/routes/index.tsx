@@ -1,4 +1,5 @@
 import { createRoute, Link } from '@tanstack/react-router';
+import { TOOLS_REGISTRY } from '../config/tools';
 import { rootRoute } from './__root';
 
 export const indexRoute = createRoute({
@@ -7,7 +8,7 @@ export const indexRoute = createRoute({
   head: () => ({
     meta: [
       { title: 'FLIXO | Image Tools Online' },
-      { name: 'description', content: 'Fast browser-based image tools from FLIXO. Start with Image Compressor and explore simple, privacy-friendly image processing.' },
+      { name: 'description', content: 'Fast browser-based image tools from FLIXO: background removal, compression, conversion, OCR, resizing, upscaling, and more.' },
       { name: 'robots', content: 'index,follow,max-image-preview:large' },
     ],
   }),
@@ -17,8 +18,10 @@ export const indexRoute = createRoute({
         <div className="home-container">
           <p className="image-tool-eyebrow">FLIXO · IMAGE TOOLS</p>
           <h1>Image tools built for real search intent</h1>
-          <p className="home-lead">Compress, resize, convert, and improve images with fast browser-first tools and clear results.</p>
-          <Link className="primary-button home-cta" to="/en/image-compressor">Open Image Compressor</Link>
+          <p className="home-lead">Fast browser-first image tools with clear results and separate pages for each job.</p>
+          <div className="compressor-grid">
+            {TOOLS_REGISTRY.map((tool) => <Link key={tool.id} className="compressor-card" to={tool.path}>{tool.title}<span>{tool.description}</span></Link>)}
+          </div>
         </div>
       </main>
     );
