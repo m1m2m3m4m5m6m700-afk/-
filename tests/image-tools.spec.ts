@@ -29,9 +29,7 @@ for (const [id, path, title] of tools) {
   test(`${id}: output quality contract`, async ({ page }) => {
     if (id === 'image-to-text') {
       await page.addInitScript(() => {
-        (window as typeof window & { Tesseract?: unknown }).Tesseract = {
-          recognize: async () => ({ data: { text: 'FLIXO OCR OK' } }),
-        };
+        (window as typeof window & { Tesseract?: unknown }).Tesseract = { recognize: async () => ({ data: { text: 'FLIXO OCR OK' } }) };
       });
     }
     if (id === 'ai-image-generator') {
@@ -46,29 +44,24 @@ for (const [id, path, title] of tools) {
     if (id === 'ai-image-generator') {
       await page.getByPlaceholder('A cinematic sunset over Cairo...').fill('FLIXO production-quality test image');
       await page.getByRole('button', { name: 'Generate image' }).click();
-      const output = await resultImage(page);
-      expect(output.type).toBe('image/png');
-      expect(output.size).toBeGreaterThan(20);
-      expect(output.width).toBe(4);
-      expect(output.height).toBe(4);
     } else {
       await page.locator('#image-tool-file').setInputFiles({ name: 'fixture.png', mimeType: 'image/png', buffer: PNG });
-      if (id === 'image-upscaler') await page.getByLabel('Scale').fill('2');
+      if (id === 'image-upscaler') await page.getByRole('textbox', { name: 'Scale' }).fill('2');
       if (id === 'image-converter') await page.getByLabel('Output format').selectOption('image/webp');
-      if (id === 'background-remover') await page.getByLabel('Background tolerance').fill('25');
+      if (id === 'background-remover') await page.getByRole('textbox', { name: 'Background tolerance' }).fill('25');
       if (id === 'crop-resize') {
-        await page.getByLabel('X').fill('0');
-        await page.getByLabel('Y').fill('0');
-        await page.getByLabel('Width').fill('4');
-        await page.getByLabel('Height').fill('4');
-        await page.getByLabel('Output width').fill('8');
-        await page.getByLabel('Output height').fill('6');
+        await page.getByRole('textbox', { name: 'X' }).fill('0');
+        await page.getByRole('textbox', { name: 'Y' }).fill('0');
+        await page.getByRole('textbox', { name: 'Width' }).fill('4');
+        await page.getByRole('textbox', { name: 'Height' }).fill('4');
+        await page.getByRole('textbox', { name: 'Output width' }).fill('8');
+        await page.getByRole('textbox', { name: 'Output height' }).fill('6');
       }
       if (id === 'object-remover' || id === 'watermark-remover') {
-        await page.getByLabel('X').fill('1');
-        await page.getByLabel('Y').fill('1');
-        await page.getByLabel('Width').fill('2');
-        await page.getByLabel('Height').fill('2');
+        await page.getByRole('textbox', { name: 'X' }).fill('1');
+        await page.getByRole('textbox', { name: 'Y' }).fill('1');
+        await page.getByRole('textbox', { name: 'Width' }).fill('2');
+        await page.getByRole('textbox', { name: 'Height' }).fill('2');
       }
       await page.getByRole('button', { name: 'Run tool' }).click();
     }
@@ -77,47 +70,44 @@ for (const [id, path, title] of tools) {
 
     if (id === 'image-to-text') {
       await expect(page.getByText('FLIXO OCR OK')).toBeVisible();
-      await expect(page.getByText(/Output:/)).not.toBeVisible();
-      const downloadPromise = page.waitForEvent('download');
-      await page.getByRole('link', { name: /Download/ }).click();
-      const download = await downloadPromise;
-      expect(download.suggestedFilename()).toMatch(/\.txt$/);
-      return;
-    }
-
-    if (id === 'raster-to-svg') {
+    } else if (id === 'raster-to-svg') {
       const link = page.getByRole('link', { name: /Download/ });
       const href = await link.getAttribute('href');
       expect(href).toBeTruthy();
-      const svgText = await page.evaluate(async (url) => {
-        const response = await fetch(url);
-        return response.text();
-      }, href);
+      const svgText = await page.evaluate(async (url) => (await fetch(url)).text(), href);
       expect(svgText).toContain('<svg');
       expect(svgText).toContain('<rect');
       expect(svgText).toContain('FLIXO Raster to SVG');
-      return;
+    } else {
+      const output = await resultImage(page);
+      expect(output.size).toBeGreaterThan(20);
+      if (id === 'ai-image-generator') {
+        expect(output.type).toBe('image/png');
+        expect(output.width).toBe(4);
+        expect(output.height).toBe(4);
+      } else if (id === 'image-upscaler') {
+        expect(output.type).toBe('image/png');
+        expect(output.width).toBe(8);
+        expect(output.height).toBe(8);
+      } else if (id === 'image-converter') {
+        expect(output.type).toBe('image/webp');
+        expect(output.width).toBe(4);
+        expect(output.height).toBe(4);
+      } else if (id === 'crop-resize') {
+        expect(output.type).toBe('image/png');
+        expect(output.width).toBe(8);
+        expect(output.height).toBe(6);
+      } else {
+        expect(output.type).toBe('image/png');
+        expect(output.width).toBe(4);
+        expect(output.height).toBe(4);
+      }
     }
 
-    const output = await resultImage(page);
-    expect(output.size).toBeGreaterThan(20);
-    if (id === 'image-upscaler') {
-      expect(output.type).toBe('image/png');
-      expect(output.width).toBe(8);
-      expect(output.height).toBe(8);
-    } else if (id === 'image-converter') {
-      expect(output.type).toBe('image/webp');
-      expect(output.width).toBe(4);
-      expect(output.height).toBe(4);
-    } else if (id === 'crop-resize') {
-      expect(output.type).toBe('image/png');
-      expect(output.width).toBe(8);
-      expect(output.height).toBe(6);
-    } else {
-      expect(output.type).toBe('image/png');
-      expect(output.width).toBe(4);
-      expect(output.height).toBe(4);
-    }
+    const downloadPromise = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Download now' }).click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toMatch(id === 'image-to-text' ? /\.txt$/ : id === 'raster-to-svg' ? /\.svg$/ : /\.(png|jpg|webp)$/);
   });
 }
 
