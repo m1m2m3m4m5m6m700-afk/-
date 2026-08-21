@@ -44,6 +44,8 @@ jobs:
     name: Full Verification (${{ github.ref_name }})
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    env:
+      GITHUB_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -60,6 +62,8 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Lockfile unchanged after install
         run: git diff --exit-code -- package.json package-lock.json
+      - name: Run production dependency audit
+        run: npm run audit:production
       - name: Install Chromium for operational tests
         run: npx playwright install --with-deps chromium
       - name: Run canonical verification gate with timing
@@ -73,7 +77,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: flixo-playwright-report-${{ github.ref_name }}
+          name: flixo-playwright-report-${{ github.run_id }}
           path: playwright-report
           if-no-files-found: ignore
           retention-days: 7
@@ -156,24 +160,10 @@ jobs:
           const ciLog = read('diagnostics/ci/diagnostics/npm-verify.log');
           const typecheckLog = read('diagnostics/typecheck.log');
           const healthLog = read('diagnostics/health.log');
-          const combinedLog = [
-            '=== REAL CI VERIFY LOG ===',
-            ciLog,
-            '=== CANONICAL TYPECHECK ===',
-            typecheckLog,
-            '=== PROJECT HEALTH ===',
-            healthLog,
-          ].join('\n');
+          const combinedLog = ['=== REAL CI VERIFY LOG ===', ciLog, '=== CANONICAL TYPECHECK ===', typecheckLog, '=== PROJECT HEALTH ===', healthLog].join('\n');
 
-          const assessment = buildCognitiveAssessment({
-            log: combinedLog,
-            context: { projectGraph: { nodes: [], edges: [] } },
-            decisions: [],
-          });
-          const plan = buildStrategicPlan({
-            diagnosis: assessment.diagnosis,
-            dependencyImpact: assessment.dependencyImpact,
-          });
+          const assessment = buildCognitiveAssessment({ log: combinedLog, context: { projectGraph: { nodes: [], edges: [] } }, decisions: [] });
+          const plan = buildStrategicPlan({ diagnosis: assessment.diagnosis, dependencyImpact: assessment.dependencyImpact });
 
           const report = {
             version: 3,
@@ -181,11 +171,7 @@ jobs:
             branch: process.env.GITHUB_REF_NAME,
             sha: process.env.GITHUB_SHA,
             runId: process.env.GITHUB_RUN_ID,
-            source: {
-              verifyArtifact: fs.existsSync('diagnostics/ci/diagnostics/npm-verify.log'),
-              typecheckExit: Number.parseInt(read('diagnostics/typecheck.exit').trim(), 10),
-              healthExit: Number.parseInt(read('diagnostics/health.exit').trim(), 10),
-            },
+            source: { verifyArtifact: fs.existsSync('diagnostics/ci/diagnostics/npm-verify.log'), typecheckExit: Number.parseInt(read('diagnostics/typecheck.exit').trim(), 10), healthExit: Number.parseInt(read('diagnostics/health.exit').trim(), 10) },
             assessment,
             plan,
             repairAllowed: false,

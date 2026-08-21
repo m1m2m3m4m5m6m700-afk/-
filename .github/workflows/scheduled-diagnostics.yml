@@ -1,0 +1,75 @@
+name: Scheduled Diagnostics
+
+on:
+  schedule:
+    - cron: '0 */3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scheduled-diagnostics
+  cancel-in-progress: true
+
+jobs:
+  diagnostics:
+    name: 13-scanner health pass
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      GITHUB_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Restore diagnostic memory
+        uses: actions/cache/restore@v4
+        with:
+          path: failure-memory.json
+          key: flixo-diagnostic-memory-${{ github.ref_name }}-${{ github.run_id }}
+          restore-keys: |
+            flixo-diagnostic-memory-${{ github.ref_name }}-
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Mutation self-test — all 13 scanners
+        run: node scripts/diagnostics/test-scanners.mjs
+      - name: Run full diagnostics
+        run: |
+          set +e
+          node scripts/run-all-diagnostics.mjs
+          DIAG_EXIT=$?
+          set -e
+          node scripts/daemon/diagnostic-memory.mjs
+          node scripts/diagnostics/telemetry-rule-aging.mjs
+          node scripts/error-sink.mjs summary || true
+          exit $DIAG_EXIT
+      - name: Synthetic health probe
+        run: node scripts/daemon/synthetic-health-check.mjs
+      - name: Save diagnostic memory
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: failure-memory.json
+          key: flixo-diagnostic-memory-${{ github.ref_name }}-${{ github.run_id }}
+      - name: Upload error intelligence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flixo-diagnostic-intelligence-${{ github.run_id }}
+          path: |
+            errors.log.json
+            DECISION_LOG.md
+            diagnostics/errors.log.json
+            diagnostics/DECISION_LOG.md
+            diagnostics/rule-telemetry.json
+            failure-memory.json
+            REGRESSION_RULES.json
+          if-no-files-found: ignore
+          retention-days: 14

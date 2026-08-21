@@ -1,15 +1,13 @@
 #!/bin/sh
 set -eu
 
-if [ "${CI:-false}" = "true" ] || [ "${FLIXO_PREFLIGHT_SKIP:-0}" = "1" ]; then
+if [ "${CI:-false}" = "true" ]; then
   exit 0
 fi
 
-branch="$(git branch --show-current)"
-if [ "$branch" != "experimental" ]; then
-  echo "FLIXO Preflight: non-experimental branch detected; no automatic repair will run."
-  exit 0
-fi
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
 
-echo "FLIXO Preflight Guardian: V3 diagnose -> V4 guarded repair -> local gates"
-node scripts/flixo-agent/preflight-auto-repair.mjs
+echo "FLIXO diagnostic pre-commit gate"
+node scripts/run-all-diagnostics.mjs
+node scripts/daemon/diagnostic-memory.mjs

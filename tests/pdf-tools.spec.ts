@@ -2,6 +2,8 @@ import { test, expect } from "playwright/test";
 import { PDFDocument, StandardFonts } from "pdf-lib";
 import { MEGA_TOOLS } from "../src/data/megaToolsCatalog";
 
+test.use({ serviceWorkers: "block" });
+
 const IMPLEMENTED_PDF_HANDLERS = new Set([
   "inspect",
   "extract-text",
@@ -59,16 +61,25 @@ test("implemented PDF mega-tool variants return a real result", async ({ page })
           if (!result.filename || !result.filename.toLowerCase().endsWith(".pdf")) {
             throw new Error(`Invalid PDF download filename: ${result.filename}`);
           }
-          if (!result.url) throw new Error("Tool returned an empty download URL.");
-          const response = await fetch(result.url);
-          if (!response.ok) throw new Error(`Download URL returned HTTP ${response.status}.`);
-          const blob = await response.blob();
-          if (blob.size === 0) throw new Error("Tool returned an empty PDF blob.");
-          URL.revokeObjectURL(result.url);
-          return { type: result.type, ok: true, bytes: blob.size };
+          if (!result.url || !result.url.startsWith("blob:")) {
+            throw new Error("Tool returned an invalid PDF download URL.");
+          }
+          return { type: result.type, ok: true, filename: result.filename, url: result.url };
         }
         throw new Error(`Unexpected PDF result type: ${result.type}`);
       }, tool);
+
+      if (outcome.type === "download") {
+        const payload = await page.evaluate(async (url) => {
+          const response = await fetch(url);
+          if (!response.ok) throw new Error(`PDF blob fetch failed with HTTP ${response.status}.`);
+          const bytes = new Uint8Array(await response.arrayBuffer());
+          const signature = new TextDecoder().decode(bytes.subarray(0, 5));
+          return { byteLength: bytes.byteLength, signature };
+        }, outcome.url);
+        if (payload.byteLength === 0) throw new Error("Tool returned an empty PDF download.");
+        if (payload.signature !== "%PDF-") throw new Error("Tool returned bytes that are not a PDF.");
+      }
 
       expect(outcome.ok).toBe(true);
     } catch (error) {

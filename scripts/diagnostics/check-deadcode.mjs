@@ -1,0 +1,3 @@
+import { readFileSync } from "node:fs";
+import { main, files, rel } from "./_core.mjs";
+await main("check-deadcode",()=>{const all=files("src",/\.(ts|tsx)$/);const text=new Map(all.map(f=>[f,readFileSync(f,"utf8")]));const findings=[];for(const [f,s] of text){for(const m of s.matchAll(/export\s+(?:const|function|class|type|interface)\s+([A-Za-z0-9_]+)/g)){const name=m[1];let refs=0;for(const [of,os] of text)if(of!==f)refs+=(os.match(new RegExp(`\\b${name}\\b`,`g`))||[]).length;if(refs===0&&!/export\s+default/.test(s))findings.push(`${rel(f)}: unreferenced export ${name}`);}}return {severity:findings.length?"WARNING":"INFO",message:findings.length?"Potential dead exports detected":"Dead-code heuristic PASS",findings};});
