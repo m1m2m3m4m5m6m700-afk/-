@@ -21,6 +21,9 @@ dist-ssr
 .env.*
 !.env.example
 
+# CI / diagnostics generated output
+.artifacts/
+
 # flixo-agent.mjs generated output
 reports/
 PROJECT_STATUS.md

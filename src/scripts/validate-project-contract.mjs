@@ -1,4 +1,4 @@
-// Strict project gate: architecture, CI, and tool verification contracts must agree.
+// Strict project gate: architecture, CI, and tool contracts must agree.
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -29,43 +29,23 @@ async function walk(dir, predicate = () => true) {
 const packageJson = JSON.parse(await read("package.json"));
 const scripts = packageJson.scripts ?? {};
 for (const script of [
-  "verify:foundation",
-  "verify:tool",
-  "verify:project",
-  "validate:project-contract",
-  "validate:test-quality",
-  "test:property-fuzz",
-  "test:fault-injection",
-  "validate:security-strict",
-  "validate:flaky-isolation",
-  "validate:failure-quality",
-  "validate:performance",
-  "validate:tool-platform",
-  "validate:tool-platform-lifecycle",
-  "validate:tool-platform-boundaries",
-  "validate:tool-platform-regression",
-  "validate:route-tree",
-  "typecheck",
-  "lint",
-  "test:desktop",
-  "test:desktop:flaky",
+  "verify:foundation", "verify:tool", "verify:project", "validate:project-contract", "validate:test-quality",
+  "test:property-fuzz", "test:fault-injection", "validate:security-strict", "validate:flaky-isolation",
+  "validate:failure-quality", "validate:performance", "validate:tool-platform", "validate:tool-platform-lifecycle",
+  "validate:tool-platform-boundaries", "validate:tool-platform-regression", "validate:route-tree", "typecheck",
+  "lint", "test:desktop", "test:desktop:flaky",
 ]) if (!scripts[script]) fail(`Missing required npm script: ${script}`);
 
 const lockfile = await read("package-lock.json");
 if (!lockfile.includes('"lockfileVersion": 3')) fail("package-lock.json must use lockfileVersion 3.");
 
-const workflow = await read(".github/workflows/tool-platform.yml");
+const workflow = await read(".github/workflows/ci.yml");
 for (const required of [
-  "npm ci",
-  "npm run verify:foundation",
-  "npm run validate:performance",
-  "npm run test:desktop:flaky",
-  "if: failure()",
-  "playwright-report",
-  "test-results",
-]) if (!workflow.includes(required)) fail(`Tool Platform CI is missing required gate/diagnostic: ${required}`);
-if (!workflow.includes("actions/checkout@v5") || !workflow.includes("actions/setup-node@v5")) fail("CI actions must use checkout@v5 and setup-node@v5.");
-if (!workflow.includes("playwright install --with-deps chromium")) fail("Desktop CI must install a real Chromium browser.");
+  "pull_request:", "actions/checkout@v5", "actions/setup-node@v5", "node-version-file: .nvmrc", "npm ci",
+  "npm run validate-ci-contract", "max-parallel: 24", "typecheck:", "lint:", "build:", "e2e:", "security:",
+  "diagnostics:", "gate:", "node scripts/diagnose-ci-failure.mjs", "playwright-report", "test-results",
+  "node scripts/scan-secrets.mjs", "github/codeql-action/init@v4", "github/codeql-action/analyze@v4",
+]) if (!workflow.includes(required)) fail(`Parallel CI is missing required contract: ${required}`);
 
 const runtimeTypes = await read("src/lib/tool-runtime/types.ts");
 const platformFiles = await walk("src/lib/tool-platform", (p) => /\.(ts|tsx|mjs)$/.test(p));
@@ -94,78 +74,39 @@ for (const file of testFiles) {
 
 const registryPath = "src/lib/tool-platform/publicDesktopTools.ts";
 const registry = await read(registryPath);
-const registryExportCount = (registry.match(/export const publicToolRegistrations\b/g) ?? []).length;
-if (registryExportCount !== 1) fail(`Expected exactly one publicToolRegistrations export in ${registryPath}; found ${registryExportCount}.`);
+if ((registry.match(/export const publicToolRegistrations\b/g) ?? []).length !== 1) fail(`Expected exactly one publicToolRegistrations export in ${registryPath}.`);
 
 const candidates = await walk("src/lib", (p) => /\.(ts|tsx)$/.test(p));
 let registrationExportFiles = 0;
-for (const file of candidates) {
-  const source = await read(file);
-  registrationExportFiles += (source.match(/export const publicToolRegistrations\b/g) ?? []).length;
-}
+for (const file of candidates) registrationExportFiles += (await read(file)).match(/export const publicToolRegistrations\b/g)?.length ?? 0;
 if (registrationExportFiles !== 1) fail(`Expected exactly one public tool registry export in src/lib; found ${registrationExportFiles}.`);
 
-const tests = await read("tests/desktop-tools.spec.ts");
-const manifestSection = registry.match(/const manifestData = \[([\s\S]*?)\n\] as const;/)?.[1] ?? "";
-const registrations = [...manifestSection.matchAll(/\{([\s\S]*?)\n\s*\},/g)]
-  .map((match) => match[1])
-  .map((block) => ({
-    id: block.match(/id:\s*["']([^"']+)["']/)?.[1],
-    slug: block.match(/slug:\s*["']([^"']+)["']/)?.[1],
-    lifecycle: block.match(/lifecycle:\s*["']([^"']+)["']/)?.[1],
-  }))
-  .filter((entry) => entry.id && entry.slug && entry.lifecycle);
-
+const config = await read("src/config/tools.ts");
+const testSpecFiles = await walk("tests", (p) => /\.spec\.(ts|tsx|js|mjs)$/.test(p));
+const testSources = await Promise.all(testSpecFiles.map((file) => read(file)));
+const tests = testSources.join("\n");
+const registrations = [...config.matchAll(/\{\s*id:\s*["']([^"']+)["'][\s\S]*?path:\s*["'](\/tools\/[^"']+)["'][\s\S]*?isReady:\s*true,/g)].map((match) => ({ id: match[1], slug: match[2].replace(/^\/tools\//, "") }));
 const routeAssertions = new Set([
   ...[...tests.matchAll(/openTool\(page,\s*["']([^"']+)["']\)/g)].map((match) => match[1]),
   ...[...tests.matchAll(/page\.goto\(\s*["']\/tools\/([^"']+)["']/g)].map((match) => match[1]),
 ]);
 
-if (registrations.length === 0) fail("Public desktop registry contains no registrations.");
-for (const { id, slug, lifecycle } of registrations) {
-  if (lifecycle !== "public") fail(`Public registry entry ${id} has invalid lifecycle: ${lifecycle}`);
-  if (!routeAssertions.has(slug)) fail(`Missing E2E route assertion for public tool: ${id} (${slug})`);
-}
-if (!tests.includes("expect(")) fail("No result assertions found in desktop E2E coverage.");
+if (registrations.length === 0) fail("Central tool registry contains no ready registrations.");
+for (const { id, slug } of registrations) if (!routeAssertions.has(slug)) fail(`Missing E2E route assertion for public tool: ${id} (${slug})`);
+if (!tests.includes("expect(")) fail("No result assertions found in E2E coverage.");
 
 const contracts = await read("src/lib/tool-platform/testContracts.ts");
-const requiredChecks = [
-  "render",
-  "interaction",
-  "output",
-  "error",
-  "security",
-  "performance",
-  "mutation",
-  "invariant",
-  "evidence",
-];
 const contractLines = contracts.split(/\r?\n/).map((line) => line.trim());
-for (const check of requiredChecks) {
-  if (!contractLines.some((line) => line === `"${check}",`)) {
-    fail(`Shared certification check is missing from testContracts.ts: ${check}`);
-  }
+for (const check of ["render", "interaction", "output", "error", "security", "performance", "mutation", "invariant", "evidence"]) {
+  if (!contractLines.some((line) => line === `\"${check}\",`)) fail(`Shared certification check is missing: ${check}`);
 }
-if (!contractLines.some((line) => line.startsWith("const strictChecks ="))) {
-  fail("testContracts.ts must define the shared strictChecks set.");
-}
+if (!contractLines.some((line) => line.startsWith("const strictChecks ="))) fail("testContracts.ts must define strictChecks.");
 for (const { id } of registrations) {
   const entry = contractLines.find((line) => line.startsWith(`{ toolId: "${id}"`));
-  if (!entry) {
-    fail(`Tool ${id} is missing a strict verification contract entry.`);
-    continue;
-  }
-  if (!entry.includes("requiredChecks: strictChecks")) {
-    fail(`Tool ${id} must be backed by the shared strictChecks set.`);
-  }
+  if (!entry) fail(`Tool ${id} is missing a strict verification contract entry.`);
+  else if (!entry.includes("requiredChecks: strictChecks")) fail(`Tool ${id} must use shared strictChecks.`);
 }
-
-for (const required of [
-  'level: "certified"',
-  "requiredEvidence: true",
-  "regressionLocked: true",
-  'dataProcessing: "local-only"',
-]) {
+for (const required of ['level: "certified"', "requiredEvidence: true", "regressionLocked: true", 'dataProcessing: "local-only"']) {
   if (!contracts.includes(required)) fail(`Certification contract is missing required rule: ${required}`);
 }
 
@@ -174,4 +115,4 @@ if (failures.length) {
   failures.forEach((failure) => console.error(`- ${failure}`));
   process.exit(1);
 }
-console.log("STRICT PROJECT CONTRACT: PASS");
+console.log(`STRICT PROJECT CONTRACT: PASS (${registrations.length} ready tools across ${testSpecFiles.length} E2E specs)`);

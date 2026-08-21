@@ -9,7 +9,10 @@ const patterns = [
   { name: "OpenAI-style key", regex: /\bsk-[A-Za-z0-9_-]{20,}\b/g },
   { name: "GitHub token", regex: /\bgh[pousr]_[A-Za-z0-9_]{20,}\b/g },
   { name: "AWS access key", regex: /\bAKIA[0-9A-Z]{16}\b/g },
-  { name: "Private key", regex: /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/g },
+  {
+    name: "Private key",
+    regex: /-----BEGIN (?:RSA |EC |OPENSSH |PGP |DSA )?PRIVATE KEY-----\s+[A-Za-z0-9+/=\r\n]{40,}\s+-----END (?:RSA |EC |OPENSSH |PGP |DSA )?PRIVATE KEY-----/g,
+  },
   { name: "Generic secret assignment", regex: /\b(?:api[_-]?key|secret|token|password)\s*[:=]\s*["'][^"']{16,}["']/gi },
 ];
 
@@ -18,9 +21,10 @@ const findings = [];
 async function collect(target) {
   const absolute = join(process.cwd(), target);
   try {
-    const stat = await import("node:fs/promises").then(({ stat }) => stat(absolute));
-    if (stat.isFile()) {
-      if (stat.size <= MAX_FILE_BYTES) await scanFile(absolute);
+    const { stat } = await import("node:fs/promises");
+    const info = await stat(absolute);
+    if (info.isFile()) {
+      if (info.size <= MAX_FILE_BYTES) await scanFile(absolute);
       return;
     }
   } catch {
@@ -67,7 +71,8 @@ const result = {
 console.log(JSON.stringify(result, null, 2));
 
 if (findings.length) {
-  console.warn(`SECRETS SCAN: ${findings.length} potential finding(s). Advisory only.`);
-} else {
-  console.log("SECRETS SCAN: PASS");
+  console.error(`SECRETS SCAN FAILED: ${findings.length} potential finding(s).`);
+  process.exit(1);
 }
+
+console.log("SECRETS SCAN: PASS");

@@ -12,60 +12,292 @@ on:
       - "vite.config.ts"
       - "tsconfig*.json"
       - ".nvmrc"
+      - "vercel.json"
+      - "scripts/**"
       - ".github/workflows/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "public/**"
+      - "package.json"
+      - "package-lock.json"
+      - "vite.config.ts"
+      - "tsconfig*.json"
+      - ".nvmrc"
+      - "vercel.json"
+      - "scripts/**"
+      - ".github/workflows/**"
+  schedule:
+    - cron: "23 2 * * 1"
   workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: read
 
 jobs:
-  verify:
-    name: Full Verification (main)
+  contracts:
+    name: CI Contract
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 10
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-      - name: Setup Node
-        uses: actions/setup-node@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+      - name: Validate CI contract
+        run: npm run validate-ci-contract
+      - name: Validate dependencies contract
+        run: npm run validate:dependencies
+      - name: Lockfile integrity
+        run: npm ci
+      - name: Lockfile unchanged
+        run: git diff --exit-code -- package.json package-lock.json
+
+  checks:
+    name: Check — ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      max-parallel: 24
+      matrix:
+        include:
+          - name: project-contract
+            command: npm run validate:project-contract
+          - name: test-quality
+            command: npm run validate:test-quality
+          - name: tool-platform
+            command: npm run validate:tool-platform
+          - name: tool-lifecycle
+            command: npm run validate:tool-platform-lifecycle
+          - name: tool-boundaries
+            command: npm run validate:tool-platform-boundaries
+          - name: tool-regression
+            command: npm run validate:tool-platform-regression
+          - name: route-tree
+            command: npm run generate:routes && npm run validate:route-tree
+          - name: flaky-isolation
+            command: npm run validate:flaky-isolation
+          - name: failure-quality
+            command: npm run validate:failure-quality
+          - name: security-strict
+            command: npm run validate:security-strict
+          - name: performance
+            command: npm run validate:performance
+          - name: property-fuzz
+            command: npm run test:property-fuzz
+          - name: fault-injection
+            command: npm run test:fault-injection
+          - name: registry
+            command: npm run validate:registry
+          - name: tool-runtime
+            command: npm run validate:tool-runtime
+          - name: search-catalog
+            command: npm run validate:search-catalog
+          - name: seo
+            command: npm run validate:seo
+          - name: tool-content
+            command: npm run validate:tool-content
+          - name: localization
+            command: npm run validate:localization
+          - name: localization-surface
+            command: npm run validate:localization-surface
+          - name: tool-content-localization
+            command: npm run validate:tool-content-localization
+          - name: pdf-catalog
+            command: npm run validate:pdf-catalog
+          - name: tool-review
+            command: npm run validate:tool-review
+          - name: ai-contract
+            command: npm run validate:ai
+          - name: search-intent
+            command: npm run validate:search-intent
+          - name: accessibility
+            command: npm run validate:accessibility
+          - name: security-contract
+            command: npm run validate:security
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
           cache: npm
-      - name: Validate CI contract
-        run: npm run validate-ci-contract
-      - name: Validate dependency contract
-        run: npm run validate:dependencies
-      - name: Install dependencies
-        run: npm ci
-      - name: Lockfile unchanged after install
-        run: git diff --exit-code -- package.json package-lock.json
+      - run: npm ci
+      - name: Run isolated check
+        shell: bash
+        run: ${{ matrix.command }}
+
+  typecheck:
+    name: TypeScript
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+
+  lint:
+    name: ESLint
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+
+  build:
+    name: Production Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: node src/scripts/validate-build-output.mjs
+
+  production-audit:
+    name: Production Dependency Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
       - name: Production dependency audit
         run: npm run audit:production
-      - name: Install Chromium for operational tests
-        run: npx playwright install --with-deps chromium
-      - name: Run canonical test gate
-        run: npm run verify
-      - name: Upload browser report
-        if: always()
-        uses: actions/upload-artifact@v4
+
+  e2e:
+    name: E2E — ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        include:
+          - name: PDF
+            command: npm run test:pdf
+          - name: Desktop
+            command: npm run test:desktop
+          - name: Chat
+            command: npm run test:chat
+          - name: Accessibility
+            command: npm run test:a11y
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
-          name: flixo-playwright-report
-          path: playwright-report
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run isolated E2E suite
+        run: ${{ matrix.command }}
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: playwright-${{ matrix.name }}-${{ github.run_id }}
+          path: |
+            playwright-report
+            test-results
           if-no-files-found: ignore
           retention-days: 7
-      - name: Upload diagnostics on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
+
+  security:
+    name: Security
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
-          name: ci-diagnostics-${{ github.run_id }}
+          node-version-file: .nvmrc
+      - name: Secrets scan
+        run: node scripts/scan-secrets.mjs
+      - name: CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: javascript-typescript
+          build-mode: none
+      - uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:javascript-typescript
+
+  diagnostics:
+    name: Failure Diagnosis
+    if: ${{ always() && (needs.contracts.result == 'failure' || needs.checks.result == 'failure' || needs.typecheck.result == 'failure' || needs.lint.result == 'failure' || needs.build.result == 'failure' || needs.production-audit.result == 'failure' || needs.e2e.result == 'failure' || needs.security.result == 'failure') }}
+    needs: [contracts, checks, typecheck, lint, build, production-audit, e2e, security]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+      - name: Run CI Failure Diagnostic Engine
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/diagnose-ci-failure.mjs
+      - name: Upload diagnostic artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: ci-failure-diagnosis-${{ github.run_id }}
           path: |
-            ~/.npm/_logs/
-            diagnostics/
-            test-results/
-            playwright-report/
+            .artifacts/diagnostics/ci-failure-diagnosis.json
+            history/ci-failures.json
           if-no-files-found: ignore
           retention-days: 14
+
+  gate:
+    name: CI Gate
+    if: ${{ always() }}
+    needs: [contracts, checks, typecheck, lint, build, production-audit, e2e, security]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every parallel gate to pass
+        env:
+          CONTRACTS: ${{ needs.contracts.result }}
+          CHECKS: ${{ needs.checks.result }}
+          TYPECHECK: ${{ needs.typecheck.result }}
+          LINT: ${{ needs.lint.result }}
+          BUILD: ${{ needs.build.result }}
+          PRODUCTION_AUDIT: ${{ needs.production-audit.result }}
+          E2E: ${{ needs.e2e.result }}
+          SECURITY: ${{ needs.security.result }}
+        run: |
+          set -euo pipefail
+          for result in "$CONTRACTS" "$CHECKS" "$TYPECHECK" "$LINT" "$BUILD" "$PRODUCTION_AUDIT" "$E2E" "$SECURITY"; do
+            test "$result" = success
+          done
+          echo "PARALLEL CI GATE: PASS"

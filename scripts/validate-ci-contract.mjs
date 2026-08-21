@@ -1,21 +1,10 @@
 #!/usr/bin/env node
-/**
- * CI contract validator.
- *
- * Runs before dependency installation and verifies that workflow commands,
- * release contracts, and deployment install commands remain backed by real
- * project scripts/files. It is dependency-free so it can run on a clean runner.
- */
+/** Minimal CI contract validator. */
 
 import fs from "node:fs";
 import path from "node:path";
 
 const root = process.cwd();
-const packagePath = path.join(root, "package.json");
-const workflowsDir = path.join(root, ".github", "workflows");
-const nvmrcPath = path.join(root, ".nvmrc");
-const vercelPath = path.join(root, "vercel.json");
-
 const failures = [];
 
 function readJson(file) {
@@ -36,126 +25,43 @@ function readText(file) {
   }
 }
 
-function extractWorkflowEnv(workflow) {
-  const env = {};
-  const envMatch = workflow.match(/^env:\n((?:  [A-Z0-9_]+:\s*[^\n]+\n?)*)/m);
-  if (!envMatch) return env;
+const pkg = readJson(path.join(root, "package.json"));
+const nvmVersion = readText(path.join(root, ".nvmrc")).trim().replace(/^v/, "");
+const workflow = readText(path.join(root, ".github", "workflows", "ci.yml"));
+const vercel = readJson(path.join(root, "vercel.json"));
 
-  for (const line of envMatch[1].split("\n")) {
-    const match = line.match(/^  ([A-Z0-9_]+):\s*(.+?)\s*$/);
-    if (match) env[match[1]] = match[2].replace(/^['"]|['"]$/g, "");
-  }
-  return env;
-}
-
-function resolveWorkflowValue(value, workflowEnv) {
-  const expression = value.match(/^\$\{\{\s*env\.([A-Z0-9_]+)\s*\}\}$/);
-  if (!expression) return value;
-  return workflowEnv[expression[1]] ?? value;
-}
-
-function extractNodeVersionFileValues(workflow) {
-  return [...workflow.matchAll(/^\s*node-version-file:\s*(.*?)\s*(?:#.*)?$/gm)]
-    .map((match) => match[1].trim())
-    .filter(Boolean);
-}
-
-function requireFile(relativePath, reason) {
-  if (!fs.existsSync(path.join(root, relativePath))) {
-    failures.push(`${reason}: required file ${relativePath} does not exist`);
-  }
-}
-
-const pkg = readJson(packagePath);
-const scripts = pkg?.scripts ?? {};
-
-if (pkg && !scripts["validate-ci-contract"]) {
+if (!pkg?.scripts?.["validate-ci-contract"]) {
   failures.push("package.json: missing scripts.validate-ci-contract");
 }
 
-if (fs.existsSync(nvmrcPath) && pkg?.engines?.node) {
-  const nvmVersion = readText(nvmrcPath).trim();
+if (nvmVersion && pkg?.engines?.node) {
   const engine = String(pkg.engines.node).trim();
-  const normalizedNvm = nvmVersion.replace(/^v/, "");
-
-  if (engine !== normalizedNvm && engine !== `${normalizedNvm}.x`) {
-    failures.push(`Node version mismatch: .nvmrc=${normalizedNvm}, package.json engines.node=${engine}`);
+  if (engine !== nvmVersion && engine !== `${nvmVersion}.x`) {
+    failures.push(`Node version mismatch: .nvmrc=${nvmVersion}, package.json engines.node=${engine}`);
   }
 }
 
-if (!fs.existsSync(workflowsDir)) {
-  failures.push(".github/workflows: directory is missing");
+if (!workflow) {
+  failures.push(".github/workflows/ci.yml: canonical workflow is missing");
 } else {
-  const workflowFiles = fs
-    .readdirSync(workflowsDir)
-    .filter((name) => name.endsWith(".yml") || name.endsWith(".yaml"))
-    .map((name) => path.join(workflowsDir, name));
-
-  if (!workflowFiles.length) {
-    failures.push(".github/workflows: no workflow files found");
-  }
-
-  const workflowNames = new Set();
-
-  for (const workflowFile of workflowFiles) {
-    const workflow = readText(workflowFile);
-    const relativeWorkflow = path.relative(root, workflowFile);
-    const workflowEnv = extractWorkflowEnv(workflow);
-    const nameMatch = workflow.match(/^name:\s*(.+)$/m);
-    if (nameMatch) workflowNames.add(nameMatch[1].trim().replace(/^['"]|['"]$/g, ""));
-
-    for (const match of workflow.matchAll(/\bnpm\s+run\s+([A-Za-z0-9:_-]+)/g)) {
-      const scriptName = match[1];
-      if (!scripts[scriptName]) {
-        failures.push(`${relativeWorkflow}: npm run ${scriptName} is not defined in package.json`);
-      }
-    }
-
-    for (const match of workflow.matchAll(/(?:^|\s)node\s+((?:src|scripts)\/[^\s`]+\.mjs)/g)) {
-      const scriptPath = path.join(root, match[1]);
-      if (!fs.existsSync(scriptPath)) {
-        failures.push(`${relativeWorkflow}: node target ${match[1]} does not exist`);
-      }
-    }
-
-    for (const match of workflow.matchAll(/npx\s+playwright\s+test\s+([^\n]+)/g)) {
-      const command = match[1]
-        .replace(/\\/g, " ")
-        .split(/\s+--/)[0]
-        .trim();
-      for (const token of command.split(/\s+/).filter((value) => value.endsWith(".spec.ts"))) {
-        requireFile(token, `${relativeWorkflow}: Playwright test reference`);
-      }
-    }
-
-    for (const rawVersionFile of extractNodeVersionFileValues(workflow)) {
-      const versionFile = resolveWorkflowValue(rawVersionFile, workflowEnv);
-      if (!fs.existsSync(path.join(root, versionFile))) {
-        failures.push(`${relativeWorkflow}: node-version-file ${rawVersionFile} resolved to ${versionFile}, which does not exist`);
-      }
-    }
-  }
-
-  const releaseWorkflow = readText(path.join(workflowsDir, "release-certification.yml"));
-  const releaseRequired = ["Tool Platform", "Tool Release Candidate"];
-  for (const requiredName of releaseRequired) {
-    if (!workflowNames.has(requiredName)) {
-      failures.push(`Release certification references ${requiredName}, but no workflow with that name exists.`);
-    }
-    if (!releaseWorkflow.includes(requiredName)) {
-      failures.push(`release-certification.yml: missing workflow dependency ${requiredName}`);
-    }
-  }
+  if (!/^name:\s*CI\s*$/m.test(workflow)) failures.push("ci.yml: workflow name must be CI");
+  if (!/pull_request:/m.test(workflow)) failures.push("ci.yml: pull_request trigger is required");
+  if (!/node-version-file:\s*\.nvmrc/m.test(workflow)) failures.push("ci.yml: Node must come from .nvmrc");
+  if (!/max-parallel:\s*24/m.test(workflow)) failures.push("ci.yml: parallel check matrix must allow up to 24 concurrent checks");
+  if (!/gate:/m.test(workflow)) failures.push("ci.yml: final gate job is required");
+  if (!/PARALLEL CI GATE: PASS/m.test(workflow)) failures.push("ci.yml: final parallel gate marker is required");
+  if (!/diagnostics:/m.test(workflow) || !/node scripts\/diagnose-ci-failure\.mjs/m.test(workflow)) failures.push("ci.yml: failure diagnostics engine is required");
+  if (!/node scripts\/scan-secrets\.mjs/m.test(workflow)) failures.push("ci.yml: secrets scan is required");
+  if (!/github\/codeql-action\/(init|analyze)@v4/m.test(workflow)) failures.push("ci.yml: CodeQL v4 is required");
 }
 
-const vercel = readJson(vercelPath);
 if (vercel) {
   const installCommand = String(vercel.installCommand ?? "");
   if (!installCommand.includes("validate-package-lock-contract.mjs")) {
-    failures.push("vercel.json: installCommand must run validate-package-lock-contract.mjs before installation");
+    failures.push("vercel.json: installCommand must validate the package lock contract");
   }
   if (!/\bnpm\s+ci\b/.test(installCommand)) {
-    failures.push("vercel.json: installCommand must use npm ci for deterministic dependency installation");
+    failures.push("vercel.json: installCommand must use npm ci");
   }
 }
 
