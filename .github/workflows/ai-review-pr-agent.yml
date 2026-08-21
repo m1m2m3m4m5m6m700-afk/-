@@ -1,0 +1,43 @@
+name: AI Advisor · PR-Agent Review
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, ready_for_review, review_requested]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+  checks: write
+
+jobs:
+  review:
+    if: ${{ vars.ENABLE_PR_AGENT == 'true' && github.event.sender.type != 'Bot' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check optional provider key
+        id: guard
+        env:
+          PR_AGENT_OPENAI_KEY: ${{ secrets.PR_AGENT_OPENAI_KEY }}
+        run: |
+          if [ -n "$PR_AGENT_OPENAI_KEY" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "PR_AGENT_OPENAI_KEY is not configured; skipping optional advisory review."
+          fi
+
+      - name: Run pinned PR-Agent advisory review
+        if: steps.guard.outputs.enabled == 'true'
+        uses: docker://pragent/pr-agent:0.41.0-github_action
+        env:
+          OPENAI_KEY: ${{ secrets.PR_AGENT_OPENAI_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          config.model: ${{ vars.PR_AGENT_MODEL || 'gpt-4o-mini' }}
+          github_action_config.auto_review: "true"
+          github_action_config.auto_describe: "false"
+          github_action_config.auto_improve: "false"
+          github_action_config.pr_actions: '["opened", "reopened", "synchronize", "ready_for_review", "review_requested"]'
+
+# Optional/advisory only. No repository checkout and no automatic code changes.
+# Enable explicitly with repository variable ENABLE_PR_AGENT=true and a provider key.

@@ -13,6 +13,17 @@ on:
       - "tsconfig*.json"
       - ".nvmrc"
       - ".github/workflows/**"
+  pull_request:
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "public/**"
+      - "package.json"
+      - "package-lock.json"
+      - "vite.config.ts"
+      - "tsconfig*.json"
+      - ".nvmrc"
+      - ".github/workflows/**"
   workflow_dispatch:
 
 concurrency:
@@ -23,10 +34,10 @@ permissions:
   contents: read
 
 jobs:
-  verify:
-    name: Full Verification (main)
+  foundation:
+    name: Foundation Verification
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -36,36 +47,126 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - name: Validate CI contract
-        run: npm run validate-ci-contract
+        run: |
+          set -o pipefail
+          npm run validate-ci-contract 2>&1 | tee .ci-error.txt
       - name: Validate dependency contract
-        run: npm run validate:dependencies
+        run: |
+          set -o pipefail
+          npm run validate:dependencies 2>&1 | tee .ci-error.txt
+      - name: Regression prevention gate
+        run: |
+          set -o pipefail
+          npm run validate:regression-prevention 2>&1 | tee .ci-error.txt
       - name: Install dependencies
-        run: npm ci
+        run: |
+          set -o pipefail
+          npm ci --no-audit 2>&1 | tee .ci-error.txt
+      - name: Error Intelligence self-test
+        run: |
+          set -o pipefail
+          node scripts/test-error-intelligence.mjs 2>&1 | tee .ci-error.txt
       - name: Lockfile unchanged after install
-        run: git diff --exit-code -- package.json package-lock.json
+        run: |
+          set -o pipefail
+          git diff --exit-code -- package.json package-lock.json 2>&1 | tee .ci-error.txt
+      - name: Time foundation gate
+        run: |
+          set -o pipefail
+          node scripts/verify-timing.mjs npm run validate:foundation 2>&1 | tee .ci-error.txt
+      - name: Static verification after build
+        run: |
+          set -o pipefail
+          (
+            npm run validate:registry &&
+            npm run diagnose:tool-platform &&
+            npm run validate:tool-runtime &&
+            npm run validate:search-catalog &&
+            npm run validate:seo &&
+            npm run validate:tool-content &&
+            npm run validate:localization &&
+            npm run validate:localization-surface &&
+            npm run validate:tool-content-localization &&
+            npm run validate:pdf-catalog &&
+            npm run validate:tool-review &&
+            npm run validate:ai &&
+            npm run validate:search-intent &&
+            npm run validate:accessibility &&
+            npm run validate:security &&
+            node src/scripts/validate-build-output.mjs
+          ) 2>&1 | tee .ci-error.txt
       - name: Production dependency audit
-        run: npm run audit:production
-      - name: Install Chromium for operational tests
-        run: npx playwright install --with-deps chromium
-      - name: Run canonical test gate
-        run: npm run verify
-      - name: Upload browser report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: flixo-playwright-report
-          path: playwright-report
-          if-no-files-found: ignore
-          retention-days: 7
+        run: |
+          set -o pipefail
+          npm run audit:production 2>&1 | tee .ci-error.txt
+      - name: Generate normalized error report
+        if: failure()
+        run: node scripts/collect-error-report.mjs
       - name: Upload diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: ci-diagnostics-${{ github.run_id }}
+          name: ci-foundation-diagnostics-${{ github.run_id }}
           path: |
+            .artifacts/errors/
             ~/.npm/_logs/
             diagnostics/
             test-results/
-            playwright-report/
+            .ci-error.txt
           if-no-files-found: ignore
           retention-days: 14
+
+  e2e:
+    name: Playwright — ${{ matrix.slice }}
+    needs: foundation
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - slice: pdf
+            spec: tests/pdf-tools.spec.ts
+          - slice: desktop
+            spec: tests/desktop-tools.spec.ts
+          - slice: chat
+            spec: tests/chat.spec.ts
+          - slice: accessibility
+            spec: tests/accessibility.spec.ts
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install dependencies
+        run: |
+          set -o pipefail
+          npm ci --no-audit 2>&1 | tee .ci-error.txt
+      - name: Install Chromium
+        run: |
+          set -o pipefail
+          npx playwright install --with-deps chromium 2>&1 | tee .ci-error.txt
+      - name: Run Playwright slice
+        run: |
+          set -o pipefail
+          node scripts/verify-timing.mjs npx playwright test ${{ matrix.spec }} 2>&1 | tee .ci-error.txt
+      - name: Generate normalized error report
+        if: failure()
+        env:
+          CI_ERROR_MESSAGE: "Playwright slice '${{ matrix.slice }}' failed."
+        run: node scripts/collect-error-report.mjs
+      - name: Upload browser report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flixo-playwright-${{ matrix.slice }}-${{ github.run_id }}
+          path: |
+            .artifacts/errors/
+            .ci-error.txt
+            playwright-report
+            test-results
+          if-no-files-found: ignore
+          retention-days: 7

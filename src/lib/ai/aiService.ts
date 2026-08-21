@@ -20,6 +20,7 @@
  */
 
 import { getAIConfig, isAIConfigured } from "./config";
+import { failureMemory } from "./failure-memory";
 import { getProviderChain } from "./providers";
 import type { AIProvider } from "./providers/types";
 import { getTaskPrompt } from "./prompts";
@@ -117,6 +118,14 @@ class AIService {
       const result = await provider.generate(messages, options);
       if (result.ok) return result;
       lastFailure = result;
+
+      // Record only safe structured failure metadata. Raw prompt/input is never persisted.
+      failureMemory.recordFailure({
+        taskId,
+        kind: result.kind,
+        retryable: result.retryable,
+        diagnosticCode: `${result.kind}:${provider.id}`,
+      });
 
       // Only fall through when the failure is retryable AND there is another
       // configured provider to try.

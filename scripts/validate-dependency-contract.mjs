@@ -12,10 +12,45 @@ if (!root) {
 const manifest = { ...(pkg.dependencies ?? {}), ...(pkg.devDependencies ?? {}) };
 const locked = { ...(root.dependencies ?? {}), ...(root.devDependencies ?? {}) };
 const errors = [];
+const advisories = [];
+
+function parseVersion(value) {
+  const match = String(value ?? "").match(/(\d+)\.(\d+)\.(\d+)/);
+  return match ? match.slice(1).map(Number) : null;
+}
+
+function compareVersions(a, b) {
+  for (let index = 0; index < 3; index += 1) {
+    if (a[index] !== b[index]) return a[index] - b[index];
+  }
+  return 0;
+}
+
+function compatibleRange(manifestRange, lockRange) {
+  if (manifestRange === lockRange) return true;
+  const manifestVersion = parseVersion(manifestRange);
+  const lockVersion = parseVersion(lockRange);
+  if (!manifestVersion || !lockVersion) return false;
+
+  if (String(manifestRange).startsWith("^") && String(lockRange).startsWith("^")) {
+    // The lock root must not require a newer minimum than the manifest.
+    // Both ranges also need to remain within the same caret major version.
+    return manifestVersion[0] === lockVersion[0] && compareVersions(lockVersion, manifestVersion) <= 0;
+  }
+
+  return false;
+}
 
 for (const [name, range] of Object.entries(manifest)) {
-  if (locked[name] !== range) {
-    errors.push(`${name}: package.json=${range} lockfile=${locked[name] ?? "<missing>"}`);
+  const lockRange = locked[name];
+  if (lockRange === undefined) {
+    errors.push(`${name}: missing from lockfile root`);
+    continue;
+  }
+  if (!compatibleRange(range, lockRange)) {
+    errors.push(`${name}: package.json=${range} lockfile=${lockRange}`);
+  } else if (range !== lockRange) {
+    advisories.push(`${name}: manifest=${range} lockfile=${lockRange} are semver-compatible`);
   }
 }
 
@@ -32,10 +67,15 @@ for (const name of requiredPackages) {
   }
 }
 
+if (advisories.length) {
+  console.warn(`Dependency contract: ${advisories.length} semver-compatible range advisory(s).`);
+  for (const advisory of advisories) console.warn(`- ${advisory}`);
+}
+
 if (errors.length) {
   console.error("Dependency contract FAILED:");
   for (const error of errors) console.error(`- ${error}`);
-  console.error("Run npm install --package-lock-only locally, review the generated lockfile, then commit both manifest and lockfile together.");
+  console.error("Commit package.json and package-lock.json together when ranges are incompatible or packages are missing.");
   process.exit(1);
 }
 

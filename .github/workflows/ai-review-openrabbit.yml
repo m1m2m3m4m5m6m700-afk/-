@@ -1,0 +1,31 @@
+name: Optional AI Review · OpenRabbit
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    name: OpenRabbit PR Review
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Run OpenRabbit
+        uses: aryanbrite/openrabbit@main
+        with:
+          review_mode: both
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          AUTO_APPLY: 'false'
+          REQUIRE_HUMAN_REVIEW: 'true'
+
+# Optional/advisory only. Do not make this a required status check.
+# OpenRabbit is free/open-source and runs inside GitHub Actions; model usage is BYOK/provider-dependent.

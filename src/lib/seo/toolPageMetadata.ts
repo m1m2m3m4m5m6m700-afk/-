@@ -96,7 +96,7 @@ export function resolvePageSeo(slug?: string, customData?: Partial<ToolSeoData>,
   const canonicalUrl = slug ? getToolCanonicalUrl(slug, locale) : stripQueryAndHash(pageUrl);
   const origin = typeof window !== "undefined" && window.location?.origin ? window.location.origin : SITE_URL;
   const tool = slug ? getToolRecord(slug) : undefined;
-  const isPublicTool = !slug || tool?.status === "ready";
+  const isPublicTool = !slug || !tool || !("status" in tool) || tool.status === "ready";
   const robots = isPublicTool && localizationComplete ? DEFAULT_ROBOTS : NOINDEX_ROBOTS;
 
   return { title, description, keywords, robots, pageUrl, canonicalUrl, ogImage: getDefaultOgImageUrl(origin), locale };

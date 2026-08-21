@@ -1,0 +1,49 @@
+name: Early Detection · Workflow Lint
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+      - '.github/actions/**'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/**'
+      - '.github/actions/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  actionlint:
+    name: actionlint · workflow correctness
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Install actionlint
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash \
+            | bash -s -- 1.7.12
+          if command -v actionlint >/dev/null 2>&1; then
+            echo "actionlint available on PATH"
+          elif [ -x ./actionlint ]; then
+            echo "actionlint downloaded to workspace"
+          else
+            echo "actionlint installation failed"
+            exit 1
+          fi
+
+      - name: Validate workflows
+        run: |
+          if command -v actionlint >/dev/null 2>&1; then
+            actionlint
+          else
+            ./actionlint
+          fi

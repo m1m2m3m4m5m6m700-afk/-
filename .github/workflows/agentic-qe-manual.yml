@@ -1,0 +1,46 @@
+name: AI · Agentic QE Manual
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "AQE operation"
+        required: true
+        default: "impact"
+        type: choice
+        options:
+          - impact
+          - coverage
+          - analyze
+          - generate
+
+permissions:
+  contents: read
+
+jobs:
+  aqe:
+    name: Agentic QE — ${{ inputs.mode }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install Agentic QE
+        run: npm install --global agentic-qe
+      - name: Initialize in deterministic mode
+        run: aqe init --auto
+        env:
+          AQE_LLM_ROUTER_DISABLED: "1"
+      - name: Run selected analysis
+        run: |
+          case "${{ inputs.mode }}" in
+            impact) aqe code impact src/ ;;
+            coverage) aqe code complexity src/ ;;
+            analyze) aqe code deps src/ ;;
+            generate) aqe agent list ;;
+          esac

@@ -1,0 +1,65 @@
+name: Error Intelligence
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/error-intelligence-*.mjs'
+      - 'scripts/test-error-intelligence.mjs'
+      - 'scripts/merge-finding-reports.mjs'
+      - 'scripts/test-failure-memory-load.mjs'
+      - 'src/lib/ai/failure-memory/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  intelligence:
+    name: Error Intelligence Self-Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --no-audit
+      - name: Self-test
+        run: node scripts/test-error-intelligence.mjs
+      - name: Create standard diagnostic fixture
+        run: |
+          mkdir -p .artifacts/errors
+          cat > .artifacts/errors/error-report.json <<'JSON'
+          {
+            "schemaVersion": 1,
+            "source": "error-intelligence-ci-fixture",
+            "status": "failure",
+            "errorType": "timeout",
+            "severity": "medium",
+            "message": "synthetic timeout fixture for diagnostic bridge validation",
+            "commitSha": "${GITHUB_SHA}",
+            "autoApply": false,
+            "requiresHumanReview": true
+          }
+          JSON
+          node scripts/error-intelligence-engine.mjs
+      - name: Normalize finding reports
+        run: node scripts/merge-finding-reports.mjs
+      - name: Dashboard
+        run: node scripts/error-intelligence-dashboard.mjs
+      - name: Adaptive learning report
+        run: node scripts/error-intelligence-adaptive-report.mjs
+      - name: V3 plan-only bridge
+        run: node scripts/error-intelligence-v3-bridge.mjs
+      - name: Self-Heal advisory bridge
+        run: node scripts/error-intelligence-self-heal-bridge.mjs
+      - name: Upload intelligence evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flixo-error-intelligence-${{ github.run_id }}
+          path: .artifacts/errors/
+          if-no-files-found: ignore
+          retention-days: 14

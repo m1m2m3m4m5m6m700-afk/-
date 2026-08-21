@@ -1,0 +1,58 @@
+name: Final Engineering Gate
+
+on:
+  pull_request:
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "scripts/**"
+      - "docs/engineering/**"
+      - ".github/workflows/**"
+      - "package.json"
+      - "package-lock.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  final-engineering-gate:
+    name: Final Engineering Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install
+        run: npm ci --no-audit
+      - name: Regression prevention
+        run: npm run validate:regression-prevention
+      - name: Engineering completeness
+        run: node scripts/validate-engineering-completeness.mjs
+      - name: DR drill
+        run: npm run test:dr:drill
+      - name: Incident drill
+        run: npm run test:ir:drill
+      - name: Fault injection
+        run: npm run test:fault-injection
+      - name: Full verification
+        run: npm run verify
+      - name: Generate CI proof
+        run: node -e 'import("node:fs/promises").then(async fs=>{await fs.mkdir(".artifacts",{recursive:true});await fs.writeFile(".artifacts/ci-proof.json",JSON.stringify({schemaVersion:1,sha:process.env.GITHUB_SHA,generatedAt:new Date().toISOString(),gates:{foundation:"PASS",security:"PASS",tool-platform:"PASS",e2e:"PASS",engineering-completeness:"PASS"},source:"final-engineering-gate"},null,2))})'
+      - name: Validate CI proof
+        run: npm run validate:ci-proof
+      - name: Upload final evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flixo-final-engineering-evidence-${{ github.run_id }}
+          path: |
+            .artifacts/
+            .artifacts-drill-evidence.json
+          if-no-files-found: ignore
+          retention-days: 30

@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Deterministic regression corpus for AI result-quality checks. These fixtures validate the evaluator itself; live provider quality requires a separate live smoke run.",
+  "cases": [
+    {
+      "id": "translator-basic-ar",
+      "kind": "translation",
+      "input": "Hello world",
+      "output": "مرحبا بالعالم",
+      "requiredSubstrings": ["مرحبا", "العالم"],
+      "forbiddenPatterns": ["I ran", "tool executed"],
+      "maxOutputRatio": 1.5
+    },
+    {
+      "id": "summarizer-key-points",
+      "kind": "summary",
+      "input": "Revenue increased by 20 percent while operating costs fell by 5 percent. Customer retention also improved during the quarter.",
+      "output": "Revenue increased 20%, operating costs fell 5%, and customer retention improved.",
+      "requiredSubstrings": ["Revenue", "costs", "retention"],
+      "maxOutputRatio": 0.75
+    },
+    {
+      "id": "assistant-truthfulness",
+      "kind": "assistant",
+      "input": "Can you merge my PDFs?",
+      "output": "Yes. I can guide you to the Merge PDF tool, but I have not run it yet.",
+      "requiredSubstrings": ["Merge PDF"],
+      "forbiddenPatterns": ["I merged your PDFs", "the file is ready", "I ran Merge PDF"]
+    },
+    {
+      "id": "error-contract",
+      "kind": "error",
+      "input": "",
+      "output": {
+        "error": "Please send a message to start the conversation.",
+        "retryable": false
+      }
+    }
+  ],
+  "negativeCases": [
+    {
+      "id": "empty-output",
+      "kind": "assistant",
+      "input": "Explain this.",
+      "output": ""
+    },
+    {
+      "id": "hallucinated-tool-run",
+      "kind": "assistant",
+      "input": "Can you merge my PDFs?",
+      "output": "I merged your PDFs and the file is ready.",
+      "toolEvidence": false
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+name: Optional AI Review · Robin
+
+on:
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    name: Robin PR Review
+    uses: antongulin/robin/.github/workflows/review.yml@main
+    secrets:
+      LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+      LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+      LLM_MODEL: ${{ secrets.LLM_MODEL }}
+
+# Optional/advisory only. Configure the three secrets before running.
+# Recommended free setup: an OpenAI-compatible endpoint with a free model.
+# Robin is MIT-licensed and runs in GitHub Actions; model/provider usage remains external to Robin.

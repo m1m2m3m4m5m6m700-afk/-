@@ -1,0 +1,56 @@
+name: Early Detection · Supply Chain
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '45 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  sbom:
+    name: Syft + Grype · SBOM and vulnerabilities
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Generate CycloneDX SBOM
+        uses: anchore/sbom-action@v0.21.0
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: flixo-sbom.cdx.json
+          upload-artifact: false
+
+      - name: Scan SBOM with Grype
+        id: grype
+        uses: anchore/scan-action@v7.4.0
+        with:
+          sbom: flixo-sbom.cdx.json
+          output-format: sarif
+          output-file: grype-results.sarif
+          fail-build: false
+          severity-cutoff: high
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: flixo-sbom-${{ github.run_id }}
+          path: flixo-sbom.cdx.json
+          retention-days: 14
+
+      - name: Upload Grype SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: grype-results.sarif
