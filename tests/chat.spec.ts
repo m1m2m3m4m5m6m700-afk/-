@@ -1,5 +1,7 @@
 import { expect, test } from "playwright/test";
 
+test.use({ serviceWorkers: "block" });
+
 test.describe("Flex interactive chat", () => {
   test("supports multi-turn conversation and session persistence", async ({ page }) => {
     const requests: Array<{ message?: unknown; history?: unknown; locale?: unknown }> = [];
