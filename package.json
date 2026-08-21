@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 3000",
     "generate:sitemap": "node scripts/generate-sitemap.mjs",
+    "verify:i18n": "node scripts/verify-i18n-matrix.mjs",
     "build": "vite build && npm run generate:sitemap",
     "preview": "vite preview --host 0.0.0.0 --port 3000",
     "typecheck": "tsc --noEmit",
