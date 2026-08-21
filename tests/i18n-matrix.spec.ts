@@ -5,6 +5,11 @@ const languages = [
   ['id', 'ltr'], ['de', 'ltr'], ['ja', 'ltr'], ['sw', 'ltr'], ['mr', 'ltr'], ['te', 'ltr'], ['tr', 'ltr'], ['ta', 'ltr'], ['ko', 'ltr'], ['vi', 'ltr'],
 ] as const;
 
+const ogLocales: Record<(typeof languages)[number][0], string> = {
+  en: 'en_US', zh: 'zh_CN', hi: 'hi_IN', es: 'es_ES', fr: 'fr_FR', ar: 'ar_SA', bn: 'bn_BD', pt: 'pt_PT', ru: 'ru_RU', ur: 'ur_PK',
+  id: 'id_ID', de: 'de_DE', ja: 'ja_JP', sw: 'sw_KE', mr: 'mr_IN', te: 'te_IN', tr: 'tr_TR', ta: 'ta_IN', ko: 'ko_KR', vi: 'vi_VN',
+};
+
 const tools = [
   'image-compressor', 'background-remover', 'image-upscaler', 'image-converter', 'ai-image-generator',
   'object-remover', 'watermark-remover', 'image-cropper', 'image-to-svg', 'image-ocr', 'photo-colorizer',
@@ -41,7 +46,7 @@ for (const [locale, dir] of languages) {
       expect(json.offers).toMatchObject({ price: '0', priceCurrency: 'USD' });
 
       await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', new RegExp(`/og/${locale}/${tool}\\.svg$`));
-      await expect(page.locator('meta[property="og:locale"]')).not.toHaveAttribute('content', 'en_US');
+      await expect(page.locator('meta[property="og:locale"]')).toHaveAttribute('content', ogLocales[locale]);
       await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute('content', 'summary_large_image');
       await expect(page.locator('[aria-label="Privacy notice"]')).toBeVisible();
       await expect(page.locator('main h1')).toBeVisible();
