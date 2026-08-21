@@ -56,8 +56,9 @@ const GOOGLE_VERIFICATION_BODY = "google-site-verification: googlea627784b48ceca
 const CHAT_API_PATH = "/api/chat";
 
 /**
- * Require an explicit same-origin Origin/Referer. Do not trust Sec-Fetch-Site
- * alone because `same-site` can include a different origin on the same site.
+ * Require explicit same-origin evidence. Origin is authoritative when present;
+ * Referer is a compatibility fallback. Sec-Fetch-Site is intentionally not
+ * authoritative and cannot grant access by itself.
  */
 function isSameOriginChatRequest(request: Request): boolean {
   const expectedOrigin = new URL(request.url).origin;
@@ -79,7 +80,7 @@ function isSameOriginChatRequest(request: Request): boolean {
     }
   }
 
-  return request.headers.get("Sec-Fetch-Site") === "same-origin";
+  return false;
 }
 
 export default {
