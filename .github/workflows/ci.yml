@@ -60,6 +60,8 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Lockfile unchanged after install
         run: git diff --exit-code -- package.json package-lock.json
+      - name: Run production dependency audit
+        run: npm run audit:production
       - name: Install Chromium for operational tests
         run: npx playwright install --with-deps chromium
       - name: Run canonical verification gate with timing
