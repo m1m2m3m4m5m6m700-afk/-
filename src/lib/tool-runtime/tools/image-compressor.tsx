@@ -1,5 +1,5 @@
 import { FileImage } from "lucide-react";
-import { ImageCompressor } from "@/components/tools/ImageCompressor";
+import { ImageCompressor } from "@/tools/image-compressor";
 import type { ReadyToolRuntimeDefinition } from "../types";
 
 export const imageCompressorRuntime: ReadyToolRuntimeDefinition = {
