@@ -9,7 +9,10 @@ const patterns = [
   { name: "OpenAI-style key", regex: /\bsk-[A-Za-z0-9_-]{20,}\b/g },
   { name: "GitHub token", regex: /\bgh[pousr]_[A-Za-z0-9_]{20,}\b/g },
   { name: "AWS access key", regex: /\bAKIA[0-9A-Z]{16}\b/g },
-  { name: "Private key", regex: /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/g },
+  {
+    name: "Private key",
+    regex: /-----BEGIN (?:RSA |EC |OPENSSH |PGP |DSA )?PRIVATE KEY-----\s+[A-Za-z0-9+/=\r\n]{40,}\s+-----END (?:RSA |EC |OPENSSH |PGP |DSA )?PRIVATE KEY-----/g,
+  },
   { name: "Generic secret assignment", regex: /\b(?:api[_-]?key|secret|token|password)\s*[:=]\s*["'][^"']{16,}["']/gi },
 ];
 
