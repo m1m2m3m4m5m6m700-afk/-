@@ -1,75 +1,17 @@
-import { defineConfig } from "@lovable.dev/vite-tanstack-config";
-import { gzipSync } from "node:zlib";
-import { createHash } from "node:crypto";
-import { createRequire } from "node:module";
-import { readFileSync } from "node:fs";
-import type { Plugin } from "vite";
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 
-const require = createRequire(import.meta.url);
-
-function ffmpegWasmGzipPlugin(): Plugin {
-  const VIRTUAL_ID = "\0flixo:ffmpeg-core-wasm-gz";
-  let moduleSource: string | undefined;
-  return {
-    name: "flixo:ffmpeg-wasm-gzip",
-    apply: "build",
-    enforce: "pre",
-    resolveId(source) {
-      if (source === "@ffmpeg/core/wasm?url") return VIRTUAL_ID;
-    },
-    load(id) {
-      if (id !== VIRTUAL_ID) return;
-      if (moduleSource) return moduleSource;
-      const raw = readFileSync(require.resolve("@ffmpeg/core/wasm"));
-      const gz = gzipSync(raw, { level: 9 });
-      const hash = createHash("sha1").update(gz).digest("hex").slice(0, 8);
-      const refId = this.emitFile({ type: "asset", fileName: `assets/ffmpeg-core-${hash}.wasm.gz`, source: gz });
-      moduleSource = `export default ${JSON.stringify(`/${this.getFileName(refId)}`)};`;
-      return moduleSource;
-    },
-  };
-}
-
-type LovableNitroOptions = {
-  preset?: string;
-  output?: { dir?: string; publicDir?: string; serverDir?: string };
-  cloudflare?: { nodeCompat?: boolean; deployConfig?: boolean };
-  rolldownConfig?: { output?: Record<string, unknown> };
-};
-
-const nitroConfig: LovableNitroOptions = {
-  preset: "vercel",
-  rolldownConfig: {
-    output: {
-      codeSplitting: {
-        groups: [
-          {
-            name: "_tanstack-start",
-            test: /node_modules[\\/]\.nitro[\\/]vite[\\/]services[\\/]ssr[\\/](?:assets[\\/](?:createCsrfMiddleware-|createMiddleware-|_tanstack-start-manifest|start-)|index\.js$)/,
-          },
-        ],
-      },
-    },
-  },
-};
-
-const allowedHosts = (process.env.VITE_ALLOWED_HOSTS ?? "")
-  .split(",")
+const allowedHosts = (process.env.VITE_ALLOWED_HOSTS ?? '')
+  .split(',')
   .map((host) => host.trim())
   .filter(Boolean);
 
 export default defineConfig({
-  nitro: nitroConfig,
-  tanstackStart: { server: { entry: "server" } },
-  plugins: [ffmpegWasmGzipPlugin()],
-  vite: {
-    server: {
-      host: "0.0.0.0",
-      port: 3000,
-      strictPort: true,
-      // Never disable Vite host protection globally. Preview/container hosts can
-      // be added explicitly with VITE_ALLOWED_HOSTS when required.
-      allowedHosts,
-    },
+  plugins: [react()],
+  server: {
+    host: '0.0.0.0',
+    port: 3000,
+    strictPort: true,
+    allowedHosts,
   },
 });
