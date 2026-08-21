@@ -196,7 +196,7 @@ async function pdfTool(file: File, tool: MegaTool): Promise<MegaToolResult> {
     const viewport = page.getViewport({ scale: 1 });
     const canvas = document.createElement("canvas"); canvas.width = Math.max(1, Math.round(viewport.width)); canvas.height = Math.max(1, Math.round(viewport.height));
     const context = canvas.getContext("2d"); if (!context) throw new Error("Canvas is unavailable in this browser.");
-    await page.render({ canvas, canvasContext: null, viewport }).promise;
+    await page.render({ canvas, canvasContext: context, viewport }).promise;
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
     if (!blob) throw new Error("Could not render PDF poster.");
     return downloadResult(blob, `${baseName(file.name)}-poster-${tool.preset}.png`);
