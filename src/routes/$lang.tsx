@@ -1,21 +1,36 @@
 import { createRoute, Link } from '@tanstack/react-router';
 import { useEffect } from 'react';
 import { getLocale } from '../i18n';
-import { isLocaleCode, getLanguageConfig, SUPPORTED_LANGUAGES } from '../config/i18n';
+import { isLocaleCode, getLanguageConfig } from '../config/i18n';
 import { TOOLS_REGISTRY } from '../config/tools';
+import { absoluteLocaleUrl, buildHreflangLinks, toJsonLdScript } from '../seo/localized-seo';
 import { rootRoute } from './__root';
 
 export const localeHomeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/$lang',
   head: ({ params }) => {
-    const locale = getLocale(params.lang);
-    return { meta: [
-      { title: `${locale.homeTitle} | FLIXO` },
-      { name: 'description', content: locale.homeLead },
-      { name: 'robots', content: 'index,follow,max-image-preview:large' },
-      { rel: 'canonical', href: `/${params.lang}` },
-    ], links: SUPPORTED_LANGUAGES.map((language) => ({ rel: 'alternate', hrefLang: language.code, href: `/${language.code}` })) };
+    const validLocale = isLocaleCode(params.lang) ? params.lang : 'en';
+    const locale = getLocale(validLocale);
+    const links = buildHreflangLinks('/').map((link) => ({ rel: link.rel, hrefLang: link.hreflang, href: link.href }));
+    const schema = {
+      '@context': 'https://schema.org',
+      '@type': 'WebSite',
+      name: 'FLIXO',
+      url: absoluteLocaleUrl(validLocale, '/'),
+      inLanguage: validLocale,
+      description: locale.homeLead,
+    };
+    return {
+      meta: [
+        { title: `${locale.homeTitle} | FLIXO` },
+        { name: 'description', content: locale.homeLead },
+        { name: 'robots', content: 'index,follow,max-image-preview:large' },
+        { name: 'content-language', content: validLocale },
+      ],
+      links: [{ rel: 'canonical', href: absoluteLocaleUrl(validLocale, '/') }, ...links],
+      scripts: [{ type: 'application/ld+json', children: toJsonLdScript(schema) }],
+    };
   },
   component: function LocalizedHomePage() {
     const { lang } = localeHomeRoute.useParams();
