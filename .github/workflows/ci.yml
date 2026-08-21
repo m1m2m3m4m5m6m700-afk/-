@@ -95,7 +95,7 @@ jobs:
         if: ${{ failure() }}
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-diagnostics-shard-${{ matrix.shard }}
+          name: e2e-diagnostics-shard-${{ matrix.shard }}/6
           path: |
             playwright-report/
             test-results/
