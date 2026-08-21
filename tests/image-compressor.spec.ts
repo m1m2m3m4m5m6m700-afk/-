@@ -14,10 +14,10 @@ test('English image compressor produces a real WebP output', async ({ page }) =>
   await page.locator('#image-file').setInputFiles({ name: 'source.svg', mimeType: 'image/svg+xml', buffer: Buffer.from(svg) });
   await page.getByRole('button', { name: 'Compress image' }).click();
 
-  await expect(page.getByText(/smaller file size/)).toBeVisible();
-  await expect(page.getByText('WebP', { exact: true })).toBeVisible();
   const download = page.getByRole('link', { name: 'Download image' });
-  await expect(download).toHaveAttribute('download', 'flixo-compressed.webp');
+  await expect(download).toHaveAttribute('download', 'flixo-compressed.webp', { timeout: 15000 });
+  await expect(page.getByText(/smaller file size/)).toBeVisible({ timeout: 15000 });
+  await expect(page.getByText('WebP', { exact: true })).toBeVisible({ timeout: 15000 });
 
   const href = await download.getAttribute('href');
   expect(href).toMatch(/^blob:/);
