@@ -18,9 +18,10 @@ const findings = [];
 async function collect(target) {
   const absolute = join(process.cwd(), target);
   try {
-    const stat = await import("node:fs/promises").then(({ stat }) => stat(absolute));
-    if (stat.isFile()) {
-      if (stat.size <= MAX_FILE_BYTES) await scanFile(absolute);
+    const { stat } = await import("node:fs/promises");
+    const info = await stat(absolute);
+    if (info.isFile()) {
+      if (info.size <= MAX_FILE_BYTES) await scanFile(absolute);
       return;
     }
   } catch {
@@ -67,7 +68,8 @@ const result = {
 console.log(JSON.stringify(result, null, 2));
 
 if (findings.length) {
-  console.warn(`SECRETS SCAN: ${findings.length} potential finding(s). Advisory only.`);
-} else {
-  console.log("SECRETS SCAN: PASS");
+  console.error(`SECRETS SCAN FAILED: ${findings.length} potential finding(s).`);
+  process.exit(1);
 }
+
+console.log("SECRETS SCAN: PASS");
