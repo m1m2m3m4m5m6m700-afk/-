@@ -27,3 +27,26 @@ test('Arabic image compressor exposes localized SEO and output controls', async 
   await expect(page.getByRole('link', { name: 'English' })).toHaveAttribute('href', '/en/image-compressor');
   await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', /اضغط صور JPG وPNG وWebP/);
 });
+
+test('runtime diagnostics capture an application error without breaking the page', async ({ page }) => {
+  await page.goto('/en/image-compressor');
+  await page.evaluate(() => {
+    window.dispatchEvent(
+      new ErrorEvent('error', {
+        message: 'diagnostic-smoke-test',
+        error: new Error('diagnostic-smoke-test'),
+      }),
+    );
+  });
+
+  const diagnostic = await page.evaluate(() => {
+    const raw = localStorage.getItem('flixo:runtime-diagnostics');
+    return raw ? JSON.parse(raw).at(-1) : null;
+  });
+
+  expect(diagnostic).toMatchObject({
+    kind: 'error',
+    message: 'diagnostic-smoke-test',
+  });
+  await expect(page.getByRole('heading', { name: 'Compress Images Online' })).toBeVisible();
+});
