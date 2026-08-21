@@ -1,0 +1,1 @@
+import en from './en'; export const vi={...en,code:'vi' as const,eyebrow:'FLIXO · CÔNG CỤ HÌNH ẢNH',homeTitle:'Công cụ hình ảnh cho nhu cầu tìm kiếm thực tế',homeLead:'Công cụ hình ảnh nhanh trên trình duyệt với kết quả rõ ràng và trang riêng cho từng tác vụ.'}; export default vi;
