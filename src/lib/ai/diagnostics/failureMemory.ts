@@ -37,11 +37,29 @@ function sanitizeRecord(record: IncidentFingerprint): FailureMemoryRecord {
   };
 }
 
-function readStore(file: string): FailureMemoryRecord[] {
+function quarantineCorruptStore(file: string): void {
+  const quarantine = `${file}.corrupt.${Date.now()}.${randomUUID()}`;
   try {
-    const parsed = JSON.parse(readFileSync(file, "utf8"));
+    renameSync(file, quarantine);
+    console.warn("[FLIXO_FAILURE_MEMORY_CORRUPT] quarantined");
+  } catch {
+    console.warn("[FLIXO_FAILURE_MEMORY_CORRUPT] quarantine-failed");
+  }
+}
+
+function readStore(file: string): FailureMemoryRecord[] {
+  let raw: string;
+  try {
+    raw = readFileSync(file, "utf8");
+  } catch {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
     return Array.isArray(parsed?.records) ? parsed.records : [];
   } catch {
+    quarantineCorruptStore(file);
     return [];
   }
 }
