@@ -18,6 +18,7 @@ export type CompressionResult = {
 
 export const MAX_FILES = 20;
 export const MAX_INPUT_SIZE = 10 * 1024 * 1024;
+export const MAX_OUTPUT_PIXELS = 40_000_000;
 
 const SUPPORTED_INPUTS = new Set([
   'image/jpeg',
@@ -29,8 +30,8 @@ const SUPPORTED_INPUTS = new Set([
 ]);
 
 function getTargetSize(width: number, height: number, maxWidth?: number, maxHeight?: number) {
-  const widthLimit = maxWidth && maxWidth > 0 ? maxWidth : width;
-  const heightLimit = maxHeight && maxHeight > 0 ? maxHeight : height;
+  const widthLimit = Number.isFinite(maxWidth) && (maxWidth ?? 0) > 0 ? maxWidth! : width;
+  const heightLimit = Number.isFinite(maxHeight) && (maxHeight ?? 0) > 0 ? maxHeight! : height;
   const scale = Math.min(1, widthLimit / width, heightLimit / height);
   return {
     width: Math.max(1, Math.round(width * scale)),
@@ -70,6 +71,7 @@ async function encodeToTarget(
       bestBlob = candidate;
       bestQuality = candidateQuality;
       low = candidateQuality;
+      if (candidate.size >= targetBytes * 0.98) break;
     } else {
       high = candidateQuality;
     }
@@ -129,7 +131,15 @@ export async function compressImage(file: File, options: CompressionOptions): Pr
 
   const image = await loadSourceImage(file);
   try {
+    if (!Number.isFinite(image.width) || !Number.isFinite(image.height) || image.width < 1 || image.height < 1) {
+      throw new Error('The source image has invalid dimensions');
+    }
+
     const size = getTargetSize(image.width, image.height, options.maxWidth, options.maxHeight);
+    if (size.width * size.height > MAX_OUTPUT_PIXELS) {
+      throw new Error('The requested output is too large for safe browser processing. Reduce the dimensions and try again.');
+    }
+
     const canvas = document.createElement('canvas');
     canvas.width = size.width;
     canvas.height = size.height;
