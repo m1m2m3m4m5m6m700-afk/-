@@ -1,9 +1,24 @@
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
+import { join } from "node:path";
 
 const registry = await readFile("src/config/tools.ts", "utf8");
 const publicRuntime = await readFile("src/lib/tool-platform/publicDesktopTools.ts", "utf8");
 const contracts = await readFile("src/lib/tool-platform/testContracts.ts", "utf8");
-const tests = await readFile("tests/desktop-tools.spec.ts", "utf8");
+
+async function walk(dir) {
+  const entries = await readdir(dir, { withFileTypes: true });
+  const files = [];
+  for (const entry of entries) {
+    if (["node_modules", ".git", "dist", ".output"].includes(entry.name)) continue;
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) files.push(...await walk(path));
+    else if (/\.spec\.(ts|tsx|js|mjs)$/.test(path)) files.push(path);
+  }
+  return files;
+}
+
+const testSources = await Promise.all((await walk("tests")).map((file) => readFile(file, "utf8")));
+const tests = testSources.join("\n");
 
 const publicTools = [
   ...registry.matchAll(/\n\s+id:\s*"([^"]+)"/g),
@@ -40,5 +55,5 @@ for (const toolId of readyTools) {
 }
 
 console.log(
-  `Desktop regression contract: PASS — ${readyTools.size} ready tools are registered, contracted, and routed.`,
+  `Desktop regression contract: PASS — ${readyTools.size} ready tools are registered, contracted, and routed across ${testSources.length} E2E files.`,
 );
