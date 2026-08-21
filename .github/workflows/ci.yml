@@ -147,8 +147,20 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-  i18n:
-    name: I18n — 20 languages
+  i18n-contract:
+    name: I18n — 440 route contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run verify:i18n
+
+  i18n-live:
+    name: I18n — 440 live routes
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -158,13 +170,23 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npx playwright test tests/i18n.spec.ts
+      - run: npx playwright test tests/i18n-matrix.spec.ts --workers=5
+      - name: Upload i18n diagnostics
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: i18n-matrix-diagnostics
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: warn
+          retention-days: 7
 
   diagnostic-summary:
     name: Diagnostic Summary
     if: ${{ always() }}
     runs-on: ubuntu-latest
-    needs: [typecheck, lint, build, audit, security, e2e, i18n]
+    needs: [typecheck, lint, build, audit, security, e2e, i18n-contract, i18n-live]
     steps:
       - name: Write CI summary
         run: |
@@ -179,7 +201,8 @@ jobs:
             echo '| Audit | ${{ needs.audit.result }} |'
             echo '| CodeQL | ${{ needs.security.result }} |'
             echo '| Per-tool E2E | ${{ needs.e2e.result }} |'
-            echo '| I18n — 20 languages | ${{ needs.i18n.result }} |'
+            echo '| I18n — 440 route contract | ${{ needs.i18n-contract.result }} |'
+            echo '| I18n — 440 live routes | ${{ needs.i18n-live.result }} |'
             echo
-            echo 'E2E runs are isolated per tool; the i18n suite validates all supported locale home pages.'
+            echo 'The i18n gate covers 20 languages × 22 tools = 440 localized routes.'
           } >> "$GITHUB_STEP_SUMMARY"
