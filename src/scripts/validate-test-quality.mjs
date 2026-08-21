@@ -24,7 +24,7 @@ for (const file of testFiles) {
 }
 
 const contracts = await readFile("src/lib/tool-platform/testContracts.ts", "utf8");
-const registry = await readFile("src/lib/tool-platform/publicDesktopTools.ts", "utf8");
+const registry = await readFile("src/config/tools.ts", "utf8");
 const requiredChecks = [
   "render",
   "interaction",
@@ -46,11 +46,13 @@ if (!strictChecksMatch) {
 }
 
 const contractEntries = [...contracts.matchAll(/\{\s*toolId:\s*["']([^"']+)["'][\s\S]*?requiredChecks:\s*([A-Za-z0-9_]+)/g)].map((match) => ({ id: match[1], checksRef: match[2] }));
-const publicToolIds = [...registry.matchAll(/id:\s*["']([^"']+)["']/g)].map((match) => match[1]);
+const publicToolIds = [
+  ...registry.matchAll(/\{\s*id:\s*["']([^"']+)["'][\s\S]*?isReady:\s*true,/g),
+].map((match) => match[1]);
 const uniquePublicToolIds = [...new Set(publicToolIds)];
 
 if (uniquePublicToolIds.length === 0) {
-  fail("Public desktop registry contains no tool ids.");
+  fail("Central tool registry contains no ready tool ids.");
 } else {
   for (const id of uniquePublicToolIds) {
     const entry = contractEntries.find((candidate) => candidate.id === id);
@@ -61,7 +63,7 @@ if (uniquePublicToolIds.length === 0) {
 
 const orphanedStrictContracts = contractEntries.filter((entry) => !uniquePublicToolIds.includes(entry.id));
 for (const entry of orphanedStrictContracts) {
-  fail(`Orphaned strict test contract is not backed by the public tool registry: ${entry.id}`);
+  fail(`Orphaned strict test contract is not backed by the central tool registry: ${entry.id}`);
 }
 
 const playwright = await readFile("playwright.config.ts", "utf8");
