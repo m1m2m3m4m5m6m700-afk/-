@@ -6,7 +6,18 @@ export default defineConfig({
   workers: process.env.CI ? 2 : undefined,
   retries: 0,
   timeout: 15_000,
-  use: { baseURL: 'http://127.0.0.1:3000', ...devices['Desktop Chrome'] },
+  reporter: [
+    ['list'],
+    ['html', { outputFolder: 'playwright-report', open: 'never' }],
+    ['json', { outputFile: 'playwright-report/results.json' }],
+  ],
+  use: {
+    baseURL: 'http://127.0.0.1:3000',
+    ...devices['Desktop Chrome'],
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
+  },
   webServer: {
     command: 'npm run dev',
     url: 'http://127.0.0.1:3000',
