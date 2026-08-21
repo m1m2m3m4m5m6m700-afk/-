@@ -1,6 +1,6 @@
+import { fileURLToPath, URL } from 'node:url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import tsconfigPaths from 'vite-tsconfig-paths';
 
 const allowedHosts = (process.env.VITE_ALLOWED_HOSTS ?? '')
   .split(',')
@@ -8,7 +8,12 @@ const allowedHosts = (process.env.VITE_ALLOWED_HOSTS ?? '')
   .filter(Boolean);
 
 export default defineConfig({
-  plugins: [react(), tsconfigPaths()],
+  plugins: [react()],
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+    },
+  },
   server: {
     host: '0.0.0.0',
     port: 3000,
