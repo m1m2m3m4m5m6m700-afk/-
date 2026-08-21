@@ -1,23 +1,13 @@
+import { getReadyToolConfigs } from "@/config/tools";
 import { getPublicToolRegistration } from "@/lib/tool-platform/publicDesktopTools";
 import { assertPublicRegistration } from "@/lib/tool-platform/promotion";
-import { imageCompressorRuntime } from "./tools/image-compressor";
-import { imageEnhancerRuntime } from "./tools/image-enhancer";
-import { VideoCompressorRuntime } from "./tools/video-compressor";
-import { VideoTrimmerRuntime } from "./tools/video-trimmer";
-import { qrGeneratorRuntime } from "./tools/qr-generator";
+import { toolConfigToRuntime } from "./adapters";
 import type { ReadyToolRuntimeDefinition } from "./types";
 
-/**
- * Runtime bindings for the tools currently public.
- * Identity, lifecycle, and regression requirements are owned by the Tool Platform.
- */
-export const readyToolRuntimes = [
-  imageCompressorRuntime,
-  imageEnhancerRuntime,
-  VideoCompressorRuntime,
-  VideoTrimmerRuntime,
-  qrGeneratorRuntime,
-] as const satisfies readonly ReadyToolRuntimeDefinition[];
+/** Compatibility adapter: the canonical tool definitions now live in @/config/tools. */
+export const readyToolRuntimes: readonly ReadyToolRuntimeDefinition[] = Object.freeze(
+  getReadyToolConfigs().map(toolConfigToRuntime),
+);
 
 for (const runtime of readyToolRuntimes) {
   const registration = getPublicToolRegistration(runtime.toolId);
@@ -41,6 +31,8 @@ export const readyToolRuntimeBySlug = new Map<string, ReadyToolRuntimeDefinition
 
 export const getReadyToolRuntime = (slug: string): ReadyToolRuntimeDefinition | undefined =>
   readyToolRuntimeBySlug.get(slug);
+
+export const getReadyTools = (): readonly ReadyToolRuntimeDefinition[] => readyToolRuntimes;
 
 export const VERIFIED_TOOL_SLUGS = Object.freeze(
   readyToolRuntimes.map((runtime) => runtime.slug),
