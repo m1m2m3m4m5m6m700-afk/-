@@ -11,7 +11,7 @@ test.describe("calculator engine", () => {
   test("supports scientific functions and angle modes", () => {
     expect(formatResult(evaluateExpression("sin(30)", { angleMode: "deg" }))).toBe("0.5");
     expect(formatResult(evaluateExpression("sin(pi/2)", { angleMode: "rad" }))).toBe("1");
-    expect(formatResult(evaluateExpression("sqrt(81) + log(100)")).toBe("11");
+    expect(formatResult(evaluateExpression("sqrt(81) + log(100)"))).toBe("11");
     expect(evaluateExpression("5!")).toBe(120);
   });
 
