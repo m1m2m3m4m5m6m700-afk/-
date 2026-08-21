@@ -80,13 +80,56 @@ async function encodeToTarget(
   return { blob: fallback, qualityUsed: 0.05 };
 }
 
+type SourceImage = {
+  source: CanvasImageSource;
+  width: number;
+  height: number;
+  cleanup: () => void;
+};
+
+async function loadSourceImage(file: File): Promise<SourceImage> {
+  if (file.type !== 'image/svg+xml' && typeof createImageBitmap === 'function') {
+    try {
+      const bitmap = await createImageBitmap(file);
+      return {
+        source: bitmap,
+        width: bitmap.width,
+        height: bitmap.height,
+        cleanup: () => bitmap.close(),
+      };
+    } catch {
+      // Fall through to the HTMLImageElement path, which is more tolerant of browser decoders.
+    }
+  }
+
+  const url = URL.createObjectURL(file);
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const element = new Image();
+      element.onload = () => resolve(element);
+      element.onerror = () => reject(new Error('The source image could not be decoded.'));
+      element.src = url;
+    });
+
+    return {
+      source: image,
+      width: image.naturalWidth,
+      height: image.naturalHeight,
+      cleanup: () => URL.revokeObjectURL(url),
+    };
+  } catch (error) {
+    URL.revokeObjectURL(url);
+    throw error instanceof Error ? error : new Error('The source image could not be decoded.');
+  }
+}
+
 export async function compressImage(file: File, options: CompressionOptions): Promise<CompressionResult> {
   if (!SUPPORTED_INPUTS.has(file.type)) throw new Error('Unsupported image format');
   if (file.size > MAX_INPUT_SIZE) throw new Error('File is larger than the 10 MB browser limit');
 
-  const bitmap = await createImageBitmap(file);
+  const image = await loadSourceImage(file);
   try {
-    const size = getTargetSize(bitmap.width, bitmap.height, options.maxWidth, options.maxHeight);
+    const size = getTargetSize(image.width, image.height, options.maxWidth, options.maxHeight);
     const canvas = document.createElement('canvas');
     canvas.width = size.width;
     canvas.height = size.height;
@@ -100,7 +143,7 @@ export async function compressImage(file: File, options: CompressionOptions): Pr
       context.fillStyle = '#ffffff';
       context.fillRect(0, 0, size.width, size.height);
     }
-    context.drawImage(bitmap, 0, 0, size.width, size.height);
+    context.drawImage(image.source, 0, 0, size.width, size.height);
 
     const targetBytes = options.targetSizeKB && options.targetSizeKB > 0 ? options.targetSizeKB * 1024 : undefined;
     const encoded = await encodeToTarget(canvas, options.format, options.quality, targetBytes);
@@ -113,6 +156,6 @@ export async function compressImage(file: File, options: CompressionOptions): Pr
       qualityUsed: encoded.qualityUsed,
     };
   } finally {
-    bitmap.close();
+    image.cleanup();
   }
 }
