@@ -1,0 +1,1 @@
+import en from './en'; export const mr={...en,code:'mr' as const,eyebrow:'FLIXO · इमेज टूल्स',homeTitle:'खऱ्या शोधाच्या गरजांसाठी तयार केलेली इमेज टूल्स',homeLead:'स्पष्ट परिणाम आणि प्रत्येक कामासाठी स्वतंत्र पानांसह जलद ब्राउझर-आधारित इमेज टूल्स.'}; export default mr;

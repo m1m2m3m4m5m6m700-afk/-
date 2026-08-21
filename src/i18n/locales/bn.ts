@@ -1,0 +1,1 @@
+import en from './en'; export const bn={...en,code:'bn' as const,eyebrow:'FLIXO · ইমেজ টুলস',homeTitle:'বাস্তব সার্চের প্রয়োজনের জন্য তৈরি ইমেজ টুলস',homeLead:'স্পষ্ট ফলাফল ও প্রতিটি কাজের জন্য আলাদা পেজসহ দ্রুত ব্রাউজারভিত্তিক ইমেজ টুলস।'}; export default bn;

@@ -1,0 +1,1 @@
+import en from './en'; export const tr={...en,code:'tr' as const,eyebrow:'FLIXO · GÖRSEL ARAÇLARI',homeTitle:'Gerçek arama amacına göre tasarlanmış görsel araçları',homeLead:'Her görev için ayrı sayfa ve net sonuçlar sunan hızlı tarayıcı tabanlı görsel araçları.'}; export default tr;

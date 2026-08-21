@@ -1,0 +1,1 @@
+import en from './en'; export const ur={...en,code:'ur' as const,eyebrow:'FLIXO · تصویری ٹولز',homeTitle:'حقیقی تلاش کی ضرورت کے لیے بنائے گئے تصویری ٹولز',homeLead:'تیز براؤزر پر مبنی ٹولز، واضح نتائج اور ہر کام کے لیے الگ صفحہ۔'}; export default ur;

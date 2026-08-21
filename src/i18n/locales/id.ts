@@ -1,0 +1,1 @@
+import en from './en'; export const id={...en,code:'id' as const,eyebrow:'FLIXO · ALAT GAMBAR',homeTitle:'Alat gambar untuk kebutuhan pencarian nyata',homeLead:'Alat gambar cepat berbasis browser dengan hasil jelas dan halaman khusus untuk setiap tugas.'}; export default id;

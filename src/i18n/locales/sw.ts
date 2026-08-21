@@ -1,0 +1,1 @@
+import en from './en'; export const sw={...en,code:'sw' as const,eyebrow:'FLIXO · ZANA ZA PICHA',homeTitle:'Zana za picha zilizoundwa kwa mahitaji halisi ya utafutaji',homeLead:'Zana za picha za haraka kwenye kivinjari zenye matokeo wazi na ukurasa maalum kwa kila kazi.'}; export default sw;

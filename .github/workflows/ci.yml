@@ -15,6 +15,10 @@ permissions:
   contents: read
   security-events: write
 
+env:
+  SITE_URL: ${{ vars.SITE_URL || 'https://pixstudio.app' }}
+  VITE_SITE_URL: ${{ vars.SITE_URL || 'https://pixstudio.app' }}
+
 jobs:
   typecheck:
     name: TypeScript
@@ -40,6 +44,19 @@ jobs:
       - run: npm ci
       - run: npm run lint
 
+  seo-static:
+    name: SEO & i18n Static Gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run lint:seo
+      - run: npm run verify:i18n
+
   build:
     name: Production Build
     runs-on: ubuntu-latest
@@ -51,6 +68,24 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+
+  indexnow:
+    name: IndexNow Notification
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Notify IndexNow when configured
+        env:
+          SITE_URL: ${{ vars.SITE_URL || 'https://pixstudio.app' }}
+          INDEXNOW_KEY: ${{ secrets.INDEXNOW_KEY }}
+          INDEXNOW_KEY_LOCATION: ${{ vars.INDEXNOW_KEY_LOCATION }}
+        run: node scripts/notify-indexnow.mjs
 
   audit:
     name: Production Audit
@@ -147,11 +182,46 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+  i18n-contract:
+    name: I18n — 440 route contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run verify:i18n
+
+  i18n-live:
+    name: I18n — 440 live routes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test tests/i18n-matrix.spec.ts --workers=5
+      - name: Upload i18n diagnostics
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: i18n-matrix-diagnostics
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: warn
+          retention-days: 7
+
   diagnostic-summary:
     name: Diagnostic Summary
     if: ${{ always() }}
     runs-on: ubuntu-latest
-    needs: [typecheck, lint, build, audit, security, e2e]
+    needs: [typecheck, lint, seo-static, build, indexnow, audit, security, e2e, i18n-contract, i18n-live]
     steps:
       - name: Write CI summary
         run: |
@@ -162,10 +232,16 @@ jobs:
             echo '| --- | --- |'
             echo '| TypeScript | ${{ needs.typecheck.result }} |'
             echo '| ESLint | ${{ needs.lint.result }} |'
+            echo '| SEO & i18n Static Gate | ${{ needs.seo-static.result }} |'
             echo '| Build | ${{ needs.build.result }} |'
+            echo '| IndexNow Notification | ${{ needs.indexnow.result }} |'
             echo '| Audit | ${{ needs.audit.result }} |'
             echo '| CodeQL | ${{ needs.security.result }} |'
             echo '| Per-tool E2E | ${{ needs.e2e.result }} |'
+            echo '| I18n — 440 route contract | ${{ needs.i18n-contract.result }} |'
+            echo '| I18n — 440 live routes | ${{ needs.i18n-live.result }} |'
             echo
-            echo 'E2E runs are isolated per tool; failed tools upload their own Playwright diagnostics artifact.'
+            echo 'The i18n gate covers 20 languages × 22 tools = 440 localized routes.'
+            echo 'Production sitemap generation uses vars.SITE_URL and falls back to the production domain when the repository variable is unavailable.'
+            echo 'IndexNow is optional and only runs the network notification when configured.'
           } >> "$GITHUB_STEP_SUMMARY"

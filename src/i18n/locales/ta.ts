@@ -1,0 +1,1 @@
+import en from './en'; export const ta={...en,code:'ta' as const,eyebrow:'FLIXO · பட கருவிகள்',homeTitle:'உண்மையான தேடல் தேவைகளுக்காக உருவாக்கப்பட்ட படக் கருவிகள்',homeLead:'தெளிவான முடிவுகளுடன் வேகமான உலாவி அடிப்படையிலான படக் கருவிகள்.'}; export default ta;

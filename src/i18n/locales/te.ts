@@ -1,0 +1,1 @@
+import en from './en'; export const te={...en,code:'te' as const,eyebrow:'FLIXO · చిత్ర సాధనాలు',homeTitle:'నిజమైన శోధన అవసరాల కోసం రూపొందించిన చిత్ర సాధనాలు',homeLead:'స్పష్టమైన ఫలితాలతో వేగవంతమైన బ్రౌజర్ ఆధారిత చిత్ర సాధనాలు.'}; export default te;

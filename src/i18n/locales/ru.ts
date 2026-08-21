@@ -1,0 +1,1 @@
+import en from './en'; export const ru={...en,code:'ru' as const,eyebrow:'FLIXO · ИНСТРУМЕНТЫ ДЛЯ ИЗОБРАЖЕНИЙ',homeTitle:'Инструменты изображений для реальных поисковых задач',homeLead:'Быстрые инструменты в браузере с понятными результатами и отдельной страницей для каждой задачи.'}; export default ru;
