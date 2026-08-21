@@ -41,7 +41,7 @@ for (const [id, path, title] of tools) {
       await page.getByRole('button', { name: 'Run tool' }).click();
     }
 
-    await expect(page.getByText('RESULT')).toBeVisible();
+    await expect(page.getByText('RESULT', { exact: true })).toBeVisible();
     if (id === 'image-to-text') await expect(page.getByText('FLIXO OCR OK')).toBeVisible();
     else await expect(page.getByRole('link', { name: /Download/ })).toBeVisible();
   });
