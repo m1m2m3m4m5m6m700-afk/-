@@ -45,7 +45,7 @@ export function loadImage(blob: Blob): Promise<HTMLImageElement> {
   });
 }
 
-function canvasBlob(canvas: HTMLCanvasElement, type = 'image/png', quality = 0.92): Promise<Blob> {
+function canvasBlob(canvas: HTMLCanvasElement, type = 'image/png', quality = 0.96): Promise<Blob> {
   return new Promise((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Could not create output image.')), type, quality));
 }
 
@@ -58,20 +58,11 @@ function getPixel(data: Uint8ClampedArray, width: number, x: number, y: number) 
   return [data[i], data[i + 1], data[i + 2], data[i + 3]];
 }
 
-export async function resizeImage(blob: Blob, scale: number): Promise<Blob> {
-  const image = await loadImage(blob);
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
-  canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
-  const ctx = canvas.getContext('2d', { willReadFrequently: true });
-  if (!ctx) throw new Error('Canvas is unavailable.');
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-
+function sharpenCanvas(ctx: CanvasRenderingContext2D, amount = 0.11) {
+  const { canvas } = ctx;
+  if (canvas.width < 3 || canvas.height < 3) return;
   const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const source = new Uint8ClampedArray(pixels.data);
-  const amount = 0.14;
   for (let y = 1; y < canvas.height - 1; y += 1) {
     for (let x = 1; x < canvas.width - 1; x += 1) {
       const i = (y * canvas.width + x) * 4;
@@ -80,13 +71,53 @@ export async function resizeImage(blob: Blob, scale: number): Promise<Blob> {
       const right = getPixel(source, canvas.width, x + 1, y);
       const top = getPixel(source, canvas.width, x, y - 1);
       const bottom = getPixel(source, canvas.width, x, y + 1);
-      pixels.data[i] = clamp(center[0] + amount * (4 * center[0] - left[0] - right[0] - top[0] - bottom[0]), 0, 255);
-      pixels.data[i + 1] = clamp(center[1] + amount * (4 * center[1] - left[1] - right[1] - top[1] - bottom[1]), 0, 255);
-      pixels.data[i + 2] = clamp(center[2] + amount * (4 * center[2] - left[2] - right[2] - top[2] - bottom[2]), 0, 255);
+      for (let channel = 0; channel < 3; channel += 1) {
+        pixels.data[i + channel] = clamp(center[channel] + amount * (4 * center[channel] - left[channel] - right[channel] - top[channel] - bottom[channel]), 0, 255);
+      }
     }
   }
   ctx.putImageData(pixels, 0, 0);
-  return canvasBlob(canvas);
+}
+
+function progressiveResize(image: HTMLImageElement, width: number, height: number): HTMLCanvasElement {
+  let source: CanvasImageSource = image;
+  let sourceWidth = image.naturalWidth;
+  let sourceHeight = image.naturalHeight;
+  while (sourceWidth * 2 < width || sourceHeight * 2 < height) {
+    const nextWidth = Math.min(width, Math.round(sourceWidth * 1.8));
+    const nextHeight = Math.min(height, Math.round(sourceHeight * 1.8));
+    const stepCanvas = document.createElement('canvas');
+    stepCanvas.width = nextWidth;
+    stepCanvas.height = nextHeight;
+    const stepContext = stepCanvas.getContext('2d');
+    if (!stepContext) throw new Error('Canvas is unavailable.');
+    stepContext.imageSmoothingEnabled = true;
+    stepContext.imageSmoothingQuality = 'high';
+    stepContext.drawImage(source, 0, 0, sourceWidth, sourceHeight, 0, 0, nextWidth, nextHeight);
+    source = stepCanvas;
+    sourceWidth = nextWidth;
+    sourceHeight = nextHeight;
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas is unavailable.');
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(source, 0, 0, sourceWidth, sourceHeight, 0, 0, width, height);
+  return canvas;
+}
+
+export async function resizeImage(blob: Blob, scale: number): Promise<Blob> {
+  const image = await loadImage(blob);
+  const width = Math.max(1, Math.round(image.naturalWidth * scale));
+  const height = Math.max(1, Math.round(image.naturalHeight * scale));
+  const canvas = progressiveResize(image, width, height);
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas is unavailable.');
+  sharpenCanvas(ctx, scale > 1 ? 0.10 : 0.06);
+  return canvasBlob(canvas, 'image/png');
 }
 
 export async function convertImage(blob: Blob, type: 'image/png' | 'image/jpeg' | 'image/webp'): Promise<Blob> {
@@ -96,12 +127,15 @@ export async function convertImage(blob: Blob, type: 'image/png' | 'image/jpeg' 
   canvas.height = image.naturalHeight;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Canvas is unavailable.');
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
   if (type === 'image/jpeg') {
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
   ctx.drawImage(image, 0, 0);
-  return canvasBlob(canvas, type, 0.92);
+  const quality = type === 'image/png' ? 1 : 0.96;
+  return canvasBlob(canvas, type, quality);
 }
 
 export async function cropResizeImage(blob: Blob, crop: { x: number; y: number; width: number; height: number }, out: { width: number; height: number }): Promise<Blob> {
@@ -118,7 +152,7 @@ export async function cropResizeImage(blob: Blob, crop: { x: number; y: number; 
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, canvas.width, canvas.height);
-  return canvasBlob(canvas);
+  return canvasBlob(canvas, 'image/png');
 }
 
 export async function removeBackground(blob: Blob, tolerance = 42): Promise<Blob> {
@@ -181,6 +215,7 @@ function reconstructRegion(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElem
   const height = clamp(Math.round(region.height), 1, canvas.height - y);
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const source = new Uint8ClampedArray(imageData.data);
+  const blend = (a: number, b: number, t: number) => a * (1 - t) + b * t;
   for (let yy = 0; yy < height; yy += 1) {
     for (let xx = 0; xx < width; xx += 1) {
       const px = x + xx;
@@ -191,13 +226,11 @@ function reconstructRegion(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElem
       const right = getPixel(source, canvas.width, Math.min(canvas.width - 1, x + width), py);
       const top = getPixel(source, canvas.width, px, Math.max(0, y - 1));
       const bottom = getPixel(source, canvas.width, px, Math.min(canvas.height - 1, y + height));
-      const horizontal = left.map((value, index) => value * (1 - u) + right[index] * u);
-      const vertical = top.map((value, index) => value * (1 - v) + bottom[index] * v);
       const target = (py * canvas.width + px) * 4;
-      imageData.data[target] = (horizontal[0] + vertical[0]) / 2;
-      imageData.data[target + 1] = (horizontal[1] + vertical[1]) / 2;
-      imageData.data[target + 2] = (horizontal[2] + vertical[2]) / 2;
-      imageData.data[target + 3] = (horizontal[3] + vertical[3]) / 2;
+      imageData.data[target] = (blend(left[0], right[0], u) + blend(top[0], bottom[0], v)) / 2;
+      imageData.data[target + 1] = (blend(left[1], right[1], u) + blend(top[1], bottom[1], v)) / 2;
+      imageData.data[target + 2] = (blend(left[2], right[2], u) + blend(top[2], bottom[2], v)) / 2;
+      imageData.data[target + 3] = (blend(left[3], right[3], u) + blend(top[3], bottom[3], v)) / 2;
     }
   }
   ctx.putImageData(imageData, 0, 0);
@@ -258,9 +291,20 @@ export async function rasterToSvg(blob: Blob, columns = 48): Promise<Blob> {
       x += run;
     }
   }
-  const safeTitle = escapeXml('FLIXO Raster to SVG');
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" shape-rendering="crispEdges"><title>${safeTitle}</title>${rects.join('')}</svg>`;
-  return new Blob([svg], { type: 'image/svg+xml' });
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" shape-rendering="crispEdges"><title>${escapeXml('FLIXO Raster to SVG')}</title>${rects.join('')}</svg>`;
+  return new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+}
+
+export function downloadBlob(blob: Blob, fileName: string): void {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = fileName;
+  anchor.rel = 'noopener';
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 export function fileChange(event: ChangeEvent<HTMLInputElement>): File | null {
