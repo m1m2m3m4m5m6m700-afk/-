@@ -1,47 +1,77 @@
-import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import fs from 'node:fs';
+import path from 'node:path';
 
-const languages = ['en','zh','hi','es','fr','ar','bn','pt','ru','ur','id','de','ja','sw','mr','te','tr','ta','ko','vi'];
-const tools = [
-  'image-compressor','background-remover','image-upscaler','image-converter','ai-image-generator',
-  'object-remover','watermark-remover','image-cropper','image-to-svg','image-ocr','photo-colorizer',
-  'background-blur','passport-photo-maker','watermark-adder','meme-generator','collage-maker',
-  'image-effects','exif-cleaner','svg-optimizer','mockup-generator','seed','pix',
-];
-const rtl = new Set(['ar', 'ur']);
 const root = process.cwd();
-const localeDir = join(root, 'src', 'i18n', 'locales');
-const config = readFileSync(join(root, 'src', 'config', 'i18n.ts'), 'utf8');
-const seo = readFileSync(join(root, 'src', 'seo', 'localized-seo.ts'), 'utf8');
-const route = readFileSync(join(root, 'src', 'routes', '$lang', '$tool.tsx'), 'utf8');
+const localeDir = path.join(root, 'src', 'i18n', 'locales');
+const configPath = path.join(root, 'src', 'config', 'i18n.ts');
+const toolsPath = path.join(root, 'src', 'config', 'tools.ts');
+const seoPath = path.join(root, 'src', 'seo', 'localized-seo.ts');
+const routePath = path.join(root, 'src', 'routes', '$lang', '$tool.tsx');
 
-if (languages.length !== 20) throw new Error(`Expected 20 languages, found ${languages.length}`);
-if (tools.length !== 22) throw new Error(`Expected 22 tools, found ${tools.length}`);
-if (languages.length * tools.length !== 440) throw new Error('Matrix size is not 440');
+const locales = ['en','zh','hi','es','fr','ar','bn','pt','ru','ur','id','de','ja','sw','mr','te','tr','ta','ko','vi'];
+const rtl = new Set(['ar', 'ur']);
+const read = (file) => fs.readFileSync(file, 'utf8');
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&');
+const errors = [];
 
-for (const lang of languages) {
-  const file = join(localeDir, `${lang}.ts`);
-  if (!existsSync(file)) throw new Error(`Missing locale file: ${file}`);
-  const text = readFileSync(file, 'utf8');
-  if (!new RegExp(`code\\s*:\\s*['\"]${lang}['\"]`).test(text)) throw new Error(`Locale ${lang} does not declare its code`);
-}
+const config = read(configPath);
+const toolsSource = read(toolsPath);
+const seo = read(seoPath);
+const route = read(routePath);
+const toolIds = [...toolsSource.matchAll(/\\bid:\\s*['"]([^'"]+)['"]/g)].map((match) => match[1]);
 
-for (const tool of tools) {
-  if (!new RegExp(`['\"]${tool}['\"]`).test(config)) throw new Error(`Tool ${tool} is missing from the registry`);
-}
+if (locales.length !== 20) errors.push(`[GLOBAL][I18N_MATRIX] Expected 20 locales, found ${locales.length}`);
+if (toolIds.length !== 22) errors.push(`[GLOBAL][TOOL_MATRIX] Expected 22 tools, found ${toolIds.length}`);
+if (locales.length * toolIds.length !== 440) errors.push(`[GLOBAL][ROUTE_MATRIX] Expected 440 localized tool routes, found ${locales.length * toolIds.length}`);
 
-if (!seo.includes("hreflang: 'x-default'")) throw new Error('x-default hreflang is missing');
-if (!seo.includes("'applicationCategory': 'MultimediaApplication'" ) && !seo.includes("applicationCategory: 'MultimediaApplication'")) {
-  throw new Error('WebApplication schema category is missing');
-}
-if (!route.includes('buildHreflangLinks')) throw new Error('Localized tool route does not use hreflang builder');
-if (!route.includes('buildWebApplicationJsonLd')) throw new Error('Localized tool route does not inject WebApplication JSON-LD');
-if (!route.includes('getPrivacyMessage')) throw new Error('Localized privacy signal is missing');
+for (const lang of locales) {
+  const file = path.join(localeDir, `${lang}.ts`);
+  if (!fs.existsSync(file)) {
+    errors.push(`[${lang.toUpperCase()}][I18N_FILE] Missing locale file: ${path.relative(root, file)}`);
+    continue;
+  }
 
-for (const lang of languages) {
+  const text = read(file);
+  if (!new RegExp(`\\bcode\\s*:\\s*['"]${escapeRegex(lang)}['"]`).test(text)) {
+    errors.push(`[${lang.toUpperCase()}][I18N_CODE] Locale code declaration is missing or incorrect`);
+  }
+
   const expectedDir = rtl.has(lang) ? 'rtl' : 'ltr';
-  const configSlice = config.match(new RegExp(`code: '${lang}'[\\s\\S]{0,100}?dir: '(rtl|ltr)'`));
-  if (!configSlice || configSlice[1] !== expectedDir) throw new Error(`Direction mismatch for ${lang}`);
+  const languageEntry = new RegExp(`\\{\\s*code\\s*:\\s*['"]${escapeRegex(lang)}['"][^}]*?\\bdir\\s*:\\s*['"]${expectedDir}['"]\\s*\\}`);
+  if (!languageEntry.test(config)) {
+    errors.push(`[${lang.toUpperCase()}][DIRECTION] Expected dir="${expectedDir}" in language config`);
+  }
+
+  for (const tool of toolIds) {
+    const key = escapeRegex(tool);
+    const translated = new RegExp(`(?:['"]${key}['"]|${key})\\s*:\\s*\\{\\s*title\\s*:\\s*['"]([^'"]+)['"]\\s*,\\s*description\\s*:\\s*['"]([^'"]+)['"]`);
+    const match = text.match(translated);
+    if (!match) {
+      errors.push(`[${lang.toUpperCase()}][${tool}][I18N_MISSING] Missing translated title/description`);
+      continue;
+    }
+    if (!match[1].trim() || !match[2].trim()) errors.push(`[${lang.toUpperCase()}][${tool}][I18N_EMPTY] Empty title or description`);
+  }
 }
 
-console.log(`i18n matrix contract OK: ${languages.length} languages × ${tools.length} tools = ${languages.length * tools.length} routes`);
+if (!seo.includes('buildHreflangLinks') || !seo.includes("hreflang: 'x-default'")) errors.push('[GLOBAL][HREFLANG] x-default or hreflang builder is missing');
+if (!seo.includes("'@type': 'WebApplication'") && !seo.includes("'@type': 'SoftwareApplication'")) errors.push('[GLOBAL][SCHEMA] WebApplication/SoftwareApplication JSON-LD is missing');
+for (const key of ['name', 'description', 'inLanguage', 'applicationCategory', 'operatingSystem']) {
+  if (!new RegExp(`\\b${key}\\s*:`).test(seo)) errors.push(`[GLOBAL][SCHEMA] Required property missing: ${key}`);
+}
+if (!route.includes('buildHreflangLinks')) errors.push('[GLOBAL][HEAD] Hreflang links are not injected by the localized route');
+if (!route.includes('buildWebApplicationJsonLd')) errors.push('[GLOBAL][HEAD] JSON-LD is not injected by the localized route');
+if (!route.includes('getPrivacyMessage')) errors.push('[GLOBAL][PRIVACY] Localized privacy message is missing from tool routes');
+if (!route.includes("rel: 'canonical'")) errors.push('[GLOBAL][CANONICAL] Canonical link is missing from the localized route');
+if (!route.includes("name: 'description'")) errors.push('[GLOBAL][META] Meta description is missing from the localized route');
+if (!route.includes('document.documentElement.lang')) errors.push('[GLOBAL][LANG] Localized route does not set document language');
+if (!route.includes('document.documentElement.dir')) errors.push('[GLOBAL][DIR] Localized route does not set document direction');
+if (!route.includes('noindex')) errors.push('[GLOBAL][404] Localized invalid-tool path is not marked noindex');
+
+if (errors.length) {
+  console.error('❌ SEO/i18n quality gate failed');
+  for (const error of errors) console.error(`  ${error}`);
+  process.exit(1);
+}
+
+console.log(`✅ SEO/i18n quality gate passed: ${locales.length} locales × ${toolIds.length} tools = ${locales.length * toolIds.length} routes`);

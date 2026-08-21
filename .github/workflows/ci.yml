@@ -17,6 +17,7 @@ permissions:
 
 env:
   SITE_URL: ${{ vars.SITE_URL }}
+  VITE_SITE_URL: ${{ vars.SITE_URL }}
 
 jobs:
   typecheck:

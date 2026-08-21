@@ -9,9 +9,9 @@ export default {
   },
   create(context) {
     const source = context.sourceCode.getText();
-    const hasBrowserLocaleSignal = /navigator\\.language|navigator\\.languages/.test(source);
-    const hasRedirectSignal = /window\\.location(?:\\.href|\\.assign|\\.replace)?\\s*=|location\\.(?:assign|replace)\\s*\\(/.test(source);
-    const hasRequestLanguageSignal = /headers?\\s*\\(.*(?:accept-language|accept_language)|['"]accept-language['"]/.test(source);
+    const hasBrowserLocaleSignal = /navigator\.language|navigator\.languages/.test(source);
+    const hasRedirectSignal = /(?:window\.)?location(?:\.href|\.assign|\.replace)?\s*=|location\.(?:assign|replace)\s*\(/.test(source);
+    const hasRequestLanguageSignal = /headers?\s*\([^)]*(?:accept-language|accept_language)|['"]accept-language['"]/.test(source);
 
     if (!((hasBrowserLocaleSignal || hasRequestLanguageSignal) && hasRedirectSignal)) return {};
 
