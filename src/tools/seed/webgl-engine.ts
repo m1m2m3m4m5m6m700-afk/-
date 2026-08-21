@@ -25,11 +25,13 @@ export class SeedGLEngine {
   private texture: WebGLTexture | null = null;
   private sourceWidth = 1;
   private sourceHeight = 1;
+  private readonly maxTextureSize: number;
 
   constructor(private readonly canvas: HTMLCanvasElement, fragmentSource: string) {
     const gl = canvas.getContext('webgl', { premultipliedAlpha: false, preserveDrawingBuffer: false });
     if (!gl) throw new Error('WebGL is not supported by this browser.');
     this.gl = gl;
+    this.maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE) as number;
     this.program = this.createProgram(VERTEX_SHADER, fragmentSource);
     this.setupBuffers();
     this.uniforms = {
@@ -46,6 +48,9 @@ export class SeedGLEngine {
 
   setImage(image: HTMLImageElement) {
     const gl = this.gl;
+    if (image.naturalWidth > this.maxTextureSize || image.naturalHeight > this.maxTextureSize) {
+      throw new Error(`Image exceeds this GPU's texture limit (${this.maxTextureSize}px).`);
+    }
     if (!this.texture) this.texture = gl.createTexture();
     if (!this.texture) throw new Error('Unable to create WebGL texture.');
     this.sourceWidth = image.naturalWidth;
@@ -57,6 +62,8 @@ export class SeedGLEngine {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+    const error = gl.getError();
+    if (error !== gl.NO_ERROR) throw new Error(`Unable to upload image to GPU (WebGL error ${error}).`);
   }
 
   render(settings: SeedRenderSettings) {
@@ -75,10 +82,43 @@ export class SeedGLEngine {
     gl.uniform1f(this.uniforms.highlights, settings.highlights / 100);
     gl.uniform1f(this.uniforms.shadows, settings.shadows / 100);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    const error = gl.getError();
+    if (error !== gl.NO_ERROR) throw new Error(`GPU render failed (WebGL error ${error}).`);
+  }
+
+  async exportPng(): Promise<Blob> {
+    const gl = this.gl;
+    const width = this.canvas.width;
+    const height = this.canvas.height;
+    const rgba = new Uint8Array(width * height * 4);
+    gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, rgba);
+    const error = gl.getError();
+    if (error !== gl.NO_ERROR) throw new Error(`GPU export failed (WebGL error ${error}).`);
+
+    const output = document.createElement('canvas');
+    output.width = width;
+    output.height = height;
+    const ctx = output.getContext('2d');
+    if (!ctx) throw new Error('Unable to create export canvas.');
+    const imageData = ctx.createImageData(width, height);
+    const rowBytes = width * 4;
+    for (let y = 0; y < height; y += 1) {
+      const src = (height - 1 - y) * rowBytes;
+      const dst = y * rowBytes;
+      imageData.data.set(rgba.subarray(src, src + rowBytes), dst);
+    }
+    ctx.putImageData(imageData, 0, 0);
+    return new Promise<Blob>((resolve, reject) => {
+      output.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('Unable to encode PNG export.'))), 'image/png');
+    });
   }
 
   getSourceSize() {
     return { width: this.sourceWidth, height: this.sourceHeight };
+  }
+
+  getMaxTextureSize() {
+    return this.maxTextureSize;
   }
 
   destroy() {
