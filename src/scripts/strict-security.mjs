@@ -22,11 +22,11 @@ for (const file of await walk("src/lib/tool-runtime")) {
   if (/dangerouslySetInnerHTML|\.innerHTML\s*=/.test(source)) fail(`Raw HTML injection surface: ${file}`);
 }
 
-const manifest = await readFile("src/lib/tool-platform/publicDesktopTools.ts", "utf8");
-const publicCount = (manifest.match(/lifecycle:\s*["']public["']/g) ?? []).length;
-const localOnlyCount = (manifest.match(/localOnly:\s*true/g) ?? []).length;
-if (publicCount === 0) fail("No public tool registrations found.");
-if (publicCount !== localOnlyCount) fail("Every public desktop tool must be declared localOnly=true.");
+const registry = await readFile("src/config/tools.ts", "utf8");
+const publicCount = (registry.match(/isReady:\s*true/g) ?? []).length;
+const localOnlyCount = (registry.match(/localOnly:\s*true/g) ?? []).length;
+if (publicCount === 0) fail("No ready tool registrations found in the central registry.");
+if (publicCount !== localOnlyCount) fail("Every ready public tool must be declared localOnly=true.");
 
 if (failures.length) {
   console.error("SECURITY GATE: FAIL");
