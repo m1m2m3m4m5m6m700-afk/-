@@ -1,8 +1,8 @@
-import type { Page } from '@playwright/test';
 import { test, expect } from '@playwright/test';
 
-test('foundation boots without product tools', async ({ page }: { page: Page }) => {
+test('application boots with the registered calculator', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Clean starting point.' })).toBeVisible();
-  await expect(page.getByText('0 tools registered · 0 product assumptions')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Scientific calculator' })).toBeVisible();
+  await expect(page.getByLabel('calculator expression')).toBeVisible();
+  await expect(page.getByLabel('calculator result')).toHaveText('0');
 });
