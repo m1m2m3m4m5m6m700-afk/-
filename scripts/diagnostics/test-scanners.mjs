@@ -1,9 +1,10 @@
 import { mkdtempSync, mkdirSync, cpSync, writeFileSync, readFileSync, existsSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
 import { spawnSync } from "node:child_process";
 
 const ROOT = process.cwd();
+const SYNTHETIC_SHA = "0000000000000000000000000000000000000001";
 const SCANNERS = [
   ["check-typecheck", "src/mutant.ts", "export const mutant: any = null;", "CRITICAL"],
   ["check-lockfile", "package-lock.json", "{\"name\":\"mutant-package\",\"lockfileVersion\":3,\"packages\":{\"\":{\"name\":\"different-package\"}}}", "CRITICAL"],
@@ -20,19 +21,26 @@ const SCANNERS = [
   ["check-regression-guard", "src/mutant-focused.ts", "test.only(() => {});", "CRITICAL"],
 ];
 
+function git(dir, args) { return spawnSync("git", args, { cwd: dir, stdio: "ignore" }); }
+
 function setupBase(dir) {
   mkdirSync(join(dir, "scripts/diagnostics"), { recursive: true });
   mkdirSync(join(dir, "scripts/utils"), { recursive: true });
   cpSync(join(ROOT, "scripts/diagnostics/_core.mjs"), join(dir, "scripts/diagnostics/_core.mjs"));
   cpSync(join(ROOT, "scripts/error-sink.mjs"), join(dir, "scripts/error-sink.mjs"));
   cpSync(join(ROOT, "scripts/utils/get-head-sha.mjs"), join(dir, "scripts/utils/get-head-sha.mjs"));
-  for (const [name] of SCANNERS) cpSync(join(ROOT, "scripts/diagnostics/${name}.mjs"), join(dir, `scripts/diagnostics/${name}.mjs`));
+  for (const [name] of SCANNERS) cpSync(join(ROOT, "scripts/diagnostics", `${name}.mjs`), join(dir, "scripts/diagnostics", `${name}.mjs`));
   mkdirSync(join(dir, "src"), { recursive: true });
   writeFileSync(join(dir, "package.json"), JSON.stringify({ name: "mutation-fixture", version: "1.0.0", dependencies: {}, devDependencies: {} }, null, 2));
   writeFileSync(join(dir, ".env.example"), "SAFE_ENV=\n");
   writeFileSync(join(dir, "REGRESSION_RULES.json"), JSON.stringify({ version: 1, rules: [{ id: "no-focused-tests", pattern: "\\btest\\.only\\s*\\(", flags: "g", guardMode: "critical" }] }, null, 2));
   writeFileSync(join(dir, "playwright.config.ts"), "export default { fullyParallel: false, reuseExistingServer: false, trace: \"retain-on-failure\" };\n");
-  writeFileSync(join(dir, "package-lock.json"), JSON.stringify({ name: "mutation-fixture", lockfileVersion: 3, packages: { "": { name: "mutation-fixture", version: "1.0.0", dependencies: {}, devDependencies: {} } } }, null, 2));
+  writeFileSync(join(dir, "package-lock.json"), JSON.stringify({ name: "mutation-fixture", version: "1.0.0", lockfileVersion: 3, packages: { "": { name: "mutation-fixture", version: "1.0.0", dependencies: {}, devDependencies: {} } } }, null, 2));
+  git(dir, ["init", "-q"]);
+  git(dir, ["config", "user.email", "diagnostics@example.invalid"]);
+  git(dir, ["config", "user.name", "FLIXO Diagnostics"]);
+  git(dir, ["add", "."]);
+  git(dir, ["commit", "-qm", "baseline"]);
 }
 
 const results = [];
@@ -41,15 +49,14 @@ for (const [name, relativePath, content, expectedSeverity] of SCANNERS) {
   try {
     setupBase(dir);
     const target = join(dir, relativePath);
-    mkdirSync(join(target, ".."), { recursive: true });
+    mkdirSync(dirname(target), { recursive: true });
     writeFileSync(target, content);
     const scanner = join(dir, "scripts/diagnostics", `${name}.mjs`);
-    const result = spawnSync(process.execPath, [scanner], { cwd: dir, encoding: "utf8" });
+    const result = spawnSync(process.execPath, [scanner], { cwd: dir, encoding: "utf8", env: { ...process.env, GITHUB_PR_HEAD_SHA: SYNTHETIC_SHA, FLIXO_DIAGNOSTIC_MUTATION: "1" } });
     const logPath = join(dir, "errors.log.json");
     const entries = existsSync(logPath) ? JSON.parse(readFileSync(logPath, "utf8")) : [];
     const hit = entries.find((entry) => entry.scanner === name && entry.severity === expectedSeverity);
-    const passed = Boolean(hit);
-    results.push({ scanner: name, expectedSeverity, passed, exitCode: result.status, signature: hit?.message ?? null });
+    results.push({ scanner: name, expectedSeverity, passed: Boolean(hit), exitCode: result.status, signature: hit?.message ?? null });
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
