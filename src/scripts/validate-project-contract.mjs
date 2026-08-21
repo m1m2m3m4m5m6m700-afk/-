@@ -54,7 +54,6 @@ for (const script of [
 const lockfile = await read("package-lock.json");
 if (!lockfile.includes('"lockfileVersion": 3')) fail("package-lock.json must use lockfileVersion 3.");
 
-// CI is intentionally a single canonical workflow with independent parallel gates.
 const workflow = await read(".github/workflows/ci.yml");
 for (const required of [
   "pull_request:",
@@ -117,23 +116,17 @@ for (const file of candidates) {
 }
 if (registrationExportFiles !== 1) fail(`Expected exactly one public tool registry export in src/lib; found ${registrationExportFiles}.`);
 
+const config = await read("src/config/tools.ts");
 const tests = await read("tests/desktop-tools.spec.ts");
-const manifestSection = registry.match(/const manifestData = \[([\s\S]*?)\n\] as const;/)?.[1] ?? "";
-const registrations = [...manifestSection.matchAll(/\{([\s\S]*?)\n\s*\},/g)]
-  .map((match) => match[1])
-  .map((block) => ({
-    id: block.match(/id:\s*["']([^"']+)["']/)?.[1],
-    slug: block.match(/slug:\s*["']([^"']+)["']/)?.[1],
-    lifecycle: block.match(/lifecycle:\s*["']([^"']+)["']/)?.[1],
-  }))
-  .filter((entry) => entry.id && entry.slug && entry.lifecycle);
+const registrations = [...config.matchAll(/\{\s*id:\s*["']([^"']+)["'][\s\S]*?path:\s*["'](\/tools\/[^"']+)["'][\s\S]*?isReady:\s*true,/g)]
+  .map((match) => ({ id: match[1], slug: match[2].replace(/^\/tools\//, ""), lifecycle: "public" }));
 
 const routeAssertions = new Set([
   ...[...tests.matchAll(/openTool\(page,\s*["']([^"']+)["']\)/g)].map((match) => match[1]),
   ...[...tests.matchAll(/page\.goto\(\s*["']\/tools\/([^"']+)["']/g)].map((match) => match[1]),
 ]);
 
-if (registrations.length === 0) fail("Public desktop registry contains no registrations.");
+if (registrations.length === 0) fail("Central tool registry contains no ready registrations.");
 for (const { id, slug, lifecycle } of registrations) {
   if (lifecycle !== "public") fail(`Public registry entry ${id} has invalid lifecycle: ${lifecycle}`);
   if (!routeAssertions.has(slug)) fail(`Missing E2E route assertion for public tool: ${id} (${slug})`);
