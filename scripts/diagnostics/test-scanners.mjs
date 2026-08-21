@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, cpSync, writeFileSync, readFileSync, existsSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, cpSync, writeFileSync, readFileSync, existsSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -30,6 +30,8 @@ function setupBase(dir) {
   cpSync(join(ROOT, "scripts/error-sink.mjs"), join(dir, "scripts/error-sink.mjs"));
   cpSync(join(ROOT, "scripts/utils/get-head-sha.mjs"), join(dir, "scripts/utils/get-head-sha.mjs"));
   cpSync(join(ROOT, "scripts/utils/failure-correlator.mjs"), join(dir, "scripts/utils/failure-correlator.mjs"));
+  cpSync(join(ROOT, "SECRETS_ALLOWLIST.json"), join(dir, "SECRETS_ALLOWLIST.json"));
+  symlinkSync(join(ROOT, "node_modules"), join(dir, "node_modules"), "dir");
   for (const [name] of SCANNERS) cpSync(join(ROOT, "scripts/diagnostics", `${name}.mjs`), join(dir, "scripts/diagnostics", `${name}.mjs`));
   mkdirSync(join(dir, "src"), { recursive: true });
   writeFileSync(join(dir, "package.json"), JSON.stringify({ name: "mutation-fixture", version: "1.0.0", dependencies: {}, devDependencies: {} }, null, 2));
@@ -64,5 +66,5 @@ for (const [name, relativePath, content, expectedSeverity] of SCANNERS) {
 }
 
 const failed = results.filter((item) => !item.passed);
-console.log(JSON.stringify({ version: 1, total: results.length, passed: results.length - failed.length, failed, results }, null, 2));
+console.log(JSON.stringify({ version: 2, total: results.length, passed: results.length - failed.length, failed, results }, null, 2));
 if (failed.length) process.exit(1);
