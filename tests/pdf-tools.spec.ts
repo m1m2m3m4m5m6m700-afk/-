@@ -2,6 +2,8 @@ import { test, expect } from "playwright/test";
 import { PDFDocument, StandardFonts } from "pdf-lib";
 import { MEGA_TOOLS } from "../src/data/megaToolsCatalog";
 
+test.use({ serviceWorkers: "block" });
+
 const IMPLEMENTED_PDF_HANDLERS = new Set([
   "inspect",
   "extract-text",
