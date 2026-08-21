@@ -37,9 +37,10 @@ for (const [id, path, title] of tools) {
     } else {
       const result = page.locator('img[alt="Tool result"]');
       await expect(result).toBeVisible();
-      await expect(result).toHaveJSProperty('naturalWidth', expect.any(Number));
-      const width = await result.evaluate((img) => img.naturalWidth);
-      const height = await result.evaluate((img) => img.naturalHeight);
+      const { naturalWidth: width, naturalHeight: height } = await result.evaluate((img) => ({
+        naturalWidth: img.naturalWidth,
+        naturalHeight: img.naturalHeight,
+      }));
       expect(width).toBeGreaterThan(0);
       expect(height).toBeGreaterThan(0);
     }
