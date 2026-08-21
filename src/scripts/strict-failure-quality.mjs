@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 const failures = [];
 const fail = (message) => failures.push(message);
 const playwright = await readFile("playwright.config.ts", "utf8");
-const workflow = await readFile(".github/workflows/tool-platform.yml", "utf8");
+const workflow = await readFile(".github/workflows/ci.yml", "utf8");
 
 if (!playwright.includes("trace: \"retain-on-failure\"")) fail("Playwright trace retention is required.");
 if (!playwright.includes("reporter:")) fail("Playwright reporter must be explicitly configured.");
