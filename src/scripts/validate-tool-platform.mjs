@@ -6,22 +6,24 @@ if (runtimeTypes.includes("@/data/tools") || runtimeTypes.includes("Tool[\"id\"]
 }
 
 const runtime = await readFile("src/lib/tool-runtime/readyTools.ts", "utf8");
-const manifests = await readFile("src/lib/tool-platform/publicDesktopTools.ts", "utf8");
+const registry = await readFile("src/config/tools.ts", "utf8");
 const contracts = await readFile("src/lib/tool-platform/testContracts.ts", "utf8");
 const promotion = await readFile("src/lib/tool-platform/promotion.ts", "utf8");
 const types = await readFile("src/lib/tool-platform/types.ts", "utf8");
 const schemas = await readFile("src/lib/tool-platform/schemas.ts", "utf8");
 
-const publicTools = [
-  "image-compressor",
-  "image-enhancer",
-  "video-compressor",
-  "video-trimmer",
-];
+const publicTools = [...registry.matchAll(/\{\s*id:\s*"([^"]+)"[\s\S]*?isReady:\s*(true|false),/g)]
+  .filter((match) => match[2] === "true")
+  .map((match) => match[1]);
+
+if (publicTools.length === 0) throw new Error("Central tool registry contains no ready tools.");
+if (!runtime.includes("getReadyToolConfigs().map(toolConfigToRuntime)")) {
+  throw new Error("Ready runtime is not derived from the central tool registry.");
+}
 
 for (const id of publicTools) {
-  if (!runtime.includes(id)) throw new Error(`Runtime missing: ${id}`);
-  if (!manifests.includes(id)) throw new Error(`Manifest missing: ${id}`);
+  if (!runtime.includes("getReadyToolConfigs")) throw new Error(`Runtime registry missing central source: ${id}`);
+  if (!registry.includes(`id: "${id}"`)) throw new Error(`Central registry missing: ${id}`);
   if (!contracts.includes(id)) throw new Error(`Test contract missing: ${id}`);
 }
 
@@ -71,4 +73,4 @@ if (!contracts.includes("requiredEvidence: true")) throw new Error("Evidence req
 if (!contracts.includes("regressionLocked: true")) throw new Error("Regression lock is not strict.");
 if (!contracts.includes('dataProcessing: "local-only"')) throw new Error("Local-only data policy is not strict.");
 
-console.log("Tool Platform architecture + certification + schema contract: PASS");
+console.log(`Tool Platform architecture + certification + schema contract: PASS (${publicTools.length} ready tools)`);
