@@ -3,13 +3,27 @@ import { arImageCompressorRoute } from './routes/ar-image-compressor';
 import { enImageCompressorRoute } from './routes/en-image-compressor';
 import {
   enAiImageGeneratorRoute,
+  enBackgroundBlurRoute,
   enBackgroundRemoverRoute,
+  enCollageMakerRoute,
   enCropResizeRoute,
+  enExifCleanerRoute,
   enImageConverterRoute,
+  enImageCropperRoute,
+  enImageEffectsRoute,
+  enImageOcrRoute,
+  enImageToSvgRoute,
   enImageToTextRoute,
   enImageUpscalerRoute,
+  enMemeGeneratorRoute,
+  enMockupGeneratorRoute,
   enObjectRemoverRoute,
+  enPassportPhotoMakerRoute,
+  enPhotoColorizerRoute,
   enRasterToSvgRoute,
+  enSeedRoute,
+  enSvgOptimizerRoute,
+  enWatermarkAdderRoute,
   enWatermarkRemoverRoute,
 } from './routes/image-tools';
 import { indexRoute } from './routes/index';
@@ -28,6 +42,20 @@ const routeTree = rootRoute.addChildren([
   enCropResizeRoute,
   enWatermarkRemoverRoute,
   enRasterToSvgRoute,
+  enImageCropperRoute,
+  enImageOcrRoute,
+  enPhotoColorizerRoute,
+  enBackgroundBlurRoute,
+  enPassportPhotoMakerRoute,
+  enWatermarkAdderRoute,
+  enMemeGeneratorRoute,
+  enCollageMakerRoute,
+  enImageEffectsRoute,
+  enExifCleanerRoute,
+  enSvgOptimizerRoute,
+  enMockupGeneratorRoute,
+  enImageToSvgRoute,
+  enSeedRoute,
 ]);
 
 export const router = createRouter({ routeTree, defaultPreload: 'intent' });
