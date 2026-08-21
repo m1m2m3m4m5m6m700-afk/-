@@ -69,7 +69,6 @@ export default function SeedTool() {
       canvasRef.current.height = image.naturalHeight;
       engine.setImage(image);
       engineRef.current = engine;
-      setError(''); scheduleRender();
     } catch (cause) {
       engineRef.current?.destroy(); engineRef.current = null;
       setError(cause instanceof Error ? cause.message : 'Unable to start GPU rendering.');
