@@ -24,6 +24,7 @@ import ImageToSvgTool from '../tools/image-to-svg';
 import ImageCropperTool from '../tools/image-cropper';
 import ImageOcrTool from '../tools/image-ocr';
 import SeedTool from '../tools/seed';
+import PixTool from '../tools/pix';
 
 function imageToolRoute(path: string, title: string, description: string, component: () => ReactElement) {
   return createRoute({
@@ -64,3 +65,4 @@ export const enSvgOptimizerRoute = imageToolRoute('/en/svg-optimizer', 'SVG Opti
 export const enMockupGeneratorRoute = imageToolRoute('/en/mockup-generator', 'Mockup Generator', 'Create a simple device mockup image.', MockupGeneratorTool);
 export const enImageToSvgRoute = imageToolRoute('/en/image-to-svg', 'Image to SVG', 'Wrap a raster image in a downloadable SVG.', ImageToSvgTool);
 export const enSeedRoute = imageToolRoute('/en/seed', 'Seed', 'Non-destructive GPU image adjustments with WebGL.', SeedTool);
+export const enPixRoute = imageToolRoute('/en/pix', 'Pix Studio', 'Professional browser-based image editing with tune filters, liquify, dispersion, text layers, history, and PNG export.', PixTool);
