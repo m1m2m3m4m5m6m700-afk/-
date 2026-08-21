@@ -21,6 +21,7 @@ import {
   enPassportPhotoMakerRoute,
   enPhotoColorizerRoute,
   enRasterToSvgRoute,
+  enSeedRoute,
   enSvgOptimizerRoute,
   enWatermarkAdderRoute,
   enWatermarkRemoverRoute,
@@ -54,6 +55,7 @@ const routeTree = rootRoute.addChildren([
   enSvgOptimizerRoute,
   enMockupGeneratorRoute,
   enImageToSvgRoute,
+  enSeedRoute,
 ]);
 
 export const router = createRouter({ routeTree, defaultPreload: 'intent' });
