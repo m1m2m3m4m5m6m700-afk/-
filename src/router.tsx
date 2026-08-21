@@ -1,21 +1,12 @@
-import { QueryClient } from "@tanstack/react-query";
-import { createRouter } from "@tanstack/react-router";
-import { createBrowserHistory } from "@tanstack/history";
-import { getGlobalStartContext } from "@tanstack/react-start";
-import { routeTree } from "./routeTree.gen";
+import { createRouter } from '@tanstack/react-router';
+import { rootRoute } from './routes/__root';
 
-export const getRouter = () => {
-  const queryClient = new QueryClient();
-  const requestContext = getGlobalStartContext() as { nonce?: string } | undefined;
+export const router = createRouter({
+  routeTree: rootRoute,
+});
 
-  const router = createRouter({
-    routeTree,
-    context: { queryClient },
-    scrollRestoration: true,
-    defaultPreloadStaleTime: 0,
-    ssr: requestContext?.nonce ? { nonce: requestContext.nonce } : undefined,
-    history: typeof window !== "undefined" ? createBrowserHistory() : undefined,
-  });
-
-  return router;
-};
+declare module '@tanstack/react-router' {
+  interface Register {
+    router: typeof router;
+  }
+}
