@@ -153,17 +153,62 @@ async function pdfTool(file: File, tool: MegaTool): Promise<MegaToolResult> {
   if (tool.handler === "extract-text") {
     const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
     const workerModule = await import("pdfjs-dist/legacy/build/pdf.worker.mjs?url");
-    if (typeof window !== "undefined") {
-      pdfjs.GlobalWorkerOptions.workerSrc = workerModule.default;
-    }
+    if (typeof window !== "undefined") pdfjs.GlobalWorkerOptions.workerSrc = workerModule.default;
     const doc = await pdfjs.getDocument({ data: bytes }).promise; let text = "";
     for (let pageNumber = 1; pageNumber <= doc.numPages; pageNumber += 1) { const page = await doc.getPage(pageNumber); const content = await page.getTextContent(); text += `${content.items.map((item) => ("str" in item ? item.str : "")).join(" ")}\n`; }
     return { type: "text", text: text.trim() || "No selectable text was found in this PDF." };
   }
-  if (tool.handler === "rotate") pages.forEach((page) => page.setRotation(degrees((page.getRotation().angle + 90) % 360)));
-  if (tool.handler === "stamp") pages[0]?.drawText("Flixo", { x: 36, y: 36, size: 10, color: rgb(0.35, 0.35, 0.35) });
-  if (tool.handler === "remove-metadata") { pdf.setTitle(""); pdf.setAuthor(""); pdf.setSubject(""); pdf.setKeywords([]); pdf.setProducer(""); pdf.setCreator(""); }
-  if (tool.handler === "flatten") pages.forEach((page) => page.scaleContent(1, 1));
+  if (tool.handler === "page-numbers") {
+    pages.forEach((page, index) => page.drawText(`${index + 1}`, { x: page.getWidth() - 36, y: 18, size: 10, color: rgb(0.35, 0.35, 0.35) }));
+  } else if (tool.handler === "watermark") {
+    pages.forEach((page) => page.drawText("FLIXO", { x: page.getWidth() * 0.35, y: page.getHeight() * 0.48, size: 36, rotate: degrees(35), color: rgb(0.75, 0.75, 0.75), opacity: 0.35 }));
+  } else if (tool.handler === "duplicate") {
+    const source = pages[pages.length - 1];
+    if (source) {
+      const [copy] = await pdf.copyPages(pdf, [pages.length - 1]);
+      pdf.addPage(copy);
+    }
+  } else if (tool.handler === "extract-range") {
+    const count = Math.max(1, Math.ceil(pages.length / 2));
+    const output = await PDFDocument.create();
+    const copied = await output.copyPages(pdf, Array.from({ length: count }, (_, index) => index));
+    copied.forEach((page) => output.addPage(page));
+    const out = await output.save();
+    return downloadResult(blobFromBytes(out, "application/pdf"), `${baseName(file.name)}-extract-range-${tool.preset}.pdf`);
+  } else if (tool.handler === "split-even") {
+    const indexes = pages.map((_, index) => index).filter((index) => (index + 1) % 2 === 0);
+    const output = await PDFDocument.create();
+    if (indexes.length) {
+      const copied = await output.copyPages(pdf, indexes); copied.forEach((page) => output.addPage(page));
+    } else {
+      output.addPage();
+    }
+    const out = await output.save();
+    return downloadResult(blobFromBytes(out, "application/pdf"), `${baseName(file.name)}-split-even-${tool.preset}.pdf`);
+  } else if (tool.handler === "blank-cover") {
+    pdf.insertPage(0, [595, 842]);
+  } else if (tool.handler === "poster") {
+    const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+    const workerModule = await import("pdfjs-dist/legacy/build/pdf.worker.mjs?url");
+    if (typeof window !== "undefined") pdfjs.GlobalWorkerOptions.workerSrc = workerModule.default;
+    const doc = await pdfjs.getDocument({ data: bytes }).promise;
+    const page = await doc.getPage(1);
+    const viewport = page.getViewport({ scale: 1 });
+    const canvas = document.createElement("canvas"); canvas.width = Math.max(1, Math.round(viewport.width)); canvas.height = Math.max(1, Math.round(viewport.height));
+    const context = canvas.getContext("2d"); if (!context) throw new Error("Canvas is unavailable in this browser.");
+    await page.render({ canvasContext: context, viewport }).promise;
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+    if (!blob) throw new Error("Could not render PDF poster.");
+    return downloadResult(blob, `${baseName(file.name)}-poster-${tool.preset}.png`);
+  } else if (tool.handler === "rotate") {
+    pages.forEach((page) => page.setRotation(degrees((page.getRotation().angle + 90) % 360)));
+  } else if (tool.handler === "remove-metadata") {
+    pdf.setTitle(""); pdf.setAuthor(""); pdf.setSubject(""); pdf.setKeywords([]); pdf.setProducer(""); pdf.setCreator("");
+  } else if (tool.handler === "flatten") {
+    pages.forEach((page) => page.scaleContent(1, 1));
+  } else {
+    throw new Error(`Unsupported PDF handler: ${tool.handler}`);
+  }
   const out = await pdf.save(); return downloadResult(blobFromBytes(out, "application/pdf"), `${baseName(file.name)}-${tool.handler}-${tool.preset}.pdf`);
 }
 
