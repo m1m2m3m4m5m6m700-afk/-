@@ -1,5 +1,5 @@
 import { lazy, type ComponentType, type LazyExoticComponent } from "react";
-import { FileImage, Sparkles, FileVideo, Scissors, QrCode } from "lucide-react";
+import { Clapperboard, FileImage, FileVideo, Languages, QrCode, Scissors, Sparkles } from "lucide-react";
 import type { ToolCategoryId, ToolInputKind, ToolOutputKind } from "@/lib/tool-platform/types";
 
 type ToolComponent = LazyExoticComponent<ComponentType>;
@@ -21,6 +21,19 @@ export interface ToolConfig {
 
 export const TOOLS_REGISTRY: readonly ToolConfig[] = Object.freeze([
   {
+    id: "translator",
+    title: "AI Translator",
+    category: "translation",
+    path: "/tools/translator",
+    component: lazy(() => import("@/components/tools/Translator").then((module) => ({ default: module.Translator }))),
+    icon: Languages,
+    description: "Translate text between 20+ languages with automatic detection.",
+    input: "text",
+    output: "download",
+    localOnly: false,
+    isReady: true,
+  },
+  {
     id: "image-compressor",
     title: "Image Compressor",
     category: "images",
@@ -41,6 +54,19 @@ export const TOOLS_REGISTRY: readonly ToolConfig[] = Object.freeze([
     component: lazy(() => import("@/components/tools/ImageEnhancer").then((module) => ({ default: module.ImageEnhancer }))),
     icon: Sparkles,
     description: "Upscale images up to 8x via in-browser resampling, with adjustable sharpness, brightness, contrast, vibrance, and tone corrections.",
+    input: "file",
+    output: "download",
+    localOnly: true,
+    isReady: true,
+  },
+  {
+    id: "background-remover",
+    title: "Background Remover",
+    category: "images",
+    path: "/tools/background-remover",
+    component: lazy(() => import("@/components/tools/BackgroundRemover").then((module) => ({ default: module.BackgroundRemover }))),
+    icon: FileImage,
+    description: "Cut out image backgrounds locally and export transparent PNGs.",
     input: "file",
     output: "download",
     localOnly: true,
@@ -69,6 +95,19 @@ export const TOOLS_REGISTRY: readonly ToolConfig[] = Object.freeze([
     icon: Scissors,
     description: "Trim video to an exact start and end time using FFmpeg, entirely in your browser.",
     descriptionKey: "tool.video-trimmer.pageDescription",
+    input: "file",
+    output: "download",
+    localOnly: true,
+    isReady: true,
+  },
+  {
+    id: "video-to-gif",
+    title: "Video to GIF",
+    category: "video",
+    path: "/tools/video-to-gif",
+    component: lazy(() => import("@/lib/tool-runtime/tools/video-to-gif").then((module) => ({ default: module.VideoToGifRuntime.component }))),
+    icon: Clapperboard,
+    description: "Convert a video clip into an animated GIF with browser-side FFmpeg processing.",
     input: "file",
     output: "download",
     localOnly: true,
