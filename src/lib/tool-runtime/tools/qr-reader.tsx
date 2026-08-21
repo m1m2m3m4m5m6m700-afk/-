@@ -17,18 +17,32 @@ interface DecodeResult {
   format: string;
 }
 
+interface BarcodeDetectorCode {
+  rawValue: string;
+  format: string;
+}
+
+interface BarcodeDetectorInstance {
+  detect(source: ImageBitmap): Promise<BarcodeDetectorCode[]>;
+}
+
+interface BarcodeDetectorConstructor {
+  new (options?: { formats?: string[] }): BarcodeDetectorInstance;
+}
+
 async function decodeImage(source: Blob, label = "image"): Promise<DecodeResult> {
-  const Bitmap = (window as unknown as { BarcodeDetector?: unknown }).BarcodeDetector
-    ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      new (window as any).BarcodeDetector({
+  const BarcodeDetectorCtor = (window as unknown as { BarcodeDetector?: BarcodeDetectorConstructor })
+    .BarcodeDetector;
+  const detector = BarcodeDetectorCtor
+    ? new BarcodeDetectorCtor({
         formats: ["qr_code", "code_128", "ean_13", "ean_8", "upc_a", "upc_e"],
       })
     : null;
 
-  if (Bitmap) {
+  if (detector) {
     try {
       const buffer = await createImageBitmap(source);
-      const codes = await Bitmap.detect(buffer);
+      const codes = await detector.detect(buffer);
       if (codes.length > 0) {
         return { text: codes[0].rawValue, format: codes[0].format };
       }
@@ -62,7 +76,6 @@ function QrReaderTool() {
     setUsingCamera(false);
   };
 
-  // Revoke any object URL preview when the component unmounts.
   useEffect(() => {
     return () => {
       revokeObjectUrlSafe(preview ?? undefined);
@@ -164,146 +177,32 @@ function QrReaderTool() {
                 if (e.target.files?.[0]) handleFile(e.target.files[0]);
               }}
             />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="cursor-pointer flex flex-col items-center gap-2 w-full"
-            >
+            <button type="button" onClick={() => fileInputRef.current?.click()} className="cursor-pointer flex flex-col items-center gap-2 w-full">
               <Upload className="size-7 text-primary" />
               <span className="text-sm font-semibold text-foreground">Upload QR image</span>
-              <span className="text-[11px] text-muted-foreground">
-                PNG, JPG, or WebP with a QR code
-              </span>
+              <span className="text-[11px] text-muted-foreground">PNG, JPG, or WebP with a QR code</span>
             </button>
           </div>
-
-          <div className="flex items-center gap-2">
-            <div className="h-px flex-1 bg-border" />
-            <span className="text-[11px] text-muted-foreground">or</span>
-            <div className="h-px flex-1 bg-border" />
-          </div>
-
+          <div className="flex items-center gap-2"><div className="h-px flex-1 bg-border" /><span className="text-[11px] text-muted-foreground">or</span><div className="h-px flex-1 bg-border" /></div>
           {usingCamera ? (
             <div className="space-y-3">
-              <div className="relative rounded-2xl overflow-hidden border border-border bg-black aspect-video">
-                <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
-              </div>
+              <div className="relative rounded-2xl overflow-hidden border border-border bg-black aspect-video"><video ref={videoRef} className="w-full h-full object-cover" playsInline muted /></div>
               <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={handleCapture}
-                  disabled={isProcessing}
-                  className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
-                >
-                  {isProcessing ? (
-                    <RefreshCw className="size-3.5 animate-spin" />
-                  ) : (
-                    <Camera className="size-3.5" />
-                  )}
-                  {isProcessing ? "Scanning..." : "Capture & Scan"}
-                </button>
-                <button
-                  type="button"
-                  onClick={stopCamera}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-border bg-background text-xs font-semibold text-foreground hover:bg-muted transition-colors"
-                >
-                  Stop
-                </button>
+                <button type="button" onClick={handleCapture} disabled={isProcessing} className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50">{isProcessing ? <RefreshCw className="size-3.5 animate-spin" /> : <Camera className="size-3.5" />}{isProcessing ? "Scanning..." : "Capture & Scan"}</button>
+                <button type="button" onClick={stopCamera} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-border bg-background text-xs font-semibold text-foreground hover:bg-muted transition-colors">Stop</button>
               </div>
             </div>
           ) : (
-            <button
-              type="button"
-              onClick={handleStartCamera}
-              className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-background px-4 py-2.5 text-sm font-semibold text-foreground hover:bg-muted transition-colors"
-            >
-              <Camera className="size-4" />
-              Use camera
-            </button>
+            <button type="button" onClick={handleStartCamera} className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-background px-4 py-2.5 text-sm font-semibold text-foreground hover:bg-muted transition-colors"><Camera className="size-4" />Use camera</button>
           )}
-
-          {preview && (
-            <div className="space-y-1">
-              <span className="text-xs text-muted-foreground">Scanned image:</span>
-              <img
-                src={preview}
-                alt="QR code being scanned"
-                className="w-full max-h-40 object-contain rounded-xl border border-border bg-background"
-              />
-            </div>
-          )}
+          {preview && <div className="space-y-1"><span className="text-xs text-muted-foreground">Scanned image:</span><img src={preview} alt="QR code being scanned" className="w-full max-h-40 object-contain rounded-xl border border-border bg-background" /></div>}
         </div>
-
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold text-foreground">Decoded Result</span>
-            {result && (
-              <button
-                type="button"
-                onClick={handleCopy}
-                className="inline-flex items-center gap-1 text-xs text-primary hover:underline font-medium"
-              >
-                {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-                {copied ? "Copied" : "Copy"}
-              </button>
-            )}
-          </div>
-
-          {error ? (
-            <div className="flex items-start gap-2.5 text-destructive bg-destructive/10 p-3.5 rounded-xl border border-destructive/20">
-              <AlertCircle className="size-5 shrink-0 mt-0.5" />
-              <div>
-                <div className="font-semibold text-xs">Scan Failed</div>
-                <div className="text-[11px] opacity-90 mt-0.5">{error}</div>
-              </div>
-            </div>
-          ) : null}
-
-          {result ? (
-            <div className="space-y-3">
-              <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
-                <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 mb-2">
-                  <ScanLine className="size-4" />
-                  <span className="text-xs font-semibold uppercase">{result.format}</span>
-                </div>
-                <p className="text-sm text-foreground break-all font-mono">{result.text}</p>
-              </div>
-              {/^https?:\/\//i.test(result.text) && (
-                <a
-                  href={result.text}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline font-medium"
-                >
-                  Open link →
-                </a>
-              )}
-            </div>
-          ) : (
-            !error && (
-              <div className="h-40 flex flex-col items-center justify-center text-muted-foreground gap-2 rounded-2xl border border-border bg-background/50">
-                <ScanLine className="size-8 opacity-40" />
-                <span>Decoded text will appear here.</span>
-              </div>
-            )
-          )}
-
-          {(result || error || preview) && (
-            <button
-              type="button"
-              onClick={handleReset}
-              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive"
-            >
-              <RotateCcw className="size-3.5" />
-              Reset
-            </button>
-          )}
-
-          {!supportsBarcodeDetector && (
-            <p className="text-[11px] text-muted-foreground">
-              Tip: live camera scanning works best in Chrome or Edge. You can still upload an image.
-            </p>
-          )}
+          <div className="flex items-center justify-between"><span className="text-sm font-semibold text-foreground">Decoded Result</span>{result && <button type="button" onClick={handleCopy} className="inline-flex items-center gap-1 text-xs text-primary hover:underline font-medium">{copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}{copied ? "Copied" : "Copy"}</button>}</div>
+          {error ? <div className="flex items-start gap-2.5 text-destructive bg-destructive/10 p-3.5 rounded-xl border border-destructive/20"><AlertCircle className="size-5 shrink-0 mt-0.5" /><div><div className="font-semibold text-xs">Scan Failed</div><div className="text-[11px] opacity-90 mt-0.5">{error}</div></div></div> : null}
+          {result ? <div className="space-y-3"><div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4"><div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 mb-2"><ScanLine className="size-4" /><span className="text-xs font-semibold uppercase">{result.format}</span></div><p className="text-sm text-foreground break-all font-mono">{result.text}</p></div>{/^https?:\/\//i.test(result.text) && <a href={result.text} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline font-medium">Open link →</a>}</div> : (!error && <div className="h-40 flex flex-col items-center justify-center text-muted-foreground gap-2 rounded-2xl border border-border bg-background/50"><ScanLine className="size-8 opacity-40" /><span>Decoded text will appear here.</span></div>)}
+          {(result || error || preview) && <button type="button" onClick={handleReset} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive"><RotateCcw className="size-3.5" />Reset</button>}
+          {!supportsBarcodeDetector && <p className="text-[11px] text-muted-foreground">Tip: live camera scanning works best in Chrome or Edge. You can still upload an image.</p>}
         </div>
       </div>
     </div>
@@ -316,6 +215,5 @@ export const QrReaderRuntime: ReadyToolRuntimeDefinition = {
   categoryId: "utilities",
   icon: ScanLine,
   component: QrReaderTool,
-  layoutDescription:
-    "Scan and decode QR codes from uploaded images or your camera into plain text or links.",
+  layoutDescription: "Scan and decode QR codes from uploaded images or your camera into plain text or links.",
 };
