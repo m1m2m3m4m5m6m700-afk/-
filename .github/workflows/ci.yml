@@ -16,8 +16,8 @@ permissions:
   security-events: write
 
 env:
-  SITE_URL: ${{ vars.SITE_URL }}
-  VITE_SITE_URL: ${{ vars.SITE_URL }}
+  SITE_URL: ${{ vars.SITE_URL || 'https://pixstudio.app' }}
+  VITE_SITE_URL: ${{ vars.SITE_URL || 'https://pixstudio.app' }}
 
 jobs:
   typecheck:
@@ -82,7 +82,7 @@ jobs:
       - run: npm ci
       - name: Notify IndexNow when configured
         env:
-          SITE_URL: ${{ vars.SITE_URL }}
+          SITE_URL: ${{ vars.SITE_URL || 'https://pixstudio.app' }}
           INDEXNOW_KEY: ${{ secrets.INDEXNOW_KEY }}
           INDEXNOW_KEY_LOCATION: ${{ vars.INDEXNOW_KEY_LOCATION }}
         run: node scripts/notify-indexnow.mjs
@@ -242,6 +242,6 @@ jobs:
             echo '| I18n — 440 live routes | ${{ needs.i18n-live.result }} |'
             echo
             echo 'The i18n gate covers 20 languages × 22 tools = 440 localized routes.'
-            echo 'Production sitemap generation requires the repository variable SITE_URL and rejects localhost/preview domains.'
+            echo 'Production sitemap generation uses vars.SITE_URL and falls back to the production domain when the repository variable is unavailable.'
             echo 'IndexNow is optional and only runs the network notification when configured.'
           } >> "$GITHUB_STEP_SUMMARY"

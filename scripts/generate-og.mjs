@@ -9,12 +9,12 @@ const outputRoot = path.join(root, 'public', 'og');
 fs.mkdirSync(outputRoot, { recursive: true });
 
 const tools = [...toolsSource.matchAll(/id:\s*'([^']+)'/g)].map((m) => m[1]);
-const escapeXml = (value) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;').replace(/'/g, '&apos;');
+const escapeXml = (value) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 
 function localeToolTitle(locale, toolId) {
   const file = fs.readFileSync(path.join(localeDir, `${locale}.ts`), 'utf8');
   const escaped = toolId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const pattern = `['"]${escaped}['"]\\s*:\\s*\\{\\s*title:\s*['"]([^'"]+)['"]`;
+  const pattern = String.raw`['"]${escaped}['"]\s*:\s*\{\s*title:\s*['"]([^'"]+)['"]`;
   const match = file.match(new RegExp(pattern));
   return match?.[1] ?? toolId;
 }

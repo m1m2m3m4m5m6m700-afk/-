@@ -1,26 +1,23 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const root = process.cwd();
 const localeDir = path.join(root, 'src', 'i18n', 'locales');
-const configPath = path.join(root, 'src', 'config', 'i18n.ts');
-const toolsPath = path.join(root, 'src', 'config', 'tools.ts');
 const seoPath = path.join(root, 'src', 'seo', 'localized-seo.ts');
 const routePath = path.join(root, 'src', 'routes', '$lang', '$tool.tsx');
-
 const locales = ['en','zh','hi','es','fr','ar','bn','pt','ru','ur','id','de','ja','sw','mr','te','tr','ta','ko','vi'];
-const rtl = new Set(['ar', 'ur']);
-const read = (file) => fs.readFileSync(file, 'utf8');
-const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const errors = [];
+const read = (file) => fs.readFileSync(file, 'utf8');
 
-const config = read(configPath);
-const toolsSource = read(toolsPath);
+const { default: englishLocale } = await import(pathToFileURL(path.join(localeDir, 'en.ts')).href);
+const { SUPPORTED_LANGUAGES } = await import(pathToFileURL(path.join(root, 'src', 'config', 'i18n.ts')).href);
+const toolIds = Object.keys(englishLocale?.tools ?? {});
 const seo = read(seoPath);
 const route = read(routePath);
-const toolIds = [...toolsSource.matchAll(/\bid:\s*['"]([^'"]+)['"]/g)].map((match) => match[1]);
 
 if (locales.length !== 20) errors.push(`[GLOBAL][I18N_MATRIX] Expected 20 locales, found ${locales.length}`);
+if (SUPPORTED_LANGUAGES.length !== 20) errors.push(`[GLOBAL][CONFIG_MATRIX] Expected 20 configured languages, found ${SUPPORTED_LANGUAGES.length}`);
 if (toolIds.length !== 22) errors.push(`[GLOBAL][TOOL_MATRIX] Expected 22 tools, found ${toolIds.length}`);
 if (locales.length * toolIds.length !== 440) errors.push(`[GLOBAL][ROUTE_MATRIX] Expected 440 localized tool routes, found ${locales.length * toolIds.length}`);
 
@@ -31,26 +28,31 @@ for (const lang of locales) {
     continue;
   }
 
-  const text = read(file);
-  if (!new RegExp(`\\bcode\\s*:\\s*['"]${escapeRegex(lang)}['"]`).test(text)) {
-    errors.push(`[${lang.toUpperCase()}][I18N_CODE] Locale code declaration is missing or incorrect`);
-  }
-
-  const expectedDir = rtl.has(lang) ? 'rtl' : 'ltr';
-  const languageEntry = new RegExp(`\\{\\s*code\\s*:\\s*['"]${escapeRegex(lang)}['"][^}]*?\\bdir\\s*:\\s*['"]${expectedDir}['"]\\s*\\}`);
-  if (!languageEntry.test(config)) {
-    errors.push(`[${lang.toUpperCase()}][DIRECTION] Expected dir="${expectedDir}" in language config`);
-  }
-
-  for (const tool of toolIds) {
-    const key = escapeRegex(tool);
-    const translated = new RegExp(`(?:['"]${key}['"]|${key})\\s*:\\s*\\{\\s*title\\s*:\\s*['"]([^'"]+)['"]\\s*,\\s*description\\s*:\\s*['"]([^'"]+)['"]`);
-    const match = text.match(translated);
-    if (!match) {
-      errors.push(`[${lang.toUpperCase()}][${tool}][I18N_MISSING] Missing translated title/description`);
+  try {
+    const module = await import(pathToFileURL(file).href);
+    const translations = module.default ?? module[lang];
+    if (!translations) {
+      errors.push(`[${lang.toUpperCase()}][I18N_EXPORT] Missing default/named export in ${path.relative(root, file)}`);
       continue;
     }
-    if (!match[1].trim() || !match[2].trim()) errors.push(`[${lang.toUpperCase()}][${tool}][I18N_EMPTY] Empty title or description`);
+    if (translations.code !== lang) errors.push(`[${lang.toUpperCase()}][I18N_CODE] Expected locale code "${lang}", got "${translations.code}"`);
+
+    const config = SUPPORTED_LANGUAGES.find((language) => language.code === lang);
+    if (!config) {
+      errors.push(`[${lang.toUpperCase()}][DIRECTION] Language config is missing`);
+      continue;
+    }
+    const expectedDir = ['ar', 'ur'].includes(lang) ? 'rtl' : 'ltr';
+    if (config.dir !== expectedDir) errors.push(`[${lang.toUpperCase()}][DIRECTION] Expected dir="${expectedDir}", got "${config.dir}"`);
+
+    for (const toolId of toolIds) {
+      const translation = translations.tools?.[toolId];
+      if (!translation?.title?.trim() || !translation?.description?.trim()) {
+        errors.push(`[${lang.toUpperCase()}][${toolId}][I18N_MISSING] Missing translated title/description`);
+      }
+    }
+  } catch (error) {
+    errors.push(`[${lang.toUpperCase()}][I18N_IMPORT] Failed to import locale module: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 

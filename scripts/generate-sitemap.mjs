@@ -12,7 +12,7 @@ const siteUrl = configuredSiteUrl.replace(/\/$/, '');
 const parsedSiteUrl = new URL(siteUrl);
 if (parsedSiteUrl.protocol !== 'https:') throw new Error(`Sitemap origin must use HTTPS: ${siteUrl}`);
 if (parsedSiteUrl.hostname === 'localhost' || parsedSiteUrl.hostname === '127.0.0.1' || parsedSiteUrl.hostname.endsWith('.vercel.app')) throw new Error(`Production sitemap origin is not allowed: ${siteUrl}`);
-const escapeXml = (value) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;').replace(/'/g, '&apos;');
+const escapeXml = (value) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 
 const pages = [{ path: '/', key: 'home' }, ...tools.map((tool) => ({ path: tool.path, key: tool.id }))];
 const sitemapDir = path.join(dist, 'sitemaps');

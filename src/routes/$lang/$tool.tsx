@@ -7,8 +7,8 @@ import { absoluteLocaleUrl, buildHreflangLinks, buildOgImageUrl, buildWebApplica
 import { rootRoute } from '../__root';
 
 const toAbsoluteUrl = (value: string): string => {
-  if (/^https?:\\/\\//i.test(value)) return value;
-  const configured = (import.meta.env.VITE_SITE_URL as string | undefined)?.trim().replace(/\\/$/, '');
+  if (/^https?:\/\//i.test(value)) return value;
+  const configured = (import.meta.env.VITE_SITE_URL as string | undefined)?.trim().replace(/\/$/, '');
   if (configured) return new URL(value, `${configured}/`).href;
   if (typeof window !== 'undefined') return new URL(value, window.location.origin).href;
   return value;
