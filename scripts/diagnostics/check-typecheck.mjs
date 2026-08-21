@@ -2,14 +2,18 @@ import * as ts from "typescript";
 import { readFileSync } from "node:fs";
 import { main, files, rel } from "./_core.mjs";
 
+const GENERATED = new Set(["src/routeTree.gen.ts"]);
 await main("check-typecheck", () => {
   const findings = [];
   for (const file of files("src", /\.(ts|tsx)$/)) {
+    if (GENERATED.has(rel(file))) continue;
     const sourceText = readFileSync(file, "utf8");
     const source = ts.createSourceFile(file, sourceText, ts.ScriptTarget.Latest, true);
 
     function visit(node) {
-      if (node.kind === ts.SyntaxKind.AnyKeyword) findings.push(`${rel(file)}:${source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1}: explicit any type`);
+      if (node.kind === ts.SyntaxKind.AnyKeyword) {
+        findings.push(`${rel(file)}:${source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1}: explicit any type`);
+      }
       ts.forEachChild(node, visit);
     }
     visit(source);
