@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800"><rect width="1200" height="800" fill="#223344"/><circle cx="300" cy="220" r="180" fill="#67e8f9"/><circle cx="850" cy="560" r="260" fill="#164e63"/><text x="600" y="430" text-anchor="middle" fill="white" font-size="110" font-family="sans-serif">FLIXO</text></svg>`;
+const hugeSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="9000" height="9000" viewBox="0 0 9000 9000"><rect width="9000" height="9000" fill="#223344"/></svg>`;
 
 function outputFormat(page: Page, value: string) {
   return page.locator('select').first().selectOption(value);
@@ -84,6 +85,15 @@ test('Input limit rejects oversized files before processing', async ({ page }) =
 
   await expect(page.getByRole('alert')).toContainText('Some files were skipped');
   await expect(page.getByRole('button', { name: 'Compress image' })).toBeDisabled();
+});
+
+test('Large pixel dimensions are rejected before expensive canvas work', async ({ page }) => {
+  await page.goto('/en/image-compressor');
+  await page.locator('#image-file').setInputFiles({ name: 'huge.svg', mimeType: 'image/svg+xml', buffer: Buffer.from(hugeSvg) });
+  await page.getByRole('button', { name: 'Compress image' }).click();
+
+  await expect(page.getByRole('alert')).toContainText('output is too large for safe browser processing', { timeout: 15000 });
+  await expect(page.getByRole('link', { name: 'Download image' })).toHaveCount(0);
 });
 
 test('Arabic image compressor exposes localized SEO and output controls', async ({ page }) => {
