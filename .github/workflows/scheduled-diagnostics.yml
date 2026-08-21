@@ -1,0 +1,53 @@
+name: Scheduled Diagnostics
+
+on:
+  schedule:
+    - cron: '0 */3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scheduled-diagnostics
+  cancel-in-progress: true
+
+jobs:
+  diagnostics:
+    name: 13-scanner health pass
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Run full diagnostics
+        run: |
+          node scripts/run-all-diagnostics.mjs
+          node scripts/daemon/diagnostic-memory.mjs
+        env:
+          CI: true
+      - name: Synthetic health probe
+        run: node scripts/daemon/synthetic-health-check.mjs
+      - name: Upload error intelligence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flixo-diagnostic-intelligence-${{ github.run_id }}
+          path: |
+            errors.log.json
+            DECISION_LOG.md
+            diagnostics/errors.log.json
+            diagnostics/DECISION_LOG.md
+            failure-memory.json
+            REGRESSION_RULES.json
+          if-no-files-found: ignore
+          retention-days: 14
