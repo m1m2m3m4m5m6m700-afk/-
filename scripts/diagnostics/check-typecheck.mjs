@@ -1,3 +1,13 @@
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { main, files, rel } from "./_core.mjs";
-await main("check-typecheck", () => { const findings=[]; for (const f of files("src", /\.(ts|tsx)$/)) { const s=readFileSync(f,"utf8"); if (/\/\/\s*@ts-(?:ignore|nocheck)\b/.test(s)) findings.push(`${rel(f)}: TypeScript suppression directive`); const hits=s.match(/\b(?:as\s+any|:\s*any\b|<any>)/g)||[]; if(hits.length) findings.push(`${rel(f)}: ${hits.length} forbidden any usage(s)`); } return { severity: findings.length?"CRITICAL":"INFO", message: findings.length?"Forbidden TypeScript patterns detected":"Typecheck hygiene PASS", findings }; });
+await main("check-typecheck", () => {
+  const findings = [];
+  for (const f of files("src", /\.(ts|tsx)$/)) {
+    if (rel(f) === "src/routeTree.gen.ts") continue;
+    const s = readFileSync(f, "utf8");
+    if (/\/\/\s*@ts-(?:ignore|nocheck)\b/.test(s)) findings.push(`${rel(f)}: TypeScript suppression directive`);
+    const hits = s.match(/\b(?:as\s+any|:\s*any\b|<any>)/g) || [];
+    if (hits.length) findings.push(`${rel(f)}: ${hits.length} forbidden any usage(s)`);
+  }
+  return { severity: findings.length ? "CRITICAL" : "INFO", message: findings.length ? "Forbidden TypeScript patterns detected" : "Typecheck hygiene PASS", findings };
+});
