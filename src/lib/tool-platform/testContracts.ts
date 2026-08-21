@@ -24,8 +24,10 @@ export const certificationRequirements: ToolCertificationRequirements = Object.f
 const rawPublicToolTestContracts = [
   { toolId: "image-compressor", route: "/tools/image-compressor", requiredChecks: strictChecks },
   { toolId: "image-enhancer", route: "/tools/image-enhancer", requiredChecks: strictChecks },
+  { toolId: "background-remover", route: "/tools/background-remover", requiredChecks: strictChecks },
   { toolId: "video-compressor", route: "/tools/video-compressor", requiredChecks: strictChecks },
   { toolId: "video-trimmer", route: "/tools/video-trimmer", requiredChecks: strictChecks },
+  { toolId: "video-to-gif", route: "/tools/video-to-gif", requiredChecks: strictChecks },
   { toolId: "qr-generator", route: "/tools/qr-generator", requiredChecks: strictChecks },
 ] as const satisfies readonly ToolTestContract[];
 
