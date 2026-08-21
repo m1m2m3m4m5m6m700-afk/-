@@ -78,11 +78,12 @@ if ((registry.match(/export const publicToolRegistrations\b/g) ?? []).length !==
 
 const candidates = await walk("src/lib", (p) => /\.(ts|tsx)$/.test(p));
 let registrationExportFiles = 0;
-for (const file of candidates) registrationExportFiles += (await read(file).matchAll(/export const publicToolRegistrations\b/g)).length;
+for (const file of candidates) registrationExportFiles += (await read(file)).match(/export const publicToolRegistrations\b/g)?.length ?? 0;
 if (registrationExportFiles !== 1) fail(`Expected exactly one public tool registry export in src/lib; found ${registrationExportFiles}.`);
 
 const config = await read("src/config/tools.ts");
-const testSources = await Promise.all((await walk("tests", (p) => /\.spec\.(ts|tsx|js|mjs)$/.test(p))).map((file) => read(file)));
+const testSpecFiles = await walk("tests", (p) => /\.spec\.(ts|tsx|js|mjs)$/.test(p));
+const testSources = await Promise.all(testSpecFiles.map((file) => read(file)));
 const tests = testSources.join("\n");
 const registrations = [...config.matchAll(/\{\s*id:\s*["']([^"']+)["'][\s\S]*?path:\s*["'](\/tools\/[^"']+)["'][\s\S]*?isReady:\s*true,/g)].map((match) => ({ id: match[1], slug: match[2].replace(/^\/tools\//, "") }));
 const routeAssertions = new Set([
@@ -114,4 +115,4 @@ if (failures.length) {
   failures.forEach((failure) => console.error(`- ${failure}`));
   process.exit(1);
 }
-console.log(`STRICT PROJECT CONTRACT: PASS (${registrations.length} ready tools)`);
+console.log(`STRICT PROJECT CONTRACT: PASS (${registrations.length} ready tools across ${testSpecFiles.length} E2E specs)`);
