@@ -89,7 +89,7 @@ function applyLensBlur(ctx: CanvasRenderingContext2D, radius: number, bokeh: num
   blurred.width = canvas.width; blurred.height = canvas.height;
   const b = blurred.getContext('2d'); if (!b) return;
   b.filter = `blur(${Math.min(40, radius)}px)`; b.drawImage(canvas, 0, 0);
-  const focus = document.createLinearGradient(0, 0, 0, canvas.height);
+  const focus = ctx.createLinearGradient(0, 0, 0, canvas.height);
   const center = 0.5 - bokeh / 200;
   focus.addColorStop(Math.max(0, center - 0.18), 'rgba(0,0,0,1)');
   focus.addColorStop(Math.max(0.02, center - 0.04), 'rgba(0,0,0,0)');
