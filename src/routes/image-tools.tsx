@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react';
 import { createRoute } from '@tanstack/react-router';
 import { rootRoute } from './__root';
 import { BackgroundRemoverTool } from '../tools/background-remover';
@@ -10,7 +11,7 @@ import { CropResizeTool } from '../tools/crop-resize';
 import { WatermarkRemoverTool } from '../tools/watermark-remover';
 import { RasterToSvgTool } from '../tools/raster-to-svg';
 
-function imageToolRoute(path: string, title: string, description: string, component: () => JSX.Element) {
+function imageToolRoute(path: string, title: string, description: string, component: () => ReactElement) {
   return createRoute({
     getParentRoute: () => rootRoute,
     path,
