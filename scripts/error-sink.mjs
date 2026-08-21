@@ -1,6 +1,6 @@
 import { appendFileSync, existsSync, mkdirSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync, closeSync } from "node:fs";
-import { execFileSync } from "node:child_process";
 import { join } from "node:path";
+import { getExactHeadSha } from "./utils/get-head-sha.mjs";
 
 const ROOT = process.cwd();
 const LOG = join(ROOT, "errors.log.json");
@@ -13,8 +13,12 @@ const LOCK_STALE_MS = 10_000;
 mkdirSync(EVIDENCE, { recursive: true });
 
 const SECRET = /((?:sk|xox|ghp|github_pat|AIza)[-_A-Za-z0-9]{12,}|-----BEGIN [^-]+ PRIVATE KEY-----|(?:password|secret|token|api[_-]?key)\s*[:=]\s*[\"'][^\"']+[\"'])/gi;
-function sha() { const v = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(); if (!/^[0-9a-f]{40}$/i.test(v)) throw new Error("Missing exact SHA"); return v; }
-function scrub(v) { if (typeof v !== "string") return v; return v.replace(SECRET, "[REDACTED]"); }
+function sha() {
+  const value = getExactHeadSha();
+  if (!/^[0-9a-f]{40}$/i.test(value)) throw new Error("Missing exact HEAD SHA");
+  return value;
+}
+function scrub(v) { return typeof v === "string" ? v.replace(SECRET, "[REDACTED]") : v; }
 function scrubDeep(value) { if (typeof value === "string") return scrub(value); if (Array.isArray(value)) return value.map(scrubDeep); if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, scrubDeep(v)])); return value; }
 function load() { if (!existsSync(LOG)) return []; try { return JSON.parse(readFileSync(LOG, "utf8")); } catch { return []; } }
 function acquireLock() {
@@ -34,12 +38,7 @@ function atomicWrite(path, content) {
   try { fd = openSync(tmp, "wx"); writeFileSync(fd, content, "utf8"); closeSync(fd); fd = null; renameSync(tmp, path); }
   finally { if (fd !== null) { try { closeSync(fd); } catch {} } try { unlinkSync(tmp); } catch {} }
 }
-function save(entries) {
-  const payload = JSON.stringify(entries, null, 2) + "\n";
-  acquireLock();
-  try { atomicWrite(LOG, payload); atomicWrite(ELOG, payload); }
-  finally { releaseLock(); }
-}
+function save(entries) { const payload = `${JSON.stringify(entries, null, 2)}\n`; acquireLock(); try { atomicWrite(LOG, payload); atomicWrite(ELOG, payload); } finally { releaseLock(); } }
 function appendDecision(line) { acquireLock(); try { appendFileSync(DEC, line); appendFileSync(EDEC, line); } finally { releaseLock(); } }
 function parseArgs(argv) { const a = {}; for (let i = 2; i < argv.length; i += 1) { const k = argv[i], v = argv[i + 1]; if (k?.startsWith("--")) { a[k.slice(2)] = v?.startsWith("--") ? true : v; i += v?.startsWith("--") ? 0 : 1; } } return a; }
 
