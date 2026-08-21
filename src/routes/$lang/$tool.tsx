@@ -2,7 +2,7 @@ import { createRoute } from '@tanstack/react-router';
 import { getLanguageConfig, isLocaleCode, type LocaleCode } from '../../config/i18n';
 import { getLocale } from '../../i18n';
 import { TOOLS_REGISTRY } from '../../config/tools';
-import { absoluteLocaleUrl, buildHreflangLinks, buildWebApplicationJsonLd, getPrivacyMessage, toJsonLdScript } from '../../seo/localized-seo';
+import { absoluteLocaleUrl, buildHreflangLinks, buildOgImageUrl, buildWebApplicationJsonLd, getOgLocale, getPrivacyMessage, toJsonLdScript } from '../../seo/localized-seo';
 import { rootRoute } from '../__root';
 
 export const localizedToolRoute = createRoute({
@@ -25,6 +25,13 @@ export const localizedToolRoute = createRoute({
         { property: 'og:title', content: `${translated.title} | FLIXO` },
         { property: 'og:description', content: translated.description },
         { property: 'og:type', content: 'website' },
+        { property: 'og:image', content: buildOgImageUrl(validLocale, tool.id) },
+        { property: 'og:locale', content: getOgLocale(validLocale) },
+        { property: 'og:site_name', content: 'FLIXO' },
+        { name: 'twitter:card', content: 'summary_large_image' },
+        { name: 'twitter:title', content: `${translated.title} | FLIXO` },
+        { name: 'twitter:description', content: translated.description },
+        { name: 'twitter:image', content: buildOgImageUrl(validLocale, tool.id) },
         { name: 'content-language', content: validLocale },
       ],
       links: [{ rel: 'canonical', href: canonicalUrl }, ...links],
