@@ -21,7 +21,12 @@ test.describe("public accessibility baseline", () => {
         const title = (await control.getAttribute("title"))?.trim();
         const text = (await control.innerText().catch(() => "")).trim();
         const name = (await control.getAttribute("name"))?.trim();
-        expect(Boolean(aria || labelledBy || title || text || name)).toBeTruthy();
+        const placeholder = (await control.getAttribute("placeholder"))?.trim();
+        const associatedLabel = await control.evaluate((element) => {
+          const labelled = (element as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement).labels;
+          return labelled ? Array.from(labelled).map((label) => label.textContent?.trim() ?? "").join(" ").trim() : "";
+        }).catch(() => "");
+        expect(Boolean(aria || labelledBy || title || text || name || placeholder || associatedLabel)).toBeTruthy();
       }
 
       const focused = page.locator(":focus-visible");
