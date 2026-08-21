@@ -1,7 +1,7 @@
-import { useEffect } from 'react';
 import { createRoute } from '@tanstack/react-router';
 import { getLanguageConfig, isLocaleCode, type LocaleCode } from '../../config/i18n';
 import { getLocale } from '../../i18n';
+import { isValidRoute } from '../../config/routes-contract';
 import { TOOLS_REGISTRY } from '../../config/tools';
 import { absoluteLocaleUrl, buildHreflangLinks, buildOgImageUrl, buildWebApplicationJsonLd, getOgLocale, getPrivacyMessage, toJsonLdScript } from '../../seo/localized-seo';
 import { rootRoute } from '../__root';
@@ -15,7 +15,7 @@ const toAbsoluteUrl = (value: string): string => {
 };
 
 const localeHeadScript = (localeCode: string): string => {
-  const dir = ['ar', 'ur'].includes(localeCode) ? 'rtl' : 'ltr';
+  const dir = getLanguageConfig(localeCode).dir;
   return `document.documentElement.lang=${JSON.stringify(localeCode)};document.documentElement.dir=${JSON.stringify(dir)};`;
 };
 
@@ -28,7 +28,7 @@ export const localizedToolRoute = createRoute({
     const locale = getLocale(validLocale);
     const headScript = { type: 'text/javascript', children: localeHeadScript(validLocale) };
 
-    if (!tool) {
+    if (!tool || !isValidRoute(params.lang, params.tool)) {
       return {
         meta: [
           { title: '404 | FLIXO' },
@@ -67,16 +67,10 @@ export const localizedToolRoute = createRoute({
   },
   component: function LocalizedToolPage() {
     const { lang, tool } = localizedToolRoute.useParams();
-    const valid = isLocaleCode(lang);
-    const localeCode = (valid ? lang : 'en') as LocaleCode;
+    const valid = isValidRoute(lang, tool);
+    const localeCode = (isLocaleCode(lang) ? lang : 'en') as LocaleCode;
     const locale = getLocale(localeCode);
     const config = TOOLS_REGISTRY.find((item) => item.id === tool);
-
-    useEffect(() => {
-      const language = getLanguageConfig(localeCode);
-      document.documentElement.lang = localeCode;
-      document.documentElement.dir = language.dir;
-    }, [localeCode]);
 
     if (!valid || !config) {
       return (
@@ -95,7 +89,7 @@ export const localizedToolRoute = createRoute({
       <main dir={getLanguageConfig(localeCode).dir} lang={localeCode}>
         <div className="home-container">
           <header className="mb-6">
-            <h1>{translated.title}</h1>
+            <p className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white mb-4">{translated.title}</p>
             <p className="home-lead">{translated.description}</p>
             <p className="mt-3 rounded-lg border border-emerald-900/40 bg-emerald-950/30 px-3 py-2 text-xs text-emerald-300" aria-label="Privacy notice">
               {getPrivacyMessage(localeCode)}

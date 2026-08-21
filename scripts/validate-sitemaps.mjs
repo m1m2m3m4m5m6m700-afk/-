@@ -6,6 +6,8 @@ const sitemapRoot = path.join(root, 'dist');
 const maxBytes = 50 * 1024 * 1024;
 const maxUrls = 50000;
 const errors = [];
+const localeSegment = /^\/[a-z]{2}(?:\/|$)/i;
+const indexEntry = /^\/sitemaps\/sitemap-[a-z]{2}\.xml$/i;
 
 const files = fs.existsSync(sitemapRoot)
   ? fs.readdirSync(sitemapRoot, { recursive: true }).filter((file) => typeof file === 'string' && file.endsWith('.xml'))
@@ -24,15 +26,18 @@ for (const relative of files) {
   if (!content.startsWith('<?xml')) errors.push(`[GLOBAL][${name}][XML_HEADER_MISSING] Missing XML declaration`);
   const locs = [...content.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1].trim());
   if (locs.length > maxUrls) errors.push(`[GLOBAL][${name}][URL_LIMIT_EXCEEDED] ${locs.length} loc entries exceeds 50,000`);
+  const isIndex = name === 'sitemap-index.xml';
   for (const url of locs) {
     try {
       const parsed = new URL(url);
       if (parsed.protocol !== 'https:') errors.push(`[GLOBAL][${name}][HTTPS_REQUIRED] ${url}`);
-      if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.hostname.endsWith('.vercel.app')) {
-        errors.push(`[GLOBAL][${name}][INVALID_DOMAIN] ${url}`);
-      }
+      if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.hostname.endsWith('.vercel.app')) errors.push(`[GLOBAL][${name}][INVALID_DOMAIN] ${url}`);
       if (parsed.search) errors.push(`[GLOBAL][${name}][QUERY_URL] Sitemap URL contains query parameters: ${url}`);
-      if (!parsed.pathname.match(/^\/[a-z]{2}(?:\/|$)/)) errors.push(`[GLOBAL][${name}][LOCALE_PATH] URL is not localized: ${url}`);
+      if (isIndex) {
+        if (!indexEntry.test(parsed.pathname)) errors.push(`[GLOBAL][${name}][SUBSITEMAP_PATH] Expected /sitemaps/sitemap-<lang>.xml: ${url}`);
+      } else if (!localeSegment.test(parsed.pathname)) {
+        errors.push(`[GLOBAL][${name}][LOCALE_PATH] URL is not localized: ${url}`);
+      }
     } catch {
       errors.push(`[GLOBAL][${name}][INVALID_URL] ${url}`);
     }
@@ -43,16 +48,7 @@ if (fs.existsSync(indexPath)) {
   const index = fs.readFileSync(indexPath, 'utf8');
   if (!index.includes('<sitemapindex')) errors.push('[GLOBAL][SITEMAP_INDEX_INVALID] Root is not <sitemapindex>');
   const indexLocs = [...index.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1].trim());
-  for (const url of indexLocs) {
-    try {
-      const parsed = new URL(url);
-      if (parsed.protocol !== 'https:') errors.push(`[GLOBAL][SITEMAP_INDEX][HTTPS_REQUIRED] ${url}`);
-      if (parsed.search) errors.push(`[GLOBAL][SITEMAP_INDEX][QUERY_URL] ${url}`);
-      if (!parsed.pathname.startsWith('/sitemaps/sitemap-')) errors.push(`[GLOBAL][SITEMAP_INDEX][SUBSITEMAP_PATH] ${url}`);
-    } catch {
-      errors.push(`[GLOBAL][SITEMAP_INDEX][INVALID_URL] ${url}`);
-    }
-  }
+  if (indexLocs.length !== 20) errors.push(`[GLOBAL][SITEMAP_INDEX][LOCALE_COUNT] Expected 20 localized sitemap entries, found ${indexLocs.length}`);
 }
 
 if (errors.length) {

@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import { fileURLToPath, URL } from 'node:url';
-import { defineConfig } from 'vite';
+import { defineConfig, type ViteDevServer } from 'vite';
 import react from '@vitejs/plugin-react';
 
 const allowedHosts = (process.env.VITE_ALLOWED_HOSTS ?? '')
@@ -19,7 +19,7 @@ const localized404 = (locale: string): string => {
 
 const localized404Plugin = () => ({
   name: 'flixo-localized-404',
-  configureServer(server) {
+  configureServer(server: ViteDevServer) {
     server.middlewares.use((req, res, next) => {
       const pathname = new URL(req.url ?? '/', 'http://127.0.0.1').pathname;
       const match = pathname.match(/^\/([a-z]{2})\/([^/?#]+)\/?$/i);
