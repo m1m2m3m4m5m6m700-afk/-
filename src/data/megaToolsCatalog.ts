@@ -74,11 +74,11 @@ const PDF_HANDLERS = [
   ["page-numbers", "Page Numbers", "Add page numbers to the document."],
   ["watermark", "Watermark", "Add a Flixo watermark to pages."],
   ["remove-metadata", "Remove Metadata", "Remove common document metadata."],
-  ["duplicate", "Duplicate Pages", "Create a document containing the last page."],
+  ["duplicate", "Duplicate Pages", "Duplicate every page in the document."],
   ["extract-range", "Extract Range", "Extract the first half of the pages."],
-  ["split-even", "Split Even", "Extract even-numbered pages into a new PDF."],
+  ["split-even", "Split Even", "Extract even-numbered pages into a new PDF; fails clearly when none exist."],
   ["blank-cover", "Blank Cover", "Prepend a blank cover page."],
-  ["flatten", "Flatten", "Flatten PDF form fields where supported."],
+  ["flatten", "Flatten", "Flatten interactive PDF form fields; fails clearly when no form fields exist."],
   ["poster", "Page Poster", "Create a rendered poster of the first page."],
 ] as const;
 
