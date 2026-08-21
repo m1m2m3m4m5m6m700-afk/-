@@ -124,6 +124,8 @@ jobs:
             spec: tests/mockup-generator.spec.ts
           - tool: seed
             spec: tests/seed.spec.ts
+          - tool: pix
+            spec: tests/pix.spec.ts
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
