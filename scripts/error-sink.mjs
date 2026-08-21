@@ -9,6 +9,7 @@ const EVIDENCE = join(ROOT, "diagnostics");
 const ELOG = join(EVIDENCE, "errors.log.json");
 const EDEC = join(EVIDENCE, "DECISION_LOG.md");
 const LOCK = join(EVIDENCE, ".error-sink.lock");
+const LOCK_STALE_MS = 10_000;
 mkdirSync(EVIDENCE, { recursive: true });
 
 const SECRET = /((?:sk|xox|ghp|github_pat|AIza)[-_A-Za-z0-9]{12,}|-----BEGIN [^-]+ PRIVATE KEY-----|(?:password|secret|token|api[_-]?key)\s*[:=]\s*[\"'][^\"']+[\"'])/gi;
@@ -19,8 +20,8 @@ function load() { if (!existsSync(LOG)) return []; try { return JSON.parse(readF
 function acquireLock() {
   const deadline = Date.now() + 5000;
   while (Date.now() < deadline) {
-    try { const fd = openSync(LOCK, "wx"); closeSync(fd); return; } catch {
-      try { if (Date.now() - readFileSync(LOCK, "utf8").length > 10000) unlinkSync(LOCK); } catch {}
+    try { const fd = openSync(LOCK, "wx"); writeFileSync(fd, String(Date.now()), "utf8"); closeSync(fd); return; } catch {
+      try { const created = Number.parseInt(readFileSync(LOCK, "utf8"), 10); if (Number.isFinite(created) && Date.now() - created > LOCK_STALE_MS) unlinkSync(LOCK); } catch {}
       Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 40);
     }
   }
@@ -30,15 +31,8 @@ function releaseLock() { try { unlinkSync(LOCK); } catch {} }
 function atomicWrite(path, content) {
   const tmp = `${path}.${process.pid}.${Date.now()}.tmp`;
   let fd = null;
-  try {
-    fd = openSync(tmp, "wx");
-    writeFileSync(fd, content, "utf8");
-    closeSync(fd); fd = null;
-    renameSync(tmp, path);
-  } finally {
-    if (fd !== null) { try { closeSync(fd); } catch {} }
-    try { unlinkSync(tmp); } catch {}
-  }
+  try { fd = openSync(tmp, "wx"); writeFileSync(fd, content, "utf8"); closeSync(fd); fd = null; renameSync(tmp, path); }
+  finally { if (fd !== null) { try { closeSync(fd); } catch {} } try { unlinkSync(tmp); } catch {} }
 }
 function save(entries) {
   const payload = JSON.stringify(entries, null, 2) + "\n";
