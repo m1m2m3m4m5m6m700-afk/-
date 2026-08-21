@@ -1,9 +1,8 @@
 import { createRoute } from '@tanstack/react-router';
-import { useEffect } from 'react';
 import { getLanguageConfig, isLocaleCode, type LocaleCode } from '../../config/i18n';
 import { getLocale, localePath } from '../../i18n';
 import { TOOLS_REGISTRY } from '../../config/tools';
-import { buildHreflangLinks, buildWebApplicationJsonLd, getPrivacyMessage, toJsonLdScript } from '../../seo/localized-seo';
+import { absoluteLocaleUrl, buildHreflangLinks, buildWebApplicationJsonLd, getPrivacyMessage, toJsonLdScript } from '../../seo/localized-seo';
 import { rootRoute } from '../__root';
 
 export const localizedToolRoute = createRoute({
@@ -15,7 +14,7 @@ export const localizedToolRoute = createRoute({
     const locale = getLocale(validLocale);
     if (!tool) return { meta: [{ title: '404 | FLIXO' }, { name: 'robots', content: 'noindex,nofollow' }] };
     const translated = locale.tools[tool.id] ?? { title: tool.title, description: tool.description };
-    const canonicalPath = localePath(validLocale, tool.path);
+    const canonicalUrl = absoluteLocaleUrl(validLocale, tool.path);
     const links = buildHreflangLinks(tool.path).map((link) => ({ rel: link.rel, hrefLang: link.hreflang, href: link.href }));
     const schema = buildWebApplicationJsonLd(validLocale, tool.id);
     return {
@@ -28,19 +27,20 @@ export const localizedToolRoute = createRoute({
         { property: 'og:type', content: 'website' },
         { name: 'content-language', content: validLocale },
       ],
-      links: [{ rel: 'canonical', href: canonicalPath }, ...links],
+      links: [{ rel: 'canonical', href: canonicalUrl }, ...links],
       scripts: schema ? [{ type: 'application/ld+json', children: toJsonLdScript(schema) }] : [],
     };
   },
   component: function LocalizedToolPage() {
     const { lang, tool } = localizedToolRoute.useParams();
-    const valid = isLocaleCode(lang); const localeCode = (valid ? lang : 'en') as LocaleCode;
-    const locale = getLocale(localeCode); const config = TOOLS_REGISTRY.find((item) => item.id === tool);
-    useEffect(() => { document.documentElement.lang = localeCode; document.documentElement.dir = getLanguageConfig(localeCode).dir; }, [localeCode]);
+    const valid = isLocaleCode(lang);
+    const localeCode = (valid ? lang : 'en') as LocaleCode;
+    const locale = getLocale(localeCode);
+    const config = TOOLS_REGISTRY.find((item) => item.id === tool);
     if (!valid || !config) return <main className="home-shell"><div className="home-container"><h1>404</h1></div></main>;
     const translated = locale.tools[config.id] ?? { title: config.title, description: config.description };
     const Component = config.component;
-    return <main dir={getLanguageConfig(localeCode).dir}>
+    return <main dir={getLanguageConfig(localeCode).dir} lang={localeCode}>
       <div className="home-container">
         <header className="mb-6">
           <h1>{translated.title}</h1>
