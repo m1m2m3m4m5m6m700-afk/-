@@ -28,7 +28,7 @@ export class SeedGLEngine {
   private readonly maxTextureSize: number;
 
   constructor(private readonly canvas: HTMLCanvasElement, fragmentSource: string) {
-    const gl = canvas.getContext('webgl', { premultipliedAlpha: false, preserveDrawingBuffer: false });
+    const gl = canvas.getContext('webgl', { premultipliedAlpha: false, preserveDrawingBuffer: true });
     if (!gl) throw new Error('WebGL is not supported by this browser.');
     this.gl = gl;
     this.maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE) as number;
@@ -82,6 +82,7 @@ export class SeedGLEngine {
     gl.uniform1f(this.uniforms.highlights, settings.highlights / 100);
     gl.uniform1f(this.uniforms.shadows, settings.shadows / 100);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    gl.finish();
     const error = gl.getError();
     if (error !== gl.NO_ERROR) throw new Error(`GPU render failed (WebGL error ${error}).`);
   }
@@ -91,6 +92,7 @@ export class SeedGLEngine {
     const width = this.canvas.width;
     const height = this.canvas.height;
     const rgba = new Uint8Array(width * height * 4);
+    gl.finish();
     gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, rgba);
     const error = gl.getError();
     if (error !== gl.NO_ERROR) throw new Error(`GPU export failed (WebGL error ${error}).`);
