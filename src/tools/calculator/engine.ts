@@ -51,28 +51,43 @@ function tokenize(input: string): Token[] {
 }
 
 function toRpn(tokens: Token[]): Token[] {
-  const output: Token[] = []; const stack: Token[] = []; let prev: Token | undefined;
+  const output: Token[] = [];
+  const stack: Token[] = [];
+  let prev: Token | undefined;
+
   for (const token of tokens) {
-    if (token.kind === "number") output.push(token);
-    else if (token.kind === "function") stack.push(token);
-    else if (token.kind === "leftParen") stack.push(token);
-    else if (token.kind === "rightParen") {
+    if (token.kind === "number") {
+      output.push(token);
+    } else if (token.kind === "function") {
+      stack.push(token);
+    } else if (token.kind === "leftParen") {
+      stack.push(token);
+    } else if (token.kind === "rightParen") {
       while (stack.length && stack.at(-1)?.kind !== "leftParen") output.push(stack.pop()!);
       if (stack.at(-1)?.kind !== "leftParen") throw new Error("Mismatched parentheses");
-      stack.pop(); if (stack.at(-1)?.kind === "function") output.push(stack.pop()!);
-    } else {
+      stack.pop();
+      if (stack.at(-1)?.kind === "function") output.push(stack.pop()!);
+    } else if (token.kind === "operator") {
       let operator = token.value;
       if (operator === "-" && (!prev || prev.kind === "operator" || prev.kind === "leftParen")) operator = "u-";
       while (stack.at(-1)?.kind === "operator") {
         const top = stack.at(-1)!.value;
         const pop = PRECEDENCE[top]! > PRECEDENCE[operator]! || (PRECEDENCE[top] === PRECEDENCE[operator] && !RIGHT_ASSOCIATIVE.has(operator));
-        if (!pop) break; output.push(stack.pop()!);
+        if (!pop) break;
+        output.push(stack.pop()!);
       }
       stack.push({ kind: "operator", value: operator });
+    } else {
+      throw new Error("Unexpected token");
     }
     prev = token;
   }
-  while (stack.length) { const token = stack.pop()!; if (token.kind === "leftParen") throw new Error("Mismatched parentheses"); output.push(token); }
+
+  while (stack.length) {
+    const token = stack.pop()!;
+    if (token.kind === "leftParen") throw new Error("Mismatched parentheses");
+    output.push(token);
+  }
   return output;
 }
 
