@@ -12,13 +12,13 @@ const locales = ['en','zh','hi','es','fr','ar','bn','pt','ru','ur','id','de','ja
 const rtl = new Set(['ar', 'ur']);
 const errors = [];
 const read = (file) => fs.readFileSync(file, 'utf8');
-const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&');
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const config = read(configPath);
 const tools = read(toolsPath);
 const seo = read(seoPath);
 const route = read(routePath);
-const toolIds = [...tools.matchAll(/\\bid:\\s*['"]([^'"]+)['"]/g)].map((match) => match[1]);
+const toolIds = [...tools.matchAll(/\bid:\s*['"]([^'"]+)['"]/g)].map((match) => match[1]);
 
 if (locales.length !== 20) errors.push(`[GLOBAL][I18N_MATRIX] Expected 20 locales, found ${locales.length}`);
 if (toolIds.length !== 22) errors.push(`[GLOBAL][TOOL_MATRIX] Expected 22 tools, found ${toolIds.length}`);
