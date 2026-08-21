@@ -5,13 +5,13 @@ test.describe("Flex interactive chat", () => {
     const requests: Array<{ message?: unknown; history?: unknown; locale?: unknown }> = [];
     let responseNumber = 0;
 
-    await page.route("**/api/chat", async (route) => {
+    await page.route(/\/api\/chat(?:\?.*)?$/, async (route) => {
       const request = route.request();
       requests.push(request.postDataJSON() as { message?: unknown; history?: unknown; locale?: unknown });
       responseNumber += 1;
       await route.fulfill({
         status: 200,
-        contentType: "application/json",
+        contentType: "application/json; charset=utf-8",
         body: JSON.stringify({
           reply: responseNumber === 1 ? "أهلًا! كيف أساعدك؟" : "نعم، أتذكر رسالتك السابقة داخل هذه المحادثة.",
           model: "playwright-mock",
@@ -26,7 +26,7 @@ test.describe("Flex interactive chat", () => {
     await expect(composer).toBeVisible();
 
     await composer.fill("مرحبا");
-    await composer.press("Enter");
+    await page.getByRole("button", { name: /send/i }).click();
 
     await expect(page.getByText("أهلًا! كيف أساعدك؟")).toBeVisible();
     expect(requests).toHaveLength(1);
@@ -34,7 +34,7 @@ test.describe("Flex interactive chat", () => {
     expect(Array.isArray(requests[0]?.history)).toBe(true);
 
     await composer.fill("هل تتذكرني؟");
-    await composer.press("Enter");
+    await page.getByRole("button", { name: /send/i }).click();
 
     await expect(page.getByText("نعم، أتذكر رسالتك السابقة داخل هذه المحادثة.")).toBeVisible();
     expect(requests).toHaveLength(2);
@@ -58,11 +58,11 @@ test.describe("Flex interactive chat", () => {
   test("supports quick prompts and a clean new conversation", async ({ page }) => {
     let responseNumber = 0;
 
-    await page.route("**/api/chat", async (route) => {
+    await page.route(/\/api\/chat(?:\?.*)?$/, async (route) => {
       responseNumber += 1;
       await route.fulfill({
         status: 200,
-        contentType: "application/json",
+        contentType: "application/json; charset=utf-8",
         body: JSON.stringify({
           reply: `mock-reply-${responseNumber}`,
           model: "playwright-mock",
