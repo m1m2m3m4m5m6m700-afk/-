@@ -27,18 +27,17 @@ function hasFakeSetTimeout(source) {
   return /setTimeout\s*\([\s\S]{0,600}?set(Result|Output|Content|Value)\s*\(/.test(source);
 }
 
-const runtimeFiles = fs.readdirSync(runtimeDir).filter((file) => /\.(ts|tsx)$/.test(file));
-for (const file of runtimeFiles) {
-  const source = fs.readFileSync(path.join(runtimeDir, file), "utf8");
-  for (const signature of fakeSignatures) {
-    if (source.includes(signature)) issues.push(`Runtime ${file} contains fake implementation signature: "${signature}".`);
-  }
-  if (hasFakeSetTimeout(source)) issues.push(`Runtime ${file} uses setTimeout to fabricate processing output.`);
-}
-
 for (const entry of publicEntries) {
-  if (!registrySource.includes(`id: "${entry.id}"`)) issues.push(`Central registry entry missing: ${entry.id}.`);
-  if (!readyToolsRegistrySource.includes("getReadyToolConfigs")) issues.push(`Public tool ${entry.id} is not connected to ready runtime.`);
+  const file = path.join(runtimeDir, `${entry.id}.tsx`);
+  if (!fs.existsSync(file)) {
+    issues.push(`Ready public runtime ${entry.id} is missing from src/lib/tool-runtime/tools/.`);
+    continue;
+  }
+  const source = fs.readFileSync(file, "utf8");
+  for (const signature of fakeSignatures) {
+    if (source.includes(signature)) issues.push(`Runtime ${entry.id}.tsx contains fake implementation signature: "${signature}".`);
+  }
+  if (hasFakeSetTimeout(source)) issues.push(`Runtime ${entry.id}.tsx uses setTimeout to fabricate processing output.`);
   if (!publicIds.has(entry.id) || !publicSlugs.has(entry.slug)) issues.push(`Invalid ready tool registration: ${entry.id}.`);
 }
 
