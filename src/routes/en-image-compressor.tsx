@@ -1,6 +1,6 @@
 import { createRoute } from '@tanstack/react-router';
 import { rootRoute } from './__root';
-import { ImageCompressor } from '../tools/image-compressor';
+import { EnglishImageCompressorPage } from '../tools/image-compressor/locale-pages';
 
 export const enImageCompressorRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -13,9 +13,11 @@ export const enImageCompressorRoute = createRoute({
       { property: 'og:title', content: 'Compress Images Online Free | FLIXO' },
       { property: 'og:description', content: 'Reduce image file size in your browser with quality and dimension controls.' },
       { property: 'og:type', content: 'website' },
+      { property: 'og:url', content: '/en/image-compressor' },
       { name: 'twitter:card', content: 'summary' },
     ],
     links: [
+      { rel: 'canonical', href: '/en/image-compressor' },
       { rel: 'alternate', hrefLang: 'en', href: '/en/image-compressor' },
       { rel: 'alternate', hrefLang: 'ar', href: '/ar/image-compressor' },
       { rel: 'alternate', hrefLang: 'x-default', href: '/en/image-compressor' },
@@ -26,12 +28,14 @@ export const enImageCompressorRoute = createRoute({
         '@context': 'https://schema.org',
         '@type': 'WebApplication',
         name: 'FLIXO Image Compressor',
+        url: '/en/image-compressor',
         applicationCategory: 'MultimediaApplication',
         operatingSystem: 'Any',
         description: 'Compress JPG, PNG, and WebP images online in your browser.',
         inLanguage: 'en',
+        isAccessibleForFree: true,
       }),
     }],
   }),
-  component: () => <ImageCompressor locale="en" />,
+  component: EnglishImageCompressorPage,
 });
