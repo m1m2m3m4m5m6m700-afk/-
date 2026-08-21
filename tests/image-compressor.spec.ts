@@ -2,6 +2,14 @@ import { expect, test } from '@playwright/test';
 
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800"><rect width="1200" height="800" fill="#223344"/><circle cx="300" cy="220" r="180" fill="#67e8f9"/><circle cx="850" cy="560" r="260" fill="#164e63"/><text x="600" y="430" text-anchor="middle" fill="white" font-size="110" font-family="sans-serif">FLIXO</text></svg>`;
 
+function outputFormat(page: Parameters<typeof test>[1] extends never ? never : any, value: string) {
+  return page.locator('select').first().selectOption(value);
+}
+
+function control(page: any, text: string) {
+  return page.locator('label').filter({ hasText: text }).locator('input');
+}
+
 test('English image compressor produces a real WebP output', async ({ page }) => {
   await page.goto('/en/image-compressor');
   await expect(page.getByRole('heading', { name: 'Compress Images Online' })).toBeVisible();
@@ -18,9 +26,65 @@ test('English image compressor produces a real WebP output', async ({ page }) =>
   await expect(download).toHaveAttribute('download', 'flixo-compressed.webp', { timeout: 15000 });
   await expect(page.getByText(/smaller file size/)).toBeVisible({ timeout: 15000 });
   await expect(page.getByRole('complementary').getByText('WebP', { exact: true })).toBeVisible({ timeout: 15000 });
+  await expect(page.getByRole('complementary').getByText('1200 × 800', { exact: true })).toBeVisible();
 
   const href = await download.getAttribute('href');
   expect(href).toMatch(/^blob:/);
+});
+
+test('PNG output and resizing produce the requested dimensions', async ({ page }) => {
+  await page.goto('/en/image-compressor');
+  await page.locator('#image-file').setInputFiles({ name: 'source.svg', mimeType: 'image/svg+xml', buffer: Buffer.from(svg) });
+  await outputFormat(page, 'image/png');
+  await control(page, 'Max width').fill('600');
+  await page.getByRole('button', { name: 'Compress image' }).click();
+
+  const download = page.getByRole('link', { name: 'Download image' });
+  await expect(download).toHaveAttribute('download', 'flixo-compressed.png', { timeout: 15000 });
+  await expect(page.getByRole('complementary').getByText('PNG', { exact: true })).toBeVisible();
+  await expect(page.getByRole('complementary').getByText('600 × 400', { exact: true })).toBeVisible();
+  await expect(download).toHaveAttribute('href', /^(blob:)/);
+});
+
+test('Target size optimization respects a safe size ceiling', async ({ page }) => {
+  await page.goto('/en/image-compressor');
+  await page.locator('#image-file').setInputFiles({ name: 'source.svg', mimeType: 'image/svg+xml', buffer: Buffer.from(svg) });
+  await control(page, 'Target size (KB)').fill('20');
+  await page.getByRole('button', { name: 'Compress image' }).click();
+
+  await expect(page.getByRole('link', { name: 'Download image' })).toHaveAttribute('download', 'flixo-compressed.webp', { timeout: 15000 });
+  await expect(page.getByRole('complementary').getByText(/^After$/, { exact: true })).toBeHidden();
+  const after = page.getByRole('complementary').locator('dd').nth(1);
+  await expect(after).toContainText(/KB|B/);
+  const afterText = await after.textContent();
+  const match = afterText?.match(/([0-9.]+)\s*(KB|B)/);
+  expect(match).not.toBeNull();
+  const sizeBytes = match?.[2] === 'KB' ? Number(match[1]) * 1024 : Number(match?.[1]);
+  expect(sizeBytes).toBeLessThanOrEqual(20 * 1024);
+});
+
+test('Batch processing produces a ZIP for multiple images', async ({ page }) => {
+  await page.goto('/en/image-compressor');
+  await page.locator('#image-file').setInputFiles([
+    { name: 'one.svg', mimeType: 'image/svg+xml', buffer: Buffer.from(svg) },
+    { name: 'two.svg', mimeType: 'image/svg+xml', buffer: Buffer.from(svg) },
+  ]);
+  await expect(page.getByText('2 images selected')).toBeVisible();
+  await page.getByRole('button', { name: 'Compress all to ZIP' }).click();
+
+  const download = page.getByRole('link', { name: 'Download ZIP' });
+  await expect(download).toHaveAttribute('download', 'flixo-compressed-images.zip', { timeout: 15000 });
+  await expect(page.getByRole('complementary').getByText('2', { exact: true })).toBeVisible();
+  await expect(download).toHaveAttribute('href', /^(blob:)/);
+});
+
+test('Input limit rejects oversized files before processing', async ({ page }) => {
+  await page.goto('/en/image-compressor');
+  const oversized = Buffer.alloc(10 * 1024 * 1024 + 1, 0);
+  await page.locator('#image-file').setInputFiles({ name: 'oversized.jpg', mimeType: 'image/jpeg', buffer: oversized });
+
+  await expect(page.getByRole('alert')).toContainText('Some files were skipped');
+  await expect(page.getByRole('button', { name: 'Compress image' })).toBeDisabled();
 });
 
 test('Arabic image compressor exposes localized SEO and output controls', async ({ page }) => {
