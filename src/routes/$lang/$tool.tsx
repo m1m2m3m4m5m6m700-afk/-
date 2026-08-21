@@ -1,6 +1,6 @@
 import { createRoute } from '@tanstack/react-router';
 import { getLanguageConfig, isLocaleCode, type LocaleCode } from '../../config/i18n';
-import { getLocale, localePath } from '../../i18n';
+import { getLocale } from '../../i18n';
 import { TOOLS_REGISTRY } from '../../config/tools';
 import { absoluteLocaleUrl, buildHreflangLinks, buildWebApplicationJsonLd, getPrivacyMessage, toJsonLdScript } from '../../seo/localized-seo';
 import { rootRoute } from '../__root';
