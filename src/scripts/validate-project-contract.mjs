@@ -1,4 +1,4 @@
-// Strict project gate: architecture, CI, and tool verification contracts must agree.
+// Strict project gate: architecture, CI, and tool contracts must agree.
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -54,18 +54,24 @@ for (const script of [
 const lockfile = await read("package-lock.json");
 if (!lockfile.includes('"lockfileVersion": 3')) fail("package-lock.json must use lockfileVersion 3.");
 
-const workflow = await read(".github/workflows/tool-platform.yml");
+// CI is intentionally a single canonical workflow. Keep this contract aligned
+// with that source of truth instead of reviving deleted duplicate workflows.
+const workflow = await read(".github/workflows/ci.yml");
 for (const required of [
+  "pull_request:",
+  "actions/checkout@v5",
+  "actions/setup-node@v5",
+  "node-version-file: .nvmrc",
   "npm ci",
-  "npm run verify:foundation",
-  "npm run validate:performance",
-  "npm run test:desktop:flaky",
+  "npm run verify",
+  "npx playwright install --with-deps chromium",
   "if: failure()",
   "playwright-report",
   "test-results",
-]) if (!workflow.includes(required)) fail(`Tool Platform CI is missing required gate/diagnostic: ${required}`);
-if (!workflow.includes("actions/checkout@v5") || !workflow.includes("actions/setup-node@v5")) fail("CI actions must use checkout@v5 and setup-node@v5.");
-if (!workflow.includes("playwright install --with-deps chromium")) fail("Desktop CI must install a real Chromium browser.");
+  "node scripts/scan-secrets.mjs",
+  "github/codeql-action/init@v3",
+  "github/codeql-action/analyze@v3",
+]) if (!workflow.includes(required)) fail(`Canonical CI is missing required contract: ${required}`);
 
 const runtimeTypes = await read("src/lib/tool-runtime/types.ts");
 const platformFiles = await walk("src/lib/tool-platform", (p) => /\.(ts|tsx|mjs)$/.test(p));
