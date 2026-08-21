@@ -10,6 +10,7 @@
     "validate:sitemaps": "node scripts/validate-sitemaps.mjs",
     "lint:seo": "node scripts/lint-seo-i18n.mjs",
     "verify:i18n": "node scripts/verify-i18n-matrix.mjs",
+    "notify:indexnow": "node scripts/notify-indexnow.mjs",
     "build": "npm run generate:og && vite build && npm run generate:sitemap && npm run validate:sitemaps",
     "preview": "vite preview --host 0.0.0.0 --port 3000",
     "typecheck": "tsc --noEmit",
