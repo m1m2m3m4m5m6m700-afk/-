@@ -30,6 +30,7 @@ export const TOOLS_REGISTRY: readonly ToolConfig[] = Object.freeze([
   { id: 'exif-cleaner', title: 'EXIF Cleaner', path: '/en/exif-cleaner', description: 'Strip metadata by browser re-encoding.', isReady: true, component: lazy(() => import('@/tools/exif-cleaner')) },
   { id: 'svg-optimizer', title: 'SVG Optimizer', path: '/en/svg-optimizer', description: 'Minify SVG comments and whitespace.', isReady: true, component: lazy(() => import('@/tools/svg-optimizer')) },
   { id: 'mockup-generator', title: 'Mockup Generator', path: '/en/mockup-generator', description: 'Place images inside a simple device mockup.', isReady: true, component: lazy(() => import('@/tools/mockup-generator')) },
+  { id: 'seed', title: 'Seed', path: '/en/seed', description: 'Non-destructive GPU image adjustments with WebGL.', isReady: true, component: lazy(() => import('@/tools/seed')) },
 ]);
 
 export const getToolConfig = (id: string) => TOOLS_REGISTRY.find((tool) => tool.id === id);
