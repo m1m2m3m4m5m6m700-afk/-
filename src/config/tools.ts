@@ -1,5 +1,5 @@
 import { lazy, type ComponentType, type LazyExoticComponent } from "react";
-import { Clapperboard, FileImage, FileVideo, Languages, QrCode, Scissors, Sparkles } from "lucide-react";
+import { Clapperboard, FileImage, FileVideo, QrCode, Scissors, Sparkles } from "lucide-react";
 import type { ToolCategoryId, ToolInputKind, ToolOutputKind } from "@/lib/tool-platform/types";
 
 type ToolComponent = LazyExoticComponent<ComponentType>;
@@ -20,19 +20,6 @@ export interface ToolConfig {
 }
 
 export const TOOLS_REGISTRY: readonly ToolConfig[] = Object.freeze([
-  {
-    id: "translator",
-    title: "AI Translator",
-    category: "translation",
-    path: "/tools/translator",
-    component: lazy(() => import("@/components/tools/Translator").then((module) => ({ default: module.Translator }))),
-    icon: Languages,
-    description: "Translate text between 20+ languages with automatic detection.",
-    input: "text",
-    output: "download",
-    localOnly: false,
-    isReady: true,
-  },
   {
     id: "image-compressor",
     title: "Image Compressor",
