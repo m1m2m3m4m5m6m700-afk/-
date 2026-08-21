@@ -17,7 +17,7 @@ test('English image compressor produces a real WebP output', async ({ page }) =>
   const download = page.getByRole('link', { name: 'Download image' });
   await expect(download).toHaveAttribute('download', 'flixo-compressed.webp', { timeout: 15000 });
   await expect(page.getByText(/smaller file size/)).toBeVisible({ timeout: 15000 });
-  await expect(page.getByText('WebP', { exact: true })).toBeVisible({ timeout: 15000 });
+  await expect(page.getByRole('complementary').getByText('WebP', { exact: true })).toBeVisible({ timeout: 15000 });
 
   const href = await download.getAttribute('href');
   expect(href).toMatch(/^blob:/);
