@@ -6,7 +6,10 @@ test('English image compressor produces a real WebP output', async ({ page }) =>
   await page.goto('/en/image-compressor');
   await expect(page.getByRole('heading', { name: 'Compress Images Online' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'العربية' })).toHaveAttribute('href', '/ar/image-compressor');
-  await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', /Reduce JPG, PNG, and WebP/);
+  await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+    'content',
+    /Compress JPG, PNG, and WebP images online in your browser\./,
+  );
 
   await page.locator('#image-file').setInputFiles({ name: 'source.svg', mimeType: 'image/svg+xml', buffer: Buffer.from(svg) });
   await page.getByRole('button', { name: 'Compress image' }).click();
