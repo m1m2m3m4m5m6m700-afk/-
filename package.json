@@ -5,11 +5,12 @@
   "engines": {"node": "22.x"},
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 3000",
+    "generate:og": "node scripts/generate-og.mjs",
     "generate:sitemap": "node scripts/generate-sitemap.mjs",
     "validate:sitemaps": "node scripts/validate-sitemaps.mjs",
     "lint:seo": "node scripts/lint-seo-i18n.mjs",
     "verify:i18n": "node scripts/verify-i18n-matrix.mjs",
-    "build": "vite build && npm run generate:sitemap && npm run validate:sitemaps",
+    "build": "npm run generate:og && vite build && npm run generate:sitemap && npm run validate:sitemaps",
     "preview": "vite preview --host 0.0.0.0 --port 3000",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . && npm run lint:seo",
