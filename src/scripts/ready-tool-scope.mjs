@@ -2,13 +2,15 @@ import fs from "node:fs";
 import path from "node:path";
 
 const root = process.cwd();
-const manifestPath = path.join(root, "src/lib/tool-platform/publicDesktopTools.ts");
-const source = fs.readFileSync(manifestPath, "utf8");
+const registryPath = path.join(root, "src/config/tools.ts");
+const source = fs.readFileSync(registryPath, "utf8");
 
-const ids = [...source.matchAll(/\bid:\s*"([a-z0-9]+(?:-[a-z0-9]+)*)"/g)].map((match) => match[1]);
+const ids = [...source.matchAll(/\{\s*id:\s*"([a-z0-9]+(?:-[a-z0-9]+)*)"[\s\S]*?isReady:\s*(true|false),/g)]
+  .filter((match) => match[2] === "true")
+  .map((match) => match[1]);
 
 if (ids.length === 0) {
-  throw new Error("No public tool registrations found in publicDesktopTools.ts.");
+  throw new Error("No ready tools found in src/config/tools.ts.");
 }
 
 export const READY_TOOL_IDS = Object.freeze([...new Set(ids)]);
