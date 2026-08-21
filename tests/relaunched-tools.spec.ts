@@ -128,7 +128,6 @@ test.describe("ready tools — real output verification", () => {
     await expect(page.getByText(/fixture\.webm/)).toBeVisible({ timeout: 30_000 });
     const ranges = page.locator('input[type="range"]');
     await expect(ranges).toHaveCount(2);
-    const durationText = page.getByText(/fixture\.webm/).locator(".." );
     await setRange(ranges.nth(0), 0);
     await setRange(ranges.nth(1), 0.5);
 
