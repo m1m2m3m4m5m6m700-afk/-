@@ -19,16 +19,17 @@ const DEFAULT_STATE: SeedState = {
   crop: null,
 };
 
-function applyHistory<T extends object>(current: T, next: T, history: T[], index: number) {
+function pushHistory(next: SeedState, history: SeedState[], index: number) {
   const nextHistory = history.slice(0, index + 1);
-  nextHistory.push(next);
-  return { current, history: nextHistory, index: nextHistory.length - 1 };
+  if (JSON.stringify(nextHistory[nextHistory.length - 1]) !== JSON.stringify(next)) nextHistory.push(next);
+  return { history: nextHistory, index: nextHistory.length - 1 };
 }
 
 export default function SeedTool() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const engineRef = useRef<SeedGLEngine | null>(null);
   const imageUrlRef = useRef<string | null>(null);
+  const renderFrameRef = useRef<number | null>(null);
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [settings, setSettings] = useState<SeedState>(DEFAULT_STATE);
   const [history, setHistory] = useState<SeedState[]>([DEFAULT_STATE]);
@@ -36,12 +37,16 @@ export default function SeedTool() {
   const [error, setError] = useState('');
   const [isRendering, setIsRendering] = useState(false);
 
-  const render = useCallback(() => {
-    if (!canvasRef.current || !engineRef.current || !image) return;
+  const scheduleRender = useCallback(() => {
+    if (!engineRef.current || !image) return;
+    if (renderFrameRef.current !== null) cancelAnimationFrame(renderFrameRef.current);
     setIsRendering(true);
-    requestAnimationFrame(() => {
+    renderFrameRef.current = requestAnimationFrame(() => {
+      renderFrameRef.current = null;
       try {
         engineRef.current?.render(settings);
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : 'GPU rendering failed.');
       } finally {
         setIsRendering(false);
       }
@@ -53,35 +58,37 @@ export default function SeedTool() {
     try {
       engineRef.current?.destroy();
       const engine = new SeedGLEngine(canvasRef.current, fragmentSource);
-      engine.setImage(image);
-      engineRef.current = engine;
       canvasRef.current.width = image.naturalWidth;
       canvasRef.current.height = image.naturalHeight;
-      render();
+      engine.setImage(image);
+      engineRef.current = engine;
       setError('');
+      scheduleRender();
     } catch (cause) {
       engineRef.current?.destroy();
       engineRef.current = null;
       setError(cause instanceof Error ? cause.message : 'Unable to start GPU rendering.');
     }
     return () => {
+      if (renderFrameRef.current !== null) cancelAnimationFrame(renderFrameRef.current);
       engineRef.current?.destroy();
       engineRef.current = null;
     };
   }, [image]);
 
   useEffect(() => {
-    render();
-  }, [render]);
+    scheduleRender();
+  }, [scheduleRender]);
 
   useEffect(() => () => {
+    if (renderFrameRef.current !== null) cancelAnimationFrame(renderFrameRef.current);
     if (imageUrlRef.current) URL.revokeObjectURL(imageUrlRef.current);
   }, []);
 
   const updateSetting = <K extends keyof SeedState>(key: K, value: SeedState[K]) => {
     const next = { ...settings, [key]: value };
-    const result = applyHistory(settings, next, history, historyIndex);
-    setSettings(result.current === settings ? next : next);
+    const result = pushHistory(next, history, historyIndex);
+    setSettings(next);
     setHistory(result.history);
     setHistoryIndex(result.index);
   };
@@ -117,19 +124,20 @@ export default function SeedTool() {
   };
 
   const exportImage = async () => {
-    const source = canvasRef.current;
-    if (!source || !image) return;
-    const blob = await new Promise<Blob | null>((resolve) => source.toBlob(resolve, 'image/png'));
-    if (!blob) {
-      setError('Unable to export the image.');
-      return;
+    if (!engineRef.current || !image) return;
+    try {
+      setError('');
+      engineRef.current.render(settings);
+      const blob = await engineRef.current.exportPng();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = 'seed-edited.png';
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Unable to export the image.');
     }
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = 'seed-edited.png';
-    anchor.click();
-    URL.revokeObjectURL(url);
   };
 
   return (
@@ -171,7 +179,7 @@ export default function SeedTool() {
               <span className="capitalize">{key}</span>
               <span>{settings[key]}</span>
             </span>
-            <input type="range" min="-100" max="100" value={settings[key]} onChange={(event) => updateSetting(key, Number(event.target.value))} className="w-full" />
+            <input aria-label={key} type="range" min="-100" max="100" value={settings[key]} onChange={(event) => updateSetting(key, Number(event.target.value))} className="w-full" />
           </label>
         ))}
 
