@@ -91,3 +91,36 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npx playwright test --shard=${{ matrix.shard }}
+      - name: Upload E2E diagnostics
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-diagnostics-shard-${{ matrix.shard }}
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: warn
+          retention-days: 7
+
+  diagnostic-summary:
+    name: Diagnostic Summary
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    needs: [typecheck, lint, build, audit, security, e2e]
+    steps:
+      - name: Write CI summary
+        run: |
+          {
+            echo '## FLIXO CI Diagnostic Summary'
+            echo
+            echo '| Job | Result |'
+            echo '| --- | --- |'
+            echo '| TypeScript | ${{ needs.typecheck.result }} |'
+            echo '| ESLint | ${{ needs.lint.result }} |'
+            echo '| Build | ${{ needs.build.result }} |'
+            echo '| Audit | ${{ needs.audit.result }} |'
+            echo '| CodeQL | ${{ needs.security.result }} |'
+            echo '| E2E shards | ${{ needs.e2e.result }} |'
+            echo
+            echo 'Failed E2E shards upload traces, screenshots, video, HTML and JSON diagnostics as artifacts.'
+          } >> "$GITHUB_STEP_SUMMARY"
