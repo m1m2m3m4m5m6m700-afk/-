@@ -70,23 +70,15 @@ test("implemented PDF mega-tool variants return a real result", async ({ page })
       }, tool);
 
       if (outcome.type === "download") {
-        const downloadPromise = page.waitForEvent("download");
-        await page.evaluate(({ url, filename }) => {
-          const anchor = document.createElement("a");
-          anchor.href = url;
-          anchor.download = filename;
-          anchor.style.display = "none";
-          document.body.appendChild(anchor);
-          anchor.click();
-          anchor.remove();
-        }, { url: outcome.url, filename: outcome.filename });
-        const download = await downloadPromise;
-        await expect.poll(() => download.failure()).toBeNull();
-        const stream = await download.createReadStream();
-        if (!stream) throw new Error("PDF download did not provide a readable output stream.");
-        let bytes = 0;
-        for await (const chunk of stream) bytes += Buffer.byteLength(Buffer.from(chunk));
-        if (bytes === 0) throw new Error("Tool returned an empty PDF download.");
+        const payload = await page.evaluate(async (url) => {
+          const response = await fetch(url);
+          if (!response.ok) throw new Error(`PDF blob fetch failed with HTTP ${response.status}.`);
+          const bytes = new Uint8Array(await response.arrayBuffer());
+          const signature = new TextDecoder().decode(bytes.subarray(0, 5));
+          return { byteLength: bytes.byteLength, signature };
+        }, outcome.url);
+        if (payload.byteLength === 0) throw new Error("Tool returned an empty PDF download.");
+        if (payload.signature !== "%PDF-") throw new Error("Tool returned bytes that are not a PDF.");
       }
 
       expect(outcome.ok).toBe(true);
