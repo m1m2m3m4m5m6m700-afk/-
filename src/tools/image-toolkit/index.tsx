@@ -1,20 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
-import { convertImage, cropResizeImage, removeBackground, rasterToSvg, resizeImage, watermarkRemove, fillRemoveRegion } from './engine';
+import { convertImage, cropResizeImage, imageInfo, removeBackground, rasterToSvg, resizeImage, watermarkRemove, fillRemoveRegion } from './engine';
 import type { LocalToolId } from './engine';
 
 const DEFINITIONS: Record<Exclude<LocalToolId, 'ai-image-generator' | 'image-compressor'>, { title: string; description: string; accept: string }> = {
-  'background-remover': { title: 'Background Remover', description: 'Remove simple, uniform image backgrounds locally in your browser.', accept: 'image/png,image/jpeg,image/webp,image/svg+xml' },
-  'image-upscaler': { title: 'AI Image Upscaler', description: 'Increase image dimensions with high-quality browser resampling.', accept: 'image/png,image/jpeg,image/webp' },
+  'background-remover': { title: 'Background Remover', description: 'Remove connected, uniform backgrounds locally in your browser with edge-aware flood fill.', accept: 'image/png,image/jpeg,image/webp,image/svg+xml' },
+  'image-upscaler': { title: 'Image Upscaler', description: 'Increase image dimensions with high-quality browser resampling and controlled sharpening.', accept: 'image/png,image/jpeg,image/webp' },
   'image-converter': { title: 'Image Converter', description: 'Convert images between PNG, JPG, and WebP without uploading them.', accept: 'image/png,image/jpeg,image/webp' },
-  'image-to-text': { title: 'Image to Text OCR', description: 'Extract visible text from an image in your browser.', accept: 'image/png,image/jpeg,image/webp' },
-  'object-remover': { title: 'Object Remover', description: 'Remove a rectangular object region with local reconstruction.', accept: 'image/png,image/jpeg,image/webp' },
+  'image-to-text': { title: 'Image to Text OCR', description: 'Extract visible text from an image in your browser with OCR preprocessing.', accept: 'image/png,image/jpeg,image/webp' },
+  'object-remover': { title: 'Object Remover', description: 'Reconstruct a selected rectangular object region from surrounding pixels locally.', accept: 'image/png,image/jpeg,image/webp' },
   'crop-resize': { title: 'Crop & Resize', description: 'Crop an image and export it at exact dimensions.', accept: 'image/png,image/jpeg,image/webp' },
-  'watermark-remover': { title: 'Watermark Remover', description: 'Cover a selected watermark region locally with edge-color reconstruction.', accept: 'image/png,image/jpeg,image/webp' },
-  'raster-to-svg': { title: 'Raster to SVG', description: 'Convert a small raster image to a pixel-based SVG locally.', accept: 'image/png,image/jpeg,image/webp' },
+  'watermark-remover': { title: 'Watermark Remover', description: 'Reconstruct a selected watermark region locally with edge interpolation.', accept: 'image/png,image/jpeg,image/webp' },
+  'raster-to-svg': { title: 'Raster to SVG', description: 'Convert a small raster image to compact pixel-based SVG locally.', accept: 'image/png,image/jpeg,image/webp' },
 };
 
 type Props = { toolId: Exclude<LocalToolId, 'image-compressor'> };
-type Result = { blob: Blob; text?: string; fileName: string };
+type Result = { blob: Blob; text?: string; fileName: string; info?: { width: number; height: number } };
 type TesseractModule = { recognize(input: Blob, language: string): Promise<{ data: { text: string } }> };
 
 declare global { interface Window { Tesseract?: TesseractModule } }
@@ -38,6 +38,27 @@ function useObjectUrl(blob: Blob | null) {
   const url = useMemo(() => (blob ? URL.createObjectURL(blob) : ''), [blob]);
   useEffect(() => () => { if (url) URL.revokeObjectURL(url); }, [url]);
   return url;
+}
+
+async function preprocessForOcr(file: File): Promise<Blob> {
+  const image = await createImageBitmap(file);
+  const scale = Math.min(2.5, Math.max(1, 1600 / Math.max(image.width, image.height)));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(image.width * scale));
+  canvas.height = Math.max(1, Math.round(image.height * scale));
+  const context = canvas.getContext('2d', { willReadFrequently: true });
+  if (!context) throw new Error('Canvas is unavailable.');
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  const data = context.getImageData(0, 0, canvas.width, canvas.height);
+  for (let index = 0; index < data.data.length; index += 4) {
+    const luminance = 0.2126 * data.data[index] + 0.7152 * data.data[index + 1] + 0.0722 * data.data[index + 2];
+    const boosted = Math.max(0, Math.min(255, (luminance - 128) * 1.45 + 128));
+    data.data[index] = boosted;
+    data.data[index + 1] = boosted;
+    data.data[index + 2] = boosted;
+  }
+  context.putImageData(data, 0, 0);
+  return new Promise((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Could not prepare OCR input.')), 'image/png'));
 }
 
 export function ImageToolPage({ toolId }: Props) {
@@ -79,13 +100,15 @@ export function ImageToolPage({ toolId }: Props) {
         if (!response.ok) throw new Error('AI image endpoint is not configured or returned an error.');
         const blob = await response.blob();
         if (!blob.type.startsWith('image/')) throw new Error('AI endpoint did not return an image.');
-        setResult({ blob, fileName: 'flixo-ai-image.png' });
+        const info = await imageInfo(blob);
+        setResult({ blob, info, fileName: `flixo-ai-${info.width}x${info.height}.png` });
         return;
       }
 
       if (!file) throw new Error('Choose an image first.');
       let blob: Blob;
       let fileName = baseName(file.name);
+      let info: Result['info'];
 
       if (toolId === 'background-remover') {
         blob = await removeBackground(file, Number(tolerance) || 42);
@@ -100,7 +123,8 @@ export function ImageToolPage({ toolId }: Props) {
         fileName += outputFormat === 'image/jpeg' ? '.jpg' : outputFormat === 'image/png' ? '.png' : '.webp';
       } else if (toolId === 'image-to-text') {
         const tesseract = await ensureTesseract();
-        const ocr = await tesseract.recognize(file, 'eng+ara');
+        const prepared = await preprocessForOcr(file);
+        const ocr = await tesseract.recognize(prepared, 'eng+ara');
         const text = ocr.data.text;
         setResult({ blob: new Blob([text], { type: 'text/plain;charset=utf-8' }), text, fileName: `${baseName(file.name)}.txt` });
         return;
@@ -118,7 +142,8 @@ export function ImageToolPage({ toolId }: Props) {
         fileName += '.svg';
       }
 
-      setResult({ blob, fileName });
+      if (blob.type.startsWith('image/')) info = await imageInfo(blob);
+      setResult({ blob, info, fileName });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Tool failed.');
     } finally {
@@ -210,21 +235,18 @@ export function ImageToolPage({ toolId }: Props) {
               </button>
             </div>
             {error && <p role="alert" className="error-box">{error}</p>}
-            {toolId === 'image-to-text' && <p className="privacy-note">OCR loads Tesseract.js on demand and processes the selected image in the browser.</p>}
+            {toolId === 'image-to-text' && <p className="privacy-note">OCR loads Tesseract.js on demand, preprocesses the image, and processes the selected file in the browser.</p>}
             {isGenerator && <p className="privacy-note">Requires a configured FLIXO image-generation endpoint. No fake local “AI” fallback is used.</p>}
           </div>
 
           <aside className="result-card" aria-live="polite">
             <p className="image-tool-eyebrow">RESULT</p>
             {result ? (
-              result.text !== undefined ? (
-                <pre style={{ whiteSpace: 'pre-wrap' }}>{result.text || 'No text detected.'}</pre>
-              ) : (
-                <>
-                  {previewUrl && <img src={previewUrl} alt="Tool result" style={{ maxWidth: '100%', borderRadius: 12 }} />}
-                  <a className="primary-button" href={downloadUrl} download={result.fileName}>Download {result.fileName}</a>
-                </>
-              )
+              <>
+                {result.text !== undefined ? <pre style={{ whiteSpace: 'pre-wrap' }}>{result.text || 'No text detected.'}</pre> : previewUrl && <img src={previewUrl} alt="Tool result" style={{ maxWidth: '100%', borderRadius: 12 }} />}
+                {result.info && <p className="privacy-note">Output: {result.info.width} × {result.info.height}px · {Math.round(result.blob.size / 1024)} KB · {result.blob.type || 'application/octet-stream'}</p>}
+                <a className="primary-button" href={downloadUrl} download={result.fileName}>Download {result.fileName}</a>
+              </>
             ) : <p>No result yet.</p>}
           </aside>
         </section>
