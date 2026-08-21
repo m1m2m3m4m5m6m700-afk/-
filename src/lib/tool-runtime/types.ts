@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import type { ComponentType } from "react";
+import type { ComponentType, LazyExoticComponent } from "react";
 import type { ToolId, ToolSlug, ToolCategoryId } from "@/lib/tool-platform/types";
 
 export interface ToolFaqItem {
@@ -20,12 +20,14 @@ export interface ToolSeoData {
   examples?: string[];
 }
 
+export type ToolRuntimeComponent = ComponentType | LazyExoticComponent<ComponentType>;
+
 export interface ReadyToolRuntimeDefinition {
   toolId: ToolId;
   slug: ToolSlug;
   categoryId: ToolCategoryId;
   icon: LucideIcon;
-  component: ComponentType;
+  component: ToolRuntimeComponent;
   seoOverride?: Partial<ToolSeoData>;
   layoutDescription: string;
   layoutDescriptionKey?: string;
