@@ -5,6 +5,7 @@ export type CompressionOptions = {
   format: CompressionFormat;
   maxWidth?: number;
   maxHeight?: number;
+  targetSizeKB?: number;
 };
 
 export type CompressionResult = {
@@ -12,7 +13,11 @@ export type CompressionResult = {
   width: number;
   height: number;
   mimeType: CompressionFormat;
+  qualityUsed: number;
 };
+
+export const MAX_FILES = 20;
+export const MAX_INPUT_SIZE = 10 * 1024 * 1024;
 
 const SUPPORTED_INPUTS = new Set([
   'image/jpeg',
@@ -33,10 +38,51 @@ function getTargetSize(width: number, height: number, maxWidth?: number, maxHeig
   };
 }
 
-export async function compressImage(file: File, options: CompressionOptions): Promise<CompressionResult> {
-  if (!SUPPORTED_INPUTS.has(file.type)) {
-    throw new Error('Unsupported image format');
+function encode(canvas: HTMLCanvasElement, format: CompressionFormat, quality: number) {
+  return new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (result) => (result ? resolve(result) : reject(new Error('Image encoding failed'))),
+      format,
+      Math.min(1, Math.max(0.05, quality)),
+    );
+  });
+}
+
+async function encodeToTarget(
+  canvas: HTMLCanvasElement,
+  format: CompressionFormat,
+  quality: number,
+  targetBytes?: number,
+) {
+  if (!targetBytes || format === 'image/png') {
+    return { blob: await encode(canvas, format, quality), qualityUsed: quality };
   }
+
+  let low = 0.05;
+  let high = Math.min(1, Math.max(0.05, quality));
+  let bestBlob: Blob | null = null;
+  let bestQuality = low;
+
+  for (let attempt = 0; attempt < 7; attempt += 1) {
+    const candidateQuality = (low + high) / 2;
+    const candidate = await encode(canvas, format, candidateQuality);
+    if (candidate.size <= targetBytes) {
+      bestBlob = candidate;
+      bestQuality = candidateQuality;
+      low = candidateQuality;
+    } else {
+      high = candidateQuality;
+    }
+  }
+
+  if (bestBlob) return { blob: bestBlob, qualityUsed: bestQuality };
+  const fallback = await encode(canvas, format, 0.05);
+  return { blob: fallback, qualityUsed: 0.05 };
+}
+
+export async function compressImage(file: File, options: CompressionOptions): Promise<CompressionResult> {
+  if (!SUPPORTED_INPUTS.has(file.type)) throw new Error('Unsupported image format');
+  if (file.size > MAX_INPUT_SIZE) throw new Error('File is larger than the 10 MB browser limit');
 
   const bitmap = await createImageBitmap(file);
   try {
@@ -45,20 +91,27 @@ export async function compressImage(file: File, options: CompressionOptions): Pr
     canvas.width = size.width;
     canvas.height = size.height;
 
-    const context = canvas.getContext('2d');
+    const context = canvas.getContext('2d', { alpha: true });
     if (!context) throw new Error('Canvas is unavailable');
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = 'high';
 
+    if (options.format === 'image/jpeg') {
+      context.fillStyle = '#ffffff';
+      context.fillRect(0, 0, size.width, size.height);
+    }
     context.drawImage(bitmap, 0, 0, size.width, size.height);
 
-    const blob = await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob(
-        (result) => (result ? resolve(result) : reject(new Error('Image encoding failed'))),
-        options.format,
-        Math.min(1, Math.max(0.1, options.quality)),
-      );
-    });
+    const targetBytes = options.targetSizeKB && options.targetSizeKB > 0 ? options.targetSizeKB * 1024 : undefined;
+    const encoded = await encodeToTarget(canvas, options.format, options.quality, targetBytes);
 
-    return { blob, width: size.width, height: size.height, mimeType: options.format };
+    return {
+      blob: encoded.blob,
+      width: size.width,
+      height: size.height,
+      mimeType: options.format,
+      qualityUsed: encoded.qualityUsed,
+    };
   } finally {
     bitmap.close();
   }
