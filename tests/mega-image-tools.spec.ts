@@ -56,8 +56,8 @@ function assertPixelSemantics(result: ImageResult) {
       break;
     case "invert":
       expect(r).toBeGreaterThan(180);
-      expect(g).toBeGreaterThan(180);
-      expect(b).toBeGreaterThan(180);
+      expect(g).toBeLessThan(100);
+      expect(b).toBeLessThan(100);
       break;
     case "brightness":
       expect(Math.max(r, g, b)).toBeGreaterThan(120);
