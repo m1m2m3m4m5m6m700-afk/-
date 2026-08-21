@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createGateManifest, writeGateManifest } from './create-gate-manifest.mjs';
+import { assertGateManifestSchema } from './validate-gate-manifest-schema.mjs';
 
 const tool = process.env.TOOL;
 const gate = process.env.GATE;
@@ -30,6 +31,7 @@ const manifest = await createGateManifest({
   expectedRunId: runId,
 });
 
+await assertGateManifestSchema(manifest, `${tool}/${gate}`);
 await fs.mkdir(path.dirname(manifestPath), { recursive: true });
 await writeGateManifest(manifestPath, manifest);
-console.log(`Gate manifest created: ${manifest.manifestId}`);
+console.log(`Gate manifest created and schema-validated: ${manifest.manifestId}`);

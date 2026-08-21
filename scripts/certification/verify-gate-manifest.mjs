@@ -1,10 +1,18 @@
 import fs from 'node:fs/promises';
 import { computeSha256 } from './create-gate-manifest.mjs';
+import { assertGateManifestSchema } from './validate-gate-manifest-schema.mjs';
 
 const COMMIT = /^[a-f0-9]{40}$/;
 
 export async function verifyGateManifest(manifest, { evidencePath, expectedCommit = null, expectedRunId = null, now = new Date() } = {}) {
   const errors = [];
+
+  try {
+    await assertGateManifestSchema(manifest);
+  } catch (error) {
+    errors.push(error instanceof Error ? error.message : String(error));
+  }
+
   if (!manifest || manifest.schemaVersion !== 1) errors.push('unsupported schemaVersion');
   if (!manifest?.tool || !manifest?.gate) errors.push('tool/gate missing');
   if (!COMMIT.test(manifest?.commit ?? '')) errors.push('invalid commit');

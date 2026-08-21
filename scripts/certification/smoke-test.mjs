@@ -2,8 +2,13 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { createGateManifest } from './create-gate-manifest.mjs';
+import { validateGateManifestSchema } from './validate-gate-manifest-schema.mjs';
 import { verifyGateManifest } from './verify-gate-manifest.mjs';
+
+const execFileAsync = promisify(execFile);
 
 const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'flixo-cert-'));
 try {
@@ -16,6 +21,8 @@ try {
     evidencePath, expectedCommit: commit, expectedRunId: runId,
     now: new Date('2026-08-19T00:00:00.000Z')
   });
+  const schemaResult = await validateGateManifestSchema(manifest);
+  assert.equal(schemaResult.valid, true, schemaResult.errors.join('\n'));
   const result = await verifyGateManifest(manifest, {
     evidencePath,
     expectedCommit: commit,
@@ -24,6 +31,8 @@ try {
   });
   assert.equal(result.valid, true);
   assert.equal(result.integrity.valid, true);
+
+  await execFileAsync(process.execPath, ['--test', 'tests/certification/validate-baseline.test.mjs']);
   console.log('CERTIFICATION SMOKE TEST: PASS');
 } finally {
   await fs.rm(dir, { recursive: true, force: true });

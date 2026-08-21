@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://flixo.tools/schemas/baseline.schema.json",
+  "title": "Flixo Certification Baseline",
+  "description": "Canonical structure contract for frozen certification baselines.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "baselineId",
+    "tool",
+    "version",
+    "status",
+    "verdict",
+    "certification",
+    "gates",
+    "quality",
+    "performance",
+    "evidence",
+    "promotion"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "baselineId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{2,127}$" },
+    "tool": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{1,63}$" },
+    "version": { "type": "integer", "minimum": 1 },
+    "status": { "type": "string", "enum": ["certified", "retired"] },
+    "verdict": { "type": "string", "enum": ["CERTIFIED", "NOT_CERTIFIED"] },
+    "certification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commit", "runId", "certifiedAt", "expiresAt", "workflow"],
+      "properties": {
+        "commit": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+        "runId": { "type": "string", "pattern": "^[0-9]+$" },
+        "certifiedAt": { "type": "string", "format": "date-time" },
+        "expiresAt": { "type": "string", "format": "date-time" },
+        "workflow": { "type": "string", "pattern": "^https://github\\.com/.+/actions/runs/[0-9]+$" }
+      }
+    },
+    "gates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fast", "medium", "windows", "qr", "full"],
+      "properties": {
+        "fast": { "$ref": "#/$defs/gate" },
+        "medium": { "$ref": "#/$defs/gate" },
+        "windows": { "$ref": "#/$defs/gate" },
+        "qr": { "$ref": "#/$defs/gate" },
+        "full": { "$ref": "#/$defs/gate" }
+      }
+    },
+    "quality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidenceComplete", "independentOutputValidation", "repeatability", "regressionLocked"],
+      "properties": {
+        "evidenceComplete": { "type": "boolean" },
+        "independentOutputValidation": { "type": "boolean" },
+        "repeatability": { "type": "integer", "minimum": 1 },
+        "regressionLocked": { "type": "boolean" }
+      }
+    },
+    "performance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["baseline", "current", "regression"],
+      "properties": {
+        "baseline": { "$ref": "#/$defs/performance" },
+        "current": { "$ref": "#/$defs/performance" },
+        "regression": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "thresholdPercent"],
+          "properties": {
+            "status": { "type": "string", "enum": ["PASS", "FAIL", "NOT_APPLICABLE"] },
+            "thresholdPercent": { "type": "number", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifacts", "hashes", "integrity"],
+      "properties": {
+        "artifacts": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "hashes": { "type": "object" },
+        "integrity": { "type": "string", "enum": ["PASS", "FAIL"] }
+      }
+    },
+    "promotion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["previousBaseline", "previousCommit", "promotionStatus", "immutable"],
+      "properties": {
+        "previousBaseline": { "type": ["string", "null"] },
+        "previousCommit": { "type": ["string", "null"] },
+        "promotionStatus": { "type": "string", "enum": ["FROZEN", "PROMOTED", "RETIRED"] },
+        "immutable": { "type": "boolean" }
+      }
+    }
+  },
+  "$defs": {
+    "gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "runId", "evidenceSha256"],
+      "properties": {
+        "status": { "type": "string", "enum": ["success", "failure", "skipped"] },
+        "runId": { "type": "string", "pattern": "^[0-9]+$" },
+        "evidenceSha256": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
+    "performance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fastMs", "mediumMs", "browserMs"],
+      "properties": {
+        "fastMs": { "type": ["number", "null"], "minimum": 0 },
+        "mediumMs": { "type": ["number", "null"], "minimum": 0 },
+        "browserMs": { "type": ["number", "null"], "minimum": 0 }
+      }
+    }
+  }
+}

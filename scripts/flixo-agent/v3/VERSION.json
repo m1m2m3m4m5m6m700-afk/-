@@ -1,0 +1,8 @@
+{
+  "version": "3.0.0",
+  "name": "FLIXO CI Repair Agent v3",
+  "independent": true,
+  "importsOtherVersions": false,
+  "capabilities": ["cognitive-engine", "project-graph", "decision-memory", "deterministic-diagnosis", "strategic-planning", "conditional-gates", "dry-run", "safe-execute"],
+  "entrypoint": "index.mjs"
+}

@@ -1,0 +1,9 @@
+{
+  "version": "4.0.0",
+  "name": "FLIXO CI Repair Agent v4",
+  "mode": "experimental",
+  "autoApply": false,
+  "maxExperimentsPerRootCause": 3,
+  "requiresCIProof": true,
+  "protectMain": true
+}

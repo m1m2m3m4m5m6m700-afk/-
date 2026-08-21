@@ -1,10 +1,10 @@
 # FLIXO CI Repair Agent v3 — Architecture
 
-## هدف v3
+## Goal
 
-إضافة وعي سياقي وتخطيط متعدد الخطوات فوق Agent v1/v2 دون إعطاء LLM أو ML سلطة تجاوز العقود أو التحقق.
+Add contextual reasoning and multi-step planning above Agent v1/v2 without granting LLM or ML authority to bypass contracts or verification.
 
-## المسار الحالي
+## Current flow
 
 ```text
 CI failure
@@ -22,37 +22,37 @@ CI failure
 
 ## Cognitive Engine
 
-`cognitive-engine.mjs` حتمي في الإصدار الأول. يستخدم:
+`cognitive-engine.mjs` is deterministic in the first v3 implementation. It uses:
 
-- تشخيص `diagnose.mjs`.
-- علاقات Project Graph.
-- قرارات سابقة من Decision Log.
-- تشابهًا نصيًا حتميًا للحالات السابقة.
-- إشارات تأثير بسيطة للاعتماديات والـWorkflow.
+- `diagnose.mjs` classification.
+- Project Graph relationships.
+- Historical Decision Log records.
+- Deterministic textual similarity for historical cases.
+- Basic dependency/workflow impact signals.
 
-Semantic embeddings وVector DB مؤجلة حتى يثبت الأساس الحتمي.
+Semantic embeddings and Vector DB integration are intentionally deferred until this deterministic foundation is proven in CI.
 
 ## Strategic Planner
 
-`strategic-planner.mjs` ينتج خطوات مرتبطة بشروط:
+`strategic-planner.mjs` creates conditional steps:
 
-- لكل خطوة `dependsOn`.
-- لكل خطوة بوابة تحقق.
-- لا يوجد `autoApply` افتراضيًا.
-- لا تتجاوز الخطة ثلاث محاولات لنفس السبب الجذري.
-- حالات `UNKNOWN` تتحول إلى `manual-review` بدل التخمين.
+- Every step has `dependsOn`.
+- Every step declares a validation gate.
+- `autoApply` is always false at this layer.
+- The plan is bounded to six steps and three attempts per root cause.
+- `UNKNOWN` failures become `manual-review` rather than guessed repairs.
 
-## حدود الأمان
+## Safety boundaries
 
-- Verifier هو نقطة الحراسة النهائية.
-- Dependency changes تمر عبر `dependency-executor`.
-- Protected release workflow لا يدخل نطاق الإصلاح الاعتيادي.
-- CI الأخضر على SHA الناتج هو شرط الإثبات النهائي.
-- الذاكرة التاريخية تزيد الثقة لكنها لا تتغلب على الأدلة الحالية.
+- `verifier.mjs` remains the final guard.
+- Dependency changes use `dependency-executor.mjs`.
+- Protected release workflow remains outside normal repair scope.
+- Green CI on the resulting SHA is the final proof requirement.
+- Historical memory increases context but never overrides current evidence.
 
-## الطبقات المؤجلة
+## Deferred v3 layers
 
-بعد إثبات Cognitive Engine + Strategic Planner في CI:
+After Cognitive Engine + Strategic Planner are proven in CI:
 
 1. risk evaluator
 2. alternatives generator
@@ -60,4 +60,4 @@ Semantic embeddings وVector DB مؤجلة حتى يثبت الأساس الحت
 4. trust interface
 5. learning loop
 6. proactive health system
-7. optional LLM/semantic retrieval layer
+7. optional LLM / semantic retrieval layer

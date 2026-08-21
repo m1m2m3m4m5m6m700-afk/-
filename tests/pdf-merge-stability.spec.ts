@@ -19,6 +19,7 @@ async function readDownload(download: Download) {
 }
 
 async function certify(page: Page) {
+  // PDF Merge is a Pilot component, so CI exercises its dev-only certification harness rather than public tool registration.
   await page.goto("/tools/pdf-merge", { waitUntil: "domcontentloaded", timeout: 15_000 });
   await expect(page.locator('[data-pdf-merge-ready="true"]')).toHaveCount(1, { timeout: 10_000 });
 

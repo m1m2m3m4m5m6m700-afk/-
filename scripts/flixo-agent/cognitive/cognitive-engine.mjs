@@ -27,6 +27,7 @@ function overlapScore(a, b) {
 export function buildCognitiveAssessment({ log = '', context = {}, decisions = [] } = {}) {
   const diagnosis = diagnose(log);
   const decisionRecords = Array.isArray(decisions) ? decisions : [];
+  const queryTokens = tokens(log);
 
   const similarDecisions = decisionRecords
     .map((decision) => ({
@@ -39,16 +40,15 @@ export function buildCognitiveAssessment({ log = '', context = {}, decisions = [
     .map(({ decision, similarity }) => ({
       id: decision.id ?? null,
       outcome: decision.outcome ?? null,
-      selectedRemediation: decision.selectedRemediation ?? null,
+      selectedRemediation: decision.selectedRemediation ?? decision.selected ?? null,
       similarity: Number(similarity.toFixed(3)),
     }));
 
   const graph = context.projectGraph ?? { nodes: [], edges: [] };
   const affectedNodes = [];
-  const text = String(log).toLowerCase();
   for (const node of graph.nodes ?? []) {
     const haystack = [node.id, node.name, node.path, node.tool, node.workflow].filter(Boolean).join(' ').toLowerCase();
-    if (haystack && tokens(text).some((token) => haystack.includes(token))) affectedNodes.push(node);
+    if (haystack && queryTokens.some((token) => haystack.includes(token))) affectedNodes.push(node);
   }
 
   return {
@@ -64,5 +64,5 @@ export function buildCognitiveAssessment({ log = '', context = {}, decisions = [
 }
 
 export function rankHistoricalRepairs(assessment) {
-  return [...(assessment.similarDecisions ?? [])].sort((a, b) => b.similarity - a.similarity);
+  return [...(assessment?.similarDecisions ?? [])].sort((a, b) => b.similarity - a.similarity);
 }

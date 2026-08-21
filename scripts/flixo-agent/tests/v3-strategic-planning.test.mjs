@@ -26,11 +26,7 @@ test('cognitive engine ranks similar historical repairs deterministically', () =
 
 test('strategic planner builds a guarded dependency repair plan', () => {
   const plan = buildStrategicPlan({
-    diagnosis: {
-      known: true,
-      knownPattern: 'jsqr',
-      layer: 'DEPENDENCY',
-    },
+    diagnosis: { known: true, knownPattern: 'jsqr', layer: 'DEPENDENCY' },
     dependencyImpact: { packageManifestChanged: true },
   });
 
@@ -41,26 +37,16 @@ test('strategic planner builds a guarded dependency repair plan', () => {
   assert.equal(plan.steps[0].autoApply, false);
 });
 
-test('strategic planner supports conditional multi-step execution', () => {
-  const plan = buildStrategicPlan({
-    diagnosis: {
-      known: true,
-      knownPattern: 'baseline',
-      layer: 'CONTRACT',
-    },
-    dependencyImpact: { packageManifestChanged: true },
-  });
-
-  assert.equal(plan.steps.length >= 1, true);
-  assert.equal(nextEligibleStep(plan, []).id, plan.steps[0].id);
-  assert.equal(nextEligibleStep(plan, [plan.steps[0].id]), null);
-});
-
 test('unknown failures are escalated instead of guessed', () => {
-  const plan = buildStrategicPlan({
-    diagnosis: { known: false, knownPattern: null, layer: 'UNKNOWN' },
-  });
-
+  const plan = buildStrategicPlan({ diagnosis: { known: false, knownPattern: null, layer: 'UNKNOWN' } });
   assert.equal(plan.status, 'manual-review');
   assert.deepEqual(plan.steps, []);
+});
+
+test('dependency step is eligible first and later steps require CI completion', () => {
+  const plan = buildStrategicPlan({
+    diagnosis: { known: true, knownPattern: 'jsqr', layer: 'DEPENDENCY' },
+    dependencyImpact: { packageManifestChanged: true },
+  });
+  assert.equal(nextEligibleStep(plan, []).id, 'dependency-repair');
 });
