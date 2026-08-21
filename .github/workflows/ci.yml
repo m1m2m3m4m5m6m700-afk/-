@@ -173,6 +173,20 @@ jobs:
       - run: npm run build
       - run: node src/scripts/validate-build-output.mjs
 
+  production-audit:
+    name: Production Dependency Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Production dependency audit
+        run: npm run audit:production
+
   e2e:
     name: E2E — ${{ matrix.name }}
     runs-on: ubuntu-latest
@@ -237,8 +251,8 @@ jobs:
 
   diagnostics:
     name: Failure Diagnosis
-    if: ${{ always() && (needs.contracts.result == 'failure' || needs.checks.result == 'failure' || needs.typecheck.result == 'failure' || needs.lint.result == 'failure' || needs.build.result == 'failure' || needs.e2e.result == 'failure' || needs.security.result == 'failure') }}
-    needs: [contracts, checks, typecheck, lint, build, e2e, security]
+    if: ${{ always() && (needs.contracts.result == 'failure' || needs.checks.result == 'failure' || needs.typecheck.result == 'failure' || needs.lint.result == 'failure' || needs.build.result == 'failure' || needs.production-audit.result == 'failure' || needs.e2e.result == 'failure' || needs.security.result == 'failure') }}
+    needs: [contracts, checks, typecheck, lint, build, production-audit, e2e, security]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -267,7 +281,7 @@ jobs:
   gate:
     name: CI Gate
     if: ${{ always() }}
-    needs: [contracts, checks, typecheck, lint, build, e2e, security]
+    needs: [contracts, checks, typecheck, lint, build, production-audit, e2e, security]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -278,11 +292,12 @@ jobs:
           TYPECHECK: ${{ needs.typecheck.result }}
           LINT: ${{ needs.lint.result }}
           BUILD: ${{ needs.build.result }}
+          PRODUCTION_AUDIT: ${{ needs.production-audit.result }}
           E2E: ${{ needs.e2e.result }}
           SECURITY: ${{ needs.security.result }}
         run: |
           set -euo pipefail
-          for result in "$CONTRACTS" "$CHECKS" "$TYPECHECK" "$LINT" "$BUILD" "$E2E" "$SECURITY"; do
+          for result in "$CONTRACTS" "$CHECKS" "$TYPECHECK" "$LINT" "$BUILD" "$PRODUCTION_AUDIT" "$E2E" "$SECURITY"; do
             test "$result" = success
           done
           echo "PARALLEL CI GATE: PASS"
