@@ -10,6 +10,8 @@ type Token =
   | { kind: "leftParen" }
   | { kind: "rightParen" };
 
+type OperatorToken = Extract<Token, { kind: "operator" }>;
+
 const FUNCTIONS = new Set(["sin", "cos", "tan", "asin", "acos", "atan", "sqrt", "abs", "ln", "log", "exp"]);
 const OPERATORS = new Set(["+", "-", "*", "/", "%", "^", "!"]);
 const PRECEDENCE: Record<string, number> = { "!": 5, "^": 4, "u-": 3, "*": 2, "/": 2, "%": 2, "+": 1, "-": 1 };
@@ -63,16 +65,26 @@ function toRpn(tokens: Token[]): Token[] {
     } else if (token.kind === "leftParen") {
       stack.push(token);
     } else if (token.kind === "rightParen") {
-      while (stack.length && stack.at(-1)?.kind !== "leftParen") output.push(stack.pop()!);
-      if (stack.at(-1)?.kind !== "leftParen") throw new Error("Mismatched parentheses");
+      while (stack.length) {
+        const top = stack.at(-1)!;
+        if (top.kind === "leftParen") break;
+        output.push(stack.pop()!);
+      }
+      const leftParen = stack.at(-1);
+      if (!leftParen || leftParen.kind !== "leftParen") throw new Error("Mismatched parentheses");
       stack.pop();
-      if (stack.at(-1)?.kind === "function") output.push(stack.pop()!);
+      const maybeFunction = stack.at(-1);
+      if (maybeFunction?.kind === "function") output.push(stack.pop()!);
     } else if (token.kind === "operator") {
       let operator = token.value;
       if (operator === "-" && (!prev || prev.kind === "operator" || prev.kind === "leftParen")) operator = "u-";
-      while (stack.at(-1)?.kind === "operator") {
-        const top = stack.at(-1)!.value;
-        const pop = PRECEDENCE[top]! > PRECEDENCE[operator]! || (PRECEDENCE[top] === PRECEDENCE[operator] && !RIGHT_ASSOCIATIVE.has(operator));
+      while (stack.length) {
+        const top = stack.at(-1);
+        if (!top || top.kind !== "operator") break;
+        const topValue = (top as OperatorToken).value;
+        const operatorPrecedence = PRECEDENCE[operator];
+        const topPrecedence = PRECEDENCE[topValue];
+        const pop = topPrecedence! > operatorPrecedence! || (topPrecedence === operatorPrecedence && !RIGHT_ASSOCIATIVE.has(operator));
         if (!pop) break;
         output.push(stack.pop()!);
       }
