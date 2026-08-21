@@ -1,20 +1,6 @@
-import { useEffect } from 'react';
 import { createRoute } from '@tanstack/react-router';
 import { rootRoute } from './__root';
-import { ImageCompressor } from '../tools/image-compressor';
-
-function ArabicImageCompressorPage() {
-  useEffect(() => {
-    document.documentElement.lang = 'ar';
-    document.documentElement.dir = 'rtl';
-    return () => {
-      document.documentElement.lang = 'en';
-      document.documentElement.dir = 'ltr';
-    };
-  }, []);
-
-  return <ImageCompressor locale="ar" />;
-}
+import { ArabicImageCompressorPage } from '../tools/image-compressor/ArabicImageCompressorPage';
 
 export const arImageCompressorRoute = createRoute({
   getParentRoute: () => rootRoute,
