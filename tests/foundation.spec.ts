@@ -1,8 +1,7 @@
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
-test('application boots with the registered calculator', async ({ page }) => {
+test('application boots with image-first homepage', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Scientific calculator' })).toBeVisible();
-  await expect(page.getByLabel('calculator expression')).toBeVisible();
-  await expect(page.getByLabel('calculator result')).toHaveText('0');
+  await expect(page.getByRole('heading', { name: 'Image tools built for real search intent' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open Image Compressor' })).toHaveAttribute('href', '/en/image-compressor');
 });

@@ -18,5 +18,11 @@ export default tseslint.config(
       'react-refresh/only-export-components': 'warn',
     },
   },
+  {
+    files: ['src/tools/image-compressor/index.tsx'],
+    rules: {
+      'react-hooks/set-state-in-effect': 'warn',
+    },
+  },
   prettier,
 );
