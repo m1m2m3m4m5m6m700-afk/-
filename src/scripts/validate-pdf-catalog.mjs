@@ -5,8 +5,6 @@ const root = process.cwd();
 const catalog = fs.readFileSync(path.join(root, "src/data/megaToolsCatalog.ts"), "utf8");
 const engine = fs.readFileSync(path.join(root, "src/lib/megaToolsEngine.ts"), "utf8");
 
-const strict = process.argv.includes("--strict");
-
 const declaredHandlers = [
   "inspect",
   "extract-text",
@@ -25,7 +23,7 @@ const declaredHandlers = [
 const implementedHandlers = declaredHandlers.filter((handler) =>
   engine.includes(`tool.handler === "${handler}"`),
 );
-const roadmapHandlers = declaredHandlers.filter(
+const missingImplementation = declaredHandlers.filter(
   (handler) => !implementedHandlers.includes(handler),
 );
 
@@ -41,10 +39,13 @@ const presetCount = presetsMatch ? (presetsMatch[1].match(/\[\"/g) ?? []).length
 const declaredPdfVariants = (catalog.match(/slug: `mega-pdf-/g) ?? []).length;
 
 const issues = [];
-const advisories = [];
 
 if (missingFromCatalog.length) {
   issues.push(`Missing declared PDF handlers from catalog: ${missingFromCatalog.join(", ")}`);
+}
+
+if (missingImplementation.length) {
+  issues.push(`Cataloged PDF handlers are not implemented: ${missingImplementation.join(", ")}`);
 }
 
 if (presetCount !== 11) {
@@ -55,24 +56,11 @@ if (declaredPdfVariants !== 0) {
   issues.push("PDF mega variants must remain generated from the canonical handler/preset catalog.");
 }
 
-if (roadmapHandlers.length) {
-  advisories.push(
-    `Roadmap PDF handlers are cataloged but not implemented: ${roadmapHandlers.join(", ")}`,
-  );
-}
-
 const expectedVariants = implementedHandlers.length * presetCount;
-const message = `PDF catalog audit: ${implementedHandlers.length} implemented handlers × ${presetCount} presets = ${expectedVariants} executable variants.`;
-console.log(message);
-
-for (const advisory of advisories) console.warn(`Advisory: ${advisory}`);
+console.log(`PDF catalog audit: ${implementedHandlers.length} implemented handlers × ${presetCount} presets = ${expectedVariants} executable variants.`);
 
 if (issues.length) {
   throw new Error(`PDF catalog validation failed:\n- ${issues.join("\n- ")}`);
 }
 
-if (strict && advisories.length) {
-  throw new Error(`PDF catalog strict validation failed:\n- ${advisories.join("\n- ")}`);
-}
-
-console.log(strict ? "PDF catalog strict validation passed." : "PDF catalog advisory validation passed.");
+console.log("PDF catalog validation passed.");
