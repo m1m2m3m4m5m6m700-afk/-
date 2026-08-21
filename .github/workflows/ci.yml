@@ -44,6 +44,8 @@ jobs:
     name: Full Verification (${{ github.ref_name }})
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    env:
+      NODE_OPTIONS: --import=${{ github.workspace }}/scripts/register-error-sink.mjs
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -69,6 +71,27 @@ jobs:
           mkdir -p diagnostics
           echo "Starting timed verification at $(date -u +%FT%TZ)"
           timeout --signal=TERM --kill-after=30s 55m node scripts/verify-timing.mjs 2>&1 | tee diagnostics/npm-verify.log
+      - name: Register canonical verification failure in error sink
+        if: failure()
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import { logErrorToSink } from './scripts/error-sink.mjs';
+
+          const details = fs.existsSync('diagnostics/npm-verify.log')
+            ? fs.readFileSync('diagnostics/npm-verify.log', 'utf8')
+            : 'Canonical verification failed before producing diagnostics/npm-verify.log';
+
+          logErrorToSink({
+            toolName: 'CI: canonical verification',
+            severity: 'CRITICAL',
+            signature: 'CI_CANONICAL_VERIFY_FAILURE',
+            rootCause: 'The canonical verification gate exited unsuccessfully on the exact GitHub Actions SHA.',
+            details,
+            sha: process.env.GITHUB_SHA,
+          });
+          NODE
       - name: Upload browser report
         if: always()
         uses: actions/upload-artifact@v4
@@ -87,6 +110,8 @@ jobs:
             diagnostics/verify-timing.json
             test-results/
             playwright-report/
+            errors.log.json
+            DECISION_LOG.md
           if-no-files-found: ignore
           retention-days: 14
       - name: Upload diagnostics on failure
@@ -99,6 +124,8 @@ jobs:
             diagnostics/
             test-results/
             playwright-report/
+            errors.log.json
+            DECISION_LOG.md
           if-no-files-found: ignore
           retention-days: 14
 
@@ -111,6 +138,8 @@ jobs:
     permissions:
       contents: read
       actions: read
+    env:
+      NODE_OPTIONS: --import=${{ github.workspace }}/scripts/register-error-sink.mjs
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -206,5 +235,7 @@ jobs:
             diagnostics/typecheck.log
             diagnostics/health.log
             diagnostics/out/v3-real-ci-diagnosis.json
+            errors.log.json
+            DECISION_LOG.md
           if-no-files-found: warn
           retention-days: 14
