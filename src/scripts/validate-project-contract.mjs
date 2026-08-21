@@ -54,8 +54,7 @@ for (const script of [
 const lockfile = await read("package-lock.json");
 if (!lockfile.includes('"lockfileVersion": 3')) fail("package-lock.json must use lockfileVersion 3.");
 
-// CI is intentionally a single canonical workflow. Keep this contract aligned
-// with that source of truth instead of reviving deleted duplicate workflows.
+// CI is intentionally a single canonical workflow with independent parallel gates.
 const workflow = await read(".github/workflows/ci.yml");
 for (const required of [
   "pull_request:",
@@ -63,15 +62,22 @@ for (const required of [
   "actions/setup-node@v5",
   "node-version-file: .nvmrc",
   "npm ci",
-  "npm run verify",
-  "npx playwright install --with-deps chromium",
-  "if: failure()",
+  "npm run validate-ci-contract",
+  "max-parallel: 24",
+  "typecheck:",
+  "lint:",
+  "build:",
+  "e2e:",
+  "security:",
+  "diagnostics:",
+  "gate:",
+  "node scripts/diagnose-ci-failure.mjs",
   "playwright-report",
   "test-results",
   "node scripts/scan-secrets.mjs",
   "github/codeql-action/init@v3",
   "github/codeql-action/analyze@v3",
-]) if (!workflow.includes(required)) fail(`Canonical CI is missing required contract: ${required}`);
+]) if (!workflow.includes(required)) fail(`Parallel CI is missing required contract: ${required}`);
 
 const runtimeTypes = await read("src/lib/tool-runtime/types.ts");
 const platformFiles = await walk("src/lib/tool-platform", (p) => /\.(ts|tsx|mjs)$/.test(p));
@@ -148,7 +154,7 @@ const requiredChecks = [
 ];
 const contractLines = contracts.split(/\r?\n/).map((line) => line.trim());
 for (const check of requiredChecks) {
-  if (!contractLines.some((line) => line === `"${check}",`)) {
+  if (!contractLines.some((line) => line === `\"${check}\",`)) {
     fail(`Shared certification check is missing from testContracts.ts: ${check}`);
   }
 }
