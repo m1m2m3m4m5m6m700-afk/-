@@ -5,10 +5,9 @@ const GENERATED_PATHS = [
   /^diagnostics(?:\/|$)/,
   /^errors\.log\.json$/,
   /^DECISION_LOG\.md$/,
+  /^src\/routeTree\.gen\.ts$/,
 ];
-function pathFromStatus(line) {
-  return line.replace(/^[ MADRCU?!]+/, "").split(" -> ").pop() ?? line;
-}
+function pathFromStatus(line) { return line.replace(/^[ MADRCU?!]+/, "").split(" -> ").pop() ?? line; }
 
 await main("check-git-integrity", () => {
   const sha = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
