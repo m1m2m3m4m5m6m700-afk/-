@@ -76,12 +76,54 @@ jobs:
       - uses: github/codeql-action/analyze@v4
 
   e2e:
-    name: E2E Shard ${{ matrix.shard }} / 6
+    name: E2E — ${{ matrix.tool }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6]
+        include:
+          - tool: image-compressor
+            spec: tests/image-compressor.spec.ts
+          - tool: background-remover
+            spec: tests/background-remover.spec.ts
+          - tool: image-upscaler
+            spec: tests/image-upscaler.spec.ts
+          - tool: image-converter
+            spec: tests/image-converter.spec.ts
+          - tool: ai-image-generator
+            spec: tests/ai-image-generator.spec.ts
+          - tool: object-remover
+            spec: tests/object-remover.spec.ts
+          - tool: watermark-remover
+            spec: tests/watermark-remover.spec.ts
+          - tool: image-cropper
+            spec: tests/image-cropper.spec.ts
+          - tool: image-to-svg
+            spec: tests/image-to-svg.spec.ts
+          - tool: image-ocr
+            spec: tests/image-ocr.spec.ts
+          - tool: photo-colorizer
+            spec: tests/photo-colorizer.spec.ts
+          - tool: background-blur
+            spec: tests/background-blur.spec.ts
+          - tool: passport-photo-maker
+            spec: tests/passport-photo-maker.spec.ts
+          - tool: watermark-adder
+            spec: tests/watermark-adder.spec.ts
+          - tool: meme-generator
+            spec: tests/meme-generator.spec.ts
+          - tool: collage-maker
+            spec: tests/collage-maker.spec.ts
+          - tool: image-effects
+            spec: tests/image-effects.spec.ts
+          - tool: exif-cleaner
+            spec: tests/exif-cleaner.spec.ts
+          - tool: svg-optimizer
+            spec: tests/svg-optimizer.spec.ts
+          - tool: mockup-generator
+            spec: tests/mockup-generator.spec.ts
+          - tool: seed
+            spec: tests/seed.spec.ts
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -90,12 +132,13 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npx playwright test --shard=${{ matrix.shard }}/6
+      - name: Run ${{ matrix.tool }} E2E
+        run: npx playwright test ${{ matrix.spec }}
       - name: Upload E2E diagnostics
         if: ${{ failure() }}
         uses: actions/upload-artifact@v6
         with:
-          name: e2e-diagnostics-shard-${{ matrix.shard }}-of-6
+          name: e2e-diagnostics-${{ matrix.tool }}
           path: |
             playwright-report/
             test-results/
@@ -120,7 +163,7 @@ jobs:
             echo '| Build | ${{ needs.build.result }} |'
             echo '| Audit | ${{ needs.audit.result }} |'
             echo '| CodeQL | ${{ needs.security.result }} |'
-            echo '| E2E shards | ${{ needs.e2e.result }} |'
+            echo '| Per-tool E2E | ${{ needs.e2e.result }} |'
             echo
-            echo 'Failed E2E shards upload traces, screenshots, video, HTML and JSON diagnostics as artifacts.'
+            echo 'E2E runs are isolated per tool; failed tools upload their own Playwright diagnostics artifact.'
           } >> "$GITHUB_STEP_SUMMARY"
