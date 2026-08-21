@@ -71,7 +71,8 @@ export default function SeedTool() {
       engineRef.current = engine;
     } catch (cause) {
       engineRef.current?.destroy(); engineRef.current = null;
-      setError(cause instanceof Error ? cause.message : 'Unable to start GPU rendering.');
+      const message = cause instanceof Error ? cause.message : 'Unable to start GPU rendering.';
+      queueMicrotask(() => setError(message));
     }
     return () => {
       if (renderFrameRef.current !== null) cancelAnimationFrame(renderFrameRef.current);
