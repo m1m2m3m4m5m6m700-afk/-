@@ -25,10 +25,12 @@ for (const [locale, dir] of languages) {
       const canonical = page.locator('link[rel="canonical"]');
       await expect(canonical).toHaveCount(1);
       expect(await canonical.getAttribute('href')).toContain(`/${locale}/${tool}`);
+      expect(await canonical.getAttribute('href')).toMatch(/^https:\/\//);
 
-      const alternateCount = await page.locator('link[rel="alternate"][hreflang]').count();
-      expect(alternateCount, `${locale}/${tool} must expose 20 locales + x-default`).toBe(expectedHreflang);
+      const alternates = page.locator('link[rel="alternate"][hreflang]');
+      expect(await alternates.count(), `${locale}/${tool} must expose 20 locales + x-default`).toBe(expectedHreflang);
       expect(await page.locator('link[rel="alternate"][hreflang="x-default"]').count()).toBe(1);
+      expect(await page.locator(`link[rel="alternate"][hreflang="${locale}"]`).count()).toBe(1);
 
       const schema = page.locator('script[type="application/ld+json"]');
       await expect(schema).toHaveCount(1);
@@ -38,6 +40,9 @@ for (const [locale, dir] of languages) {
       expect(json.applicationCategory).toBe('MultimediaApplication');
       expect(json.offers).toMatchObject({ price: '0', priceCurrency: 'USD' });
 
+      await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', new RegExp(`/og/${locale}/${tool}\\.svg$`));
+      await expect(page.locator('meta[property="og:locale"]')).not.toHaveAttribute('content', 'en_US');
+      await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute('content', 'summary_large_image');
       await expect(page.locator('[aria-label="Privacy notice"]')).toBeVisible();
       await expect(page.locator('main h1')).toBeVisible();
     }
@@ -46,4 +51,12 @@ for (const [locale, dir] of languages) {
 
 test('matrix size is exactly 440 localized routes', () => {
   expect(languages.length * tools.length).toBe(440);
+});
+
+test('invalid localized tool is not indexable', async ({ page }) => {
+  const response = await page.goto('/ar/not-a-real-tool', { waitUntil: 'domcontentloaded' });
+  expect(response?.status()).toBe(404);
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/);
+  await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+  await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
 });
