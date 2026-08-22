@@ -1,7 +1,9 @@
-import { lazyRouteComponent, createRoute } from '@tanstack/react-router';
+import type { ComponentType } from 'react';
+import { createRoute, lazyRouteComponent } from '@tanstack/react-router';
 import { rootRoute } from './__root';
 
-type LazyComponent = () => Promise<unknown>;
+type LazyComponentModule = Record<string, ComponentType<unknown>>;
+type LazyComponent = () => Promise<LazyComponentModule>;
 
 function imageToolRoute(path: string, title: string, description: string, importer: LazyComponent, exportName?: string) {
   return createRoute({
