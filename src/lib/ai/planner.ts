@@ -1,5 +1,6 @@
-import { TOOLS_REGISTRY, type ToolConfig } from '@/config/tools';
 import { resolveIntent } from '@/lib/intent/resolver';
+import { EXECUTABLE_PIPELINE_TOOL_IDS, EXECUTABLE_PIPELINE_TOOL_ID_SET } from '@/lib/workflows/pipeline-runner';
+import type { ToolConfig } from '@/config/tools';
 import { getWorkflow } from '@/lib/workflows/registry';
 
 export type ExecutionPlan = {
@@ -12,26 +13,21 @@ export type ExecutionPlan = {
 };
 
 export const MAX_STEPS = 4;
-
-export const PIPELINE_TOOL_IDS = new Set<string>(
-  TOOLS_REGISTRY
-    .filter((tool) => tool.capabilities.local && tool.capabilities.blobIn && tool.capabilities.blobOut)
-    .map((tool) => tool.id),
-);
+export const PIPELINE_TOOL_IDS = EXECUTABLE_PIPELINE_TOOL_ID_SET;
 
 function isExecutionPlan(value: unknown): value is ExecutionPlan {
   if (!value || typeof value !== 'object') return false;
   const plan = value as Record<string, unknown>;
-  if (typeof plan.workflowName !== 'string') return false;
-  if (!Number.isFinite(plan.confidence) || typeof plan.confidence !== 'number' || plan.confidence < 0 || plan.confidence > 1) return false;
+  if (typeof plan.workflowName !== 'string' || !plan.workflowName.trim()) return false;
+  if (typeof plan.confidence !== 'number' || !Number.isFinite(plan.confidence) || plan.confidence < 0 || plan.confidence > 1) return false;
   if (!Array.isArray(plan.steps) || plan.steps.length === 0 || plan.steps.length > MAX_STEPS) return false;
   return plan.steps.every((step) => {
     if (!step || typeof step !== 'object') return false;
     const item = step as Record<string, unknown>;
-    if (typeof item.toolId !== 'string' || !PIPELINE_TOOL_IDS.has(item.toolId)) return false;
+    if (typeof item.toolId !== 'string' || !EXECUTABLE_PIPELINE_TOOL_ID_SET.has(item.toolId)) return false;
     if (item.params !== undefined && (typeof item.params !== 'object' || item.params === null || Array.isArray(item.params))) return false;
     if (item.params && typeof item.params === 'object') {
-      return Object.values(item.params as Record<string, unknown>).every((value) => value === undefined || ['string', 'number', 'boolean'].includes(typeof value) && (typeof value !== 'number' || Number.isFinite(value)));
+      return Object.values(item.params as Record<string, unknown>).every((value) => value === undefined || (['string', 'number', 'boolean'].includes(typeof value) && (typeof value !== 'number' || Number.isFinite(value))));
     }
     return true;
   });
@@ -56,14 +52,15 @@ export function planFromWorkflow(workflowId: string, preset: Record<string, stri
     toolId: step.toolId,
     params: { ...(step.params ?? {}), ...(presetParams(step.toolId, preset) ?? {}) },
   }));
-  if (!steps.every((step) => PIPELINE_TOOL_IDS.has(step.toolId))) return null;
-  return { workflowName: workflow.title, confidence: 0.99, steps };
+  if (!steps.every((step) => EXECUTABLE_PIPELINE_TOOL_ID_SET.has(step.toolId))) return null;
+  const plan: ExecutionPlan = { workflowName: workflow.title, confidence: 0.99, steps };
+  return validateExecutionPlan(plan);
 }
 
 function planFromIntent(input: string): ExecutionPlan | null {
   const intent = resolveIntent(input);
   if (intent.kind === 'workflow' && intent.id) return planFromWorkflow(intent.id);
-  if (intent.kind === 'tool' && intent.id && PIPELINE_TOOL_IDS.has(intent.id)) {
+  if (intent.kind === 'tool' && intent.id && EXECUTABLE_PIPELINE_TOOL_ID_SET.has(intent.id)) {
     return { workflowName: 'Direct Tool', confidence: intent.confidence, steps: [{ toolId: intent.id }] };
   }
   return null;
@@ -76,7 +73,13 @@ export function validateExecutionPlan(plan: unknown): ExecutionPlan {
 
 export async function generateExecutionPlan(userPrompt: string): Promise<ExecutionPlan> {
   const prompt = userPrompt.trim();
+  if (!prompt) throw new Error('FLIXO needs an image goal before planning.');
+
+  // Deterministic routes are the primary product path. AI is only an enhancement for intents
+  // that cannot already be resolved safely and locally.
   const deterministic = planFromIntent(prompt);
+  if (deterministic) return deterministic;
+
   try {
     const response = await fetch('/api/ai/plan', {
       method: 'POST',
@@ -86,7 +89,8 @@ export async function generateExecutionPlan(userPrompt: string): Promise<Executi
     if (!response.ok) throw new Error('AI planner is unavailable.');
     return validateExecutionPlan(await response.json());
   } catch {
-    if (deterministic) return deterministic;
     throw new Error('FLIXO could not determine a safe executable plan.');
   }
 }
+
+export const EXECUTABLE_PIPELINE_TOOLS = [...EXECUTABLE_PIPELINE_TOOL_IDS];
