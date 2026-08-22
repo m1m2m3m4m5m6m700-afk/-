@@ -1,6 +1,4 @@
-export {};
-
-type WorkerMessage = {
+type ImageEffectsWorkerMessage = {
   blob: Blob;
   width: number;
   height: number;
@@ -10,14 +8,14 @@ type WorkerMessage = {
   grayscale: number;
 };
 
-type WorkerScope = {
-  onmessage: ((event: MessageEvent<WorkerMessage>) => void | Promise<void>) | null;
+type ImageEffectsWorkerScope = {
+  onmessage: ((event: MessageEvent<ImageEffectsWorkerMessage>) => void | Promise<void>) | null;
   postMessage(message: unknown): void;
 };
 
-const scope = self as unknown as WorkerScope;
+const imageEffectsWorkerScope = self as unknown as ImageEffectsWorkerScope;
 
-scope.onmessage = async (event: MessageEvent<WorkerMessage>) => {
+imageEffectsWorkerScope.onmessage = async (event: MessageEvent<ImageEffectsWorkerMessage>) => {
   try {
     if (typeof OffscreenCanvas === 'undefined') throw new Error('Image Effects Worker is unavailable.');
     const image = await createImageBitmap(event.data.blob);
@@ -28,8 +26,8 @@ scope.onmessage = async (event: MessageEvent<WorkerMessage>) => {
     context.drawImage(image, 0, 0, event.data.width, event.data.height);
     image.close();
     const output = await canvas.convertToBlob({ type: 'image/png', quality: 0.96 });
-    scope.postMessage({ ok: true, blob: output });
+    imageEffectsWorkerScope.postMessage({ ok: true, blob: output });
   } catch (error) {
-    scope.postMessage({ ok: false, error: error instanceof Error ? error.message : 'Image Effects Worker failed.' });
+    imageEffectsWorkerScope.postMessage({ ok: false, error: error instanceof Error ? error.message : 'Image Effects Worker failed.' });
   }
 };
