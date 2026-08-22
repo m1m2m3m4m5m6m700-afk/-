@@ -64,7 +64,6 @@ export const WORKFLOW_REGISTRY: readonly Workflow[] = Object.freeze([
     steps: [
       { toolId: 'image-upscaler', title: 'Improve quality', params: { scale: 1.5 } },
       { toolId: 'image-effects', title: 'Tune the look', optional: true, params: { brightness: 102, contrast: 104, saturate: 105 } },
-      { toolId: 'background-blur', title: 'Blur the background', optional: true },
     ],
   },
 ]);
