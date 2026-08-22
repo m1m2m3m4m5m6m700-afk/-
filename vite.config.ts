@@ -9,7 +9,14 @@ const allowedHosts = (process.env.VITE_ALLOWED_HOSTS ?? '')
   .filter(Boolean);
 
 export default defineConfig({
-  plugins: [tanstackStart(), react()],
+  plugins: [
+    tanstackStart({
+      router: {
+        virtualRouteConfig: './routes.ts',
+      },
+    }),
+    react(),
+  ],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
