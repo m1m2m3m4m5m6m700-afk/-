@@ -1,4 +1,6 @@
 import { expect, test } from '@playwright/test';
+import { assertToolOutputContract } from '../src/lib/contracts/tool-output';
+import { watermarkRemoverOutputContract } from '../src/tools/watermark-remover/output-contract';
 import { assertDownload, assertImageResult, uploadFixture } from './helpers/image-tool-fixture';
 
 test('watermark-remover: produces a valid cleaned PNG', async ({ page }) => {
@@ -10,6 +12,12 @@ test('watermark-remover: produces a valid cleaned PNG', async ({ page }) => {
   }
   await page.getByRole('button', { name: 'Run tool' }).click();
   const result = await assertImageResult(page);
+  assertToolOutputContract(watermarkRemoverOutputContract, {
+    mimeType: result.type,
+    byteLength: result.size,
+  });
   expect(result.type).toBe('image/png');
+  expect(result.width).toBeGreaterThan(0);
+  expect(result.height).toBeGreaterThan(0);
   await assertDownload(page, /\.png$/);
 });
