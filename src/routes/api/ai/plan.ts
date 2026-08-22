@@ -1,10 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { TOOLS_REGISTRY } from '@/config/tools';
+import { EXECUTABLE_PIPELINE_TOOL_IDS, EXECUTABLE_PIPELINE_TOOL_ID_SET } from '@/lib/workflows/executable-tools';
 
 const MAX_STEPS = 4;
-const PIPELINE_TOOL_IDS = TOOLS_REGISTRY
-  .filter((tool) => tool.capabilities.local && tool.capabilities.blobIn && tool.capabilities.blobOut)
-  .map((tool) => tool.id) as string[];
+const PIPELINE_TOOL_IDS = [...EXECUTABLE_PIPELINE_TOOL_IDS];
 const PLAN_SCHEMA = {
   type: 'object',
   properties: {
@@ -15,21 +13,27 @@ const PLAN_SCHEMA = {
   required: ['workflowName', 'confidence', 'steps'],
 } as const;
 
-const SYSTEM_PROMPT = `You are FLIXO's optional Intent Planner. The core product is deterministic local image processing.\nConvert the user's image goal into a short execution chain using ONLY these currently executable local pipeline tools:\n${PIPELINE_TOOL_IDS.map((id) => `- ${id}`).join('\\n')}\nRules:\\n1. Return JSON only and follow the schema exactly.\\n2. Maximum 4 steps.\\n3. Never invent tool IDs or cloud/AI processing steps.\\n4. Order transformations logically; compression/conversion should normally be last.\\n5. Keep params small and explicit.\\n6. The browser executes the returned plan locally; do not assume the image is uploaded.`;
+const SYSTEM_PROMPT = `You are FLIXO's optional Intent Planner.\nUse ONLY these locally executable tools:\n${PIPELINE_TOOL_IDS.map((id) => `- ${id}`).join('\\n')}\nRules:\\n1. Return JSON matching the schema exactly.\\n2. Maximum 4 steps.\\n3. Never invent tools or cloud/AI execution steps.\\n4. Order transformations logically; compression/conversion should normally be last.\\n5. Keep parameters small, explicit, and relevant to the selected tool.\\n6. The browser executes the returned plan locally.`;
 
 const WINDOW_MS = 60_000;
 const MAX_REQUESTS_PER_WINDOW = 10;
+const MAX_BUCKETS = 2048;
 const rateBuckets = new Map<string, { startedAt: number; count: number }>();
 
 function getClientKey(request: Request) {
-  const forwarded = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
-  return forwarded || request.headers.get('x-real-ip') || 'unknown';
+  return request.headers.get('x-real-ip')?.trim() || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
 }
 
 function consumeRateLimit(key: string) {
   const now = Date.now();
   const bucket = rateBuckets.get(key);
-  if (!bucket || now - bucket.startedAt >= WINDOW_MS) { rateBuckets.set(key, { startedAt: now, count: 1 }); return true; }
+  if (!bucket || now - bucket.startedAt >= WINDOW_MS) {
+    rateBuckets.set(key, { startedAt: now, count: 1 });
+    if (rateBuckets.size > MAX_BUCKETS) {
+      for (const [entryKey, entry] of rateBuckets) if (now - entry.startedAt >= WINDOW_MS) rateBuckets.delete(entryKey);
+    }
+    return true;
+  }
   if (bucket.count >= MAX_REQUESTS_PER_WINDOW) return false;
   bucket.count += 1;
   return true;
@@ -53,17 +57,17 @@ function readModelText(payload: unknown): string {
 function validatePlan(value: unknown) {
   if (!value || typeof value !== 'object') throw new Error('Invalid AI plan.');
   const plan = value as Record<string, unknown>;
-  if (typeof plan.workflowName !== 'string' || typeof plan.confidence !== 'number' || !Number.isFinite(plan.confidence) || !Array.isArray(plan.steps)) throw new Error('Invalid AI plan.');
+  if (typeof plan.workflowName !== 'string' || !plan.workflowName.trim() || typeof plan.confidence !== 'number' || !Number.isFinite(plan.confidence) || !Array.isArray(plan.steps)) throw new Error('Invalid AI plan.');
   if (plan.confidence < 0 || plan.confidence > 1) throw new Error('AI confidence is out of range.');
   if (plan.steps.length < 1 || plan.steps.length > MAX_STEPS) throw new Error('AI plan exceeds the step limit.');
   for (const step of plan.steps) {
     if (!step || typeof step !== 'object') throw new Error('AI plan contains an invalid step.');
     const item = step as Record<string, unknown>;
-    if (typeof item.toolId !== 'string' || !PIPELINE_TOOL_IDS.includes(item.toolId)) throw new Error('AI plan contains a non-executable tool.');
+    if (typeof item.toolId !== 'string' || !EXECUTABLE_PIPELINE_TOOL_ID_SET.has(item.toolId)) throw new Error('AI plan contains a non-executable tool.');
     const params = item.params;
     if (params !== undefined && (typeof params !== 'object' || params === null || Array.isArray(params))) throw new Error('AI plan contains invalid parameters.');
     if (params && typeof params === 'object') for (const [key, param] of Object.entries(params as Record<string, unknown>)) {
-      if (!['string', 'number', 'boolean'].includes(typeof param) || (typeof param === 'number' && !Number.isFinite(param))) throw new Error(`Invalid parameter: ${key}`);
+      if (!key || key.length > 64 || !['string', 'number', 'boolean'].includes(typeof param) || (typeof param === 'number' && !Number.isFinite(param))) throw new Error(`Invalid parameter: ${key}`);
     }
   }
   return plan;
@@ -94,7 +98,8 @@ export const Route = createFileRoute('/api/ai/plan')({
         if (!raw) return Response.json({ error: 'AI provider returned no structured output' }, { status: 502 });
         let parsed: unknown;
         try { parsed = JSON.parse(raw); } catch { return Response.json({ error: 'AI provider returned invalid JSON' }, { status: 502 }); }
-        return Response.json(validatePlan(parsed), { headers: { 'Cache-Control': 'no-store' } });
+        try { return Response.json(validatePlan(parsed), { headers: { 'Cache-Control': 'no-store' } }); }
+        catch (error) { return Response.json({ error: error instanceof Error ? error.message : 'Invalid AI plan.' }, { status: 502 }); }
       },
     },
   },
