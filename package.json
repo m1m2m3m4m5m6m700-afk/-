@@ -5,7 +5,7 @@
   "engines": {"node": "22.x"},
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 3000",
-    "build": "vite build",
+    "build": "npm run generate:sitemap && vite build",
     "preview": "vite preview --host 0.0.0.0 --port 3000",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
@@ -14,7 +14,7 @@
     "validate:i18n": "node scripts/validate-i18n.mjs",
     "validate:seo": "node scripts/validate-seo.mjs",
     "generate:sitemap": "node scripts/generate-sitemap.mjs",
-    "check": "npm run typecheck && npm run lint && npm run build && npm run validate:i18n && npm run validate:seo",
+    "check": "npm run typecheck && npm run lint && npm run validate:i18n && npm run validate:seo && npm run build",
     "test:e2e": "playwright test",
     "test": "npm run check && npm run test:e2e"
   },
