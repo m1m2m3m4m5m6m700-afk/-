@@ -1,1 +1,1 @@
-export { rootRoute as Route } from '../__root';
+export { Route } from '../__root';
