@@ -125,7 +125,7 @@ async function loadSourceImage(file: File): Promise<SourceImage> {
   }
 }
 
-export async function compressImage(file: File, options: CompressionOptions): Promise<CompressionResult> {
+async function compressImageOnMainThread(file: File, options: CompressionOptions): Promise<CompressionResult> {
   if (!SUPPORTED_INPUTS.has(file.type)) throw new Error('Unsupported image format');
   if (file.size > MAX_INPUT_SIZE) throw new Error('File is larger than the 10 MB browser limit');
 
@@ -168,4 +168,52 @@ export async function compressImage(file: File, options: CompressionOptions): Pr
   } finally {
     image.cleanup();
   }
+}
+
+type WorkerResponse =
+  | { ok: true; result: CompressionResult }
+  | { ok: false; error: string };
+
+function canUseCompressionWorker(file: File) {
+  return (
+    typeof Worker !== 'undefined' &&
+    typeof OffscreenCanvas !== 'undefined' &&
+    typeof createImageBitmap === 'function' &&
+    file.type !== 'image/svg+xml'
+  );
+}
+
+function compressImageInWorker(file: File, options: CompressionOptions): Promise<CompressionResult> {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(new URL('./compressor.worker.ts', import.meta.url), { type: 'module' });
+    const cleanup = () => worker.terminate();
+
+    worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
+      cleanup();
+      if (event.data.ok) resolve(event.data.result);
+      else reject(new Error(event.data.error));
+    };
+
+    worker.onerror = () => {
+      cleanup();
+      reject(new Error('The compression worker failed.'));
+    };
+
+    worker.postMessage({ file, options });
+  });
+}
+
+export async function compressImage(file: File, options: CompressionOptions): Promise<CompressionResult> {
+  if (!SUPPORTED_INPUTS.has(file.type)) throw new Error('Unsupported image format');
+  if (file.size > MAX_INPUT_SIZE) throw new Error('File is larger than the 10 MB browser limit');
+
+  if (canUseCompressionWorker(file)) {
+    try {
+      return await compressImageInWorker(file, options);
+    } catch {
+      // Keep a safe main-thread fallback for browsers with partial worker/canvas support.
+    }
+  }
+
+  return compressImageOnMainThread(file, options);
 }
