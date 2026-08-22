@@ -27,6 +27,7 @@ import {
   enWatermarkAdderRoute,
   enWatermarkRemoverRoute,
 } from './routes/image-tools';
+import { enQuickFlowRoute } from './routes/en-quickflow';
 import { indexRoute } from './routes/index';
 import { rootRoute } from './routes/__root';
 
@@ -34,6 +35,7 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   enImageCompressorRoute,
   arImageCompressorRoute,
+  enQuickFlowRoute,
   enBackgroundRemoverRoute,
   enAiImageGeneratorRoute,
   enImageUpscalerRoute,
