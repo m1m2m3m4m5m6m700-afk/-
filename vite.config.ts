@@ -13,6 +13,7 @@ export default defineConfig({
     tanstackStart({
       router: {
         virtualRouteConfig: './routes.ts',
+        routeFileIgnorePattern: /(^|\\/)-virtual(?:\\/|$)/,
       },
     }),
     react(),
