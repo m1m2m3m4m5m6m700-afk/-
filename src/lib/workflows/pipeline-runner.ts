@@ -95,7 +95,7 @@ async function processToolStep(toolId: string, inputBlob: Blob, params: Pipeline
     case 'image-effects':
       return effects(inputBlob, params);
     default:
-      throw new Error(`Tool \"${toolId}\" is not pipeline-enabled yet.`);
+      throw new Error(`Tool "${toolId}" is not pipeline-enabled yet.`);
   }
 }
 
