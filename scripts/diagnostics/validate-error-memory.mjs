@@ -11,6 +11,7 @@ const requiredSignatures = [
   'VERCEL_BUILD_RATE_LIMIT',
   'UNINTENDED_DEPENDENCY_EDIT',
 ];
+const allowedClasses = new Set(['CI/code', 'SEO/test', 'architecture', 'SEO/runtime', 'dependency', 'i18n', 'external', 'process/dependency']);
 
 if (!memory.includes('| Signature | Root cause | Durable fix | Class | Evidence |')) {
   throw new Error('Error memory verified-incident table header is missing or malformed.');
@@ -19,7 +20,7 @@ if (!memory.includes('| Signature | Root cause | Durable fix | Class | Evidence 
 const incidentSection = memory.split('## Verified external constraints')[0];
 const tableRows = incidentSection
   .split('\n')
-  .filter((line) => line.startsWith('| `'));
+  .filter((line) => /^\| `[^`]+` \|/.test(line));
 
 const signatures = tableRows
   .map((line) => line.split('|')[1]?.trim().replaceAll('`', ''))
@@ -30,6 +31,7 @@ if (duplicateSignatures.length) {
   throw new Error(`Error memory contains duplicate incident signatures: ${[...new Set(duplicateSignatures)].join(', ')}`);
 }
 
+const signaturePattern = /^[A-Z][A-Z0-9_]+$/;
 for (const [index, line] of tableRows.entries()) {
   const cells = line.split('|').map((cell) => cell.trim());
   if (cells.length !== 7) {
@@ -38,6 +40,14 @@ for (const [index, line] of tableRows.entries()) {
   const [, signature, rootCause, durableFix, classification, evidence] = cells;
   if (!signature || !rootCause || !durableFix || !classification || !evidence) {
     throw new Error(`Error memory incident row ${index + 1} is incomplete.`);
+  }
+  const normalizedSignature = signature.replaceAll('`', '');
+  const normalizedClass = classification.replaceAll('`', '');
+  if (!signaturePattern.test(normalizedSignature)) {
+    throw new Error(`Error memory incident row ${index + 1} has an invalid signature: ${normalizedSignature}`);
+  }
+  if (!allowedClasses.has(normalizedClass)) {
+    throw new Error(`Error memory incident row ${index + 1} has an invalid class: ${normalizedClass}`);
   }
 }
 
@@ -50,10 +60,16 @@ const constraintSection = memory.split('## Verified external constraints')[1]?.s
 if (!constraintSection.includes('`CANONICAL_ORIGIN_UNAVAILABLE`')) {
   throw new Error('Verified external constraint CANONICAL_ORIGIN_UNAVAILABLE is missing.');
 }
+if (!/^\| Constraint \| Impact \| Required handling \| Evidence \|/m.test(constraintSection)) {
+  throw new Error('External constraint table header is missing or malformed.');
+}
 
 const reviewSection = memory.split('## Architectural review findings')[1]?.split('## Error-memory contract')[0] ?? '';
 if (!reviewSection.includes('`INEFFECTIVE_LOCALE_DYNAMIC_IMPORT`')) {
   throw new Error('Architectural review finding INEFFECTIVE_LOCALE_DYNAMIC_IMPORT is missing.');
+}
+if (!/^\| Finding \| Prevention \| Evidence class \|/m.test(reviewSection)) {
+  throw new Error('Architectural review table header is missing or malformed.');
 }
 
 console.log(`Error memory validated: ${signatures.length} verified incidents; constraints and review findings classified separately.`);
