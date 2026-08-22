@@ -1,11 +1,14 @@
 import { HeadContent, Outlet, Scripts, createRootRoute } from '@tanstack/react-router';
+import { ToolErrorBoundary } from '@/components/shared/ToolErrorBoundary';
 
 export const rootRoute = createRootRoute({
   component: function RootLayout() {
     return (
       <>
         <HeadContent />
-        <Outlet />
+        <ToolErrorBoundary label="route-tree">
+          <Outlet />
+        </ToolErrorBoundary>
         <Scripts />
       </>
     );
