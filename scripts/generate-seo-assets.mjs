@@ -1,41 +1,22 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 
-const siteUrl = process.env.VITE_SITE_URL?.trim();
-if (!siteUrl) throw new Error('VITE_SITE_URL is required to generate production SEO assets.');
+const siteUrl = (process.env.VITE_SITE_URL || process.env.SEO_SITE_URL)?.trim();
+if (!siteUrl) {
+  console.warn('SEO assets skipped: configure VITE_SITE_URL to generate production sitemap and robots URLs.');
+  process.exit(0);
+}
 
 const origin = new URL(siteUrl);
 if (origin.protocol !== 'https:' || origin.hostname.endsWith('.vercel.app') || origin.hostname === 'localhost') {
-  throw new Error('VITE_SITE_URL must be the final HTTPS production domain, not localhost or a Vercel preview/temporary domain.');
+  throw new Error('SEO site URL must be the final HTTPS production domain, not localhost or a Vercel preview/temporary domain.');
 }
 
 const routes = [
-  '/',
-  '/en/image-compressor',
-  '/ar/image-compressor',
-  '/en/background-remover',
-  '/en/ai-image-generator',
-  '/en/image-upscaler',
-  '/en/image-converter',
-  '/en/image-to-text',
-  '/en/object-remover',
-  '/en/crop-resize',
-  '/en/watermark-remover',
-  '/en/raster-to-svg',
-  '/en/image-cropper',
-  '/en/image-ocr',
-  '/en/photo-colorizer',
-  '/en/background-blur',
-  '/en/passport-photo-maker',
-  '/en/watermark-adder',
-  '/en/meme-generator',
-  '/en/collage-maker',
-  '/en/image-effects',
-  '/en/exif-cleaner',
-  '/en/svg-optimizer',
-  '/en/mockup-generator',
-  '/en/image-to-svg',
-  '/en/seed',
-  '/en/pix',
+  '/', '/en/image-compressor', '/ar/image-compressor', '/en/background-remover', '/en/ai-image-generator',
+  '/en/image-upscaler', '/en/image-converter', '/en/image-to-text', '/en/object-remover', '/en/crop-resize',
+  '/en/watermark-remover', '/en/raster-to-svg', '/en/image-cropper', '/en/image-ocr', '/en/background-blur',
+  '/en/passport-photo-maker', '/en/watermark-adder', '/en/meme-generator', '/en/collage-maker', '/en/image-effects',
+  '/en/exif-cleaner', '/en/svg-optimizer', '/en/mockup-generator', '/en/image-to-svg', '/en/seed', '/en/pix',
 ];
 
 const absolute = (path) => new URL(path, origin).href;
