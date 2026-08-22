@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    branches: [main, feat/home-modern-simple-ui]
   workflow_dispatch:
 
 concurrency:
@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: read
+  contents: write
   security-events: write
 
 jobs:
@@ -21,11 +21,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      - name: Early integrity preflight
+        run: node scripts/preflight-integrity.mjs
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      - name: Generate TanStack route tree
+        run: npm run build
       - run: npm run typecheck
 
   lint:
@@ -33,6 +37,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      - name: Early integrity preflight
+        run: node scripts/preflight-integrity.mjs
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
@@ -45,6 +51,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      - name: Early integrity preflight
+        run: node scripts/preflight-integrity.mjs
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
@@ -100,6 +108,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - tool: home-quickflow
+            spec: tests/home-quickflow.spec.ts
           - tool: image-compressor
             spec: tests/image-compressor.spec.ts
           - tool: background-remover
@@ -196,23 +206,55 @@ jobs:
     runs-on: ubuntu-latest
     needs: [typecheck, lint, build, audit, socket, security, e2e, canonical-verify]
     steps:
-      - name: Write CI summary
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Write CI summary and update error memory
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TYPECHECK_RESULT: ${{ needs.typecheck.result }}
+          LINT_RESULT: ${{ needs.lint.result }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          AUDIT_RESULT: ${{ needs.audit.result }}
+          SOCKET_RESULT: ${{ needs.socket.result }}
+          SECURITY_RESULT: ${{ needs.security.result }}
+          E2E_RESULT: ${{ needs.e2e.result }}
+          CANONICAL_RESULT: ${{ needs.canonical-verify.result }}
         run: |
           {
             echo '## FLIXO CI Diagnostic Summary'
             echo
             echo '| Job | Result |'
             echo '| --- | --- |'
-            echo '| TypeScript | ${{ needs.typecheck.result }} |'
-            echo '| ESLint | ${{ needs.lint.result }} |'
-            echo '| Build | ${{ needs.build.result }} |'
-            echo '| Audit | ${{ needs.audit.result }} |'
-            echo '| Socket | ${{ needs.socket.result }} |'
-            echo '| CodeQL | ${{ needs.security.result }} |'
-            echo '| Per-tool E2E | ${{ needs.e2e.result }} |'
-            echo '| Canonical Verification | ${{ needs.canonical-verify.result }} |'
+            echo "| TypeScript | $TYPECHECK_RESULT |"
+            echo "| ESLint | $LINT_RESULT |"
+            echo "| Build | $BUILD_RESULT |"
+            echo "| Audit | $AUDIT_RESULT |"
+            echo "| Socket | $SOCKET_RESULT |"
+            echo "| CodeQL | $SECURITY_RESULT |"
+            echo "| Per-tool E2E | $E2E_RESULT |"
+            echo "| Canonical Verification | $CANONICAL_RESULT |"
             echo
             echo 'E2E runs are isolated per tool; failed tools upload their own Playwright diagnostics artifact.'
-            echo 'Diagnostics explain failures; Canonical Verification is the single promotion signal.'
+            echo 'Playwright retains trace, screenshot, and video on failure.'
+            echo 'Canonical Verification is the single promotion signal.'
+            echo 'Preflight catches route/config integrity failures before dependency installation.'
+            echo 'Runtime/API errors carry trace IDs and stable fingerprints for correlation.'
             echo 'Socket is fail-closed when SOCKET_SECURITY_API_KEY is configured and intentionally skipped otherwise.'
           } >> "$GITHUB_STEP_SUMMARY"
+
+          if [[ "$TYPECHECK_RESULT" != "success" || "$LINT_RESULT" != "success" || "$BUILD_RESULT" != "success" || "$AUDIT_RESULT" != "success" || "$SOCKET_RESULT" != "success" || "$SECURITY_RESULT" != "success" || "$E2E_RESULT" != "success" || "$CANONICAL_RESULT" != "success" ]]; then
+            printf '%s\n' \
+              "typecheck=$TYPECHECK_RESULT" \
+              "lint=$LINT_RESULT" \
+              "build=$BUILD_RESULT" \
+              "audit=$AUDIT_RESULT" \
+              "socket=$SOCKET_RESULT" \
+              "security=$SECURITY_RESULT" \
+              "e2e=$E2E_RESULT" \
+              "canonical=$CANONICAL_RESULT" \
+              "trace correlation: client uses x-flixo-trace-id + W3C traceparent; inspect failed E2E artifact for browser trace" \
+              | node scripts/record-ci-error-memory.mjs
+          fi

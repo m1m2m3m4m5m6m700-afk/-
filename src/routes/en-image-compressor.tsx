@@ -1,10 +1,7 @@
-import { createRoute } from '@tanstack/react-router';
-import { rootRoute } from './__root';
+import { createFileRoute } from '@tanstack/react-router';
 import { EnglishImageCompressorPage } from '../tools/image-compressor/locale-pages';
 
-export const enImageCompressorRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/en/image-compressor',
+export const Route = createFileRoute('/en/image-compressor')({
   head: () => ({
     meta: [
       { title: 'Compress Images Online Free | FLIXO' },

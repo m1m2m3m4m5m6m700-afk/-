@@ -2,7 +2,8 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests',
-  fullyParallel: true,
+  // E2E isolation contract: specs must not run in parallel against shared app state.
+  fullyParallel: false,
   workers: process.env.CI ? 2 : undefined,
   retries: 0,
   timeout: 15_000,

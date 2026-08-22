@@ -1,12 +1,12 @@
+/* global process, console */
+
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 const root = resolve(process.cwd());
 const failures = [];
-
 const readJson = async (path) => JSON.parse(await readFile(resolve(root, path), 'utf8'));
 const readText = async (path) => readFile(resolve(root, path), 'utf8');
-
 const manifest = await readJson('config/engineering-baseline.json');
 const pkg = await readJson('package.json');
 const ci = await readText('.github/workflows/ci.yml');
