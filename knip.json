@@ -1,0 +1,23 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "ignore": [
+    "src/routeTree.gen.ts",
+    "src/routes/-virtual/**",
+    "playwright-report/**",
+    "test-results/**",
+    ".stryker/**"
+  ],
+  "entry": [
+    "src/main.tsx",
+    "src/routes/**",
+    "scripts/**"
+  ],
+  "project": [
+    "src/**/*.{ts,tsx,mjs}",
+    "scripts/**/*.{mjs,js,ts}"
+  ],
+  "exclude": [
+    "dependencies",
+    "unlisted"
+  ]
+}
