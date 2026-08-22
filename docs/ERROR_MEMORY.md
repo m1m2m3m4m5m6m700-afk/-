@@ -114,3 +114,20 @@ The SVG decode fix is the active item. Do not start another image-tool implement
 - Client trace IDs are stored by runtime diagnostics and propagated through `x-flixo-trace-id`.
 
 ---
+
+## CI failure 2026-08-22T15:28:57.297Z
+- SHA: `eac2b5711646653ad48c7fd8839d6baea58a308c`
+- Run: [#1784](https://github.com/m1m2m3m4m5m6m700-afk/FLIXO-AI-TOOLS/actions/runs/32581566703)
+- Job: `diagnostic-summary`
+- Ref: `136/merge`
+
+### Extracted diagnostics
+- typecheck=failure
+- lint=failure
+- e2e=failure
+- trace correlation: client uses x-flixo-trace-id; inspect failed E2E artifact for browser trace
+
+### Correlation
+- Client trace IDs are stored by runtime diagnostics and propagated through `x-flixo-trace-id`.
+
+---
