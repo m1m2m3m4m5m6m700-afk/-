@@ -11,11 +11,10 @@ export type ExecutionPlan = {
   }>;
 };
 
-const MAX_STEPS = 4;
-const KNOWN_TOOLS = new Set<string>([
+export const MAX_STEPS = 4;
+export const PIPELINE_TOOL_IDS = new Set<string>([
   'background-remover', 'image-upscaler', 'image-cropper', 'image-compressor',
-  'image-converter', 'image-effects', 'background-blur', 'image-ocr',
-  'object-remover', 'watermark-remover', 'ai-image-generator', 'pix',
+  'image-converter', 'image-effects',
 ]);
 
 function isExecutionPlan(value: unknown): value is ExecutionPlan {
@@ -27,7 +26,7 @@ function isExecutionPlan(value: unknown): value is ExecutionPlan {
   return plan.steps.every((step) => {
     if (!step || typeof step !== 'object') return false;
     const item = step as Record<string, unknown>;
-    if (typeof item.toolId !== 'string' || !KNOWN_TOOLS.has(item.toolId)) return false;
+    if (typeof item.toolId !== 'string' || !PIPELINE_TOOL_IDS.has(item.toolId)) return false;
     if (item.params !== undefined && (typeof item.params !== 'object' || item.params === null)) return false;
     return true;
   });
@@ -47,25 +46,25 @@ function presetParams(toolId: ToolConfig['id'], preset: Record<string, string> =
 export function planFromWorkflow(workflowId: string, preset: Record<string, string> = {}): ExecutionPlan | null {
   const workflow = getWorkflow(workflowId);
   if (!workflow) return null;
-  return {
-    workflowName: workflow.title,
-    confidence: 0.99,
-    steps: workflow.steps.slice(0, MAX_STEPS).map((step) => ({
-      toolId: step.toolId,
-      params: { ...(step.params ?? {}), ...(presetParams(step.toolId, preset) ?? {}) },
-    })),
-  };
+  const steps = workflow.steps.slice(0, MAX_STEPS).map((step) => ({
+    toolId: step.toolId,
+    params: { ...(step.params ?? {}), ...(presetParams(step.toolId, preset) ?? {}) },
+  }));
+  if (!steps.every((step) => PIPELINE_TOOL_IDS.has(step.toolId))) return null;
+  return { workflowName: workflow.title, confidence: 0.99, steps };
 }
 
 function planFromIntent(input: string): ExecutionPlan | null {
   const intent = resolveIntent(input);
   if (intent.kind === 'workflow' && intent.id) return planFromWorkflow(intent.id);
-  if (intent.kind === 'tool' && intent.id) return { workflowName: 'Direct Tool', confidence: intent.confidence, steps: [{ toolId: intent.id }] };
+  if (intent.kind === 'tool' && intent.id && PIPELINE_TOOL_IDS.has(intent.id)) {
+    return { workflowName: 'Direct Tool', confidence: intent.confidence, steps: [{ toolId: intent.id }] };
+  }
   return null;
 }
 
 export function validateExecutionPlan(plan: unknown): ExecutionPlan {
-  if (!isExecutionPlan(plan)) throw new Error('AI returned an invalid FLIXO execution plan.');
+  if (!isExecutionPlan(plan)) throw new Error('FLIXO returned a plan containing an unsupported or non-executable tool.');
   return plan;
 }
 
@@ -81,6 +80,6 @@ export async function generateExecutionPlan(userPrompt: string): Promise<Executi
     return validateExecutionPlan(await response.json());
   } catch {
     if (deterministic) return deterministic;
-    throw new Error('FLIXO could not determine a safe execution plan.');
+    throw new Error('FLIXO could not determine a safe executable plan.');
   }
 }
