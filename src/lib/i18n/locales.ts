@@ -74,6 +74,15 @@ export function getToolLocale(id: string, locale: Locale) {
   return { title: item[locale], description: TOOL_DESCRIPTIONS[id]?.[locale] ?? '', keywords: item.keywords[locale] };
 }
 
+export const INTENT_I18N: Readonly<Record<string, { title: string; description: string; outcome: string; keywords: readonly string[] }>> = Object.freeze({
+  'salla-product-white-bg': { title: 'تجهيز صور منتجات سلة بخلفية نظيفة', description: 'جهّز صورة المنتج لمتجر سلة بمسار واضح لتحسين الخلفية والتأطير وإخراج الصورة للويب.', outcome: 'صورة منتج مربعة وجاهزة للعرض في المتجر.', keywords: ['صور منتجات سلة', 'خلفية بيضاء للمنتج', 'تجهيز صور متجر سلة'] },
+  'compress-id-photo-100kb': { title: 'تصغير صورة الهوية إلى حجم مناسب للرفع', description: 'خفّف حجم صورة الهوية أو المستند ضمن مسار بسيط يساعدك على الوصول إلى ملف أخف للأنظمة التي تفرض حدًا للحجم.', outcome: 'صورة أخف مناسبة لحدود الرفع.', keywords: ['تصغير صورة الهوية', 'ضغط صورة أقل من 100KB', 'تقليل حجم صورة الهوية'] },
+  'linkedin-profile-picture-hd': { title: 'تحسين صورة لينكدإن الشخصية', description: 'جهّز صورة شخصية احترافية للينكدإن عبر ضبط الإطار والحجم وتحسين الصورة ضمن مسار مختصر.', outcome: 'صورة شخصية واضحة ومركزة للاستخدام المهني.', keywords: ['تحسين صورة لينكدإن', 'صورة لينكدإن احترافية', 'تحسين صورة شخصية'] },
+  'instagram-product-photo': { title: 'تجهيز صورة منتج للسوشيال ميديا', description: 'حوّل صورة المنتج إلى مقاس مناسب للنشر على الشبكات الاجتماعية عبر قص واضح وضغط مناسب للويب.', outcome: 'صورة منتج جاهزة للنشر على السوشيال ميديا.', keywords: ['صورة منتج انستجرام', 'تجهيز صورة للسوشيال', 'صور متجر انستجرام'] },
+  'website-image-optimize-webp': { title: 'تحسين صورة الموقع وتحويلها إلى WebP', description: 'خفّف وزن الصورة واجعلها مناسبة للموقع عبر تحويلها وضغطها ضمن مسار مركز.', outcome: 'صورة أخف ومناسبة للاستخدام على الويب.', keywords: ['تحسين صور الموقع', 'تحويل الصورة إلى WebP', 'ضغط صور المواقع'] },
+  'print-photo-high-resolution': { title: 'تجهيز صورة للطباعة بدقة أعلى', description: 'ارفع دقة الصورة وجهّز أبعادها لمسار طباعة أو إخراج عالي الدقة دون الدخول في محرر معقد.', outcome: 'صورة بدقة أعلى جاهزة للخطوة التالية في الطباعة.', keywords: ['رفع دقة الصورة للطباعة', 'تجهيز الصورة للطباعة', 'تحسين صورة للطباعة'] },
+});
+
 export const HOMEPAGE_COPY = {
   en: { title: 'FLIXO | Fast, Local-First Image Workflows', description: 'Tell FLIXO the result you want. Use local-first image tools and focused workflows without learning a giant editor.' },
   ar: { title: 'FLIXO | مسارات صور سريعة ومحلية', description: 'أخبر FLIXO بالنتيجة التي تريدها. استخدم أدوات الصور والمسارات الذكية مع معالجة محلية عندما تدعمها الأداة.' },
