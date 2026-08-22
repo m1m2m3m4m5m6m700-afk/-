@@ -54,12 +54,10 @@ const routeTree = rootRoute.addChildren([
   enPixRoute, arPixRoute,
 ]);
 
-export const router = createRouter({ routeTree, defaultPreload: 'intent' });
-
 export function getRouter() {
-  return router;
+  return createRouter({ routeTree, defaultPreload: 'intent' });
 }
 
 declare module '@tanstack/react-router' {
-  interface Register { router: typeof router; }
+  interface Register { router: ReturnType<typeof getRouter>; }
 }
