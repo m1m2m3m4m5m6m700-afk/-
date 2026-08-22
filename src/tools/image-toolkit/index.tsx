@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { convertImage, cropResizeImage, downloadBlob, imageInfo, removeBackground, rasterToSvg, resizeImage, watermarkRemove, fillRemoveRegion } from './engine';
+import { recognizeWithOcrWorker } from './ocr-worker-client';
 import type { LocalToolId } from './engine';
 
 const DEFINITIONS: Record<Exclude<LocalToolId, 'ai-image-generator' | 'image-compressor'>, { title: string; description: string; accept: string }> = {
@@ -15,22 +16,6 @@ const DEFINITIONS: Record<Exclude<LocalToolId, 'ai-image-generator' | 'image-com
 
 type Props = { toolId: Exclude<LocalToolId, 'image-compressor'> };
 type Result = { blob: Blob; text?: string; fileName: string; info?: { width: number; height: number } };
-type TesseractModule = { recognize(input: Blob, language: string): Promise<{ data: { text: string } }> };
-
-declare global { interface Window { Tesseract?: TesseractModule } }
-
-async function ensureTesseract(): Promise<TesseractModule> {
-  if (window.Tesseract) return window.Tesseract;
-  await new Promise<void>((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@6/dist/tesseract.min.js';
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error('OCR engine could not be loaded.'));
-    document.head.appendChild(script);
-  });
-  if (!window.Tesseract) throw new Error('OCR engine is unavailable.');
-  return window.Tesseract;
-}
 
 function baseName(name: string) { return name.replace(/\.[^.]+$/, '') || 'flixo-image'; }
 
@@ -122,10 +107,9 @@ export function ImageToolPage({ toolId }: Props) {
         blob = await convertImage(file, outputFormat);
         fileName += outputFormat === 'image/jpeg' ? '.jpg' : outputFormat === 'image/png' ? '.png' : '.webp';
       } else if (toolId === 'image-to-text') {
-        const tesseract = await ensureTesseract();
         const prepared = await preprocessForOcr(file);
-        const ocr = await tesseract.recognize(prepared, 'eng+ara');
-        const text = ocr.data.text;
+        const ocr = await recognizeWithOcrWorker(prepared, 'eng+ara');
+        const text = ocr.text;
         setResult({ blob: new Blob([text], { type: 'text/plain;charset=utf-8' }), text, fileName: `${baseName(file.name)}.txt` });
         return;
       } else if (toolId === 'object-remover') {
@@ -235,7 +219,7 @@ export function ImageToolPage({ toolId }: Props) {
               </button>
             </div>
             {error && <p role="alert" className="error-box">{error}</p>}
-            {toolId === 'image-to-text' && <p className="privacy-note">OCR loads Tesseract.js on demand, preprocesses the image, and processes the selected file in the browser.</p>}
+            {toolId === 'image-to-text' && <p className="privacy-note">OCR preprocesses the selected image locally, then runs Tesseract.js recognition in a dedicated Web Worker.</p>}
             {isGenerator && <p className="privacy-note">Requires a configured FLIXO image-generation endpoint. No fake local “AI” fallback is used.</p>}
           </div>
 
