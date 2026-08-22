@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { imageCompressorOutputContract } from '../src/tools/image-compressor/output-contract';
 
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800"><rect width="1200" height="800" fill="#223344"/><circle cx="300" cy="220" r="180" fill="#67e8f9"/><circle cx="850" cy="560" r="260" fill="#164e63"/><text x="600" y="430" text-anchor="middle" fill="white" font-size="110" font-family="sans-serif">FLIXO</text></svg>`;
 const hugeSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="9000" height="9000" viewBox="0 0 9000 9000"><rect width="9000" height="9000" fill="#223344"/></svg>`;
@@ -9,6 +10,39 @@ function outputFormat(page: Page, value: string) {
 
 function control(page: Page, text: string) {
   return page.locator('label').filter({ hasText: text }).locator('input');
+}
+
+async function validateDownloadedImage(page: Page, href: string, expectedMime: string, expectedWidth: number, expectedHeight: number) {
+  expect(imageCompressorOutputContract.outputMimeTypes).toContain(expectedMime);
+  expect(imageCompressorOutputContract.downloadRequired).toBe(true);
+
+  return page.evaluate(async ({ href: objectUrl, expectedMimeType, expectedW, expectedH }) => {
+    const response = await fetch(objectUrl);
+    if (!response.ok) throw new Error(`Output blob fetch failed: ${response.status}`);
+    const blob = await response.blob();
+    if (blob.size < 1) throw new Error('Output blob is empty');
+    if (blob.type !== expectedMimeType) throw new Error(`Unexpected MIME type: ${blob.type}`);
+
+    const bytes = new Uint8Array(await blob.slice(0, 16).arrayBuffer());
+    const signature = Array.from(bytes).map((byte) => byte.toString(16).padStart(2, '0')).join('');
+    const signatures: Record<string, string> = {
+      'image/png': '89504e470d0a1a0a',
+      'image/jpeg': 'ffd8ff',
+      'image/webp': '52494646',
+    };
+    const expectedSignature = signatures[expectedMimeType];
+    if (!expectedSignature || !signature.startsWith(expectedSignature)) {
+      throw new Error(`Unexpected output signature: ${signature}`);
+    }
+
+    const bitmap = await createImageBitmap(blob);
+    const dimensions = { width: bitmap.width, height: bitmap.height, bytes: blob.size, mimeType: blob.type };
+    bitmap.close();
+    if (dimensions.width !== expectedW || dimensions.height !== expectedH) {
+      throw new Error(`Unexpected dimensions: ${dimensions.width}x${dimensions.height}`);
+    }
+    return dimensions;
+  }, { href, expectedMimeType: expectedMime, expectedW: expectedWidth, expectedH: expectedHeight });
 }
 
 test('English image compressor produces a real WebP output', async ({ page }) => {
@@ -31,6 +65,7 @@ test('English image compressor produces a real WebP output', async ({ page }) =>
 
   const href = await download.getAttribute('href');
   expect(href).toMatch(/^blob:/);
+  await validateDownloadedImage(page, href!, 'image/webp', 1200, 800);
 });
 
 test('PNG output and resizing produce the requested dimensions', async ({ page }) => {
@@ -44,7 +79,9 @@ test('PNG output and resizing produce the requested dimensions', async ({ page }
   await expect(download).toHaveAttribute('download', 'flixo-compressed.png', { timeout: 15000 });
   await expect(page.getByRole('complementary').getByText('PNG', { exact: true })).toBeVisible();
   await expect(page.getByRole('complementary').getByText('600 × 400', { exact: true })).toBeVisible();
-  await expect(download).toHaveAttribute('href', /^(blob:)/);
+  const href = await download.getAttribute('href');
+  expect(href).toMatch(/^blob:/);
+  await validateDownloadedImage(page, href!, 'image/png', 600, 400);
 });
 
 test('Target size optimization respects a safe size ceiling', async ({ page }) => {
