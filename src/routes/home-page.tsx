@@ -1,6 +1,8 @@
 import { Link } from '@tanstack/react-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { TOOLS_REGISTRY } from '../config/tools';
+import { SmartCommandPalette } from '../components/SmartCommandPalette';
+import { getBestToolIntent } from '@/lib/intent-router';
 
 type ToolCardProps = {
   readonly id: string;
@@ -28,15 +30,8 @@ function recommendTool(file: File): ToolCardProps | null {
 }
 
 function ToolCard({ id, title, description, path }: ToolCardProps) {
-  const [hovered, setHovered] = useState(false);
   return (
-    <Link
-      to={path}
-      className={`home-tool-card${hovered ? ' is-hovered' : ''}`}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      aria-label={`Open ${title}`}
-    >
+    <Link to={path} className="home-tool-card" aria-label={`Open ${title}`}>
       <div className="tool-card-topline">
         <span className="tool-card-category">{getCategory(id)}</span>
         <span className="tool-card-arrow" aria-hidden="true">↗</span>
@@ -52,19 +47,21 @@ export function HomePage() {
   const [query, setQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [dropRecommendation, setDropRecommendation] = useState<ToolCardProps | null>(null);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
-        searchRef.current?.focus();
+        setPaletteOpen(true);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  const intent = useMemo(() => getBestToolIntent(query, READY_TOOLS), [query]);
   const categories = useMemo(() => ['All', ...Array.from(new Set(READY_TOOLS.map((tool) => getCategory(tool.id))))], []);
   const filteredTools = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -77,6 +74,7 @@ export function HomePage() {
 
   return (
     <main className="home-shell">
+      {paletteOpen && <SmartCommandPalette onClose={() => setPaletteOpen(false)} />}
       <nav className="home-nav" aria-label="Primary navigation">
         <div className="home-container home-nav-inner">
           <Link className="home-brand" to="/" aria-label="FLIXO home">FLIXO</Link>
@@ -97,10 +95,9 @@ export function HomePage() {
             <h1 id="home-title">The right tool, <span>without the detour.</span></h1>
             <p className="home-lead">Find the job, open the tool, finish fast. FLIXO keeps the experience focused and uses local browser processing where the tool supports it.</p>
           </div>
-          <div className="home-hero-note" aria-label="Speed and privacy note">
-            <strong>Built for intent.</strong>
-            <span>No popups. No maze. Just the tool.</span>
-          </div>
+          <button type="button" className="home-hero-command" onClick={() => setPaletteOpen(true)}>
+            <span>Describe a task</span><kbd>Ctrl K</kbd>
+          </button>
         </section>
 
         <section className="home-search-panel" aria-label="Find a tool">
@@ -115,8 +112,14 @@ export function HomePage() {
               placeholder="What do you need to do? Try “compress image”"
               autoComplete="off"
             />
-            <kbd>Ctrl K</kbd>
+            <button type="button" className="search-command-button" onClick={() => setPaletteOpen(true)} aria-label="Open smart command palette">AI</button>
           </div>
+          {intent && (
+            <Link className="intent-suggestion" to={intent.tool.path}>
+              <span><strong>Suggested:</strong> {intent.tool.title}</span>
+              <small>{intent.score}% match · open directly</small>
+            </Link>
+          )}
           <div className="quick-tags" aria-label="Popular searches">
             {QUICK_TAGS.map((tag) => <button key={tag} type="button" onClick={() => setQuery(tag)}>{tag}</button>)}
           </div>
@@ -125,7 +128,7 @@ export function HomePage() {
         <section className="home-trust-grid" id="privacy" aria-label="Trust signals">
           <div><strong>Browser-first</strong><span>Local processing where supported by the tool.</span></div>
           <div><strong>Fast to start</strong><span>Direct routes with no unnecessary onboarding wall.</span></div>
-          <div><strong>No visual noise</strong><span>Clear actions, predictable states, accessible controls.</span></div>
+          <div><strong>Smart routing</strong><span>Common tasks can jump straight to the best ready tool.</span></div>
         </section>
 
         <section className="home-quick-drop" aria-labelledby="quick-drop-title">
@@ -168,7 +171,7 @@ export function HomePage() {
           <div className="home-tools-grid">
             {filteredTools.map((tool) => <ToolCard key={tool.id} id={tool.id} title={tool.title} description={tool.description} path={tool.path} />)}
           </div>
-          {filteredTools.length === 0 && <div className="home-empty">No matching tool yet. Try a simpler phrase or choose another category.</div>}
+          {filteredTools.length === 0 && <div className="home-empty">No matching tool yet. Try a simpler phrase or open Smart Intent with Ctrl K.</div>}
         </section>
 
         <section className="home-final-cta">
@@ -177,7 +180,7 @@ export function HomePage() {
             <h2>One search. One useful result.</h2>
             <p>FLIXO is designed to get you from intent to action without turning a simple task into a workflow.</p>
           </div>
-          <Link className="primary-button" to={READY_TOOLS[0]?.path ?? '/en/image-compressor'}>Open a tool</Link>
+          <button type="button" className="primary-button" onClick={() => setPaletteOpen(true)}>Try Smart Intent</button>
         </section>
       </div>
     </main>
