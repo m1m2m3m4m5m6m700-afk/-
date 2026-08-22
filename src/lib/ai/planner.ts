@@ -75,8 +75,7 @@ export function validateExecutionPlan(plan: unknown): ExecutionPlan {
 }
 
 export async function generateExecutionPlan(userPrompt: string): Promise<ExecutionPlan> {
-  const maxChars = Number(import.meta.env.VITE_FLIXO_AI_MAX_INPUT_CHARS || 1200);
-  const prompt = userPrompt.trim().slice(0, Number.isFinite(maxChars) && maxChars > 0 ? maxChars : 1200);
+  const prompt = userPrompt.trim();
   const deterministic = planFromIntent(prompt);
   try {
     const response = await fetch('/api/ai/plan', {
