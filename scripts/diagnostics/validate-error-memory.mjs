@@ -24,9 +24,18 @@ const incidentSection = memory.split('## Verified external constraints')[0];
 const incidentRows = incidentSection.split('\n').filter((line) => /^\| `[^`]+` \|/.test(line));
 const signatures = incidentRows.map((line) => line.split('|')[1]?.trim().replaceAll('`', '')).filter(Boolean);
 
+if (incidentRows.length !== requiredIncidents.length) {
+  throw new Error(`Verified incident count mismatch: expected=${requiredIncidents.length} actual=${incidentRows.length}. Move constraints/findings out of the incident table.`);
+}
+
 const duplicateSignatures = signatures.filter((signature, index) => signatures.indexOf(signature) !== index);
 if (duplicateSignatures.length) {
   throw new Error(`Error memory contains duplicate incident signatures: ${[...new Set(duplicateSignatures)].join(', ')}`);
+}
+
+const unexpectedIncidents = signatures.filter((signature) => !requiredIncidents.includes(signature));
+if (unexpectedIncidents.length) {
+  throw new Error(`Unexpected incident signatures: ${unexpectedIncidents.join(', ')}. Add evidence and classification first, or move them to the correct section.`);
 }
 
 const signaturePattern = /^[A-Z][A-Z0-9_]+$/;
@@ -45,7 +54,6 @@ for (const [index, line] of incidentRows.entries()) {
 for (const signature of requiredIncidents) {
   if (!incidentRows.some((line) => line.includes(`\`${signature}\``))) throw new Error(`Missing verified incident: ${signature}`);
 }
-if (signatures.includes('VERCEL_BUILD_RATE_LIMIT')) throw new Error('VERCEL_BUILD_RATE_LIMIT must be classified as an external constraint, not an application incident.');
 
 const constraintSection = memory.split('## Verified external constraints')[1]?.split('## Architectural review findings')[0] ?? '';
 if (!/^\| Constraint \| Impact \| Required handling \| Evidence \|/m.test(constraintSection)) throw new Error('External constraint table header is missing or malformed.');
@@ -53,6 +61,7 @@ const constraintRows = constraintSection.split('\n').filter((line) => /^\| `[^`]
 for (const signature of requiredConstraints) {
   if (!constraintRows.some((line) => line.includes(`\`${signature}\``))) throw new Error(`Missing external constraint: ${signature}`);
 }
+if (constraintRows.length !== requiredConstraints.length) throw new Error(`External constraint count mismatch: expected=${requiredConstraints.length} actual=${constraintRows.length}.`);
 if (!constraintRows.every((line) => referencePattern.test(line))) throw new Error('Every external constraint must include traceable evidence.');
 
 const reviewSection = memory.split('## Architectural review findings')[1]?.split('## Error-memory contract')[0] ?? '';
@@ -61,6 +70,7 @@ const reviewRows = reviewSection.split('\n').filter((line) => /^\| `[^`]+` \|/.t
 for (const finding of requiredFindings) {
   if (!reviewRows.some((line) => line.includes(`\`${finding}\``))) throw new Error(`Missing architectural finding: ${finding}`);
 }
+if (reviewRows.length !== requiredFindings.length) throw new Error(`Architectural review finding count mismatch: expected=${requiredFindings.length} actual=${reviewRows.length}.`);
 if (!reviewRows.every((line) => referencePattern.test(line))) throw new Error('Every architectural review finding must include traceable evidence.');
 
-console.log(`Error memory validated: ${signatures.length} verified incidents; ${constraintRows.length} external constraints; ${reviewRows.length} architectural findings.`);
+console.log(`Error memory validated: ${incidentRows.length} verified incidents; ${constraintRows.length} external constraints; ${reviewRows.length} architectural findings.`);
