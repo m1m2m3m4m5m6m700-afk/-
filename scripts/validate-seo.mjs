@@ -1,4 +1,3 @@
-/* global console, process */
 import { readFileSync } from 'node:fs';
 
 const toolsSource = readFileSync('src/config/tools.ts', 'utf8');
