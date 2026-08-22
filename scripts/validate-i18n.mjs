@@ -1,4 +1,4 @@
-/* eslint-env node */
+/* global console, process */
 import { existsSync, readFileSync } from 'node:fs';
 
 const configSource = readFileSync('src/lib/i18n/config.ts', 'utf8');
