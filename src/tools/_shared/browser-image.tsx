@@ -7,7 +7,21 @@ type Props = { mode: Mode; title: string; accept?: string; multi?: boolean };
 type Result = { blob: Blob; url: string; name: string; width?: number; height?: number; text?: string };
 
 function download(result: Result) { const link = document.createElement('a'); link.href = result.url; link.download = result.name; link.click(); setTimeout(() => URL.revokeObjectURL(result.url), 0); }
-async function loadImage(file: File) { const url = URL.createObjectURL(file); try { const image = new Image(); image.decoding = 'async'; image.src = url; await image.decode(); return image; } finally { URL.revokeObjectURL(url); } }
+async function loadImage(file: File) {
+  const url = URL.createObjectURL(file);
+  try {
+    const image = new Image();
+    image.decoding = 'async';
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error('Could not decode the selected image.'));
+      image.src = url;
+    });
+    return image;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
 async function canvasResult(canvas: HTMLCanvasElement, name: string, mime = 'image/png', quality = 0.96): Promise<Result> { const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((value) => value ? resolve(value) : reject(new Error('Could not encode output.')), mime, quality)); return { blob, url: URL.createObjectURL(blob), name, width: canvas.width, height: canvas.height }; }
 
 export function BrowserImageTool({ mode, title, accept = 'image/*', multi = false }: Props) {
