@@ -1,5 +1,5 @@
 import { compressImage } from '@/tools/image-compressor/engine';
-import { convertImage, cropResizeImage, imageInfo, removeBackground, resizeImage } from '@/tools/image-toolkit/engine';
+import { MAX_OUTPUT_PIXELS, convertImage, cropResizeImage, imageInfo, removeBackground, resizeImage } from '@/tools/image-toolkit/engine';
 import type { ExecutionPlan } from '@/lib/ai/planner';
 
 export interface PipelineProgress {
@@ -8,8 +8,6 @@ export interface PipelineProgress {
   currentToolId: string;
   outputBlob?: Blob;
 }
-
-const MAX_OUTPUT_PIXELS = 40_000_000;
 
 function asFile(blob: Blob, name = 'flixo-pipeline-input.png') {
   return new File([blob], name, { type: blob.type || 'image/png' });
