@@ -74,7 +74,7 @@ export function HomePage() {
 
   return (
     <main className="home-shell">
-      <SmartCommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      {paletteOpen && <SmartCommandPalette onClose={() => setPaletteOpen(false)} />}
       <nav className="home-nav" aria-label="Primary navigation">
         <div className="home-container home-nav-inner">
           <Link className="home-brand" to="/" aria-label="FLIXO home">FLIXO</Link>
