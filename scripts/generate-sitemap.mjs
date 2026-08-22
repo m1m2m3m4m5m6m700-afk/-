@@ -3,7 +3,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 const siteOrigin = 'https://flexoai.vercel.app';
 const locales = ['en','ar','es','fr','de','ru','zh','hi','id','ur','ja','pt','it','ko','nl','pl','tr','vi','th','sv'];
 const toolsSource = readFileSync('src/config/tools.ts', 'utf8');
-const readyToolIds = [...toolsSource.matchAll(/\{ id: '([^']+)',[\s\S]*?isReady: true,/g)].map((match) => match[1]);
+const readyToolIds = [...toolsSource.matchAll(/\{ id: '([^']+)',[^\n]*?isReady: true,/g)].map((match) => match[1]);
 
 const urls = [`${siteOrigin}/`];
 for (const locale of locales) {
