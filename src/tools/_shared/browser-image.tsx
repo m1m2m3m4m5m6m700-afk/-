@@ -21,8 +21,8 @@ export function BrowserImageTool({ mode, title, accept = 'image/*', multi = fals
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [text, setText] = useState('FLIXO');
-  const [top, setTop] = useState(t.topText);
-  const [bottom, setBottom] = useState(t.bottomText);
+  const [top, setTop] = useState<string>(t.topText);
+  const [bottom, setBottom] = useState<string>(t.bottomText);
   const [effect, setEffect] = useState({ brightness: 100, contrast: 100, saturate: 100, grayscale: 0 });
   const status = useMemo(() => result ? t.formatStatus(result.width, result.height, Math.max(1, Math.round(result.blob.size / 1024))) : t.noResult, [result, t]);
 

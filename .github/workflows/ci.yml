@@ -4,10 +4,8 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    branches: [main, feat/home-modern-simple-ui]
   workflow_dispatch:
-
-# Release-gate trigger marker; no runtime behavior change.
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}

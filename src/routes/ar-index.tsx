@@ -1,4 +1,4 @@
-import { createRoute, Link, useNavigate } from '@tanstack/react-router';
+import { createRoute, Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { ArrowUpRight, Check, Lock, Search, Sparkles, Zap } from 'lucide-react';
 import { HOMEPAGE_COPY } from '../lib/i18n/locales';
@@ -32,18 +32,17 @@ export const arIndexRoute = createRoute({
     ],
   }),
   component: function ArabicHomePage() {
-    const navigate = useNavigate();
     const [query, setQuery] = useState('');
 
     const runIntent = () => {
       const match = resolveIntent(query);
       if (match.kind === 'workflow' && match.id) {
-        void navigate({ to: `/ar/quickflow/${match.id}` });
+        window.location.assign(`/ar/quickflow/${match.id}`);
         return;
       }
       if (match.kind === 'tool' && match.id) {
         const tool = getResolvedTool(match.id);
-        if (tool) void navigate({ to: tool.path.replace(/^\/en/, '/ar') });
+        if (tool) window.location.assign(tool.path.replace(/^\/en/, '/ar'));
       }
     };
 
@@ -70,12 +69,12 @@ export const arIndexRoute = createRoute({
             </div>
             <div className="home-hero-card">
               <div className="home-hero-card-top"><span className="home-card-badge"><Sparkles size={14} /> QuickFlow</span><span className="home-card-muted">بدون تعقيد</span></div>
-              <div className="home-hero-card-content"><div className="home-hero-icon"><Zap size={30} /></div><p className="home-hero-card-title">هدف واحد. مسار واضح.</p><p className="home-hero-card-copy">FLIXO يخفي سلسلة الأدوات خلف خطوة بسيطة تركّز على النتيجة النهائية.</p><div className="home-hero-mini-flow"><span><b>1</b> الهدف</span><span><b>2</b> المسار</span><span><b>3</b> النتيجة</span></div><Link to="/ar/quickflow/product-ready" className="primary-button home-hero-button">جرّب Product Ready <ArrowUpRight size={17} /></Link></div>
+              <div className="home-hero-card-content"><div className="home-hero-icon"><Zap size={30} /></div><p className="home-hero-card-title">هدف واحد. مسار واضح.</p><p className="home-hero-card-copy">FLIXO يخفي سلسلة الأدوات خلف خطوة بسيطة تركّز على النتيجة النهائية.</p><div className="home-hero-mini-flow"><span><b>1</b> الهدف</span><span><b>2</b> المسار</span><span><b>3</b> النتيجة</span></div><a href="/ar/quickflow/product-ready" className="primary-button home-hero-button">جرّب Product Ready <ArrowUpRight size={17} /></a></div>
             </div>
           </section>
           <section id="quickflows" className="home-quick-section" aria-labelledby="ar-quick-title">
             <div className="home-section-heading"><div><p className="home-section-kicker">ابدأ من النتيجة</p><h2 id="ar-quick-title">مسارات جاهزة للمهام الشائعة</h2></div><span>4 مسارات</span></div>
-            <div className="home-featured-grid">{arabicJobs.map(([label, path]) => <Link key={path} to={path} className="home-featured-card"><span className="home-featured-copy"><strong>{label}</strong><span>ارفع الصورة ونفّذ المسار مباشرة.</span></span><ArrowUpRight className="home-featured-arrow" size={18} /></Link>)}</div>
+            <div className="home-featured-grid">{arabicJobs.map(([label, path]) => <a key={path} href={path} className="home-featured-card"><span className="home-featured-copy"><strong>{label}</strong><span>ارفع الصورة ونفّذ المسار مباشرة.</span></span><ArrowUpRight className="home-featured-arrow" size={18} /></a>)}</div>
           </section>
           <section id="tools" className="home-principles"><div><Check size={18} /><strong>نتيجة أولًا</strong><span>لا تحتاج لمعرفة أسماء الأدوات.</span></div><div><Lock size={18} /><strong>محلي أولًا</strong><span>المعالجة المحلية تبقى على جهازك عندما تدعمها الأداة.</span></div><div><Sparkles size={18} /><strong>ذكاء اختياري</strong><span>الذكاء الاصطناعي يخطط عند الطلب ولا يوقف التشغيل الأساسي.</span></div></section>
           <footer className="home-footer"><span>FLIXO · محرك مسارات لمعالجة الصور.</span><Link to="/">النسخة الإنجليزية <ArrowUpRight size={15} /></Link></footer>

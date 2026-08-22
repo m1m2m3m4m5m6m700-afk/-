@@ -7,7 +7,7 @@ export type ExecutionPlan = {
   confidence: number;
   steps: Array<{
     toolId: ToolConfig['id'];
-    params?: Record<string, string | number | boolean>;
+    params?: Record<string, string | number | boolean | undefined>;
   }>;
 };
 
@@ -31,13 +31,13 @@ function isExecutionPlan(value: unknown): value is ExecutionPlan {
     if (typeof item.toolId !== 'string' || !PIPELINE_TOOL_IDS.has(item.toolId)) return false;
     if (item.params !== undefined && (typeof item.params !== 'object' || item.params === null || Array.isArray(item.params))) return false;
     if (item.params && typeof item.params === 'object') {
-      return Object.values(item.params as Record<string, unknown>).every((value) => ['string', 'number', 'boolean'].includes(typeof value) && (typeof value !== 'number' || Number.isFinite(value)));
+      return Object.values(item.params as Record<string, unknown>).every((value) => value === undefined || ['string', 'number', 'boolean'].includes(typeof value) && (typeof value !== 'number' || Number.isFinite(value)));
     }
     return true;
   });
 }
 
-function presetParams(toolId: ToolConfig['id'], preset: Record<string, string> = {}) {
+function presetParams(toolId: ToolConfig['id'], preset: Record<string, string | undefined> = {}) {
   if (toolId === 'background-remover' && preset.background) return { tolerance: preset.background === 'clean' ? 42 : 36 };
   if (toolId === 'image-cropper' && preset.aspectRatio) return { aspectRatio: preset.aspectRatio };
   if (toolId === 'image-compressor') return {
@@ -49,7 +49,7 @@ function presetParams(toolId: ToolConfig['id'], preset: Record<string, string> =
   return undefined;
 }
 
-export function planFromWorkflow(workflowId: string, preset: Record<string, string> = {}): ExecutionPlan | null {
+export function planFromWorkflow(workflowId: string, preset: Record<string, string | undefined> = {}): ExecutionPlan | null {
   const workflow = getWorkflow(workflowId);
   if (!workflow) return null;
   const steps = workflow.steps.slice(0, MAX_STEPS).map((step) => ({

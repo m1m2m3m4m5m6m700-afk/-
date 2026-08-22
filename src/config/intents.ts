@@ -6,7 +6,7 @@ export type IntentSEOConfig = {
   readonly title: string;
   readonly description: string;
   readonly keywords: readonly string[];
-  readonly preset?: Readonly<Record<string, string>>;
+  readonly preset?: Readonly<Record<string, string | undefined>>;
   readonly outcome: string;
 };
 

@@ -8,7 +8,7 @@ export type WorkflowId =
   | 'print-ready'
   | 'improve-image';
 
-export type StepParams = Record<string, string | number | boolean>;
+export type StepParams = Record<string, string | number | boolean | undefined>;
 
 export type WorkflowStep = {
   readonly toolId: ToolConfig['id'];
