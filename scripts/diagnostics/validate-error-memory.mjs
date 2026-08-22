@@ -9,10 +9,12 @@ const requiredIncidents = [
   'INVALID_RADIX_RANGE',
   'HARD_CODED_TOOL_UI_TEXT',
   'UNINTENDED_DEPENDENCY_EDIT',
+  'MANIFEST_LOCKFILE_RANGE_DRIFT',
+  'STALE_DIAGNOSTIC_ROUTE_PATH',
 ];
 const requiredConstraints = ['VERCEL_BUILD_RATE_LIMIT', 'CANONICAL_ORIGIN_UNAVAILABLE'];
 const requiredFindings = ['INEFFECTIVE_LOCALE_DYNAMIC_IMPORT'];
-const allowedClasses = new Set(['CI/code', 'SEO/test', 'architecture', 'SEO/runtime', 'dependency', 'i18n', 'process/dependency']);
+const allowedClasses = new Set(['CI/code', 'SEO/test', 'architecture', 'SEO/runtime', 'dependency', 'i18n', 'process/dependency', 'diagnostics/tooling']);
 const incidentEvidencePattern = /(?:CI|PR)\s*:\s*#?[0-9]+|commit:\s*`[0-9a-f]{8,40}`|correction commit:\s*`[0-9a-f]{8,40}`|failure:\s*[^|]+/i;
 const referencePattern = /(?:PR|CI)\s*:\s*`?#[0-9]+`?|commit:\s*`[0-9a-f]{8,40}`|correction commit:\s*`[0-9a-f]{8,40}`|provider:\s*Vercel/i;
 
