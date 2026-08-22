@@ -16,6 +16,29 @@ export type TranslationSchema = {
     readonly notFoundTitle: string;
     readonly notFoundDescription: string;
   };
+  readonly commonToolUi: {
+    readonly prompt: string;
+    readonly promptPlaceholder: string;
+    readonly chooseImage: string;
+    readonly imageInput: string;
+    readonly outputFormat: string;
+    readonly scale: string;
+    readonly backgroundTolerance: string;
+    readonly svgColumns: string;
+    readonly x: string;
+    readonly y: string;
+    readonly width: string;
+    readonly height: string;
+    readonly outputWidth: string;
+    readonly outputHeight: string;
+    readonly runTool: string;
+    readonly generateImage: string;
+    readonly downloadNow: string;
+    readonly noResult: string;
+    readonly outputDetails: string;
+    readonly ocrPrivacy: string;
+    readonly generatorPrivacy: string;
+  };
   readonly glossary: {
     readonly clientSideProcessing: string;
   };
