@@ -155,3 +155,21 @@ When an E2E shard fails:
 - Client trace IDs use `x-flixo-trace-id` and W3C `traceparent`; runtime/API diagnostics also emit stable fingerprints.
 
 ---
+
+## CI failure 2026-08-22T15:40:30.800Z
+- Fingerprint: `flx-ece2335e`
+- SHA: `db1693021f9743fd8dcf1ce2904e4cb33ecc7f72`
+- Run: [#1808](https://github.com/m1m2m3m4m5m6m700-afk/FLIXO-AI-TOOLS/actions/runs/32582207848)
+- Job: `diagnostic-summary`
+- Ref: `136/merge`
+
+### Extracted diagnostics
+- typecheck=failure
+- lint=failure
+- e2e=failure
+- trace correlation: client uses x-flixo-trace-id + W3C traceparent; inspect failed E2E artifact for browser trace
+
+### Correlation
+- Client trace IDs use `x-flixo-trace-id` and W3C `traceparent`; runtime/API diagnostics also emit stable fingerprints.
+
+---
