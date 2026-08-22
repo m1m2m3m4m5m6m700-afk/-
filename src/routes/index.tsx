@@ -133,21 +133,14 @@ export const indexRoute = createRoute({
                 <div className="home-hero-icon"><Wand2 size={30} /></div>
                 <p className="home-hero-card-title">From idea to finished image.</p>
                 <p className="home-hero-card-copy">Choose the result you want. FLIXO keeps the controls behind the task instead of putting the whole toolbox in your face.</p>
-                <div className="home-hero-mini-flow" aria-label="FLIXO workflow">
-                  <span><b>1</b> Choose</span><span><b>2</b> Create</span><span><b>3</b> Export</span>
-                </div>
+                <div className="home-hero-mini-flow" aria-label="FLIXO workflow"><span><b>1</b> Choose</span><span><b>2</b> Create</span><span><b>3</b> Export</span></div>
                 <Link to="/en/ai-image-generator" className="primary-button home-hero-button">Try AI tools <ArrowUpRight size={17} /></Link>
               </div>
             </div>
           </section>
 
           <section className="home-workflow" aria-labelledby="workflow-title">
-            <div className="home-section-heading">
-              <div>
-                <p className="home-section-kicker">THE FLIXO WAY</p>
-                <h2 id="workflow-title">One simple loop.</h2>
-              </div>
-            </div>
+            <div className="home-section-heading"><div><p className="home-section-kicker">THE FLIXO WAY</p><h2 id="workflow-title">One simple loop.</h2></div></div>
             <div className="home-workflow-grid">
               <div><span>01</span><Check size={18} /><strong>Choose the outcome</strong><p>Start with what you want, not the tool name.</p></div>
               <div><span>02</span><Check size={18} /><strong>Use the focused tool</strong><p>Only the controls needed for that job stay in the way.</p></div>
@@ -156,57 +149,25 @@ export const indexRoute = createRoute({
           </section>
 
           <section className="home-quick-section" aria-labelledby="quick-title">
-            <div className="home-section-heading">
-              <div>
-                <p className="home-section-kicker">START HERE</p>
-                <h2 id="quick-title">Popular jobs, one click away</h2>
-              </div>
-              <span>{featuredTools.length} quick picks</span>
-            </div>
+            <div className="home-section-heading"><div><p className="home-section-kicker">START HERE</p><h2 id="quick-title">Popular jobs, one click away</h2></div><span>{featuredTools.length} quick picks</span></div>
             <div className="home-featured-grid">
               {featuredTools.map((tool, index) => tool ? (
                 <Link key={tool.id} to={tool.path} className={`home-featured-card home-featured-card-${index + 1}`}>
-                  <span className="home-featured-icon"><Image size={20} /></span>
-                  <span className="home-featured-copy"><strong>{tool.title}</strong><span>{tool.description}</span></span>
-                  <ArrowUpRight className="home-featured-arrow" size={18} />
+                  <span className="home-featured-icon"><Image size={20} /></span><span className="home-featured-copy"><strong>{tool.title}</strong><span>{tool.description}</span></span><ArrowUpRight className="home-featured-arrow" size={18} />
                 </Link>
               ) : null)}
             </div>
           </section>
 
           <section id="tools" className="home-tools-section" aria-labelledby="tools-title">
-            <div className="home-section-heading home-tools-heading">
-              <div>
-                <p className="home-section-kicker">THE TOOLBOX</p>
-                <h2 id="tools-title">Everything else, still easy to find.</h2>
-                <p>Search by outcome or browse the small set of categories. The full capability stays available without taking over the homepage.</p>
-              </div>
-              <span>{visibleTools.length} results</span>
-            </div>
-
+            <div className="home-section-heading home-tools-heading"><div><p className="home-section-kicker">THE TOOLBOX</p><h2 id="tools-title">Everything else, still easy to find.</h2><p>Search by outcome or browse the small set of categories. The full capability stays available without taking over the homepage.</p></div><span>{visibleTools.length} results</span></div>
             <div className="home-category-row" aria-label="Tool categories">
-              {categories.map((item) => (
-                <button key={item} type="button" className={`home-category ${category === item ? 'is-active' : ''}`} onClick={() => setCategory(item)}>{item}</button>
-              ))}
+              {categories.map((item) => <button key={item} type="button" className={`home-category ${category === item ? 'is-active' : ''}`} onClick={() => setCategory(item)}>{item}</button>)}
             </div>
-
             <div className="home-tool-grid">
-              {visibleTools.map((tool) => (
-                <Link key={tool.id} to={tool.path} className="home-tool-card">
-                  <span className="home-tool-icon"><Image size={19} /></span>
-                  <span className="home-tool-body"><strong>{tool.title}</strong><span>{tool.description}</span></span>
-                  <ArrowUpRight size={17} className="home-tool-arrow" />
-                </Link>
-              ))}
+              {visibleTools.map((tool) => <Link key={tool.id} to={tool.path} className="home-tool-card"><span className="home-tool-icon"><Image size={19} /></span><span className="home-tool-body"><strong>{tool.title}</strong><span>{tool.description}</span></span><ArrowUpRight size={17} className="home-tool-arrow" /></Link>)}
             </div>
-
-            {visibleTools.length === 0 && (
-              <div className="home-empty-tools">
-                <Search size={22} />
-                <strong>No tool matched that goal yet.</strong>
-                <span>Try “compress”, “remove”, “upscale”, or “create with AI”.</span>
-              </div>
-            )}
+            {visibleTools.length === 0 && <div className="home-empty-tools"><Search size={22} /><strong>No tool matched that goal yet.</strong><span>Try “compress”, “remove”, “upscale”, or “create with AI”.</span></div>}
           </section>
 
           <section className="home-principles" aria-label="Why FLIXO">
@@ -215,10 +176,7 @@ export const indexRoute = createRoute({
             <div><ShieldCheck size={18} /><strong>Clear output</strong><span>Each tool stays focused on one result.</span></div>
           </section>
 
-          <footer className="home-footer">
-            <span>FLIXO · Tools that stay out of your way.</span>
-            <Link to="/en/pix">Open Pix Studio <ArrowUpRight size={15} /></Link>
-          </footer>
+          <footer className="home-footer"><span>FLIXO · Tools that stay out of your way.</span><Link to="/en/pix">Open Pix Studio <ArrowUpRight size={15} /></Link></footer>
         </div>
       </main>
     );
