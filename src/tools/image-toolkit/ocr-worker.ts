@@ -1,3 +1,5 @@
+export {};
+
 type WorkerMessage = { blob: Blob };
 
 type WorkerScope = {
