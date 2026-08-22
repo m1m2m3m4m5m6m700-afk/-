@@ -1,6 +1,8 @@
-export const SUPPORTED_LOCALES = ['en', 'ar'] as const;
-export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
+import { SUPPORTED_LANGUAGES, RTL_LANGUAGES } from '../i18n/languages';
+import type { SupportedLanguage } from '../i18n/schema';
 
+export const SUPPORTED_LOCALES = SUPPORTED_LANGUAGES;
+export type SupportedLocale = SupportedLanguage;
 export const DEFAULT_LOCALE: SupportedLocale = 'en';
 
 const configuredSiteUrl = import.meta.env.VITE_SITE_URL?.trim();
@@ -25,22 +27,25 @@ export function absoluteSiteUrl(pathname: string): string | null {
 
 export function localeFromPath(pathname: string): SupportedLocale {
   const first = pathname.split('/')[1];
-  return first === 'ar' ? 'ar' : DEFAULT_LOCALE;
+  return SUPPORTED_LANGUAGES.includes(first as SupportedLocale) ? first as SupportedLocale : DEFAULT_LOCALE;
 }
 
 export function directionForLocale(locale: SupportedLocale): 'ltr' | 'rtl' {
-  return locale === 'ar' ? 'rtl' : 'ltr';
+  return RTL_LANGUAGES.has(locale) ? 'rtl' : 'ltr';
 }
 
 export function alternateLinks(pathname: string): Array<{ rel: 'alternate'; hrefLang: string; href: string }> {
-  if (pathname === '/en/image-compressor' || pathname === '/ar/image-compressor') {
-    return [
-      { rel: 'alternate', hrefLang: 'en', href: absoluteSiteUrl('/en/image-compressor') ?? '' },
-      { rel: 'alternate', hrefLang: 'ar', href: absoluteSiteUrl('/ar/image-compressor') ?? '' },
-      { rel: 'alternate', hrefLang: 'x-default', href: absoluteSiteUrl('/en/image-compressor') ?? '' },
-    ];
-  }
-  return [];
+  const parts = pathname.split('/').filter(Boolean);
+  if (parts.length !== 2) return [];
+  const toolId = parts[1];
+  return [
+    ...SUPPORTED_LANGUAGES.map((language) => ({
+      rel: 'alternate' as const,
+      hrefLang: language,
+      href: absoluteSiteUrl(`/${language}/${toolId}`) ?? `/${language}/${toolId}`,
+    })),
+    { rel: 'alternate', hrefLang: 'x-default', href: absoluteSiteUrl(`/en/${toolId}`) ?? `/en/${toolId}` },
+  ];
 }
 
 export function softwareApplicationSchema(input: {
