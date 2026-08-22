@@ -5,7 +5,7 @@
     "command": "node --test scripts/intent-normalize.test.mjs"
   },
   "mutate": [
-    "src/lib/intent/normalize.ts"
+    "src/lib/intent/normalize-core.mjs"
   ],
   "reporters": ["clear-text", "json", "html"],
   "coverageAnalysis": "off",
