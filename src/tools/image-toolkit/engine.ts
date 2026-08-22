@@ -13,6 +13,8 @@ export type LocalToolId =
 
 export type ImageInfo = { width: number; height: number };
 
+export const MAX_OUTPUT_PIXELS = 40_000_000;
+
 export function imageInfo(blob: Blob): Promise<ImageInfo> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(blob);
@@ -113,6 +115,9 @@ export async function resizeImage(blob: Blob, scale: number): Promise<Blob> {
   const image = await loadImage(blob);
   const width = Math.max(1, Math.round(image.naturalWidth * scale));
   const height = Math.max(1, Math.round(image.naturalHeight * scale));
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width * height > MAX_OUTPUT_PIXELS) {
+    throw new Error('The requested upscale is too large for safe browser processing. Reduce the scale or image dimensions and try again.');
+  }
   const canvas = progressiveResize(image, width, height);
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Canvas is unavailable.');
@@ -147,6 +152,7 @@ export async function cropResizeImage(blob: Blob, crop: { x: number; y: number; 
   const canvas = document.createElement('canvas');
   canvas.width = Math.max(1, Math.round(out.width));
   canvas.height = Math.max(1, Math.round(out.height));
+  if (canvas.width * canvas.height > MAX_OUTPUT_PIXELS) throw new Error('The requested crop output is too large for safe browser processing.');
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Canvas is unavailable.');
   ctx.imageSmoothingEnabled = true;
