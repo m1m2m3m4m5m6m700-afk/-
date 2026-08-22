@@ -1,7 +1,6 @@
 import { createRoute } from '@tanstack/react-router';
-import { Suspense, useMemo } from 'react';
-import { LOCALES, SITE_ORIGIN, isLocale } from '../lib/i18n';
 import { getToolSeo } from '../lib/seo/tool-seo';
+import { LocalizedToolPage } from './localized-tool-page';
 import { rootRoute } from './__root';
 
 export const localizedToolRoute = createRoute({
@@ -23,20 +22,9 @@ export const localizedToolRoute = createRoute({
       links: [
         { rel: 'canonical', href: seo.url },
         ...seo.alternates.map((alternate) => ({ rel: 'alternate', hrefLang: alternate.languageTag, href: alternate.url })),
-        { rel: 'alternate', hrefLang: 'x-default', href: `${SITE_ORIGIN}/en/${seo.tool.id}` },
+        { rel: 'alternate', hrefLang: 'x-default', href: seo.xDefaultUrl },
       ],
     };
   },
   component: LocalizedToolPage,
 });
-
-function LocalizedToolPage() {
-  const params = localizedToolRoute.useParams();
-  const seo = useMemo(() => getToolSeo(params.locale, params.tool), [params.locale, params.tool]);
-  if (!isLocale(params.locale) || !seo || !LOCALES.includes(params.locale)) return <main><h1>Tool not found</h1></main>;
-  const ToolComponent = seo.tool.component;
-  return <main lang={seo.languageTag} dir={seo.direction}>
-    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(seo.structuredData).replace(/</g, '\\u003c') }} />
-    <Suspense fallback={<p>Loading FLIXO tool…</p>}><ToolComponent /></Suspense>
-  </main>;
-}
