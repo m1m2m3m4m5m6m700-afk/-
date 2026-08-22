@@ -24,6 +24,7 @@ export function getToolSeo(localeInput: string, toolId: string) {
   const bundle = TRANSLATION_BUNDLES[locale];
   const label = LOCALE_LABELS[locale];
   const url = getLocalizedToolUrl(locale, tool.id);
+  const xDefaultUrl = getLocalizedToolUrl('en', tool.id);
   const title = `${tool.title} | FLIXO`;
   const description = `${label} FLIXO: ${tool.description}`;
 
@@ -31,6 +32,7 @@ export function getToolSeo(localeInput: string, toolId: string) {
     locale,
     tool,
     url,
+    xDefaultUrl,
     title,
     description,
     languageTag: bundle.languageTag,
