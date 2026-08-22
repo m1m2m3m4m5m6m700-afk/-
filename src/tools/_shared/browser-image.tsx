@@ -7,6 +7,56 @@ type Props = { mode: Mode; title: string; accept?: string; multi?: boolean };
 type Result = { blob: Blob; url: string; name: string; width?: number; height?: number; text?: string };
 
 function download(result: Result) { const link = document.createElement('a'); link.href = result.url; link.download = result.name; link.click(); setTimeout(() => URL.revokeObjectURL(result.url), 0); }
+
+function sanitizeSvgText(source: string) {
+  const documentNode = new DOMParser().parseFromString(source, 'image/svg+xml');
+  const root = documentNode.documentElement;
+  if (!root || root.nodeName.toLowerCase() !== 'svg' || documentNode.querySelector('parsererror')) throw new Error('Invalid SVG input.');
+
+  documentNode.querySelectorAll('script, foreignObject, iframe, object, embed').forEach((node) => node.remove());
+  documentNode.querySelectorAll('*').forEach((node) => {
+    for (const attribute of [...node.attributes]) {
+      const name = attribute.name.toLowerCase();
+      const value = attribute.value.trim();
+      if (name.startsWith('on')) {
+        node.removeAttribute(attribute.name);
+        continue;
+      }
+      if ((name === 'href' || name === 'xlink:href') && value && !value.startsWith('data:image/')) {
+        node.removeAttribute(attribute.name);
+      }
+      if ((name === 'src' || name === 'action' || name === 'formaction') && value) {
+        node.removeAttribute(attribute.name);
+      }
+    }
+  });
+
+  return new XMLSerializer().serializeToString(root);
+}
+
+function svgFromImage(image: HTMLImageElement) {
+  const documentNode = document.implementation.createDocument('http://www.w3.org/2000/svg', 'svg', null);
+  const svg = documentNode.documentElement;
+  svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  svg.setAttribute('width', String(image.width));
+  svg.setAttribute('height', String(image.height));
+  svg.setAttribute('viewBox', `0 0 ${image.width} ${image.height}`);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = image.width;
+  canvas.height = image.height;
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('Canvas unavailable.');
+  context.drawImage(image, 0, 0);
+
+  const embeddedImage = documentNode.createElementNS('http://www.w3.org/2000/svg', 'image');
+  embeddedImage.setAttribute('href', canvas.toDataURL('image/png'));
+  embeddedImage.setAttribute('width', String(image.width));
+  embeddedImage.setAttribute('height', String(image.height));
+  svg.appendChild(embeddedImage);
+  return new XMLSerializer().serializeToString(svg);
+}
+
 async function loadImage(file: File) {
   const url = URL.createObjectURL(file);
   try {
@@ -22,7 +72,11 @@ async function loadImage(file: File) {
     URL.revokeObjectURL(url);
   }
 }
-async function canvasResult(canvas: HTMLCanvasElement, name: string, mime = 'image/png', quality = 0.96): Promise<Result> { const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((value) => value ? resolve(value) : reject(new Error('Could not encode output.')), mime, quality)); return { blob, url: URL.createObjectURL(blob), name, width: canvas.width, height: canvas.height }; }
+
+async function canvasResult(canvas: HTMLCanvasElement, name: string, mime = 'image/png', quality = 0.96): Promise<Result> {
+  const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((value) => value ? resolve(value) : reject(new Error('Could not encode output.')), mime, quality));
+  return { blob, url: URL.createObjectURL(blob), name, width: canvas.width, height: canvas.height };
+}
 
 export function BrowserImageTool({ mode, title, accept = 'image/*', multi = false }: Props) {
   const location = useLocation();
@@ -44,11 +98,36 @@ export function BrowserImageTool({ mode, title, accept = 'image/*', multi = fals
     if (!files.length) { setError(t.chooseImage); return; }
     setError(''); setBusy(true); setResult(null);
     try {
-      if (mode === 'svg-optimizer') { const svg = await files[0].text(); const optimized = svg.replace(/<!--[\s\S]*?-->/g, '').replace(/>\s+</g, '><').replace(/\s{2,}/g, ' ').trim(); const blob = new Blob([optimized], { type: 'image/svg+xml' }); setResult({ blob, url: URL.createObjectURL(blob), name: 'flixo-optimized.svg', text: optimized }); return; }
-      if (mode === 'photo-colorizer') { const endpoint = import.meta.env.VITE_PHOTO_COLORIZER_ENDPOINT; if (!endpoint) throw new Error('Photo Colorizer requires VITE_PHOTO_COLORIZER_ENDPOINT; no fake AI fallback is used.'); const body = new FormData(); body.append('image', files[0]); const response = await fetch(endpoint, { method: 'POST', body }); if (!response.ok) throw new Error(`Colorizer request failed (${response.status}).`); const blob = await response.blob(); setResult({ blob, url: URL.createObjectURL(blob), name: 'flixo-colorized.png' }); return; }
-      if (mode === 'collage-maker') { const images = await Promise.all(files.map(loadImage)); const cell = 512; const columns = Math.min(3, Math.ceil(Math.sqrt(images.length))); const rows = Math.ceil(images.length / columns); const canvas = document.createElement('canvas'); canvas.width = columns * cell; canvas.height = rows * cell; const ctx = canvas.getContext('2d'); if (!ctx) throw new Error('Canvas unavailable.'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height); images.forEach((image, index) => { const x = (index % columns) * cell; const y = Math.floor(index / columns) * cell; const scale = Math.min(cell / image.width, cell / image.height); const w = image.width * scale; const h = image.height * scale; ctx.drawImage(image, x + (cell - w) / 2, y + (cell - h) / 2, w, h); }); setResult(await canvasResult(canvas, 'flixo-collage.png')); return; }
-      const image = await loadImage(files[0]); const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d'); if (!ctx) throw new Error('Canvas unavailable.'); let width = image.width; let height = image.height; if (mode === 'passport-photo-maker') { width = 413; height = 531; } canvas.width = width; canvas.height = height;
-      if (mode === 'image-to-svg') { const png = document.createElement('canvas'); png.width = image.width; png.height = image.height; const pctx = png.getContext('2d'); if (!pctx) throw new Error('Canvas unavailable.'); pctx.drawImage(image, 0, 0); const data = png.toDataURL('image/png'); const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${image.width}" height="${image.height}" viewBox="0 0 ${image.width} ${image.height}"><image href="${data}" width="${image.width}" height="${image.height}"/></svg>`; const blob = new Blob([svg], { type: 'image/svg+xml' }); setResult({ blob, url: URL.createObjectURL(blob), name: 'flixo-image.svg', width: image.width, height: image.height, text: svg }); return; }
+      if (mode === 'svg-optimizer') {
+        const source = await files[0].text();
+        const optimized = sanitizeSvgText(source).replace(/<!--[\s\S]*?-->/g, '').replace(/>\s+</g, '><').replace(/\s{2,}/g, ' ').trim();
+        const blob = new Blob([optimized], { type: 'image/svg+xml' });
+        setResult({ blob, url: URL.createObjectURL(blob), name: 'flixo-optimized.svg', text: optimized });
+        return;
+      }
+      if (mode === 'photo-colorizer') {
+        const endpoint = import.meta.env.VITE_PHOTO_COLORIZER_ENDPOINT;
+        if (!endpoint) throw new Error('Photo Colorizer requires VITE_PHOTO_COLORIZER_ENDPOINT; no fake AI fallback is used.');
+        const body = new FormData(); body.append('image', files[0]);
+        const response = await fetch(endpoint, { method: 'POST', body });
+        if (!response.ok) throw new Error(`Colorizer request failed (${response.status}).`);
+        const blob = await response.blob(); setResult({ blob, url: URL.createObjectURL(blob), name: 'flixo-colorized.png' }); return;
+      }
+      if (mode === 'collage-maker') {
+        const images = await Promise.all(files.map(loadImage));
+        const cell = 512; const columns = Math.min(3, Math.ceil(Math.sqrt(images.length))); const rows = Math.ceil(images.length / columns);
+        const canvas = document.createElement('canvas'); canvas.width = columns * cell; canvas.height = rows * cell;
+        const ctx = canvas.getContext('2d'); if (!ctx) throw new Error('Canvas unavailable.');
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        images.forEach((image, index) => { const x = (index % columns) * cell; const y = Math.floor(index / columns) * cell; const scale = Math.min(cell / image.width, cell / image.height); const w = image.width * scale; const h = image.height * scale; ctx.drawImage(image, x + (cell - w) / 2, y + (cell - h) / 2, w, h); });
+        setResult(await canvasResult(canvas, 'flixo-collage.png')); return;
+      }
+      const image = await loadImage(files[0]); const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d'); if (!ctx) throw new Error('Canvas unavailable.');
+      let width = image.width; let height = image.height; if (mode === 'passport-photo-maker') { width = 413; height = 531; } canvas.width = width; canvas.height = height;
+      if (mode === 'image-to-svg') {
+        const svg = svgFromImage(image); const blob = new Blob([sanitizeSvgText(svg)], { type: 'image/svg+xml' });
+        setResult({ blob, url: URL.createObjectURL(blob), name: 'flixo-image.svg', width: image.width, height: image.height, text: blob.size > 0 ? svg : undefined }); return;
+      }
       if (mode === 'mockup-generator') { ctx.fillStyle = '#111827'; ctx.fillRect(0, 0, width, height); ctx.fillStyle = '#1f2937'; ctx.roundRect(18, 18, width - 36, height - 36, 42); ctx.fill(); ctx.drawImage(image, 42, 72, width - 84, height - 114); ctx.fillStyle = '#000'; ctx.fillRect(width / 2 - 24, 30, 48, 8); }
       else if (mode === 'passport-photo-maker') { const scale = Math.max(width / image.width, height / image.height); const w = image.width * scale; const h = image.height * scale; ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, width, height); ctx.drawImage(image, (width - w) / 2, (height - h) / 2, w, h); }
       else if (mode === 'background-blur') { ctx.filter = 'blur(16px)'; ctx.drawImage(image, 0, 0, width, height); ctx.filter = 'none'; const inset = Math.round(Math.min(width, height) * 0.18); ctx.drawImage(image, inset, inset, width - inset * 2, height - inset * 2); }
