@@ -9,6 +9,8 @@ export interface PipelineProgress {
   outputBlob?: Blob;
 }
 
+const MAX_OUTPUT_PIXELS = 40_000_000;
+
 function asFile(blob: Blob, name = 'flixo-pipeline-input.png') {
   return new File([blob], name, { type: blob.type || 'image/png' });
 }
@@ -24,9 +26,13 @@ async function effects(blob: Blob, params?: Record<string, string | number | boo
   const contrast = Number(params?.contrast ?? 100);
   const saturate = Number(params?.saturate ?? 100);
   const grayscale = Number(params?.grayscale ?? 0);
-  ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturate}%) grayscale(${grayscale}%)`;
-  ctx.drawImage(image, 0, 0);
-  return canvasToBlob(canvas, 'image/png');
+  try {
+    ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturate}%) grayscale(${grayscale}%)`;
+    ctx.drawImage(image, 0, 0);
+    return canvasToBlob(canvas, 'image/png');
+  } finally {
+    if ('close' in image && typeof image.close === 'function') image.close();
+  }
 }
 
 async function imageBitmap(blob: Blob) {
@@ -50,8 +56,13 @@ async function processToolStep(toolId: string, inputBlob: Blob, params: Record<s
   switch (toolId) {
     case 'background-remover':
       return removeBackground(inputBlob, Number(params.tolerance ?? 42));
-    case 'image-upscaler':
-      return resizeImage(inputBlob, Number(params.scale ?? 2));
+    case 'image-upscaler': {
+      const info = await imageInfo(inputBlob);
+      const scale = Number(params.scale ?? 2);
+      const pixels = Math.round(info.width * scale) * Math.round(info.height * scale);
+      if (!Number.isFinite(pixels) || pixels > MAX_OUTPUT_PIXELS) throw new Error('The requested upscale is too large for safe browser processing. Reduce the scale or image dimensions and try again.');
+      return resizeImage(inputBlob, scale);
+    }
     case 'image-cropper': {
       const info = await imageInfo(inputBlob);
       const ratio = String(params.aspectRatio ?? '1:1').split(':').map(Number);
@@ -63,10 +74,10 @@ async function processToolStep(toolId: string, inputBlob: Blob, params: Record<s
       else cropHeight = Math.max(1, Math.round(info.width / targetRatio));
       const x = Math.round((info.width - cropWidth) / 2);
       const y = Math.round((info.height - cropHeight) / 2);
-      return cropResizeImage(inputBlob, { x, y, width: cropWidth, height: cropHeight }, {
-        width: Number(params.width ?? cropWidth),
-        height: Number(params.height ?? cropHeight),
-      });
+      const outWidth = Number(params.width ?? cropWidth);
+      const outHeight = Number(params.height ?? cropHeight);
+      if (!Number.isFinite(outWidth) || !Number.isFinite(outHeight) || outWidth * outHeight > MAX_OUTPUT_PIXELS) throw new Error('The requested crop output is too large for safe browser processing.');
+      return cropResizeImage(inputBlob, { x, y, width: cropWidth, height: cropHeight }, { width: outWidth, height: outHeight });
     }
     case 'image-compressor': {
       const file = asFile(inputBlob);
