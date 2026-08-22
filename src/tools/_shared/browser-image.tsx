@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useLocation } from '@tanstack/react-router';
 import { TOOL_UI_DICTIONARY, getToolUiLocale, type ToolUiLocale } from '../../i18n/dictionaries/tools';
+import { runImageWorker } from '../../lib/image/image-worker-client';
 
 type Mode = 'photo-colorizer' | 'background-blur' | 'passport-photo-maker' | 'watermark-adder' | 'meme-generator' | 'collage-maker' | 'image-effects' | 'exif-cleaner' | 'svg-optimizer' | 'mockup-generator' | 'image-to-svg';
 type Props = { mode: Mode; title: string; accept?: string; multi?: boolean };
@@ -121,6 +122,17 @@ export function BrowserImageTool({ mode, title, accept = 'image/*', multi = fals
         ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
         images.forEach((image, index) => { const x = (index % columns) * cell; const y = Math.floor(index / columns) * cell; const scale = Math.min(cell / image.width, cell / image.height); const w = image.width * scale; const h = image.height * scale; ctx.drawImage(image, x + (cell - w) / 2, y + (cell - h) / 2, w, h); });
         setResult(await canvasResult(canvas, 'flixo-collage.png')); return;
+      }
+      if (mode === 'background-blur' || mode === 'image-effects') {
+        try {
+          const blob = await runImageWorker(files[0], mode === 'background-blur'
+            ? { mode: 'background-blur', radius: 16 }
+            : { mode: 'effects', brightness: effect.brightness, contrast: effect.contrast, saturate: effect.saturate, grayscale: effect.grayscale });
+          setResult({ blob, url: URL.createObjectURL(blob), name: `flixo-${mode}.png` });
+          return;
+        } catch {
+          // Graceful fallback for browsers without OffscreenCanvas or worker support.
+        }
       }
       const image = await loadImage(files[0]); const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d'); if (!ctx) throw new Error('Canvas unavailable.');
       let width = image.width; let height = image.height; if (mode === 'passport-photo-maker') { width = 413; height = 531; } canvas.width = width; canvas.height = height;
