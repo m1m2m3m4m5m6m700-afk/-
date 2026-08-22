@@ -6,6 +6,8 @@ type Props = { mode: Mode; title: string; accept?: string; multi?: boolean };
 
 type Result = { blob: Blob; url: string; name: string; width?: number; height?: number; text?: string };
 
+type EffectsWorkerResponse = { ok: boolean; blob?: Blob; error?: string };
+
 function download(result: Result) {
   const link = document.createElement('a');
   link.href = result.url;
@@ -30,6 +32,28 @@ async function loadImage(file: File) {
 async function canvasResult(canvas: HTMLCanvasElement, name: string, mime = 'image/png', quality = 0.96): Promise<Result> {
   const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((value) => value ? resolve(value) : reject(new Error('Could not encode output.')), mime, quality));
   return { blob, url: URL.createObjectURL(blob), name, width: canvas.width, height: canvas.height };
+}
+
+async function runImageEffectsWorker(blob: Blob, effect: { brightness: number; contrast: number; saturate: number; grayscale: number }, width: number, height: number): Promise<Result> {
+  if (typeof Worker === 'undefined') throw new Error('Image Effects Worker is unavailable.');
+  return await new Promise<Result>((resolve, reject) => {
+    const worker = new Worker(new URL('./image-effects-worker.ts', import.meta.url), { type: 'classic' });
+    const cleanup = () => worker.terminate();
+    worker.onmessage = (event: MessageEvent<EffectsWorkerResponse>) => {
+      cleanup();
+      if (event.data.ok && event.data.blob instanceof Blob) {
+        const output = event.data.blob;
+        resolve({ blob: output, url: URL.createObjectURL(output), name: 'flixo-image-effects.png', width, height });
+      } else {
+        reject(new Error(event.data.error || 'Image Effects Worker failed.'));
+      }
+    };
+    worker.onerror = () => {
+      cleanup();
+      reject(new Error('Image Effects Worker could not start.'));
+    };
+    worker.postMessage({ blob, width, height, ...effect });
+  });
 }
 
 export function BrowserImageTool({ mode, title, accept = 'image/*', multi = false }: Props) {
@@ -102,7 +126,9 @@ export function BrowserImageTool({ mode, title, accept = 'image/*', multi = fals
       } else if (mode === 'meme-generator') {
         ctx.drawImage(image, 0, 0, width, height); ctx.font = `900 ${Math.max(32, Math.round(width / 10))}px Impact, sans-serif`; ctx.textAlign = 'center'; ctx.lineWidth = 8; ctx.strokeStyle = '#000'; ctx.fillStyle = '#fff'; ctx.strokeText(top, width / 2, 60); ctx.fillText(top, width / 2, 60); ctx.strokeText(bottom, width / 2, height - 30); ctx.fillText(bottom, width / 2, height - 30);
       } else if (mode === 'image-effects') {
-        ctx.filter = `brightness(${effect.brightness}%) contrast(${effect.contrast}%) saturate(${effect.saturate}%) grayscale(${effect.grayscale}%)`; ctx.drawImage(image, 0, 0, width, height); ctx.filter = 'none';
+        const baseBlob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((value) => value ? resolve(value) : reject(new Error('Could not prepare image.')), 'image/png'));
+        setResult(await runImageEffectsWorker(baseBlob, effect, width, height));
+        return;
       } else if (mode === 'exif-cleaner') {
         ctx.drawImage(image, 0, 0, width, height);
       } else {
