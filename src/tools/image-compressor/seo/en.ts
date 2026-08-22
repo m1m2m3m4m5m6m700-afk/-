@@ -1,4 +1,4 @@
-import type { LocalizedToolSeo } from '../manifest';
+import type { LocalizedToolSeo } from '@/lib/seo/tool-manifest';
 
 export const en: LocalizedToolSeo = Object.freeze({
   title: 'Compress Images Online Free | FLIXO Image Compressor',
