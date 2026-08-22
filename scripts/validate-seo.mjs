@@ -5,8 +5,8 @@ const seoSource = readFileSync('src/lib/seo/tool-seo.ts', 'utf8');
 const routerSource = readFileSync('src/routes/localized-tool.tsx', 'utf8');
 
 const expectedLocales = ['en','ar','es','fr','de','ru','zh','hi','id','ur','ja','pt','it','ko','nl','pl','tr','vi','th','sv'];
-const readyToolIds = [...toolsSource.matchAll(/\{ id: '([^']+)',[\s\S]*?isReady: true,/g)].map((match) => match[1]);
-const seoLocaleKeys = [...seoSource.matchAll(/^  ([a-z]{2}): '/gm)].map((match) => match[1]);
+const readyToolIds = [...toolsSource.matchAll(/\{ id: '([^']+)',[^\n]*?isReady: true,/g)].map((match) => match[1]);
+const seoLocaleKeys = [...seoSource.matchAll(/([a-z]{2}): '/g)].map((match) => match[1]);
 
 if (readyToolIds.length === 0) {
   console.error('No ready tools discovered in src/config/tools.ts');
@@ -24,12 +24,9 @@ if (seoLocaleKeys.length !== expectedLocales.length || seoLocaleKeys.some((local
   process.exit(1);
 }
 
-for (const locale of expectedLocales) {
-  const needle = `  ${locale}: '`;
-  if (!seoSource.includes(needle)) {
-    console.error(`Missing SEO label for locale: ${locale}`);
-    process.exit(1);
-  }
+if (expectedLocales.some((locale) => !seoSource.includes(`${locale}: '`) )) {
+  console.error('One or more SEO locale labels are missing.');
+  process.exit(1);
 }
 
 if (!routerSource.includes("path: '/$locale/$tool'")) {
@@ -47,7 +44,7 @@ if (!routerSource.includes("hrefLang: 'x-default'")) {
   process.exit(1);
 }
 
-if (!routerSource.includes("application/ld+json")) {
+if (!routerSource.includes('application/ld+json')) {
   console.error('Structured data JSON-LD is missing from the localized tool route.');
   process.exit(1);
 }
