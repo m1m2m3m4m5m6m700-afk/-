@@ -1,37 +1,37 @@
-type WorkerMessage = { blob: Blob };
+type OcrWorkerMessage = { blob: Blob };
 
-type WorkerScope = {
-  onmessage: ((event: MessageEvent<WorkerMessage>) => void | Promise<void>) | null;
+type OcrWorkerScope = {
+  onmessage: ((event: MessageEvent<OcrWorkerMessage>) => void | Promise<void>) | null;
   postMessage(message: unknown): void;
 };
 
-type WorkerCanvasContext = {
+type OcrWorkerCanvasContext = {
   drawImage(image: ImageBitmap, dx: number, dy: number, width: number, height: number): void;
   getImageData(sx: number, sy: number, width: number, height: number): ImageData;
   putImageData(imageData: ImageData, dx: number, dy: number): void;
 };
 
-type WorkerCanvas = {
+type OcrWorkerCanvas = {
   width: number;
   height: number;
-  getContext(contextId: '2d', options?: { willReadFrequently?: boolean }): WorkerCanvasContext | null;
+  getContext(contextId: '2d', options?: { willReadFrequently?: boolean }): OcrWorkerCanvasContext | null;
   convertToBlob(options?: { type?: string }): Promise<Blob>;
 };
 
-type WorkerGlobal = {
+type OcrWorkerGlobal = {
   createImageBitmap(image: Blob): Promise<ImageBitmap>;
-  OffscreenCanvas?: new (width: number, height: number) => WorkerCanvas;
+  OffscreenCanvas?: new (width: number, height: number) => OcrWorkerCanvas;
 };
 
-const scope = self as unknown as WorkerScope;
-const workerGlobal = globalThis as unknown as WorkerGlobal;
+const ocrWorkerScope = self as unknown as OcrWorkerScope;
+const ocrWorkerGlobal = globalThis as unknown as OcrWorkerGlobal;
 
-scope.onmessage = async (event: MessageEvent<WorkerMessage>) => {
+ocrWorkerScope.onmessage = async (event: MessageEvent<OcrWorkerMessage>) => {
   try {
-    if (!workerGlobal.OffscreenCanvas) throw new Error('OffscreenCanvas is unavailable.');
-    const image = await workerGlobal.createImageBitmap(event.data.blob);
+    if (!ocrWorkerGlobal.OffscreenCanvas) throw new Error('OffscreenCanvas is unavailable.');
+    const image = await ocrWorkerGlobal.createImageBitmap(event.data.blob);
     const scale = Math.min(2.5, Math.max(1, 1600 / Math.max(image.width, image.height)));
-    const canvas = new workerGlobal.OffscreenCanvas(
+    const canvas = new ocrWorkerGlobal.OffscreenCanvas(
       Math.max(1, Math.round(image.width * scale)),
       Math.max(1, Math.round(image.height * scale)),
     );
@@ -49,9 +49,9 @@ scope.onmessage = async (event: MessageEvent<WorkerMessage>) => {
     }
     context.putImageData(data, 0, 0);
     const prepared = await canvas.convertToBlob({ type: 'image/png' });
-    scope.postMessage({ ok: true, blob: prepared });
+    ocrWorkerScope.postMessage({ ok: true, blob: prepared });
   } catch (error) {
-    scope.postMessage({
+    ocrWorkerScope.postMessage({
       ok: false,
       error: error instanceof Error ? error.message : 'OCR preprocessing worker failed.',
     });
