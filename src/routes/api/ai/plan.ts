@@ -69,7 +69,7 @@ function validatePlan(value: unknown) {
   return plan;
 }
 
-export const Route = createFileRoute('/api/ai/plan' as never)({
+export const Route = createFileRoute('/api/ai/plan')({
   server: {
     handlers: {
       POST: async ({ request }: { request: Request }) => {
