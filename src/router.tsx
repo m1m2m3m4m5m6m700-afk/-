@@ -19,7 +19,6 @@ import {
   enMockupGeneratorRoute,
   enObjectRemoverRoute,
   enPassportPhotoMakerRoute,
-  enPhotoColorizerRoute,
   enPixRoute,
   enRasterToSvgRoute,
   enSeedRoute,
@@ -45,7 +44,6 @@ const routeTree = rootRoute.addChildren([
   enRasterToSvgRoute,
   enImageCropperRoute,
   enImageOcrRoute,
-  enPhotoColorizerRoute,
   enBackgroundBlurRoute,
   enPassportPhotoMakerRoute,
   enWatermarkAdderRoute,
@@ -60,7 +58,11 @@ const routeTree = rootRoute.addChildren([
   enPixRoute,
 ]);
 
-export const router = createRouter({ routeTree, defaultPreload: 'intent' });
+export const router = createRouter({
+  routeTree,
+  defaultPreload: 'intent',
+  notFoundMode: 'root',
+});
 
 declare module '@tanstack/react-router' {
   interface Register { router: typeof router; }
