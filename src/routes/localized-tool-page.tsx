@@ -5,11 +5,13 @@ import { getToolSeo } from '../lib/seo/tool-seo';
 
 export function LocalizedToolPage() {
   const params = useParams({ strict: false });
-  const seo = getToolSeo(params.locale, params.tool);
 
-  if (!isLocale(params.locale) || !seo || !LOCALES.includes(params.locale)) {
+  if (typeof params.locale !== 'string' || typeof params.tool !== 'string' || !isLocale(params.locale) || !LOCALES.includes(params.locale)) {
     return <main><h1>Tool not found</h1></main>;
   }
+
+  const seo = getToolSeo(params.locale, params.tool);
+  if (!seo) return <main><h1>Tool not found</h1></main>;
 
   const ToolComponent = seo.tool.component;
 
