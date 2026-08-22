@@ -4,8 +4,10 @@ type TesseractApi = {
   recognize(input: Blob, language: string): Promise<{ data: { text: string } }>;
 };
 
-type WorkerScope = DedicatedWorkerGlobalScope & {
+type WorkerScope = {
   Tesseract?: TesseractApi;
+  onmessage: ((event: MessageEvent<{ blob: Blob; language: string }>) => void | Promise<void>) | null;
+  postMessage(message: unknown): void;
 };
 
 const scope = self as unknown as WorkerScope;
