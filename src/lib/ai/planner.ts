@@ -33,13 +33,27 @@ function isExecutionPlan(value: unknown): value is ExecutionPlan {
   });
 }
 
-export function planFromWorkflow(workflowId: string): ExecutionPlan | null {
+function presetParams(toolId: ToolConfig['id'], preset: Record<string, string> = {}) {
+  if (toolId === 'image-cropper' && preset.aspectRatio) return { aspectRatio: preset.aspectRatio };
+  if (toolId === 'image-compressor') return {
+    ...(preset.targetSizeKB ? { targetSizeKB: Number(preset.targetSizeKB) } : {}),
+    ...(preset.format ? { format: preset.format } : {}),
+  };
+  if (toolId === 'image-converter' && preset.format) return { format: preset.format };
+  if (toolId === 'image-upscaler' && preset.scale) return { scale: Number(preset.scale) };
+  return undefined;
+}
+
+export function planFromWorkflow(workflowId: string, preset: Record<string, string> = {}): ExecutionPlan | null {
   const workflow = getWorkflow(workflowId);
   if (!workflow) return null;
   return {
     workflowName: workflow.title,
     confidence: 0.99,
-    steps: workflow.steps.slice(0, MAX_STEPS).map((step) => ({ toolId: step.toolId, params: step.params })),
+    steps: workflow.steps.slice(0, MAX_STEPS).map((step) => ({
+      toolId: step.toolId,
+      params: { ...(step.params ?? {}), ...(presetParams(step.toolId, preset) ?? {}) },
+    })),
   };
 }
 
