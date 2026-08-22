@@ -36,18 +36,18 @@ export const arIndexRoute = createRoute({
 
     const runIntent = () => {
       const match = resolveIntent(query);
-      if (match.kind === 'workflow' && match.id) {
+      if (match.kind === 'workflow' && match.id && match.confidence >= 0.72) {
         window.location.assign(`/ar/quickflow/${match.id}`);
         return;
       }
-      if (match.kind === 'tool' && match.id) {
+      if (match.kind === 'tool' && match.id && match.confidence >= 0.72) {
         const tool = getResolvedTool(match.id);
         if (tool) window.location.assign(tool.path.replace(/^\/en/, '/ar'));
       }
     };
 
     return (
-      <main dir="rtl" className="home-shell">
+      <main dir="rtl" lang="ar" className="home-shell">
         <header className="home-nav-wrap"><div className="home-nav">
           <Link to="/ar" className="home-brand" aria-label="الصفحة الرئيسية FLIXO"><span className="home-brand-mark">F</span><span>FLIXO</span></Link>
           <nav className="home-nav-links" aria-label="التنقل الرئيسي"><a href="#quickflows">المسارات السريعة</a><a href="#tools">الأدوات</a><Link to="/">English</Link></nav>
