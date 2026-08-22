@@ -15,8 +15,8 @@ if (!source['vite.config.ts'].includes("virtualRouteConfig: './routes.ts'")) {
   throw new Error('Route contract violation: TanStack Start virtualRouteConfig is missing');
 }
 
-if (!source['vite.config.ts'].includes("routeFileIgnorePattern: '(^|\\\\/)-virtual(?:\\\\/|$)'")) {
-  throw new Error('Route contract violation: -virtual route files must be ignored by file-route scanning');
+if (!source['vite.config.ts'].includes("image-tools\\.tsx")) {
+  throw new Error('Route contract violation: route-factory helper modules must be ignored by file-route scanning');
 }
 
 for (const file of ['src/routes/__root.tsx', 'src/routes/index.tsx']) {
