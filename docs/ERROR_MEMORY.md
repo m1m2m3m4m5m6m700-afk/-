@@ -118,3 +118,22 @@ When an E2E shard fails:
 
 - F-007 and F-008 are fixed in code and require the next CI run on the current branch HEAD for final verification.
 - The last observed CI failure was Run #1796 on merge SHA `c7c60870f6b088a87e321c2861584201dbbfab4b`; it failed at preflight, before `npm ci`, so those failures did not yet exercise the application build itself.
+
+## CI failure 2026-08-22T15:32:47.805Z
+- Fingerprint: `flx-161814e7`
+- SHA: `c7c60870f6b088a87e321c2861584201dbbfab4b`
+- Run: [#1796](https://github.com/m1m2m3m4m5m6m700-afk/FLIXO-AI-TOOLS/actions/runs/32581812732)
+- Job: `diagnostic-summary`
+- Ref: `136/merge`
+
+### Extracted diagnostics
+- typecheck=failure
+- lint=failure
+- build=failure
+- e2e=failure
+- trace correlation: client uses x-flixo-trace-id + W3C traceparent; inspect failed E2E artifact for browser trace
+
+### Correlation
+- Client trace IDs use `x-flixo-trace-id` and W3C `traceparent`; runtime/API diagnostics also emit stable fingerprints.
+
+---
