@@ -1,9 +1,8 @@
-import { createRoute, Link } from '@tanstack/react-router';
+import { createFileRoute, Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { ArrowUpRight, Check, Lock, Search, Sparkles, Zap } from 'lucide-react';
 import { HOMEPAGE_COPY } from '../lib/i18n/locales';
 import { resolveIntent, getResolvedTool } from '../lib/intent/resolver';
-import { rootRoute } from './__root';
 
 const arabicJobs = [
   ['صورة منتج جاهزة', '/ar/quickflow/product-ready'],
@@ -12,9 +11,7 @@ const arabicJobs = [
   ['تحسين جودة الصورة', '/ar/quickflow/improve-image'],
 ] as const;
 
-export const arIndexRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/ar',
+export const Route = createFileRoute('/ar')({
   head: () => ({
     meta: [
       { title: HOMEPAGE_COPY.ar.title },
