@@ -1,0 +1,27 @@
+name: Canary Guard
+
+on:
+  workflow_dispatch:
+    inputs:
+      canary_url:
+        description: 'Deployed canary URL'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  canary:
+    name: Canary health check
+    runs-on: ubuntu-latest
+    env:
+      CANARY_URL: ${{ inputs.canary_url }}
+      CANARY_MAX_FAILURES: '0'
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: node scripts/canary-check.mjs
