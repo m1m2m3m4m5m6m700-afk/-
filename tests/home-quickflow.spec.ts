@@ -16,3 +16,13 @@ test('homepage resolves a direct compression goal', async ({ page }) => {
   await page.getByRole('textbox', { name: 'Describe your goal' }).fill('make this image smaller');
   await expect(page.getByText('Image Compressor', { exact: true })).toBeVisible();
 });
+
+test('Arabic homepage routes intent search to Arabic QuickFlow', async ({ page }) => {
+  await page.goto('/ar');
+  const search = page.getByRole('textbox', { name: 'اكتب ما تريد إنجازه' });
+  await search.fill('جهز صورة المنتج للمتجر');
+  await search.press('Enter');
+  await expect(page).toHaveURL(/\/ar\/quickflow\/product-ready$/);
+  await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+  await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+});
