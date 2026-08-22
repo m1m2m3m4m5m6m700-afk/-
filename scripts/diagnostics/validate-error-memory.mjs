@@ -12,7 +12,8 @@ const requiredSignatures = [
   'UNINTENDED_DEPENDENCY_EDIT',
 ];
 const allowedClasses = new Set(['CI/code', 'SEO/test', 'architecture', 'SEO/runtime', 'dependency', 'i18n', 'external', 'process/dependency']);
-const evidencePattern = /(?:CI|PR)\s+#[0-9]+|commit\s+`[0-9a-f]{8,40}`|Vercel\s+(?:preview|deployment)\s+(?:failure|failures|state)/i;
+const incidentEvidencePattern = /(?:CI|PR)\s*:\s*#?[0-9]+|(?:CI|PR)\s+#[0-9]+|commit:\s*`[0-9a-f]{8,40}`|correction commit:\s*`[0-9a-f]{8,40}`|provider:\s*Vercel[;,.]?\s+(?:failure|failures|state)|failure:\s*[^|]+/i;
+const referencePattern = /(?:PR\s*:\s*`?#[0-9]+`?|CI\s*:\s*`?#[0-9]+`?|commit:\s*`[0-9a-f]{8,40}`|correction commit:\s*`[0-9a-f]{8,40}`|provider:\s*Vercel)/i;
 
 if (!memory.includes('| Signature | Root cause | Durable fix | Class | Evidence |')) {
   throw new Error('Error memory verified-incident table header is missing or malformed.');
@@ -53,8 +54,8 @@ for (const [index, line] of tableRows.entries()) {
   if (rootCause.length < 20 || durableFix.length < 20) {
     throw new Error(`Error memory incident row ${index + 1} has insufficient root-cause or durable-fix detail.`);
   }
-  if (!evidencePattern.test(evidence)) {
-    throw new Error(`Error memory incident row ${index + 1} has unverified or non-specific evidence: ${evidence}`);
+  if (!incidentEvidencePattern.test(evidence) || !referencePattern.test(evidence)) {
+    throw new Error(`Error memory incident row ${index + 1} has untraceable evidence: ${evidence}`);
   }
 }
 
@@ -70,6 +71,10 @@ if (!constraintSection.includes('`CANONICAL_ORIGIN_UNAVAILABLE`')) {
 if (!/^\| Constraint \| Impact \| Required handling \| Evidence \|/m.test(constraintSection)) {
   throw new Error('External constraint table header is missing or malformed.');
 }
+const constraintRows = constraintSection.split('\n').filter((line) => /^\| `[^`]+` \|/.test(line));
+if (!constraintRows.every((line) => referencePattern.test(line))) {
+  throw new Error('Every external constraint must include traceable evidence.');
+}
 
 const reviewSection = memory.split('## Architectural review findings')[1]?.split('## Error-memory contract')[0] ?? '';
 if (!reviewSection.includes('`INEFFECTIVE_LOCALE_DYNAMIC_IMPORT`')) {
@@ -77,6 +82,10 @@ if (!reviewSection.includes('`INEFFECTIVE_LOCALE_DYNAMIC_IMPORT`')) {
 }
 if (!/^\| Finding \| Prevention \| Evidence class \|/m.test(reviewSection)) {
   throw new Error('Architectural review table header is missing or malformed.');
+}
+const reviewRows = reviewSection.split('\n').filter((line) => /^\| `[^`]+` \|/.test(line));
+if (!reviewRows.every((line) => referencePattern.test(line))) {
+  throw new Error('Every architectural review finding must include traceable evidence.');
 }
 
 console.log(`Error memory validated: ${signatures.length} verified incidents; constraints and review findings classified separately.`);
