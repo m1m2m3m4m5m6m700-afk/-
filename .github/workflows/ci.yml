@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: read
+  contents: write
   security-events: write
 
 jobs:
@@ -207,6 +207,7 @@ jobs:
           cache: npm
       - name: Write CI summary and update error memory
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TYPECHECK_RESULT: ${{ needs.typecheck.result }}
           LINT_RESULT: ${{ needs.lint.result }}
           BUILD_RESULT: ${{ needs.build.result }}
