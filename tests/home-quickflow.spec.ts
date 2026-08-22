@@ -14,7 +14,9 @@ test('homepage resolves a product goal to a QuickFlow', async ({ page }) => {
 test('homepage resolves a direct compression goal', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('textbox', { name: 'Describe your goal' }).fill('make this image smaller');
-  await expect(page.getByText('Image Compressor', { exact: true })).toBeVisible();
+  const intentResult = page.locator('.home-intent-result');
+  await expect(intentResult).toBeVisible();
+  await expect(intentResult.getByText('Image Compressor', { exact: true })).toBeVisible();
 });
 
 test('all deterministic workflow routes resolve without AI', async ({ page }) => {
