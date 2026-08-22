@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { EXECUTABLE_PIPELINE_TOOL_IDS, EXECUTABLE_PIPELINE_TOOL_ID_SET } from '@/lib/workflows/executable-tools';
+import { EXECUTABLE_PIPELINE_TOOL_IDS } from '@/lib/workflows/executable-tools';
+import { parseExecutionPlan } from '@/lib/contracts/ai-plan';
 
-const MAX_STEPS = 4;
 const PIPELINE_TOOL_IDS = [...EXECUTABLE_PIPELINE_TOOL_IDS];
 const PLAN_SCHEMA = {
   type: 'object',
@@ -29,9 +29,7 @@ function consumeRateLimit(key: string) {
   const bucket = rateBuckets.get(key);
   if (!bucket || now - bucket.startedAt >= WINDOW_MS) {
     rateBuckets.set(key, { startedAt: now, count: 1 });
-    if (rateBuckets.size > MAX_BUCKETS) {
-      for (const [entryKey, entry] of rateBuckets) if (now - entry.startedAt >= WINDOW_MS) rateBuckets.delete(entryKey);
-    }
+    if (rateBuckets.size > MAX_BUCKETS) for (const [entryKey, entry] of rateBuckets) if (now - entry.startedAt >= WINDOW_MS) rateBuckets.delete(entryKey);
     return true;
   }
   if (bucket.count >= MAX_REQUESTS_PER_WINDOW) return false;
@@ -52,25 +50,6 @@ function readModelText(payload: unknown): string {
     for (const part of content) if (part && typeof part === 'object' && typeof (part as Record<string, unknown>).text === 'string') return (part as Record<string, string>).text;
   }
   return '';
-}
-
-function validatePlan(value: unknown) {
-  if (!value || typeof value !== 'object') throw new Error('Invalid AI plan.');
-  const plan = value as Record<string, unknown>;
-  if (typeof plan.workflowName !== 'string' || !plan.workflowName.trim() || typeof plan.confidence !== 'number' || !Number.isFinite(plan.confidence) || !Array.isArray(plan.steps)) throw new Error('Invalid AI plan.');
-  if (plan.confidence < 0 || plan.confidence > 1) throw new Error('AI confidence is out of range.');
-  if (plan.steps.length < 1 || plan.steps.length > MAX_STEPS) throw new Error('AI plan exceeds the step limit.');
-  for (const step of plan.steps) {
-    if (!step || typeof step !== 'object') throw new Error('AI plan contains an invalid step.');
-    const item = step as Record<string, unknown>;
-    if (typeof item.toolId !== 'string' || !EXECUTABLE_PIPELINE_TOOL_ID_SET.has(item.toolId)) throw new Error('AI plan contains a non-executable tool.');
-    const params = item.params;
-    if (params !== undefined && (typeof params !== 'object' || params === null || Array.isArray(params))) throw new Error('AI plan contains invalid parameters.');
-    if (params && typeof params === 'object') for (const [key, param] of Object.entries(params as Record<string, unknown>)) {
-      if (!key || key.length > 64 || !['string', 'number', 'boolean'].includes(typeof param) || (typeof param === 'number' && !Number.isFinite(param))) throw new Error(`Invalid parameter: ${key}`);
-    }
-  }
-  return plan;
 }
 
 export const Route = createFileRoute('/api/ai/plan')({
@@ -101,13 +80,15 @@ export const Route = createFileRoute('/api/ai/plan')({
             console.error(JSON.stringify({ level: 'error', event: 'ai.plan.provider_error', traceId, status: response.status }));
             return json({ error: `AI provider error (${response.status})`, traceId }, 502);
           }
-          const payload = await response.json();
-          const raw = readModelText(payload);
+          const raw = readModelText(await response.json());
           if (!raw) return json({ error: 'AI provider returned no structured output', traceId }, 502);
           let parsed: unknown;
           try { parsed = JSON.parse(raw); } catch { return json({ error: 'AI provider returned invalid JSON', traceId }, 502); }
-          try { return json(validatePlan(parsed), 200); }
-          catch (error) { return json({ error: error instanceof Error ? error.message : 'Invalid AI plan.', traceId }, 502); }
+          try { return json({ ...parseExecutionPlan(parsed), traceId }, 200); }
+          catch (error) {
+            console.error(JSON.stringify({ level: 'error', event: 'ai.plan.contract_error', traceId, message: error instanceof Error ? error.message : String(error) }));
+            return json({ error: 'AI provider returned a contract-invalid plan', traceId }, 502);
+          }
         } catch (error) {
           console.error(JSON.stringify({ level: 'error', event: 'ai.plan.unhandled', traceId, message: error instanceof Error ? error.message : String(error) }));
           return json({ error: 'AI planner request failed', traceId }, 502);
