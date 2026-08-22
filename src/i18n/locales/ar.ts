@@ -1,8 +1,10 @@
 import type { TranslationSchema } from '../schema';
+import TOOL_UI from '../tool-ui';
 
 export const locale = {
   code: 'ar', dir: 'rtl',
   common: { processing: 'معالجة محلية على جهازك', download: 'تنزيل', clear: 'مسح', upload: 'رفع ملف', privacy: 'تتم معالجة الملفات محليًا داخل متصفحك عندما تدعم الأداة المعالجة المحلية.', notFoundTitle: 'الصفحة غير موجودة', notFoundDescription: 'اللغة أو الأداة المطلوبة غير متوفرة.' },
+  commonToolUi: TOOL_UI.ar,
   glossary: { clientSideProcessing: 'معالجة محلية على جهازك' },
   tools: {
     'image-compressor': { title: 'ضاغط الصور', description: 'ضغط الصور مع معالجة محلية على جهازك.' },
