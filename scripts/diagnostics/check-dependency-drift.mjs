@@ -7,12 +7,14 @@ const manifestDependencies = { ...packageJson.dependencies, ...packageJson.devDe
 const lockDependencies = { ...lockRoot.dependencies, ...lockRoot.devDependencies };
 
 const missing = Object.keys(manifestDependencies).filter((name) => !(name in lockDependencies));
-const manifestCount = Object.keys(manifestDependencies).length;
-const lockCount = Object.keys(lockDependencies).length;
+const mismatched = Object.entries(manifestDependencies)
+  .filter(([name, range]) => lockDependencies[name] !== range)
+  .map(([name, range]) => `${name}: package.json=${range} lockfile=${lockDependencies[name] ?? '<missing>'}`);
 
-if (missing.length) {
-  console.error(`DEPENDENCY_DRIFT missing-lock-entry: ${missing.join(', ')}`);
+if (missing.length || mismatched.length) {
+  if (missing.length) console.error(`DEPENDENCY_DRIFT missing-lock-entry: ${missing.join(', ')}`);
+  if (mismatched.length) console.error(`DEPENDENCY_DRIFT range-mismatch: ${mismatched.join('; ')}`);
   process.exit(1);
 }
 
-console.log(`DEPENDENCY_AUDIT manifest=${manifestCount} lock=${lockCount} status=PASS`);
+console.log(`DEPENDENCY_AUDIT manifest=${Object.keys(manifestDependencies).length} lock=${Object.keys(lockDependencies).length} status=PASS`);
