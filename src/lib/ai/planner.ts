@@ -1,5 +1,6 @@
 import { resolveIntent } from '@/lib/intent/resolver';
 import { EXECUTABLE_PIPELINE_TOOL_IDS, EXECUTABLE_PIPELINE_TOOL_ID_SET } from '@/lib/workflows/executable-tools';
+import { traceHeaders } from '@/lib/diagnostics/trace';
 import type { ToolConfig } from '@/config/tools';
 import { getWorkflow } from '@/lib/workflows/registry';
 
@@ -65,7 +66,11 @@ export async function generateExecutionPlan(userPrompt: string): Promise<Executi
   const deterministic = planFromIntent(prompt);
   if (deterministic) return deterministic;
   try {
-    const response = await fetch('/api/ai/plan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }) });
+    const response = await fetch('/api/ai/plan', {
+      method: 'POST',
+      headers: traceHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ prompt }),
+    });
     if (!response.ok) throw new Error('AI planner is unavailable.');
     return validateExecutionPlan(await response.json());
   } catch {
