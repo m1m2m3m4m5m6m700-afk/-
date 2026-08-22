@@ -29,6 +29,6 @@ export const IMAGE_COMPRESSOR_MANIFEST: ToolManifest = Object.freeze({
   slug: 'image-compressor',
   status: 'ready',
   seoStatus: 'pilot',
-  capabilities: ['client-side', 'batch', 'resize', 'target-size', 'webp', 'jpg', 'png'],
+  capabilities: ['client-side', 'batch', 'resize', 'target-size', 'webp', 'jpg', 'png'] as const,
   seoLocales: Object.freeze({ en, ar }),
 });
