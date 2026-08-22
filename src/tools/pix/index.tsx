@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from '../../i18n/context';
+import { PIX_UI } from '../../i18n/pix-ui';
 
 export type ToolMode = 'tune' | 'liquify' | 'dispersion' | 'text';
 export interface FilterSettings { brightness: number; contrast: number; saturation: number; hue: number; blur: number; }
@@ -62,6 +64,8 @@ function buildFilter(value: FilterSettings) {
 }
 
 export default function PixTool() {
+  const i18n = useTranslation();
+  const ui = PIX_UI[i18n.code];
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const workingCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const imageUrlRef = useRef<string | null>(null);
@@ -75,7 +79,7 @@ export default function PixTool() {
   const [liquifyStrength, setLiquifyStrength] = useState(0.5);
   const [particles, setParticles] = useState<Particle[]>([]);
   const [textLayers, setTextLayers] = useState<TextLayer[]>([]);
-  const [newText, setNewText] = useState('Pix Studio');
+  const [newText, setNewText] = useState('');
   const [textColor, setTextColor] = useState('#ffffff');
   const [isInteracting, setIsInteracting] = useState(false);
   const [historyIndex, setHistoryIndex] = useState(-1);
@@ -137,10 +141,7 @@ export default function PixTool() {
   }, [filters, image, particles, textLayers]);
 
   useEffect(() => { redraw(); }, [redraw]);
-
-  useEffect(() => () => {
-    if (imageUrlRef.current) URL.revokeObjectURL(imageUrlRef.current);
-  }, []);
+  useEffect(() => () => { if (imageUrlRef.current) URL.revokeObjectURL(imageUrlRef.current); }, []);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -283,19 +284,25 @@ export default function PixTool() {
     setTimeout(() => URL.revokeObjectURL(url), 0);
   };
 
-  return <div className="mx-auto flex min-h-[650px] max-w-7xl flex-col gap-6 p-4 lg:flex-row" dir="rtl">
+  const modeLabels: Record<ToolMode, string> = { tune: ui.tune, liquify: ui.liquify, dispersion: ui.dispersion, text: ui.text };
+  const filterLabels: Array<[keyof FilterSettings, string, number, number]> = [
+    ['brightness', ui.brightness, -100, 100], ['contrast', ui.contrast, -100, 100], ['saturation', ui.saturation, -100, 100],
+    ['hue', ui.hue, 0, 360], ['blur', ui.blur, 0, 20],
+  ];
+
+  return <div className="mx-auto flex min-h-[650px] max-w-7xl flex-col gap-6 p-4 lg:flex-row" dir={i18n.dir}>
     <div className="relative flex min-h-[520px] flex-1 items-center justify-center overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
-      {image ? <canvas ref={canvasRef} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={finishInteraction} onPointerCancel={finishInteraction} className="max-h-[75vh] max-w-full rounded-lg object-contain shadow-2xl touch-none cursor-crosshair" aria-label="Pix Studio preview" /> : <label className="cursor-pointer rounded-xl border-2 border-dashed border-zinc-800 p-12 text-center transition hover:border-zinc-700"><span className="mb-2 block font-bold text-zinc-300">افتح صورة للبدء في Pix Studio</span><span className="block text-xs text-zinc-600">JPG, PNG, WebP — معالجة محلية وتصدير PNG عالي الدقة</span><input id="pix-image-file" type="file" accept="image/*" className="hidden" onChange={handleImageUpload} /></label>}
+      {image ? <canvas ref={canvasRef} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={finishInteraction} onPointerCancel={finishInteraction} className="max-h-[75vh] max-w-full rounded-lg object-contain shadow-2xl touch-none cursor-crosshair" aria-label={`${i18n.tools.pix.title} preview`} /> : <label className="cursor-pointer rounded-xl border-2 border-dashed border-zinc-800 p-12 text-center transition hover:border-zinc-700"><span className="mb-2 block font-bold text-zinc-300">{ui.start}</span><span className="block text-xs text-zinc-600">{ui.formats} — {ui.localProcessing}</span><input id="pix-image-file" type="file" accept="image/*" className="hidden" onChange={handleImageUpload} /></label>}
     </div>
     {image && <aside className="w-full rounded-2xl border border-zinc-800 bg-zinc-900 p-6 lg:w-96">
-      <div className="mb-5 flex items-center justify-between border-b border-zinc-800 pb-4"><div><h2 className="text-lg font-bold text-white">Pix Studio</h2><p className="text-xs text-zinc-500">Liquify · Dispersion · Tune · Text · History · Export</p></div><label className="cursor-pointer rounded-lg bg-zinc-800 px-3 py-2 text-xs text-white">فتح صورة<input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} /></label></div>
-      <div className="mb-5 grid grid-cols-4 gap-1 rounded-xl bg-zinc-950 p-1">{(['tune', 'liquify', 'dispersion', 'text'] as ToolMode[]).map((tool) => <button key={tool} type="button" onClick={() => setActiveTool(tool)} className={`rounded-lg py-2 text-xs font-bold capitalize transition ${activeTool === tool ? 'bg-indigo-600 text-white' : 'text-zinc-400 hover:text-white'}`}>{tool}</button>)}</div>
-      {activeTool === 'tune' && <div className="space-y-4">{([['Brightness', 'brightness', -100, 100], ['Contrast', 'contrast', -100, 100], ['Saturation', 'saturation', -100, 100], ['Hue', 'hue', 0, 360], ['Blur', 'blur', 0, 20]] as const).map(([label, key, min, max]) => <label key={key} className="block text-xs text-zinc-400"><span className="mb-1 block">{label}: {filters[key]}</span><input aria-label={label} type="range" min={min} max={max} value={filters[key]} onChange={(event) => updateFilter(key, Number(event.target.value))} className="w-full accent-indigo-500" /></label>)}</div>}
-      {activeTool === 'liquify' && <div className="space-y-4"><p className="text-xs text-zinc-500">اسحب على الصورة لتشكيل البكسلات محليًا.</p><label className="block text-xs text-zinc-400">Brush radius: {liquifyRadius}<input aria-label="Liquify radius" type="range" min="10" max="120" value={liquifyRadius} onChange={(event) => setLiquifyRadius(Number(event.target.value))} className="mt-2 w-full accent-indigo-500" /></label><label className="block text-xs text-zinc-400">Strength: {Math.round(liquifyStrength * 100)}%<input aria-label="Liquify strength" type="range" min="0.1" max="1" step="0.05" value={liquifyStrength} onChange={(event) => setLiquifyStrength(Number(event.target.value))} className="mt-2 w-full accent-indigo-500" /></label></div>}
-      {activeTool === 'dispersion' && <div className="space-y-4"><p className="text-xs text-zinc-500">انقر على الصورة لاستخراج الجسيمات من المنطقة المحددة.</p><label className="block text-xs text-zinc-400">Particle radius: {liquifyRadius}<input aria-label="Dispersion radius" type="range" min="10" max="120" value={liquifyRadius} onChange={(event) => setLiquifyRadius(Number(event.target.value))} className="mt-2 w-full accent-indigo-500" /></label></div>}
-      {activeTool === 'text' && <div className="space-y-4"><input aria-label="Text layer" value={newText} onChange={(event) => setNewText(event.target.value)} placeholder="أدخل النص هنا..." className="w-full rounded-lg border border-zinc-800 bg-zinc-950 p-2 text-sm text-white focus:border-indigo-500 focus:outline-none" /><div className="flex gap-2"><input aria-label="Text color" type="color" value={textColor} onChange={(event) => setTextColor(event.target.value)} className="h-9 w-12 cursor-pointer rounded-md bg-transparent" /><button type="button" onClick={addTextLayer} className="flex-1 rounded-lg bg-zinc-800 text-xs font-bold text-white hover:bg-zinc-700">إضافة نص</button></div></div>}
-      <div className="mt-6 grid grid-cols-3 gap-2"><button type="button" onClick={() => restoreSnapshot(historyIndex - 1)} disabled={historyIndex <= 0} className="rounded-lg bg-zinc-800 py-2 text-xs text-white disabled:opacity-40">تراجع Undo</button><button type="button" onClick={() => restoreSnapshot(historyIndex + 1)} disabled={historyIndex >= historyLength - 1} className="rounded-lg bg-zinc-800 py-2 text-xs text-white disabled:opacity-40">إعادة Redo</button><button type="button" onClick={resetEditor} disabled={historyIndex === 0} className="rounded-lg bg-zinc-800 py-2 text-xs text-white disabled:opacity-40">Reset</button></div>
-      <button type="button" onClick={() => void exportImage()} className="mt-3 w-full rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-indigo-500">تصدير الصورة PNG عالي الدقة</button>
+      <div className="mb-5 flex items-center justify-between border-b border-zinc-800 pb-4"><div><h2 className="text-lg font-bold text-white">{i18n.tools.pix.title}</h2><p className="text-xs text-zinc-500">{ui.historyExport}</p></div><label className="cursor-pointer rounded-lg bg-zinc-800 px-3 py-2 text-xs text-white">{ui.openImage}<input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} /></label></div>
+      <div className="mb-5 grid grid-cols-4 gap-1 rounded-xl bg-zinc-950 p-1">{(['tune', 'liquify', 'dispersion', 'text'] as ToolMode[]).map((tool) => <button key={tool} type="button" aria-label={modeLabels[tool]} onClick={() => setActiveTool(tool)} className={`rounded-lg py-2 text-xs font-bold transition ${activeTool === tool ? 'bg-indigo-600 text-white' : 'text-zinc-400 hover:text-white'}`}>{modeLabels[tool]}</button>)}</div>
+      {activeTool === 'tune' && <div className="space-y-4">{filterLabels.map(([key, label, min, max]) => <label key={key} className="block text-xs text-zinc-400"><span className="mb-1 block">{label}: {filters[key]}</span><input aria-label={label} type="range" min={min} max={max} value={filters[key]} onChange={(event) => updateFilter(key, Number(event.target.value))} className="w-full accent-indigo-500" /></label>)}</div>}
+      {activeTool === 'liquify' && <div className="space-y-4"><p className="text-xs text-zinc-500">{ui.localProcessing}</p><label className="block text-xs text-zinc-400">{ui.brushRadius}: {liquifyRadius}<input aria-label={ui.brushRadius} type="range" min="10" max="120" value={liquifyRadius} onChange={(event) => setLiquifyRadius(Number(event.target.value))} className="mt-2 w-full accent-indigo-500" /></label><label className="block text-xs text-zinc-400">{ui.strength}: {Math.round(liquifyStrength * 100)}%<input aria-label={ui.strength} type="range" min="0.1" max="1" step="0.05" value={liquifyStrength} onChange={(event) => setLiquifyStrength(Number(event.target.value))} className="mt-2 w-full accent-indigo-500" /></label></div>}
+      {activeTool === 'dispersion' && <div className="space-y-4"><p className="text-xs text-zinc-500">{ui.localProcessing}</p><label className="block text-xs text-zinc-400">{ui.particleRadius}: {liquifyRadius}<input aria-label={ui.particleRadius} type="range" min="10" max="120" value={liquifyRadius} onChange={(event) => setLiquifyRadius(Number(event.target.value))} className="mt-2 w-full accent-indigo-500" /></label></div>}
+      {activeTool === 'text' && <div className="space-y-4"><input aria-label={ui.text} value={newText} onChange={(event) => setNewText(event.target.value)} placeholder={ui.textPlaceholder} className="w-full rounded-lg border border-zinc-800 bg-zinc-950 p-2 text-sm text-white focus:border-indigo-500 focus:outline-none" /><div className="flex gap-2"><input aria-label={ui.text} type="color" value={textColor} onChange={(event) => setTextColor(event.target.value)} className="h-9 w-12 cursor-pointer rounded-md bg-transparent" /><button type="button" onClick={addTextLayer} className="flex-1 rounded-lg bg-zinc-800 text-xs font-bold text-white hover:bg-zinc-700">{ui.addText}</button></div></div>}
+      <div className="mt-6 grid grid-cols-3 gap-2"><button type="button" onClick={() => restoreSnapshot(historyIndex - 1)} disabled={historyIndex <= 0} className="rounded-lg bg-zinc-800 py-2 text-xs text-white disabled:opacity-40">{ui.undo}</button><button type="button" onClick={() => restoreSnapshot(historyIndex + 1)} disabled={historyIndex >= historyLength - 1} className="rounded-lg bg-zinc-800 py-2 text-xs text-white disabled:opacity-40">{ui.redo}</button><button type="button" onClick={resetEditor} disabled={historyIndex === 0} className="rounded-lg bg-zinc-800 py-2 text-xs text-white disabled:opacity-40">{ui.reset}</button></div>
+      <button type="button" aria-label={ui.exportPng} onClick={() => void exportImage()} className="mt-3 w-full rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-indigo-500">{ui.exportPng}</button>
     </aside>}
   </div>;
 }
