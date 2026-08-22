@@ -26,6 +26,8 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      - name: Generate TanStack route tree
+        run: npm run build
       - run: npm run typecheck
 
   lint:
