@@ -1,10 +1,10 @@
 # FLIXO Error Memory
 
-Current-architecture record of verified failures and permanent prevention. Only repository/application incidents are listed as failures; external constraints and architectural review findings are recorded separately.
+Current-architecture record of verified failures and permanent prevention. Only repository/application or diagnostic-tool defects are listed as incidents; external constraints and architectural review findings are recorded separately.
 
 ## Rules
 - Record only verified root causes; never record a hypothesis as a failure.
-- Keep repository/application defects separate from external-service capacity and configuration constraints.
+- Keep repository/application and diagnostic-tool defects separate from external-service capacity and configuration constraints.
 - Every incident must state a durable prevention mechanism and traceable evidence reference.
 - Legacy diagnostic PRs are historical references, not runtime dependencies.
 - Do not reuse a signature for a different root cause.
@@ -21,6 +21,8 @@ Current-architecture record of verified failures and permanent prevention. Only 
 | `INVALID_RADIX_RANGE` | A change introduced a dependency range that was not present in the package registry | Keep the package/lockfile baseline exact unless a verified upgrade is tested end-to-end | dependency | PR: `#126`; failure: `npm ci` |
 | `HARD_CODED_TOOL_UI_TEXT` | User-visible JSX bypassed the locale dictionaries | Typed tool UI dictionaries plus AST `i18n:check` gate | i18n | PR: `#126`; failure: i18n gate |
 | `UNINTENDED_DEPENDENCY_EDIT` | A tooling edit accidentally changed an unrelated dependency version while adding a script | Compare dependency manifests against `main` and reject unrelated package drift | process/dependency | PR: `#126`; correction commit: `b35d84bf` |
+| `MANIFEST_LOCKFILE_RANGE_DRIFT` | Dependency ranges in `package.json` diverged from the lockfile after tooling edits, preventing a deterministic dependency audit | Require exact manifest/lockfile range agreement and fail diagnostics on range mismatch before build/test execution | process/dependency | CI Diagnostics `#14`; failure: dependency-drift; correction commit: `d76a1ea1` |
+| `STALE_DIAGNOSTIC_ROUTE_PATH` | The tool-contract diagnostic hard-coded a route-matrix filename that no longer exists in the current route architecture | Resolve and validate the authoritative current route module (`src/routes/localized-tool-routes.tsx`) instead of a legacy filename | diagnostics/tooling | CI Diagnostics `#14`; failure: tool-contract; correction commit: `f45d6168` |
 
 ## Verified external constraints
 
@@ -41,7 +43,7 @@ These findings are useful engineering knowledge but were not recorded as verifie
 
 ## Error-memory contract
 
-A memory entry is actionable only when it contains a unique signature, verified root cause, durable prevention, classification, and traceable evidence. The validator enforces uniqueness, structure, and evidence-reference format, but the presence of a record does not prove that the underlying incident can never recur.
+A memory entry is actionable only when it contains a unique signature, verified root cause, durable prevention, classification, and traceable evidence. The validator enforces uniqueness, structure, incident/constraint separation, and evidence-reference format, but the presence of a record does not prove that the underlying incident can never recur.
 
 ## Legacy evidence
 
