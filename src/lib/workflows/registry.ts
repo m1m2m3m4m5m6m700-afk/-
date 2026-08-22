@@ -7,10 +7,10 @@ export const WORKFLOW_REGISTRY: readonly Workflow[] = Object.freeze([
     description: 'Prepare a clean, sharp product image for a store or marketplace.',
     intentPatterns: ['product', 'store', 'shop', 'ecommerce', 'amazon', 'marketplace', 'catalog'],
     steps: [
-      { toolId: 'background-remover', title: 'Remove background' },
-      { toolId: 'image-upscaler', title: 'Improve quality', optional: true },
-      { toolId: 'image-cropper', title: 'Set the crop', optional: true },
-      { toolId: 'image-compressor', title: 'Optimize file size' },
+      { toolId: 'background-remover', title: 'Remove background', params: { tolerance: 42 } },
+      { toolId: 'image-upscaler', title: 'Improve quality', optional: true, params: { scale: 2 } },
+      { toolId: 'image-cropper', title: 'Set the crop', optional: true, params: { aspectRatio: '1:1' } },
+      { toolId: 'image-compressor', title: 'Optimize file size', params: { quality: 0.8, format: 'image/webp', targetSizeKB: 500 } },
     ],
   },
   {
@@ -19,9 +19,9 @@ export const WORKFLOW_REGISTRY: readonly Workflow[] = Object.freeze([
     description: 'Turn an image into a clean, share-ready social asset.',
     intentPatterns: ['social', 'instagram', 'facebook', 'post', 'story', 'social media'],
     steps: [
-      { toolId: 'image-cropper', title: 'Set the crop' },
-      { toolId: 'image-effects', title: 'Tune the look', optional: true },
-      { toolId: 'image-compressor', title: 'Optimize for sharing' },
+      { toolId: 'image-cropper', title: 'Set the crop', params: { aspectRatio: '1:1' } },
+      { toolId: 'image-effects', title: 'Tune the look', optional: true, params: { brightness: 102, contrast: 105, saturate: 108 } },
+      { toolId: 'image-compressor', title: 'Optimize for sharing', params: { quality: 0.82, format: 'image/webp' } },
     ],
   },
   {
@@ -30,9 +30,9 @@ export const WORKFLOW_REGISTRY: readonly Workflow[] = Object.freeze([
     description: 'Create a clean portrait image for a profile or ID-style use.',
     intentPatterns: ['profile', 'avatar', 'headshot', 'portrait', 'id photo'],
     steps: [
-      { toolId: 'background-remover', title: 'Clean the background', optional: true },
-      { toolId: 'image-cropper', title: 'Frame the portrait' },
-      { toolId: 'image-compressor', title: 'Keep the file light' },
+      { toolId: 'background-remover', title: 'Clean the background', optional: true, params: { tolerance: 42 } },
+      { toolId: 'image-cropper', title: 'Frame the portrait', params: { aspectRatio: '1:1' } },
+      { toolId: 'image-compressor', title: 'Keep the file light', params: { quality: 0.84, format: 'image/webp' } },
     ],
   },
   {
@@ -41,9 +41,9 @@ export const WORKFLOW_REGISTRY: readonly Workflow[] = Object.freeze([
     description: 'Make an image lighter and appropriately sized for a website.',
     intentPatterns: ['website', 'web', 'site', 'homepage', 'landing page', 'online'],
     steps: [
-      { toolId: 'image-cropper', title: 'Set the dimensions', optional: true },
-      { toolId: 'image-converter', title: 'Choose the right format', optional: true },
-      { toolId: 'image-compressor', title: 'Compress for the web' },
+      { toolId: 'image-cropper', title: 'Set the dimensions', optional: true, params: { aspectRatio: '16:9' } },
+      { toolId: 'image-converter', title: 'Choose the right format', optional: true, params: { format: 'image/webp' } },
+      { toolId: 'image-compressor', title: 'Compress for the web', params: { quality: 0.78, format: 'image/webp', targetSizeKB: 350 } },
     ],
   },
   {
@@ -52,8 +52,8 @@ export const WORKFLOW_REGISTRY: readonly Workflow[] = Object.freeze([
     description: 'Prepare an image for cleaner, higher-resolution output.',
     intentPatterns: ['print', 'printing', 'poster', 'flyer', 'paper', 'high resolution'],
     steps: [
-      { toolId: 'image-upscaler', title: 'Increase resolution' },
-      { toolId: 'image-cropper', title: 'Set print dimensions', optional: true },
+      { toolId: 'image-upscaler', title: 'Increase resolution', params: { scale: 2 } },
+      { toolId: 'image-cropper', title: 'Set print dimensions', optional: true, params: { aspectRatio: '4:5' } },
     ],
   },
   {
@@ -62,8 +62,8 @@ export const WORKFLOW_REGISTRY: readonly Workflow[] = Object.freeze([
     description: 'Start with the most common quality improvements without learning the tools.',
     intentPatterns: ['improve', 'enhance', 'better', 'sharper', 'quality', 'fix image', 'clean image'],
     steps: [
-      { toolId: 'image-upscaler', title: 'Improve quality' },
-      { toolId: 'image-effects', title: 'Tune the look', optional: true },
+      { toolId: 'image-upscaler', title: 'Improve quality', params: { scale: 1.5 } },
+      { toolId: 'image-effects', title: 'Tune the look', optional: true, params: { brightness: 102, contrast: 104, saturate: 105 } },
       { toolId: 'background-blur', title: 'Blur the background', optional: true },
     ],
   },
