@@ -31,7 +31,7 @@ for (const locale of pilotLocales) {
     if (!new RegExp(`\\b${field}\\s*:`).test(source)) fail(`${locale}.ts is missing field ${field}`);
   }
   if (!source.includes(`export const ${locale}`)) fail(`${locale}.ts must export ${locale}`);
-  const localizedText = source.replace(/^[^'\"]*$/gm, '');
+  const localizedText = source.replace(/^[^'"]*$/gm, '');
   if (locale === 'ar' && (localizedText.match(/[\u0600-\u06ff]/g) ?? []).length < 40) {
     fail('ar.ts does not contain enough Arabic text to be treated as a real localized SEO document');
   }
