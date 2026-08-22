@@ -2,7 +2,7 @@ name: SEO & Core Web Vitals
 
 on:
   push:
-    branches: [main]
+    branches: [main, feat/seo-cwv-hardening]
   pull_request:
     branches: [main]
   workflow_dispatch:
