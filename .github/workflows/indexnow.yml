@@ -1,0 +1,24 @@
+name: IndexNow
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    name: Notify IndexNow
+    if: ${{ secrets.INDEXNOW_KEY != '' && vars.VITE_SITE_URL != '' }}
+    runs-on: ubuntu-latest
+    env:
+      VITE_SITE_URL: ${{ vars.VITE_SITE_URL }}
+      INDEXNOW_KEY: ${{ secrets.INDEXNOW_KEY }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+      - run: node scripts/indexnow.mjs
