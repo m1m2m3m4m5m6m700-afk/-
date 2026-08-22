@@ -6,6 +6,7 @@ import { INTENT_SLUGS_REGISTRY } from '../config/intents';
 import { trackProductEvent } from '../lib/analytics/productEvents';
 import { resolveIntent } from '../lib/intent/resolver';
 import { getWorkflow } from '../lib/workflows/registry';
+import { RotateRepeatIcon } from '../components/home/RotateRepeatIcon';
 import { rootRoute } from './__root';
 
 const featuredIds = ['image-compressor', 'background-remover', 'ai-image-generator', 'image-upscaler', 'image-converter', 'pix'];
@@ -103,5 +104,3 @@ export const indexRoute = createRoute({
     );
   },
 });
-
-function RotateRepeatIcon() { return <span className="home-inline-icon" aria-hidden="true">↻</span>; }
