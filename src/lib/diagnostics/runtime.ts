@@ -1,14 +1,18 @@
+import { getTraceId } from './trace';
+
 export type RuntimeDiagnostic = {
-  kind: 'error' | 'unhandledrejection';
+  kind: 'error' | 'unhandledrejection' | 'hydration';
   message: string;
   stack?: string;
   route: string;
   userAgent: string;
   timestamp: string;
+  traceId: string;
+  componentStack?: string;
 };
 
 const STORAGE_KEY = 'flixo:runtime-diagnostics';
-const MAX_ENTRIES = 20;
+const MAX_ENTRIES = 40;
 
 function saveDiagnostic(diagnostic: RuntimeDiagnostic): void {
   try {
@@ -38,7 +42,11 @@ export function clearRuntimeDiagnostics(): void {
   }
 }
 
-function record(kind: RuntimeDiagnostic['kind'], error: unknown): void {
+function record(
+  kind: RuntimeDiagnostic['kind'],
+  error: unknown,
+  componentStack?: string,
+): void {
   const diagnostic: RuntimeDiagnostic = {
     kind,
     message: error instanceof Error ? error.message : String(error),
@@ -46,9 +54,15 @@ function record(kind: RuntimeDiagnostic['kind'], error: unknown): void {
     route: `${window.location.pathname}${window.location.search}`,
     userAgent: navigator.userAgent,
     timestamp: new Date().toISOString(),
+    traceId: getTraceId(),
+    componentStack,
   };
 
   saveDiagnostic(diagnostic);
+}
+
+export function recordHydrationError(error: unknown, componentStack?: string): void {
+  record('hydration', error, componentStack);
 }
 
 export function installRuntimeDiagnostics(): () => void {
