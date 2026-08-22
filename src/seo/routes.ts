@@ -1,32 +1,20 @@
-export const INDEXABLE_ROUTES = [
-  '/',
-  '/en/image-compressor',
-  '/ar/image-compressor',
-  '/en/background-remover',
-  '/en/ai-image-generator',
-  '/en/image-upscaler',
-  '/en/image-converter',
-  '/en/image-to-text',
-  '/en/object-remover',
-  '/en/crop-resize',
-  '/en/watermark-remover',
-  '/en/raster-to-svg',
-  '/en/image-cropper',
-  '/en/image-ocr',
-  '/en/background-blur',
-  '/en/passport-photo-maker',
-  '/en/watermark-adder',
-  '/en/meme-generator',
-  '/en/collage-maker',
-  '/en/image-effects',
-  '/en/exif-cleaner',
-  '/en/svg-optimizer',
-  '/en/mockup-generator',
-  '/en/image-to-svg',
-  '/en/seed',
-  '/en/pix',
-] as const;
+import { getReadyToolConfigs } from '../config/tools';
+import { SUPPORTED_LANGUAGES } from '../i18n/languages';
 
-export function localeForPath(pathname: string): 'en' | 'ar' {
-  return pathname.startsWith('/ar/') || pathname === '/ar' ? 'ar' : 'en';
+export const INDEXABLE_ROUTES = Object.freeze([
+  '/',
+  ...SUPPORTED_LANGUAGES.flatMap((language) =>
+    getReadyToolConfigs().map((tool) => `/${language}/${tool.id}`),
+  ),
+]);
+
+export const LOCALIZED_ROUTE_COUNT = SUPPORTED_LANGUAGES.length * 22;
+
+export function canonicalToolPath(language: string, toolId: string) {
+  return `/${language}/${toolId}`;
+}
+
+export function localeForPath(pathname: string) {
+  const language = pathname.split('/')[1] ?? 'en';
+  return SUPPORTED_LANGUAGES.includes(language as (typeof SUPPORTED_LANGUAGES)[number]) ? language : 'en';
 }
