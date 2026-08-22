@@ -1,6 +1,7 @@
 import { resolveIntent } from '@/lib/intent/resolver';
 import { EXECUTABLE_PIPELINE_TOOL_IDS, EXECUTABLE_PIPELINE_TOOL_ID_SET } from '@/lib/workflows/executable-tools';
 import { traceHeaders } from '@/lib/diagnostics/trace';
+import { parseExecutionPlan, MAX_PLAN_STEPS } from '@/lib/contracts/ai-plan';
 import type { ToolConfig } from '@/config/tools';
 import { getWorkflow } from '@/lib/workflows/registry';
 
@@ -10,26 +11,8 @@ export type ExecutionPlan = {
   steps: Array<{ toolId: ToolConfig['id']; params?: Record<string, string | number | boolean | undefined> }>;
 };
 
-export const MAX_STEPS = 4;
+export const MAX_STEPS = MAX_PLAN_STEPS;
 export const PIPELINE_TOOL_IDS = EXECUTABLE_PIPELINE_TOOL_ID_SET;
-
-function isExecutionPlan(value: unknown): value is ExecutionPlan {
-  if (!value || typeof value !== 'object') return false;
-  const plan = value as Record<string, unknown>;
-  if (typeof plan.workflowName !== 'string' || !plan.workflowName.trim()) return false;
-  if (typeof plan.confidence !== 'number' || !Number.isFinite(plan.confidence) || plan.confidence < 0 || plan.confidence > 1) return false;
-  if (!Array.isArray(plan.steps) || plan.steps.length === 0 || plan.steps.length > MAX_STEPS) return false;
-  return plan.steps.every((step) => {
-    if (!step || typeof step !== 'object') return false;
-    const item = step as Record<string, unknown>;
-    if (typeof item.toolId !== 'string' || !EXECUTABLE_PIPELINE_TOOL_ID_SET.has(item.toolId)) return false;
-    if (item.params !== undefined && (typeof item.params !== 'object' || item.params === null || Array.isArray(item.params))) return false;
-    if (item.params && typeof item.params === 'object') {
-      return Object.values(item.params as Record<string, unknown>).every((value) => value === undefined || (['string', 'number', 'boolean'].includes(typeof value) && (typeof value !== 'number' || Number.isFinite(value))));
-    }
-    return true;
-  });
-}
 
 function presetParams(toolId: ToolConfig['id'], preset: Record<string, string | undefined> = {}) {
   if (toolId === 'background-remover' && preset.background) return { tolerance: preset.background === 'clean' ? 42 : 36 };
@@ -56,8 +39,7 @@ function planFromIntent(input: string): ExecutionPlan | null {
 }
 
 export function validateExecutionPlan(plan: unknown): ExecutionPlan {
-  if (!isExecutionPlan(plan)) throw new Error('FLIXO returned a plan containing an unsupported or non-executable tool.');
-  return plan;
+  return parseExecutionPlan(plan) as ExecutionPlan;
 }
 
 export async function generateExecutionPlan(userPrompt: string): Promise<ExecutionPlan> {
@@ -66,11 +48,7 @@ export async function generateExecutionPlan(userPrompt: string): Promise<Executi
   const deterministic = planFromIntent(prompt);
   if (deterministic) return deterministic;
   try {
-    const response = await fetch('/api/ai/plan', {
-      method: 'POST',
-      headers: traceHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ prompt }),
-    });
+    const response = await fetch('/api/ai/plan', { method: 'POST', headers: traceHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ prompt }) });
     if (!response.ok) throw new Error('AI planner is unavailable.');
     return validateExecutionPlan(await response.json());
   } catch {
