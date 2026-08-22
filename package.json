@@ -5,14 +5,16 @@
   "engines": {"node": "22.x"},
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 3000",
-    "build": "vite build",
+    "build": "npm run generate:sitemap && vite build",
     "preview": "vite preview --host 0.0.0.0 --port 3000",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "format:check": "prettier --check .",
     "audit:production": "npm audit --omit=dev --audit-level=high",
     "validate:i18n": "node scripts/validate-i18n.mjs",
-    "check": "npm run typecheck && npm run lint && npm run build && npm run validate:i18n",
+    "validate:seo": "node scripts/validate-seo.mjs",
+    "generate:sitemap": "node scripts/generate-sitemap.mjs",
+    "check": "npm run typecheck && npm run lint && npm run validate:i18n && npm run validate:seo && npm run build",
     "test:e2e": "playwright test",
     "test": "npm run check && npm run test:e2e"
   },
