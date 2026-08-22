@@ -1,16 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from '../../i18n/context';
 import { convertImage, cropResizeImage, downloadBlob, imageInfo, removeBackground, rasterToSvg, resizeImage, watermarkRemove, fillRemoveRegion } from './engine';
 import type { LocalToolId } from './engine';
 
-const DEFINITIONS: Record<Exclude<LocalToolId, 'ai-image-generator' | 'image-compressor'>, { title: string; description: string; accept: string }> = {
-  'background-remover': { title: 'Background Remover', description: 'Remove connected, uniform backgrounds locally in your browser with edge-aware flood fill.', accept: 'image/png,image/jpeg,image/webp,image/svg+xml' },
-  'image-upscaler': { title: 'Image Upscaler', description: 'Increase image dimensions with high-quality browser resampling and controlled sharpening.', accept: 'image/png,image/jpeg,image/webp' },
-  'image-converter': { title: 'Image Converter', description: 'Convert images between PNG, JPG, and WebP without uploading them.', accept: 'image/png,image/jpeg,image/webp' },
-  'image-to-text': { title: 'Image to Text OCR', description: 'Extract visible text from an image in your browser with OCR preprocessing.', accept: 'image/png,image/jpeg,image/webp' },
-  'object-remover': { title: 'Object Remover', description: 'Reconstruct a selected rectangular object region from surrounding pixels locally.', accept: 'image/png,image/jpeg,image/webp' },
-  'crop-resize': { title: 'Crop & Resize', description: 'Crop an image and export it at exact dimensions.', accept: 'image/png,image/jpeg,image/webp' },
-  'watermark-remover': { title: 'Watermark Remover', description: 'Reconstruct a selected watermark region locally with edge interpolation.', accept: 'image/png,image/jpeg,image/webp' },
-  'raster-to-svg': { title: 'Raster to SVG', description: 'Convert a small raster image to compact pixel-based SVG locally.', accept: 'image/png,image/jpeg,image/webp' },
+type LocalToolDefinition = { accept: string };
+const DEFINITIONS: Record<Exclude<LocalToolId, 'ai-image-generator' | 'image-compressor'>, LocalToolDefinition> = {
+  'background-remover': { accept: 'image/png,image/jpeg,image/webp,image/svg+xml' },
+  'image-upscaler': { accept: 'image/png,image/jpeg,image/webp' },
+  'image-converter': { accept: 'image/png,image/jpeg,image/webp' },
+  'image-to-text': { accept: 'image/png,image/jpeg,image/webp' },
+  'object-remover': { accept: 'image/png,image/jpeg,image/webp' },
+  'crop-resize': { accept: 'image/png,image/jpeg,image/webp' },
+  'watermark-remover': { accept: 'image/png,image/jpeg,image/webp' },
+  'raster-to-svg': { accept: 'image/png,image/jpeg,image/webp' },
 };
 
 type Props = { toolId: Exclude<LocalToolId, 'image-compressor'> };
@@ -62,10 +64,11 @@ async function preprocessForOcr(file: File): Promise<Blob> {
 }
 
 export function ImageToolPage({ toolId }: Props) {
+  const i18n = useTranslation();
+  const ui = i18n.commonToolUi as NonNullable<typeof i18n.commonToolUi>;
+  const translated = i18n.tools[toolId as keyof typeof i18n.tools];
   const isGenerator = toolId === 'ai-image-generator';
-  const definition = isGenerator
-    ? { title: 'AI Image Generator', description: 'Generate an image through the configured FLIXO image model endpoint.', accept: '' }
-    : DEFINITIONS[toolId];
+  const accept = isGenerator ? '' : DEFINITIONS[toolId].accept;
 
   const [file, setFile] = useState<File | null>(null);
   const [prompt, setPrompt] = useState('');
@@ -92,20 +95,20 @@ export function ImageToolPage({ toolId }: Props) {
     setResult(null);
     try {
       if (isGenerator) {
-        if (!prompt.trim()) throw new Error('Enter a prompt first.');
+        if (!prompt.trim()) throw new Error(ui.prompt);
         const body = new FormData();
         body.append('capability', 'generate-image');
         body.append('prompt', prompt.trim());
         const response = await fetch(import.meta.env.VITE_FLIXO_AI_IMAGE_ENDPOINT || '/api/ai/image', { method: 'POST', body });
-        if (!response.ok) throw new Error('AI image endpoint is not configured or returned an error.');
+        if (!response.ok) throw new Error(ui.generatorPrivacy);
         const blob = await response.blob();
-        if (!blob.type.startsWith('image/')) throw new Error('AI endpoint did not return an image.');
+        if (!blob.type.startsWith('image/')) throw new Error(ui.generatorPrivacy);
         const info = await imageInfo(blob);
         setResult({ blob, info, fileName: `flixo-ai-${info.width}x${info.height}.png` });
         return;
       }
 
-      if (!file) throw new Error('Choose an image first.');
+      if (!file) throw new Error(ui.chooseImage);
       let blob: Blob;
       let fileName = baseName(file.name);
       let info: Result['info'];
@@ -115,7 +118,7 @@ export function ImageToolPage({ toolId }: Props) {
         fileName += '-no-background.png';
       } else if (toolId === 'image-upscaler') {
         const factor = Number(scale);
-        if (!Number.isFinite(factor) || factor < 0.25 || factor > 4) throw new Error('Scale must be between 0.25 and 4.');
+        if (!Number.isFinite(factor) || factor < 0.25 || factor > 4) throw new Error(ui.scale);
         blob = await resizeImage(file, factor);
         fileName += `-upscaled-${factor}x.png`;
       } else if (toolId === 'image-converter') {
@@ -125,8 +128,7 @@ export function ImageToolPage({ toolId }: Props) {
         const tesseract = await ensureTesseract();
         const prepared = await preprocessForOcr(file);
         const ocr = await tesseract.recognize(prepared, 'eng+ara');
-        const text = ocr.data.text;
-        setResult({ blob: new Blob([text], { type: 'text/plain;charset=utf-8' }), text, fileName: `${baseName(file.name)}.txt` });
+        setResult({ blob: new Blob([ocr.data.text], { type: 'text/plain;charset=utf-8' }), text: ocr.data.text, fileName: `${baseName(file.name)}.txt` });
         return;
       } else if (toolId === 'object-remover') {
         blob = await fillRemoveRegion(file, { x: Number(cropX), y: Number(cropY), width: Number(cropW), height: Number(cropH) });
@@ -145,7 +147,7 @@ export function ImageToolPage({ toolId }: Props) {
       if (blob.type.startsWith('image/')) info = await imageInfo(blob);
       setResult({ blob, info, fileName });
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Tool failed.');
+      setError(caught instanceof Error ? caught.message : ui.noResult);
     } finally {
       setBusy(false);
     }
@@ -156,33 +158,33 @@ export function ImageToolPage({ toolId }: Props) {
       <div className="image-tool-container">
         <header className="image-tool-header">
           <div>
-            <p className="image-tool-eyebrow">FLIXO · IMAGE TOOLS</p>
-            <h1>{definition.title}</h1>
-            <p className="image-tool-lead">{definition.description}</p>
+            <p className="image-tool-eyebrow">FLIXO · {i18n.code.toUpperCase()}</p>
+            <h1>{translated.title}</h1>
+            <p className="image-tool-lead">{translated.description}</p>
           </div>
         </header>
 
-        <section className="compressor-grid" aria-label={definition.title}>
+        <section className="compressor-grid" aria-label={translated.title}>
           <div className="compressor-card">
             {isGenerator ? (
               <label>
-                <span>Prompt</span>
-                <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} placeholder="A cinematic sunset over Cairo..." rows={6} />
+                <span>{ui.prompt}</span>
+                <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} placeholder={ui.promptPlaceholder} rows={6} />
               </label>
             ) : (
               <>
                 <label className="upload-zone" htmlFor="image-tool-file">
-                  <span className="upload-title">{file ? file.name : 'Choose an image'}</span>
-                  <span className="upload-subtitle">{definition.accept.replaceAll('image/', '').toUpperCase() || 'IMAGE INPUT'}</span>
+                  <span className="upload-title">{file ? file.name : ui.chooseImage}</span>
+                  <span className="upload-subtitle">{accept.replaceAll('image/', '').toUpperCase() || ui.imageInput}</span>
                 </label>
-                <input id="image-tool-file" className="sr-only" type="file" accept={definition.accept} onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
+                <input id="image-tool-file" className="sr-only" type="file" accept={accept} onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
               </>
             )}
 
             {toolId === 'image-converter' && (
               <label>
-                <span>Output format</span>
-                <select value={outputFormat} onChange={(event) => setOutputFormat(event.target.value as typeof outputFormat)}>
+                <span>{ui.outputFormat}</span>
+                <select aria-label={ui.outputFormat} value={outputFormat} onChange={(event) => setOutputFormat(event.target.value as typeof outputFormat)}>
                   <option value="image/webp">WebP</option>
                   <option value="image/jpeg">JPG</option>
                   <option value="image/png">PNG</option>
@@ -190,67 +192,45 @@ export function ImageToolPage({ toolId }: Props) {
               </label>
             )}
             {toolId === 'image-upscaler' && (
-              <label>
-                <span>Scale</span>
-                <input inputMode="decimal" value={scale} onChange={(event) => setScale(event.target.value)} />
-              </label>
+              <label><span>{ui.scale}</span><input inputMode="decimal" aria-label={ui.scale} value={scale} onChange={(event) => setScale(event.target.value)} /></label>
             )}
             {toolId === 'background-remover' && (
-              <label>
-                <span>Background tolerance</span>
-                <input inputMode="numeric" value={tolerance} onChange={(event) => setTolerance(event.target.value)} />
-              </label>
+              <label><span>{ui.backgroundTolerance}</span><input inputMode="numeric" aria-label={ui.backgroundTolerance} value={tolerance} onChange={(event) => setTolerance(event.target.value)} /></label>
             )}
             {toolId === 'raster-to-svg' && (
-              <label>
-                <span>SVG columns</span>
-                <input inputMode="numeric" value={columns} onChange={(event) => setColumns(event.target.value)} />
-              </label>
+              <label><span>{ui.svgColumns}</span><input inputMode="numeric" aria-label={ui.svgColumns} value={columns} onChange={(event) => setColumns(event.target.value)} /></label>
             )}
             {['object-remover', 'watermark-remover', 'crop-resize'].includes(toolId) && (
               <div className="control-grid">
-                {([
-                  ['X', cropX, setCropX],
-                  ['Y', cropY, setCropY],
-                  ['Width', cropW, setCropW],
-                  ['Height', cropH, setCropH],
-                ] as const).map(([label, value, setter]) => (
-                  <label key={label}>
-                    <span>{label}</span>
-                    <input inputMode="numeric" value={value} onChange={(event) => setter(event.target.value)} />
-                  </label>
+                {([['X', cropX, setCropX], ['Y', cropY, setCropY], [ui.width, cropW, setCropW], [ui.height, cropH, setCropH]] as const).map(([label, value, setter]) => (
+                  <label key={label}><span>{label}</span><input inputMode="numeric" aria-label={label} value={value} onChange={(event) => setter(event.target.value)} /></label>
                 ))}
-                {toolId === 'crop-resize' && (
-                  <>
-                    <label><span>Output width</span><input inputMode="numeric" value={outW} onChange={(event) => setOutW(event.target.value)} /></label>
-                    <label><span>Output height</span><input inputMode="numeric" value={outH} onChange={(event) => setOutH(event.target.value)} /></label>
-                  </>
-                )}
+                {toolId === 'crop-resize' && <><label><span>{ui.outputWidth}</span><input inputMode="numeric" aria-label={ui.outputWidth} value={outW} onChange={(event) => setOutW(event.target.value)} /></label><label><span>{ui.outputHeight}</span><input inputMode="numeric" aria-label={ui.outputHeight} value={outH} onChange={(event) => setOutH(event.target.value)} /></label></>}
               </div>
             )}
 
             <div className="button-row">
               <button className="primary-button" disabled={busy || (!file && !isGenerator)} onClick={() => void run()}>
-                {busy ? 'Processing…' : isGenerator ? 'Generate image' : 'Run tool'}
+                {busy ? i18n.common.processing : isGenerator ? ui.generateImage : ui.runTool}
               </button>
             </div>
             {error && <p role="alert" className="error-box">{error}</p>}
-            {toolId === 'image-to-text' && <p className="privacy-note">OCR loads Tesseract.js on demand, preprocesses the image, and processes the selected file in the browser.</p>}
-            {isGenerator && <p className="privacy-note">Requires a configured FLIXO image-generation endpoint. No fake local “AI” fallback is used.</p>}
+            {toolId === 'image-to-text' && <p className="privacy-note">{ui.ocrPrivacy}</p>}
+            {isGenerator && <p className="privacy-note">{ui.generatorPrivacy}</p>}
           </div>
 
           <aside className="result-card" aria-live="polite">
-            <p className="image-tool-eyebrow">RESULT</p>
+            <p className="image-tool-eyebrow">{ui.outputDetails}</p>
             {result ? (
               <>
-                {result.text !== undefined ? <pre style={{ whiteSpace: 'pre-wrap' }}>{result.text || 'No text detected.'}</pre> : previewUrl && <img src={previewUrl} alt="Tool result" style={{ maxWidth: '100%', borderRadius: 12 }} />}
-                {result.info && <p className="privacy-note">Output: {result.info.width} × {result.info.height}px · {Math.round(result.blob.size / 1024)} KB · {result.blob.type || 'application/octet-stream'}</p>}
+                {result.text !== undefined ? <pre style={{ whiteSpace: 'pre-wrap' }}>{result.text || ui.noResult}</pre> : previewUrl && <img src={previewUrl} alt={translated.title} style={{ maxWidth: '100%', borderRadius: 12 }} />}
+                {result.info && <p className="privacy-note">{ui.outputDetails}: {result.info.width} × {result.info.height}px · {Math.round(result.blob.size / 1024)} KB · {result.blob.type || 'application/octet-stream'}</p>}
                 <div className="button-row">
-                  <a className="primary-button" href={downloadUrl} download={result.fileName}>Download {result.fileName}</a>
-                  <button className="primary-button" type="button" onClick={() => downloadBlob(result.blob, result.fileName)}>Download now</button>
+                  <a className="primary-button" href={downloadUrl} download={result.fileName}>{i18n.common.download} {result.fileName}</a>
+                  <button className="primary-button" type="button" onClick={() => downloadBlob(result.blob, result.fileName)}>{ui.downloadNow}</button>
                 </div>
               </>
-            ) : <p>No result yet.</p>}
+            ) : <p>{ui.noResult}</p>}
           </aside>
         </section>
       </div>
