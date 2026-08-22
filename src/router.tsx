@@ -28,6 +28,7 @@ import {
   enWatermarkRemoverRoute,
 } from './routes/image-tools';
 import { indexRoute } from './routes/index';
+import { localizedToolRoute } from './routes/localized-tool';
 import { rootRoute } from './routes/__root';
 
 const routeTree = rootRoute.addChildren([
@@ -58,6 +59,7 @@ const routeTree = rootRoute.addChildren([
   enImageToSvgRoute,
   enSeedRoute,
   enPixRoute,
+  localizedToolRoute,
 ]);
 
 export const router = createRouter({ routeTree, defaultPreload: 'intent' });
