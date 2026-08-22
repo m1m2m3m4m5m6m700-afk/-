@@ -1,18 +1,28 @@
 import { getTraceId } from './trace';
+import { createDiagnosticFingerprint, type DiagnosticStage } from './fingerprint';
 
 export type RuntimeDiagnostic = {
   kind: 'error' | 'unhandledrejection' | 'hydration';
+  stage: DiagnosticStage;
   message: string;
   stack?: string;
   route: string;
   userAgent: string;
   timestamp: string;
   traceId: string;
+  eventId: string;
+  fingerprint: string;
   componentStack?: string;
 };
 
 const STORAGE_KEY = 'flixo:runtime-diagnostics';
 const MAX_ENTRIES = 40;
+let sequence = 0;
+
+function createEventId(): string {
+  sequence += 1;
+  return `${Date.now().toString(36)}-${sequence.toString(36)}`;
+}
 
 function saveDiagnostic(diagnostic: RuntimeDiagnostic): void {
   try {
@@ -47,14 +57,19 @@ function record(
   error: unknown,
   componentStack?: string,
 ): void {
+  const message = error instanceof Error ? error.message : String(error);
+  const route = `${window.location.pathname}${window.location.search}`;
   const diagnostic: RuntimeDiagnostic = {
     kind,
-    message: error instanceof Error ? error.message : String(error),
+    stage: kind === 'hydration' ? 'router' : 'ui',
+    message,
     stack: error instanceof Error ? error.stack : undefined,
-    route: `${window.location.pathname}${window.location.search}`,
+    route,
     userAgent: navigator.userAgent,
     timestamp: new Date().toISOString(),
     traceId: getTraceId(),
+    eventId: createEventId(),
+    fingerprint: createDiagnosticFingerprint({ kind, stage: kind === 'hydration' ? 'router' : 'ui', message, route }),
     componentStack,
   };
 
