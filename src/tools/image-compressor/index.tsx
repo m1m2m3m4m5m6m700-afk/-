@@ -47,10 +47,7 @@ export function ImageCompressor({ locale = 'en' }: { locale?: 'en' | 'ar' }) {
   }, [file, result]);
 
   useEffect(() => {
-    if (!file) {
-      setSourcePreviewUrl('');
-      return;
-    }
+    if (!file) return;
     const url = URL.createObjectURL(file);
     setSourcePreviewUrl(url);
     return () => URL.revokeObjectURL(url);
@@ -68,6 +65,7 @@ export function ImageCompressor({ locale = 'en' }: { locale?: 'en' | 'ar' }) {
     setError('');
     setResult(null);
     setBatchZipUrl('');
+    setSourcePreviewUrl('');
     const selected = nextFiles.slice(0, MAX_FILES).filter((nextFile) => nextFile.size <= MAX_INPUT_SIZE);
     const rejectedCount = nextFiles.length - selected.length;
     if (rejectedCount > 0) {
@@ -256,9 +254,7 @@ export function ImageCompressor({ locale = 'en' }: { locale?: 'en' | 'ar' }) {
         <section className="faq-section">
           <h2>{label(locale, 'Frequently asked questions', 'أسئلة شائعة')}</h2>
           <details><summary>{label(locale, 'Which formats are supported?', 'ما الصيغ المدعومة؟')}</summary><p>{label(locale, 'Input: JPG, PNG, WebP, GIF, BMP, SVG. Output: JPG, PNG, or WebP.', 'الإدخال: JPG وPNG وWebP وGIF وBMP وSVG. الإخراج: JPG أو PNG أو WebP.')}</p></details>
-          <details><summary>{label(locale, 'Are my images uploaded?', 'هل يتم رفع صوري؟')}</summary><p>{label(locale, 'Compression runs in your browser. The current tool does not require uploading images to a Flixo processing server.', 'تتم عملية الضغط داخل المتصفح ولا تتطلب رفع الصور إلى خادم معالجة تابع لـFlixo.')}</p></details>
-          <details><summary>{label(locale, 'Can I target a file size?', 'هل يمكن تحديد حجم الملف؟')}</summary><p>{label(locale, 'Yes. Set a target in KB and FLIXO searches for the highest quality that reaches the target when the output format supports quality-based encoding.', 'نعم. حدد حجمًا بالكيلوبايت، وسيبحث FLIXO عن أعلى جودة ممكنة للوصول إلى الحجم المستهدف عندما تدعم الصيغة ذلك.')}</p></details>
-          <details><summary>{label(locale, 'Can I process multiple images?', 'هل يمكن معالجة عدة صور؟')}</summary><p>{label(locale, 'Yes. Select up to 20 files and download the optimized results together as one ZIP archive.', 'نعم. يمكنك تحديد حتى 20 ملفًا وتنزيل النتائج المحسنة مجمعة في ملف ZIP واحد.')}</p></details>
+          <details><summary>{label(locale, 'Are my images uploaded?', 'هل يتم رفع صوري؟')}</summary><p>{label(locale, 'Compression runs in your browser and does not require uploading images to a server.', 'الضغط يتم داخل المتصفح ولا يتطلب رفع الصور إلى خادم.')}</p></details>
         </section>
       </div>
     </main>
