@@ -1,3 +1,4 @@
+/* global console, process */
 import { readFileSync } from 'node:fs';
 
 const toolsSource = readFileSync('src/config/tools.ts', 'utf8');
@@ -24,7 +25,7 @@ if (seoLocaleKeys.length !== expectedLocales.length || seoLocaleKeys.some((local
   process.exit(1);
 }
 
-if (expectedLocales.some((locale) => !seoSource.includes(`${locale}: '`) )) {
+if (expectedLocales.some((locale) => !seoSource.includes(`${locale}: '`))) {
   console.error('One or more SEO locale labels are missing.');
   process.exit(1);
 }
