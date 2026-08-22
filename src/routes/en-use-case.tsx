@@ -1,6 +1,7 @@
 import { createRoute, Link, useParams } from '@tanstack/react-router';
 import { ArrowRight, Check, Lock, Sparkles, Zap } from 'lucide-react';
 import { getIntentSEO } from '../config/intents';
+import { planFromWorkflow } from '../lib/ai/planner';
 import { getWorkflow } from '../lib/workflows/registry';
 import { rootRoute } from './__root';
 
@@ -14,6 +15,7 @@ export const enUseCaseRoute = createRoute({
     if (!intent) return { meta: [{ title: 'Use Case | FLIXO' }, { name: 'robots', content: 'noindex' }] };
     const canonical = `${SITE_URL}/en/use-case/${intent.slug}`;
     const workflow = getWorkflow(intent.workflowId);
+    const plan = planFromWorkflow(intent.workflowId, intent.preset ? { ...intent.preset } : {});
     const graph = {
       '@context': 'https://schema.org',
       '@graph': [
@@ -31,10 +33,13 @@ export const enUseCaseRoute = createRoute({
           name: intent.title,
           description: intent.description,
           totalTime: 'PT1M',
-          step: (workflow?.steps ?? []).map((step, index) => ({
+          step: (plan?.steps ?? []).map((step, index) => ({
             '@type': 'HowToStep',
             position: index + 1,
-            name: step.title,
+            name: step.toolId,
+            text: Object.keys(step.params ?? {}).length
+              ? `Run ${step.toolId} with ${Object.entries(step.params ?? {}).map(([key, value]) => `${key}=${value}`).join(', ')}.`
+              : `Run ${step.toolId} on the uploaded image.`,
           })),
         },
       ],
