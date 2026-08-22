@@ -21,6 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      - name: Early integrity preflight
+        run: node scripts/preflight-integrity.mjs
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
@@ -35,6 +37,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      - name: Early integrity preflight
+        run: node scripts/preflight-integrity.mjs
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
@@ -47,6 +51,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      - name: Early integrity preflight
+        run: node scripts/preflight-integrity.mjs
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
@@ -234,6 +240,8 @@ jobs:
             echo 'E2E runs are isolated per tool; failed tools upload their own Playwright diagnostics artifact.'
             echo 'Playwright retains trace, screenshot, and video on failure.'
             echo 'Canonical Verification is the single promotion signal.'
+            echo 'Preflight catches route/config integrity failures before dependency installation.'
+            echo 'Runtime/API errors carry trace IDs and stable fingerprints for correlation.'
             echo 'Socket is fail-closed when SOCKET_SECURITY_API_KEY is configured and intentionally skipped otherwise.'
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -247,6 +255,6 @@ jobs:
               "security=$SECURITY_RESULT" \
               "e2e=$E2E_RESULT" \
               "canonical=$CANONICAL_RESULT" \
-              "trace correlation: client uses x-flixo-trace-id; inspect failed E2E artifact for browser trace" \
+              "trace correlation: client uses x-flixo-trace-id + W3C traceparent; inspect failed E2E artifact for browser trace" \
               | node scripts/record-ci-error-memory.mjs
           fi
