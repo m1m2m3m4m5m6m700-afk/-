@@ -1,5 +1,6 @@
 import { Suspense, useEffect, useState } from 'react';
 import { getToolConfig } from '../config/tools';
+import { TranslationProvider } from '../i18n/context';
 import { loadLocale } from '../i18n/loader';
 import { getLocale } from '../i18n/catalog';
 import type { SupportedLanguage, TranslationSchema } from '../i18n/schema';
@@ -19,9 +20,7 @@ function setDocumentLanguage(language: SupportedLanguage, dir: TranslationSchema
 export function localizedToolHead({ language, toolId }: LocalizedToolRouteProps) {
   const locale = getLocale(language);
   const tool = locale.tools[toolId as keyof typeof locale.tools];
-  if (!tool) return {
-    meta: [{ name: 'robots', content: 'noindex,follow' }],
-  };
+  if (!tool) return { meta: [{ name: 'robots', content: 'noindex,follow' }] };
 
   const pathname = `/${language}/${toolId}`;
   const canonical = absoluteSiteUrl(pathname);
@@ -77,19 +76,21 @@ export function LocalizedToolPage({ language, toolId }: LocalizedToolRouteProps)
   const Component = tool.component;
 
   return (
-    <main dir={runtimeLocale.dir} className="localized-tool-page" data-language={language} data-tool={toolId}>
-      <section className="localized-tool-header image-tool-container">
-        <p className="image-tool-eyebrow">FLIXO · {language.toUpperCase()}</p>
-        <h1>{translated.title}</h1>
-        <p className="image-tool-lead">{translated.description}</p>
-        <p className="privacy-note">{runtimeLocale.common.privacy}</p>
-      </section>
-      <div className="localized-tool-body">
-        <Suspense fallback={<div className="image-tool-container" aria-live="polite">{runtimeLocale.common.processing}…</div>}>
-          <Component />
-        </Suspense>
-      </div>
-    </main>
+    <TranslationProvider locale={runtimeLocale}>
+      <main dir={runtimeLocale.dir} className="localized-tool-page" data-language={language} data-tool={toolId}>
+        <section className="localized-tool-header image-tool-container">
+          <p className="image-tool-eyebrow">FLIXO · {language.toUpperCase()}</p>
+          <h1>{translated.title}</h1>
+          <p className="image-tool-lead">{translated.description}</p>
+          <p className="privacy-note">{runtimeLocale.common.privacy}</p>
+        </section>
+        <div className="localized-tool-body">
+          <Suspense fallback={<div className="image-tool-container" aria-live="polite">{runtimeLocale.common.processing}…</div>}>
+            <Component />
+          </Suspense>
+        </div>
+      </main>
+    </TranslationProvider>
   );
 }
 
