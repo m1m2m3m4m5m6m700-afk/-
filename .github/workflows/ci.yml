@@ -64,6 +64,24 @@ jobs:
       - run: npm ci
       - run: npm run audit:production
 
+  socket:
+    name: Socket Supply Chain
+    runs-on: ubuntu-latest
+    env:
+      SOCKET_SECURITY_API_KEY: ${{ secrets.SOCKET_SECURITY_API_KEY }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Run Socket CI
+        if: ${{ env.SOCKET_SECURITY_API_KEY != '' }}
+        run: npx --yes @socketsecurity/cli@1.1.158 ci
+      - name: Skip Socket CI when no token is configured
+        if: ${{ env.SOCKET_SECURITY_API_KEY == '' }}
+        run: echo "Socket scan skipped: configure SOCKET_SECURITY_API_KEY in repository secrets to enable the blocking supply-chain gate."
+
   security:
     name: CodeQL
     runs-on: ubuntu-latest
@@ -151,7 +169,7 @@ jobs:
     name: Diagnostic Summary
     if: ${{ always() }}
     runs-on: ubuntu-latest
-    needs: [typecheck, lint, build, audit, security, e2e]
+    needs: [typecheck, lint, build, audit, socket, security, e2e]
     steps:
       - name: Write CI summary
         run: |
@@ -164,8 +182,10 @@ jobs:
             echo '| ESLint | ${{ needs.lint.result }} |'
             echo '| Build | ${{ needs.build.result }} |'
             echo '| Audit | ${{ needs.audit.result }} |'
+            echo '| Socket | ${{ needs.socket.result }} |'
             echo '| CodeQL | ${{ needs.security.result }} |'
             echo '| Per-tool E2E | ${{ needs.e2e.result }} |'
             echo
             echo 'E2E runs are isolated per tool; failed tools upload their own Playwright diagnostics artifact.'
+            echo 'Socket is fail-closed when SOCKET_SECURITY_API_KEY is configured and intentionally skipped otherwise.'
           } >> "$GITHUB_STEP_SUMMARY"
