@@ -14,7 +14,7 @@ Current-architecture record of verified failures and permanent prevention. Only 
 
 | Signature | Root cause | Durable fix | Class | Evidence |
 |---|---|---|---|---|
-| `INVALID_WORKFLOW_YAML_SOCKET_ECHO` | A GitHub Actions `run:` value used a YAML plain scalar containing `:` followed by a space | Quote the complete scalar value and keep workflow syntax validation in CI | CI/code | GitHub Action: `#1506`; commit: `dfaea459` |
+| `INVALID_WORKFLOW_YAML_SOCKET_ECHO` | A GitHub Actions `run:` value used a YAML plain scalar containing `:` followed by a space | Quote the complete scalar value and keep workflow syntax validation in CI | CI/code | CI: `#1506`; commit: `dfaea459` |
 | `SITEMAP_XML_QUERY_FALSE_POSITIVE` | The sitemap validator scanned the XML declaration instead of only `<loc>` URL values | Parse/validate `<loc>` entries only; ignore XML declaration syntax | SEO/test | PR: `#126`; failure: sitemap validation |
 | `DUPLICATE_LOCALIZED_ROUTE` | Generic localized routes duplicated the dedicated EN/AR compressor routes | Exclude special routes from the generic matrix and assert the final route count | architecture | PR: `#126`; failure: route-matrix E2E |
 | `UNAVAILABLE_TOOL_200` | SPA fallback exposed an unavailable tool as HTTP 200 | Return HTTP 404 and attach `noindex,follow` for unavailable/missing tools | SEO/runtime | PR: `#126`; failure: crawlability E2E |
