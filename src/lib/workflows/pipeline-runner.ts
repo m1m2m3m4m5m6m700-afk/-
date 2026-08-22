@@ -13,7 +13,9 @@ function asFile(blob: Blob, name = 'flixo-pipeline-input.png') {
   return new File([blob], name, { type: blob.type || 'image/png' });
 }
 
-async function effects(blob: Blob, params?: Record<string, string | number | boolean>) {
+type PipelineParams = Record<string, string | number | boolean | undefined>;
+
+async function effects(blob: Blob, params?: PipelineParams) {
   const image = await imageBitmap(blob);
   const canvas = document.createElement('canvas');
   canvas.width = image.width;
@@ -50,7 +52,7 @@ function canvasToBlob(canvas: HTMLCanvasElement, type = 'image/png', quality = 0
   return new Promise<Blob>((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Image encoding failed.')), type, quality));
 }
 
-async function processToolStep(toolId: string, inputBlob: Blob, params: Record<string, string | number | boolean> = {}) {
+async function processToolStep(toolId: string, inputBlob: Blob, params: PipelineParams = {}) {
   switch (toolId) {
     case 'background-remover':
       return removeBackground(inputBlob, Number(params.tolerance ?? 42));
@@ -81,7 +83,7 @@ async function processToolStep(toolId: string, inputBlob: Blob, params: Record<s
       const file = asFile(inputBlob);
       const result = await compressImage(file, {
         quality: Number(params.quality ?? 0.82),
-        format: (String(params.format ?? 'image/webp') as 'image/webp' | 'image/jpeg' | 'image/png'),
+        format: String(params.format ?? 'image/webp') as 'image/webp' | 'image/jpeg' | 'image/png',
         maxWidth: Number(params.maxWidth ?? 0) || undefined,
         maxHeight: Number(params.maxHeight ?? 0) || undefined,
         targetSizeKB: Number(params.targetSizeKB ?? 0) || undefined,
@@ -89,11 +91,11 @@ async function processToolStep(toolId: string, inputBlob: Blob, params: Record<s
       return result.blob;
     }
     case 'image-converter':
-      return convertImage(inputBlob, (String(params.format ?? 'image/webp') as 'image/webp' | 'image/jpeg' | 'image/png'));
+      return convertImage(inputBlob, String(params.format ?? 'image/webp') as 'image/webp' | 'image/jpeg' | 'image/png');
     case 'image-effects':
       return effects(inputBlob, params);
     default:
-      throw new Error(`Tool "${toolId}" is not pipeline-enabled yet.`);
+      throw new Error(`Tool \"${toolId}\" is not pipeline-enabled yet.`);
   }
 }
 
