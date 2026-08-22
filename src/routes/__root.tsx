@@ -1,4 +1,4 @@
-import { HeadContent, Link, Outlet, createRootRoute } from '@tanstack/react-router';
+import { HeadContent, Link, Outlet, createRootRoute, useLocation } from '@tanstack/react-router';
 import { useEffect } from 'react';
 import { directionForLocale, localeFromPath, type SupportedLocale } from '../seo/site';
 
@@ -16,25 +16,13 @@ function NotFoundPage() {
 
 export const rootRoute = createRootRoute({
   component: function RootLayout() {
-    useEffect(() => {
-      const locale: SupportedLocale = localeFromPath(window.location.pathname);
-      document.documentElement.lang = locale;
-      document.documentElement.dir = directionForLocale(locale);
-    }, []);
+    const pathname = useLocation({ select: (location) => location.pathname });
 
     useEffect(() => {
-      const handleNavigation = () => {
-        const locale = localeFromPath(window.location.pathname);
-        document.documentElement.lang = locale;
-        document.documentElement.dir = directionForLocale(locale);
-      };
-      window.addEventListener('popstate', handleNavigation);
-      window.addEventListener('hashchange', handleNavigation);
-      return () => {
-        window.removeEventListener('popstate', handleNavigation);
-        window.removeEventListener('hashchange', handleNavigation);
-      };
-    }, []);
+      const locale: SupportedLocale = localeFromPath(pathname);
+      document.documentElement.lang = locale;
+      document.documentElement.dir = directionForLocale(locale);
+    }, [pathname]);
 
     return (
       <>
