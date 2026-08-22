@@ -1,4 +1,4 @@
-import { HeadContent, Outlet, createRootRoute } from '@tanstack/react-router';
+import { HeadContent, Outlet, Scripts, createRootRoute } from '@tanstack/react-router';
 
 export const rootRoute = createRootRoute({
   component: function RootLayout() {
@@ -6,6 +6,7 @@ export const rootRoute = createRootRoute({
       <>
         <HeadContent />
         <Outlet />
+        <Scripts />
       </>
     );
   },
