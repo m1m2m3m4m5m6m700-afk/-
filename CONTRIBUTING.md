@@ -50,6 +50,15 @@ createdAt
 expiresAt
 ```
 
+## External service checks
+
+External deployment/provider checks are classified separately from application-code certification.
+
+- A provider-side quota, billing limit, rate limit, outage, or deployment-service failure is `EXTERNAL_NON_BLOCKING` for code certification when all application and certification gates are otherwise valid.
+- External failure must remain visible in reports and release dashboards as an operational warning.
+- External failure must never be relabeled as application `PASS` or used to fabricate a `CERTIFIED` verdict when required code gates have not actually passed.
+- A production deployment itself is not considered successful until the provider confirms it separately.
+
 ## Baselines
 
 Certified tools keep their baseline under:
