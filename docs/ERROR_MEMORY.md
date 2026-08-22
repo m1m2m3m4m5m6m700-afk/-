@@ -97,3 +97,20 @@ When an E2E shard fails:
 ## Current Gate
 
 The SVG decode fix is the active item. Do not start another image-tool implementation until the CI run for commit `753dbe71a235d158574f04107ea527cbe3b62280` is green or its next failure is diagnosed and recorded here.
+
+## CI failure 2026-08-22T15:24:55.509Z
+- SHA: `8907273d87fee3b0100b86b2075b5b8d4e5198c1`
+- Run: [#1770](https://github.com/m1m2m3m4m5m6m700-afk/FLIXO-AI-TOOLS/actions/runs/32581419434)
+- Job: `diagnostic-summary`
+- Ref: `136/merge`
+
+### Extracted diagnostics
+- typecheck=failure
+- lint=failure
+- e2e=failure
+- trace correlation: client uses x-flixo-trace-id; inspect failed E2E artifact for browser trace
+
+### Correlation
+- Client trace IDs are stored by runtime diagnostics and propagated through `x-flixo-trace-id`.
+
+---
