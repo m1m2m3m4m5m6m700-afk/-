@@ -1,7 +1,15 @@
-import { HeadContent, Outlet, Scripts, createRootRoute } from '@tanstack/react-router';
+import { HeadContent, Outlet, Scripts, createRootRoute, useLocation } from '@tanstack/react-router';
+import { useEffect } from 'react';
 
 export const rootRoute = createRootRoute({
   component: function RootLayout() {
+    const location = useLocation();
+    useEffect(() => {
+      const isArabic = location.pathname === '/ar' || location.pathname.startsWith('/ar/');
+      document.documentElement.lang = isArabic ? 'ar' : 'en';
+      document.documentElement.dir = isArabic ? 'rtl' : 'ltr';
+    }, [location.pathname]);
+
     return (
       <>
         <HeadContent />
