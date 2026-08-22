@@ -7,6 +7,8 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Release-gate trigger marker; no runtime behavior change.
+
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
