@@ -17,6 +17,14 @@ test('homepage resolves a direct compression goal', async ({ page }) => {
   await expect(page.getByText('Image Compressor', { exact: true })).toBeVisible();
 });
 
+test('all deterministic workflow routes resolve without AI', async ({ page }) => {
+  for (const workflow of ['product-ready', 'social-ready', 'profile-ready', 'web-ready', 'print-ready', 'improve-image']) {
+    await page.goto(`/en/quickflow/${workflow}`);
+    await expect(page).not.toHaveTitle(/404|Not Found/i);
+    await expect(page.locator('main')).toBeVisible();
+  }
+});
+
 test('Arabic homepage routes intent search to Arabic QuickFlow', async ({ page }) => {
   await page.goto('/ar');
   const search = page.getByRole('textbox', { name: 'اكتب ما تريد إنجازه' });
