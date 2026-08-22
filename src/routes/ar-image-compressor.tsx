@@ -1,12 +1,9 @@
-import { createRoute } from '@tanstack/react-router';
-import { rootRoute } from './__root';
+import { createFileRoute } from '@tanstack/react-router';
 import { ArabicImageCompressorPage } from '../tools/image-compressor/locale-pages';
 
 const SITE_URL = (import.meta.env.VITE_SITE_URL || 'https://flixo.app').replace(/\/$/, '');
 
-export const arImageCompressorRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/ar/image-compressor',
+export const Route = createFileRoute('/ar/image-compressor')({
   head: () => ({
     meta: [
       { title: 'ضغط الصور أونلاين مجانًا | FLIXO' },
