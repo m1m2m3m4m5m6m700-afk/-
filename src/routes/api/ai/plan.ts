@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { EXECUTABLE_PIPELINE_TOOL_IDS } from '@/lib/workflows/executable-tools';
 import { parseExecutionPlan } from '@/lib/contracts/ai-plan';
+import { createDiagnosticFingerprint } from '@/lib/diagnostics/fingerprint';
 
 const PIPELINE_TOOL_IDS = [...EXECUTABLE_PIPELINE_TOOL_IDS];
 const PLAN_SCHEMA = {
@@ -69,28 +70,35 @@ export const Route = createFileRoute('/api/ai/plan')({
         const apiKey = process.env.GEMINI_API_KEY;
         if (!apiKey) return json({ error: 'AI planner is not configured', traceId }, 503);
 
+        const startedAt = performance.now();
         try {
-          console.info(JSON.stringify({ level: 'info', event: 'ai.plan.request', traceId, promptLength: prompt.length }));
+          console.info(JSON.stringify({ level: 'info', event: 'ai.plan.request', stage: 'api', traceId, promptLength: prompt.length }));
           const response = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
             body: JSON.stringify({ model: process.env.GEMINI_MODEL || 'gemini-3.7-flash', input: `${SYSTEM_PROMPT}\n\nUSER GOAL:\n${prompt}`, response_format: { type: 'text', mime_type: 'application/json', schema: PLAN_SCHEMA } }),
           });
           if (!response.ok) {
-            console.error(JSON.stringify({ level: 'error', event: 'ai.plan.provider_error', traceId, status: response.status }));
-            return json({ error: `AI provider error (${response.status})`, traceId }, 502);
+            const message = `AI provider error (${response.status})`;
+            console.error(JSON.stringify({ level: 'error', event: 'ai.plan.provider_error', stage: 'api', traceId, fingerprint: createDiagnosticFingerprint({ kind: 'provider_error', stage: 'api', message, route: '/api/ai/plan' }), status: response.status, durationMs: Math.round(performance.now() - startedAt) }));
+            return json({ error: message, traceId }, 502);
           }
           const raw = readModelText(await response.json());
           if (!raw) return json({ error: 'AI provider returned no structured output', traceId }, 502);
           let parsed: unknown;
           try { parsed = JSON.parse(raw); } catch { return json({ error: 'AI provider returned invalid JSON', traceId }, 502); }
-          try { return json({ ...parseExecutionPlan(parsed), traceId }, 200); }
-          catch (error) {
-            console.error(JSON.stringify({ level: 'error', event: 'ai.plan.contract_error', traceId, message: error instanceof Error ? error.message : String(error) }));
+          try {
+            const plan = parseExecutionPlan(parsed);
+            console.info(JSON.stringify({ level: 'info', event: 'ai.plan.success', stage: 'api', traceId, durationMs: Math.round(performance.now() - startedAt), steps: plan.steps.length }));
+            return json({ ...plan, traceId }, 200);
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            console.error(JSON.stringify({ level: 'error', event: 'ai.plan.contract_error', stage: 'api', traceId, fingerprint: createDiagnosticFingerprint({ kind: 'contract_error', stage: 'api', message, route: '/api/ai/plan' }), message, durationMs: Math.round(performance.now() - startedAt) }));
             return json({ error: 'AI provider returned a contract-invalid plan', traceId }, 502);
           }
         } catch (error) {
-          console.error(JSON.stringify({ level: 'error', event: 'ai.plan.unhandled', traceId, message: error instanceof Error ? error.message : String(error) }));
+          const message = error instanceof Error ? error.message : String(error);
+          console.error(JSON.stringify({ level: 'error', event: 'ai.plan.unhandled', stage: 'api', traceId, fingerprint: createDiagnosticFingerprint({ kind: 'unhandled', stage: 'api', message, route: '/api/ai/plan' }), message, durationMs: Math.round(performance.now() - startedAt) }));
           return json({ error: 'AI planner request failed', traceId }, 502);
         }
       },
