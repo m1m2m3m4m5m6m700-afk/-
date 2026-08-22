@@ -1,4 +1,4 @@
-import type { LocalizedToolSeo } from '../manifest';
+import type { LocalizedToolSeo } from '@/lib/seo/tool-manifest';
 
 export const ar: LocalizedToolSeo = Object.freeze({
   title: 'ضغط الصور أونلاين مجانًا | ضاغط الصور من FLIXO',
