@@ -1,6 +1,6 @@
 import { createRoute } from '@tanstack/react-router';
 import { Suspense, useMemo } from 'react';
-import { LOCALES, isLocale } from '../lib/i18n';
+import { LOCALES, SITE_ORIGIN, isLocale } from '../lib/i18n';
 import { getToolSeo } from '../lib/seo/tool-seo';
 import { rootRoute } from './__root';
 
@@ -28,7 +28,7 @@ export const localizedToolRoute = createRoute({
           hrefLang: alternate.languageTag,
           href: alternate.url,
         })),
-        { rel: 'alternate', hrefLang: 'x-default', href: `${seo.url.replace(/^https:\/\/[^/]+\/[^/]+/, `${seo.url.split('/').slice(0, 3).join('/')}/en`)}` },
+        { rel: 'alternate', hrefLang: 'x-default', href: `${SITE_ORIGIN}/en/${seo.tool.id}` },
       ],
     };
   },
