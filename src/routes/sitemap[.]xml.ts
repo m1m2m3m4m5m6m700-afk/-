@@ -19,7 +19,7 @@ function alternateLinks(path: string) {
   return `<xhtml:link rel="alternate" hreflang="en" href="${escapeXml(`${SITE_URL}${enPath}`)}"/><xhtml:link rel="alternate" hreflang="ar" href="${escapeXml(`${SITE_URL}${arPath}`)}"/>`;
 }
 
-export const Route = createFileRoute('/sitemap.xml' as never)({
+export const Route = createFileRoute('/sitemap.xml')({
   server: {
     handlers: {
       GET: async () => {
