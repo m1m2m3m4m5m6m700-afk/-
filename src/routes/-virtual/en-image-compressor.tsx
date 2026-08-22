@@ -1,1 +1,1 @@
-export { enImageCompressorRoute as Route } from '../en-image-compressor';
+export { Route } from '../en-image-compressor';
