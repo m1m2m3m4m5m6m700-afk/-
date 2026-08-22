@@ -18,13 +18,7 @@ const PLAN_SCHEMA = {
 const SYSTEM_PROMPT = `You are FLIXO's optional Intent Planner. The core product is deterministic local image processing.
 Convert the user's image goal into a short execution chain using ONLY these currently executable local pipeline tools:
 ${PIPELINE_TOOL_IDS.map((id) => `- ${id}`).join('\n')}
-Rules:
-1. Return JSON only and follow the schema exactly.
-2. Maximum 4 steps.
-3. Never invent tool IDs or cloud/AI processing steps.
-4. Order transformations logically; compression/conversion should normally be last.
-5. Keep params small and explicit.
-6. The browser executes the returned plan locally; do not assume the image is uploaded.`;
+Rules:\n1. Return JSON only and follow the schema exactly.\n2. Maximum 4 steps.\n3. Never invent tool IDs or cloud/AI processing steps.\n4. Order transformations logically; compression/conversion should normally be last.\n5. Keep params small and explicit.\n6. The browser executes the returned plan locally; do not assume the image is uploaded.`;
 
 const WINDOW_MS = 60_000;
 const MAX_REQUESTS_PER_WINDOW = 10;
