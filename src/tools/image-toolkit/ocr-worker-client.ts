@@ -4,7 +4,7 @@ export async function recognizeWithOcrWorker(blob: Blob, language: string): Prom
   if (typeof Worker === 'undefined') throw new Error('Web Worker is unavailable.');
 
   return await new Promise<OcrWorkerResult>((resolve, reject) => {
-    const worker = new Worker(new URL('./ocr-worker.ts', import.meta.url));
+    const worker = new Worker(new URL('./ocr-worker.ts', import.meta.url), { type: 'classic' });
     const cleanup = () => worker.terminate();
 
     worker.onmessage = (event: MessageEvent<{ ok: boolean; text?: string; error?: string }>) => {
