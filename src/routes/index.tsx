@@ -2,6 +2,7 @@ import { createRoute, Link } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 import { ArrowUpRight, Check, Image, LayoutGrid, Search, ShieldCheck, Sparkles, Wand2, Zap } from 'lucide-react';
 import { TOOLS_REGISTRY } from '../config/tools';
+import { trackProductEvent } from '../lib/analytics/productEvents';
 import { resolveIntent } from '../lib/intent/resolver';
 import { getWorkflow } from '../lib/workflows/registry';
 import { rootRoute } from './__root';
@@ -26,13 +27,11 @@ function getCategory(id: string): Exclude<Category, 'All'> {
 export const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
-  head: () => ({
-    meta: [
-      { title: 'FLIXO | Simple AI & Image Tools' },
-      { name: 'description', content: 'Tell FLIXO the result you want. Get the right image tool or a simple workflow that gets you there.' },
-      { name: 'robots', content: 'index,follow,max-image-preview:large' },
-    ],
-  }),
+  head: () => ({ meta: [
+    { title: 'FLIXO | Simple AI & Image Tools' },
+    { name: 'description', content: 'Tell FLIXO the result you want. Get the right image tool or a simple workflow that gets you there.' },
+    { name: 'robots', content: 'index,follow,max-image-preview:large' },
+  ] }),
   component: function HomePage() {
     const [query, setQuery] = useState('');
     const [category, setCategory] = useState<Category>('All');
@@ -52,8 +51,13 @@ export const indexRoute = createRoute({
     const runIntent = (nextQuery: string) => {
       setQuery(nextQuery);
       setCategory('All');
+      trackProductEvent('intent_submitted', { queryLength: nextQuery.length });
       window.setTimeout(() => document.getElementById('tools')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
     };
+
+    const suggestedPath = workflow
+      ? `/en/quickflow/${workflow.id}`
+      : (readyTools.find((tool) => tool.id === intent.id)?.path ?? '/');
 
     return (
       <main className="home-shell">
@@ -71,7 +75,7 @@ export const indexRoute = createRoute({
               <p className="home-lead home-hero-lead">Start with the outcome, not the tool name. FLIXO routes you to one tool or a focused QuickFlow.</p>
               <div className="home-search" role="search">
                 <Search size={20} aria-hidden="true" />
-                <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="What do you want to make? Try “make my product photo ready”" aria-label="Describe your goal" />
+                <input value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') runIntent(query); }} placeholder="What do you want to make? Try “make my product photo ready”" aria-label="Describe your goal" />
                 <kbd>/</kbd>
               </div>
               <div className="home-intent-row" aria-label="Popular goals">{intentChips.map((chip) => <button key={chip.query} type="button" onClick={() => runIntent(chip.query)}>{chip.label}</button>)}</div>
@@ -79,7 +83,7 @@ export const indexRoute = createRoute({
                 <div className="home-intent-result">
                   <div><span className="home-intent-result-kicker">RECOMMENDED</span><strong>{workflow?.title ?? readyTools.find((tool) => tool.id === intent.id)?.title}</strong><span>{workflow?.description ?? 'A focused tool for this goal.'}</span></div>
                   <span className="home-intent-confidence">{Math.round(intent.confidence * 100)}% match</span>
-                  <Link to={workflow?.steps[0]?.toolId ? (readyTools.find((tool) => tool.id === workflow.steps[0].toolId)?.path ?? '/') : (readyTools.find((tool) => tool.id === intent.id)?.path ?? '/')} className="primary-button">Start <ArrowUpRight size={17} /></Link>
+                  <Link to={suggestedPath} className="primary-button" onClick={() => trackProductEvent('workflow_started', { workflowId: workflow?.id ?? intent.id ?? 'direct-tool' })}>Start <ArrowUpRight size={17} /></Link>
                   {workflow && <div className="home-intent-steps">{workflow.steps.map((step) => <span key={step.toolId}><Check size={13} /> {step.title}</span>)}</div>}
                 </div>
               )}
