@@ -3,6 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 const checks = [
+  { id: 'environment', script: 'scripts/diagnostics/capture-environment.mjs' },
   { id: 'error-memory', script: 'scripts/diagnostics/validate-error-memory.mjs' },
   { id: 'dependency-drift', script: 'scripts/diagnostics/check-dependency-drift.mjs' },
   { id: 'workflow-scan', script: 'scripts/diagnostics/scan-workflows.mjs' },
