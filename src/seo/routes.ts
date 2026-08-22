@@ -13,7 +13,6 @@ export const INDEXABLE_ROUTES = [
   '/en/raster-to-svg',
   '/en/image-cropper',
   '/en/image-ocr',
-  '/en/photo-colorizer',
   '/en/background-blur',
   '/en/passport-photo-maker',
   '/en/watermark-adder',
