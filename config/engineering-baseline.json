@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "productionBranch": "main",
+  "integrationBranch": "develop",
+  "experimentalBranch": "experimental",
+  "releaseFlow": [
+    "feature/*",
+    "develop",
+    "main"
+  ],
+  "experimentalPolicy": {
+    "purpose": "diagnostics-and-repair-lab",
+    "promotion": "evidence-only",
+    "directProductionMerge": false,
+    "selfHeal": "experimental-only"
+  },
+  "canonicalVerification": "npm run verify",
+  "diagnosticEvidence": "CI job outputs and artifacts",
+  "promotionEvidence": "canonical verification plus required checks",
+  "rules": {
+    "noFeatureToMain": true,
+    "noExperimentalToMain": true,
+    "noDuplicateRepairPipelines": true,
+    "noDestructiveCleanup": true,
+    "preserveLegacyArtifacts": true
+  }
+}
