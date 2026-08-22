@@ -14,7 +14,8 @@ export default defineConfig({
       router: {
         virtualRouteConfig: './routes.ts',
       },
-      routeFileIgnorePattern: '(^|\\/)-virtual(?:\\/|$)',
+      // The virtual route tree is authoritative. Helper route-factory modules are not routes.
+      routeFileIgnorePattern: '(^|\\/)(?:-virtual(?:\\/|$)|image-tools\\.tsx$|ar-image-tools\\.tsx$)',
     }),
     react(),
   ],
