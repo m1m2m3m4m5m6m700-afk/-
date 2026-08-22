@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router';
 
 const SITE_URL = (process.env.VITE_SITE_URL || process.env.NEXT_PUBLIC_SITE_URL || 'https://flixo.app').replace(/\/$/, '');
 
-export const Route = createFileRoute('/robots.txt' as never)({
+export const Route = createFileRoute('/robots.txt')({
   server: {
     handlers: {
       GET: async () => {
