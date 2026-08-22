@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 const toolsSource = readFileSync('src/config/tools.ts', 'utf8');
 const seoSource = readFileSync('src/lib/seo/tool-seo.ts', 'utf8');
 const routerSource = readFileSync('src/routes/localized-tool.tsx', 'utf8');
+const localizedPageSource = readFileSync('src/routes/localized-tool-page.tsx', 'utf8');
 
 const expectedLocales = ['en','ar','es','fr','de','ru','zh','hi','id','ur','ja','pt','it','ko','nl','pl','tr','vi','th','sv'];
 const readyToolIds = [...toolsSource.matchAll(/\{ id: '([^']+)',[^\n]*?isReady: true,/g)].map((match) => match[1]);
@@ -54,8 +55,13 @@ if (!routerSource.includes("hrefLang: 'x-default'")) {
   process.exit(1);
 }
 
-if (!routerSource.includes('application/ld+json')) {
-  console.error('Structured data JSON-LD is missing from the localized tool route.');
+if (!localizedPageSource.includes('<script type="application/ld+json"')) {
+  console.error('Structured data JSON-LD is missing from the rendered localized tool page.');
+  process.exit(1);
+}
+
+if (!localizedPageSource.includes('seo.structuredData')) {
+  console.error('Localized tool page does not render the SEO structured-data payload.');
   process.exit(1);
 }
 
