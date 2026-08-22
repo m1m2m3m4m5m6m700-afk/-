@@ -1,3 +1,4 @@
+/* global console */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 
 const siteOrigin = 'https://flexoai.vercel.app';
