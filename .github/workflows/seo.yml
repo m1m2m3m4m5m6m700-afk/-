@@ -1,0 +1,43 @@
+name: SEO & Core Web Vitals
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  seo-contract:
+    name: SEO Contract
+    runs-on: ubuntu-latest
+    env:
+      SEO_SITE_URL: https://example.com
+      VITE_SITE_URL: https://example.com
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run seo:validate
+
+  crawlability-e2e:
+    name: Crawlability E2E
+    runs-on: ubuntu-latest
+    env:
+      VITE_SITE_URL: https://example.com
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test tests/seo-crawl.spec.ts
