@@ -1,1 +1,1 @@
-export { indexRoute as Route } from '../index';
+export { Route } from '../index';
