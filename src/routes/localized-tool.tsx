@@ -19,8 +19,9 @@ function setDocumentLanguage(language: SupportedLanguage, dir: TranslationSchema
 
 export function localizedToolHead({ language, toolId }: LocalizedToolRouteProps) {
   const locale = getLocale(language);
+  const toolConfig = getToolConfig(toolId);
   const tool = locale.tools[toolId as keyof typeof locale.tools];
-  if (!tool) return { meta: [{ name: 'robots', content: 'noindex,follow' }] };
+  if (!tool || !toolConfig?.isReady) return { meta: [{ name: 'robots', content: 'noindex,follow' }] };
 
   const pathname = `/${language}/${toolId}`;
   const canonical = absoluteSiteUrl(pathname);
@@ -62,7 +63,7 @@ export function LocalizedToolPage({ language, toolId }: LocalizedToolRouteProps)
 
   if (!tool || !tool.isReady) {
     return (
-      <main className="image-tool-shell">
+      <main className="image-tool-shell" data-testid="not-found-page">
         <div className="image-tool-container">
           <p className="image-tool-eyebrow">FLIXO</p>
           <h1>{runtimeLocale.common.notFoundTitle}</h1>
@@ -80,7 +81,7 @@ export function LocalizedToolPage({ language, toolId }: LocalizedToolRouteProps)
       <main dir={runtimeLocale.dir} className="localized-tool-page" data-language={language} data-tool={toolId}>
         <section className="localized-tool-header image-tool-container">
           <p className="image-tool-eyebrow">FLIXO · {language.toUpperCase()}</p>
-          <h1>{translated.title}</h1>
+          <h2>{translated.title}</h2>
           <p className="image-tool-lead">{translated.description}</p>
           <p className="privacy-note">{runtimeLocale.common.privacy}</p>
         </section>
