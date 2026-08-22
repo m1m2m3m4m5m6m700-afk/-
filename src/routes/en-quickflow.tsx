@@ -8,6 +8,14 @@ import { getWorkflow } from '../lib/workflows/registry';
 import { planFromWorkflow, generateExecutionPlan, type ExecutionPlan } from '../lib/ai/planner';
 import { rootRoute } from './__root';
 
+function extensionForMime(mime: string) {
+  if (mime === 'image/png') return 'png';
+  if (mime === 'image/jpeg') return 'jpg';
+  if (mime === 'image/webp') return 'webp';
+  if (mime === 'image/svg+xml') return 'svg';
+  return 'bin';
+}
+
 export const enQuickFlowRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/en/quickflow/$workflowId',
@@ -98,7 +106,7 @@ export const enQuickFlowRoute = createRoute({
             {error && <div className="error-box" role="alert">{error}</div>}
             <div className="quickflow-footer-actions"><button type="button" className="primary-button" disabled={busy || !file || !plan} onClick={run}>{busy ? <><Zap size={16} /> Running…</> : <><Zap size={16} /> Run workflow</>}</button><button type="button" className="secondary-button" disabled={!file && !result} onClick={reset}><RotateCcw size={16} /> Repeat</button></div>
           </section>
-          {result && <section className="result-card quickflow-result"><h2>Result ready</h2><p>All enabled local steps completed in your browser.</p><img src={resultUrl} alt="FLIXO QuickFlow result" className="preview-image" /><div className="quickflow-footer-actions"><a className="download-button" href={resultUrl} download={`flixo-${workflow.id}.webp`} onClick={() => trackProductEvent('download_clicked', { workflowId: workflow.id })}><Download size={16} /> Download result</a><Link className="secondary-button" to="/">Back to goals <ArrowRight size={16} /></Link></div></section>}
+          {result && <section className="result-card quickflow-result"><h2>Result ready</h2><p>All enabled local steps completed in your browser.</p><img src={resultUrl} alt="FLIXO QuickFlow result" className="preview-image" /><div className="quickflow-footer-actions"><a className="download-button" href={resultUrl} download={`flixo-${workflow.id}.${extensionForMime(result.type)}`} onClick={() => trackProductEvent('download_clicked', { workflowId: workflow.id })}><Download size={16} /> Download result</a><Link className="secondary-button" to="/">Back to goals <ArrowRight size={16} /></Link></div></section>}
         </div>
       </main>
     );
