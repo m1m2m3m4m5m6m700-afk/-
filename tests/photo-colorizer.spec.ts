@@ -1,9 +1,8 @@
 import { expect, test } from '@playwright/test';
 
-test('photo-colorizer: refuses to fake AI when endpoint is missing', async ({ page }) => {
-  await page.goto('/en/photo-colorizer');
-  await expect(page.getByRole('heading', { level: 1, name: 'Photo Colorizer' })).toBeVisible();
-  await page.locator('input[type="file"]').first().setInputFiles({ name: 'fixture.png', mimeType: 'image/png', buffer: Buffer.from([137,80,78,71]) });
-  await page.getByRole('button', { name: 'Run tool' }).click();
-  await expect(page.getByRole('alert')).toContainText('VITE_PHOTO_COLORIZER_ENDPOINT');
+test('photo-colorizer: unavailable tools return a real 404 and noindex', async ({ page }) => {
+  const response = await page.goto('/en/photo-colorizer');
+  expect(response?.status()).toBe(404);
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/);
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 });
