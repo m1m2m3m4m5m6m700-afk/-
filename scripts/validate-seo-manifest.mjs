@@ -1,5 +1,3 @@
-/* global console, process */
-
 import { existsSync, readFileSync } from 'node:fs';
 
 const requiredFields = ['title', 'description', 'intro', 'keywords', 'howTo', 'features', 'altText'];
