@@ -25,13 +25,15 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      - name: Capture environment
+        run: node scripts/diagnostics/capture-environment.mjs
       - name: Run diagnostic suite
         run: npm run diagnostics
-      - name: Upload diagnostic report
+      - name: Upload diagnostic evidence
         if: ${{ always() }}
         uses: actions/upload-artifact@v6
         with:
-          name: flixo-diagnostic-report-${{ github.sha }}
-          path: artifacts/diagnostics/diagnostic-report.json
+          name: flixo-diagnostic-evidence-${{ github.sha }}
+          path: artifacts/diagnostics/*.json
           if-no-files-found: warn
           retention-days: 14
