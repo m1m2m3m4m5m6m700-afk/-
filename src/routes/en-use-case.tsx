@@ -13,15 +13,31 @@ export const enUseCaseRoute = createRoute({
     const intent = getIntentSEO(params.slug);
     if (!intent) return { meta: [{ title: 'Use Case | FLIXO' }, { name: 'robots', content: 'noindex' }] };
     const canonical = `${SITE_URL}/en/use-case/${intent.slug}`;
-    const schema = {
+    const workflow = getWorkflow(intent.workflowId);
+    const graph = {
       '@context': 'https://schema.org',
-      '@type': 'SoftwareApplication',
-      name: `FLIXO — ${intent.title}`,
-      applicationCategory: 'MultimediaApplication',
-      operatingSystem: 'Any',
-      url: canonical,
-      description: intent.description,
-      offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+      '@graph': [
+        {
+          '@type': 'SoftwareApplication',
+          name: `FLIXO — ${intent.title}`,
+          applicationCategory: 'MultimediaApplication',
+          operatingSystem: 'Any',
+          url: canonical,
+          description: intent.description,
+          offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+        },
+        {
+          '@type': 'HowTo',
+          name: intent.title,
+          description: intent.description,
+          totalTime: 'PT1M',
+          step: (workflow?.steps ?? []).map((step, index) => ({
+            '@type': 'HowToStep',
+            position: index + 1,
+            name: step.title,
+          })),
+        },
+      ],
     };
     return {
       meta: [
@@ -34,7 +50,7 @@ export const enUseCaseRoute = createRoute({
         { property: 'og:url', content: canonical },
       ],
       links: [{ rel: 'canonical', href: canonical }],
-      scripts: [{ type: 'application/ld+json', children: JSON.stringify(schema) }],
+      scripts: [{ type: 'application/ld+json', children: JSON.stringify(graph) }],
     };
   },
   component: function UseCasePage() {
@@ -43,8 +59,7 @@ export const enUseCaseRoute = createRoute({
     if (!intent) return <main className="image-tool-shell"><div className="image-tool-container"><h1>Use case not found</h1><Link className="primary-button" to="/">Back to FLIXO</Link></div></main>;
 
     const workflow = getWorkflow(intent.workflowId);
-    const preset = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '').toString();
-    const quickFlowUrl = `/en/quickflow/${intent.workflowId}?preset=${encodeURIComponent(intent.slug)}${preset ? `&${preset}` : ''}`;
+    const quickFlowUrl = `/en/quickflow/${intent.workflowId}?preset=${encodeURIComponent(intent.slug)}`;
 
     return (
       <main className="image-tool-shell">
