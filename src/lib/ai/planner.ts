@@ -1,4 +1,4 @@
-import type { ToolConfig } from '@/config/tools';
+import { TOOLS_REGISTRY, type ToolConfig } from '@/config/tools';
 import { resolveIntent } from '@/lib/intent/resolver';
 import { getWorkflow } from '@/lib/workflows/registry';
 
@@ -12,27 +12,33 @@ export type ExecutionPlan = {
 };
 
 export const MAX_STEPS = 4;
-export const PIPELINE_TOOL_IDS = new Set<string>([
-  'background-remover', 'image-upscaler', 'image-cropper', 'image-compressor',
-  'image-converter', 'image-effects',
-]);
+
+export const PIPELINE_TOOL_IDS = new Set<string>(
+  TOOLS_REGISTRY
+    .filter((tool) => tool.capabilities.local && tool.capabilities.blobIn && tool.capabilities.blobOut)
+    .map((tool) => tool.id),
+);
 
 function isExecutionPlan(value: unknown): value is ExecutionPlan {
   if (!value || typeof value !== 'object') return false;
   const plan = value as Record<string, unknown>;
   if (typeof plan.workflowName !== 'string') return false;
-  if (typeof plan.confidence !== 'number' || plan.confidence < 0 || plan.confidence > 1) return false;
+  if (!Number.isFinite(plan.confidence) || typeof plan.confidence !== 'number' || plan.confidence < 0 || plan.confidence > 1) return false;
   if (!Array.isArray(plan.steps) || plan.steps.length === 0 || plan.steps.length > MAX_STEPS) return false;
   return plan.steps.every((step) => {
     if (!step || typeof step !== 'object') return false;
     const item = step as Record<string, unknown>;
     if (typeof item.toolId !== 'string' || !PIPELINE_TOOL_IDS.has(item.toolId)) return false;
-    if (item.params !== undefined && (typeof item.params !== 'object' || item.params === null)) return false;
+    if (item.params !== undefined && (typeof item.params !== 'object' || item.params === null || Array.isArray(item.params))) return false;
+    if (item.params && typeof item.params === 'object') {
+      return Object.values(item.params as Record<string, unknown>).every((value) => ['string', 'number', 'boolean'].includes(typeof value) && (typeof value !== 'number' || Number.isFinite(value)));
+    }
     return true;
   });
 }
 
 function presetParams(toolId: ToolConfig['id'], preset: Record<string, string> = {}) {
+  if (toolId === 'background-remover' && preset.background) return { tolerance: preset.background === 'clean' ? 42 : 36 };
   if (toolId === 'image-cropper' && preset.aspectRatio) return { aspectRatio: preset.aspectRatio };
   if (toolId === 'image-compressor') return {
     ...(preset.targetSizeKB ? { targetSizeKB: Number(preset.targetSizeKB) } : {}),
@@ -69,12 +75,14 @@ export function validateExecutionPlan(plan: unknown): ExecutionPlan {
 }
 
 export async function generateExecutionPlan(userPrompt: string): Promise<ExecutionPlan> {
-  const deterministic = planFromIntent(userPrompt);
+  const maxChars = Number(import.meta.env.VITE_FLIXO_AI_MAX_INPUT_CHARS || 1200);
+  const prompt = userPrompt.trim().slice(0, Number.isFinite(maxChars) && maxChars > 0 ? maxChars : 1200);
+  const deterministic = planFromIntent(prompt);
   try {
     const response = await fetch('/api/ai/plan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: userPrompt }),
+      body: JSON.stringify({ prompt }),
     });
     if (!response.ok) throw new Error('AI planner is unavailable.');
     return validateExecutionPlan(await response.json());
