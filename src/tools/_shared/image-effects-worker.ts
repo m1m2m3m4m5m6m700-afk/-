@@ -1,3 +1,5 @@
+export {};
+
 type WorkerMessage = {
   blob: Blob;
   width: number;
