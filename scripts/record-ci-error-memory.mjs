@@ -1,6 +1,6 @@
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 
-const memoryPath = 'ERROR-MEMORY.md';
+const memoryPath = 'docs/ERROR_MEMORY.md';
 const summaryPath = process.env.GITHUB_STEP_SUMMARY;
 const context = {
   sha: process.env.GITHUB_SHA || 'unknown',
@@ -8,6 +8,7 @@ const context = {
   runNumber: process.env.GITHUB_RUN_NUMBER || 'unknown',
   job: process.env.GITHUB_JOB || 'unknown',
   ref: process.env.GITHUB_REF_NAME || 'unknown',
+  repo: process.env.GITHUB_REPOSITORY || '',
 };
 
 function extractDiagnostics() {
@@ -17,11 +18,69 @@ function extractDiagnostics() {
   return errors.length ? errors : ['No structured error lines were captured.'];
 }
 
+function localUpdate(entry) {
+  if (!existsSync('docs')) return;
+  if (!existsSync(memoryPath)) writeFileSync(memoryPath, '# FLIXO Error Memory\n\n');
+  appendFileSync(memoryPath, entry);
+}
+
+async function persistToGitHub(entry) {
+  const token = process.env.GITHUB_TOKEN;
+  if (!token || !context.repo) return false;
+
+  const eventPath = process.env.GITHUB_EVENT_PATH;
+  let event = {};
+  if (eventPath && existsSync(eventPath)) {
+    event = JSON.parse(readFileSync(eventPath, 'utf8'));
+  }
+
+  const headRepo = event?.pull_request?.head?.repo?.full_name;
+  const targetRepo = headRepo && headRepo === context.repo ? headRepo : context.repo;
+  if (headRepo && headRepo !== context.repo) return false; // never mutate forked PRs
+
+  const branch = event?.pull_request?.head?.ref || process.env.GITHUB_REF_NAME;
+  if (!branch || branch.startsWith('pull/')) return false;
+
+  const url = `https://api.github.com/repos/${targetRepo}/contents/${memoryPath}?ref=${encodeURIComponent(branch)}`;
+  const headers = {
+    accept: 'application/vnd.github+json',
+    authorization: `Bearer ${token}`,
+    'x-github-api-version': '2022-11-28',
+  };
+
+  const currentResponse = await fetch(url, { headers });
+  let currentSha;
+  let currentContent = '# FLIXO Error Memory\n\n';
+  if (currentResponse.ok) {
+    const current = await currentResponse.json();
+    currentSha = current.sha;
+    currentContent = Buffer.from(current.content.replace(/\n/g, ''), 'base64').toString('utf8');
+  } else if (currentResponse.status !== 404) {
+    throw new Error(`Error memory read failed: ${currentResponse.status}`);
+  }
+
+  const nextContent = `${currentContent.replace(/\s*$/, '')}\n\n${entry.trim()}\n`;
+  const payload = {
+    message: `ci(diagnostics): record verified failure [skip ci]`,
+    content: Buffer.from(nextContent, 'utf8').toString('base64'),
+    branch,
+    ...(currentSha ? { sha: currentSha } : {}),
+  };
+
+  const writeResponse = await fetch(url, {
+    method: 'PUT',
+    headers: { ...headers, 'content-type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!writeResponse.ok) throw new Error(`Error memory write failed: ${writeResponse.status}`);
+  return true;
+}
+
 const errors = extractDiagnostics();
 const entry = [
-  `\n## CI failure ${new Date().toISOString()}`,
+  `## CI failure ${new Date().toISOString()}`,
   `- SHA: \`${context.sha}\``,
-  `- Run: [#${context.runNumber}](https://github.com/${process.env.GITHUB_REPOSITORY}/actions/runs/${context.runId})`,
+  `- Run: [#${context.runNumber}](https://github.com/${context.repo}/actions/runs/${context.runId})`,
   `- Job: \`${context.job}\``,
   `- Ref: \`${context.ref}\``,
   '',
@@ -29,13 +88,17 @@ const entry = [
   ...errors.map((line) => `- ${line.replace(/\|/g, '\\|')}`),
   '',
   '### Correlation',
-  `- Client trace IDs are stored by runtime diagnostics and propagated through \`x-flixo-trace-id\`.`,
+  '- Client trace IDs are stored by runtime diagnostics and propagated through `x-flixo-trace-id`.',
   '',
   '---',
-  '',
 ].join('\n');
 
-if (!existsSync(memoryPath)) writeFileSync(memoryPath, '# FLIXO Error Memory\n\n');
-appendFileSync(memoryPath, entry);
-if (summaryPath) appendFileSync(summaryPath, `\n### Error Memory\n\nRecorded CI failure for \`${context.sha}\` in \`${context.job}\`.\n`);
+let persisted = false;
+try {
+  persisted = await persistToGitHub(entry);
+} catch (error) {
+  console.error(`GitHub Error Memory update failed: ${error instanceof Error ? error.message : String(error)}`);
+}
+if (!persisted) localUpdate(`\n${entry}\n`);
+if (summaryPath) appendFileSync(summaryPath, `\n### Error Memory\n\nRecorded CI failure for \`${context.sha}\` in \`${context.job}\`. Persistent update: ${persisted ? 'yes' : 'no'}.\n`);
 process.stdout.write(entry);
