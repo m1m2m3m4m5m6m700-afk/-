@@ -12,6 +12,7 @@ const requiredSignatures = [
   'UNINTENDED_DEPENDENCY_EDIT',
 ];
 const allowedClasses = new Set(['CI/code', 'SEO/test', 'architecture', 'SEO/runtime', 'dependency', 'i18n', 'external', 'process/dependency']);
+const evidencePattern = /(?:CI|PR)\s+#[0-9]+|commit\s+`[0-9a-f]{8,40}`|Vercel\s+(?:preview|deployment)\s+(?:failure|failures|state)/i;
 
 if (!memory.includes('| Signature | Root cause | Durable fix | Class | Evidence |')) {
   throw new Error('Error memory verified-incident table header is missing or malformed.');
@@ -48,6 +49,12 @@ for (const [index, line] of tableRows.entries()) {
   }
   if (!allowedClasses.has(normalizedClass)) {
     throw new Error(`Error memory incident row ${index + 1} has an invalid class: ${normalizedClass}`);
+  }
+  if (rootCause.length < 20 || durableFix.length < 20) {
+    throw new Error(`Error memory incident row ${index + 1} has insufficient root-cause or durable-fix detail.`);
+  }
+  if (!evidencePattern.test(evidence)) {
+    throw new Error(`Error memory incident row ${index + 1} has unverified or non-specific evidence: ${evidence}`);
   }
 }
 
