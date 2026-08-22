@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 3000",
     "seo:assets": "node scripts/generate-seo-assets.mjs",
+    "seo:validate": "node scripts/validate-seo-assets.mjs",
     "build": "npm run seo:assets && vite build",
     "preview": "vite preview --host 0.0.0.0 --port 3000",
     "typecheck": "tsc --noEmit",
