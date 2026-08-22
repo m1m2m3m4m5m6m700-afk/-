@@ -5,6 +5,7 @@ import { router } from './router';
 import { installRuntimeDiagnostics } from './lib/diagnostics/runtime';
 import './styles.css';
 import './home.css';
+import './quickflow.css';
 
 installRuntimeDiagnostics();
 
