@@ -1,5 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router';
 
+const PIPELINE_TOOL_IDS = [
+  'background-remover', 'image-upscaler', 'image-cropper', 'image-compressor',
+  'image-converter', 'image-effects',
+] as const;
+
 const PLAN_SCHEMA = {
   type: 'object',
   properties: {
@@ -12,18 +17,8 @@ const PLAN_SCHEMA = {
       items: {
         type: 'object',
         properties: {
-          toolId: {
-            type: 'string',
-            enum: [
-              'background-remover', 'image-upscaler', 'image-cropper', 'image-compressor',
-              'image-converter', 'image-effects', 'background-blur', 'image-ocr',
-              'object-remover', 'watermark-remover', 'ai-image-generator', 'pix',
-            ],
-          },
-          params: {
-            type: 'object',
-            additionalProperties: true,
-          },
+          toolId: { type: 'string', enum: [...PIPELINE_TOOL_IDS] },
+          params: { type: 'object', additionalProperties: true },
         },
         required: ['toolId'],
       },
@@ -32,28 +27,21 @@ const PLAN_SCHEMA = {
   required: ['workflowName', 'confidence', 'steps'],
 } as const;
 
-const SYSTEM_PROMPT = `You are FLIXO's Intent Planner. Convert the user's image goal into a short execution chain.
-Return JSON only and follow the schema exactly.
-Available tools and allowed purpose:
+const SYSTEM_PROMPT = `You are FLIXO's optional Intent Planner. The core product is deterministic local image processing.
+Convert the user's image goal into a short execution chain using ONLY these currently executable local pipeline tools:
 - background-remover: remove a simple image background
 - image-upscaler: increase resolution; params scale 0.25..4
 - image-cropper: center crop; params aspectRatio such as 1:1, 4:5, 16:9
 - image-compressor: reduce file size; params quality 0.05..1, format image/webp|image/jpeg|image/png, targetSizeKB positive
 - image-converter: change format; params format image/webp|image/jpeg|image/png
 - image-effects: browser adjustments; params brightness, contrast, saturate, grayscale as percentages
-- background-blur: blur background-like regions
-- image-ocr: extract visible text
-- object-remover: remove a selected rectangular region
-- watermark-remover: remove a selected watermark region
-- ai-image-generator: generate a new image from text (use only when no input image is being transformed)
-- pix: advanced manual image editing
 Rules:
-1. Choose only known tool IDs.
+1. Return JSON only and follow the schema exactly.
 2. Maximum 4 steps.
-3. Prefer simple chains. Do not invent tool IDs or unsupported operations.
-4. Order transformations logically. Compression/conversion should normally be last.
+3. Never invent tool IDs or cloud/AI processing steps.
+4. Order transformations logically; compression/conversion should normally be last.
 5. Keep params small and explicit.
-6. Confidence must reflect how strongly the request maps to the chosen chain.`;
+6. The browser executes the returned plan locally; do not assume the image is uploaded.`;
 
 function extractJson(payload: unknown): unknown {
   const root = payload as Record<string, unknown>;
@@ -77,9 +65,13 @@ function validatePlan(value: unknown) {
   if (typeof plan.workflowName !== 'string' || typeof plan.confidence !== 'number' || !Array.isArray(plan.steps)) throw new Error('Invalid AI plan.');
   if (plan.steps.length < 1 || plan.steps.length > 4) throw new Error('AI plan exceeds the step limit.');
   for (const step of plan.steps) {
-    if (!step || typeof step !== 'object' || typeof (step as Record<string, unknown>).toolId !== 'string') throw new Error('AI plan contains an invalid tool.');
-    if (typeof (step as Record<string, unknown>).params === 'object' && (step as Record<string, unknown>).params !== null) {
-      for (const [key, param] of Object.entries((step as Record<string, Record<string, unknown>>).params)) {
+    if (!step || typeof step !== 'object') throw new Error('AI plan contains an invalid step.');
+    const toolId = (step as Record<string, unknown>).toolId;
+    if (typeof toolId !== 'string' || !PIPELINE_TOOL_IDS.includes(toolId as typeof PIPELINE_TOOL_IDS[number])) throw new Error('AI plan contains a non-executable tool.');
+    const params = (step as Record<string, unknown>).params;
+    if (params !== undefined && (typeof params !== 'object' || params === null)) throw new Error('AI plan contains invalid parameters.');
+    if (params && typeof params === 'object') {
+      for (const [key, param] of Object.entries(params as Record<string, unknown>)) {
         if (!['string', 'number', 'boolean'].includes(typeof param)) throw new Error(`Invalid parameter: ${key}`);
       }
     }
