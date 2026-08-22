@@ -1,6 +1,8 @@
-import { createRoute, Link } from '@tanstack/react-router';
+import { createRoute, Link, useNavigate } from '@tanstack/react-router';
+import { useState } from 'react';
 import { ArrowUpRight, Check, Lock, Search, Sparkles, Zap } from 'lucide-react';
 import { HOMEPAGE_COPY } from '../lib/i18n/locales';
+import { resolveIntent, getResolvedTool } from '../lib/intent/resolver';
 import { rootRoute } from './__root';
 
 const arabicJobs = [
@@ -30,6 +32,21 @@ export const arIndexRoute = createRoute({
     ],
   }),
   component: function ArabicHomePage() {
+    const navigate = useNavigate();
+    const [query, setQuery] = useState('');
+
+    const runIntent = () => {
+      const match = resolveIntent(query);
+      if (match.kind === 'workflow' && match.id) {
+        void navigate({ to: `/ar/quickflow/${match.id}` });
+        return;
+      }
+      if (match.kind === 'tool' && match.id) {
+        const tool = getResolvedTool(match.id);
+        if (tool) void navigate({ to: tool.path.replace(/^\/en/, '/ar') });
+      }
+    };
+
     return (
       <main dir="rtl" className="home-shell">
         <header className="home-nav-wrap"><div className="home-nav">
@@ -45,7 +62,8 @@ export const arIndexRoute = createRoute({
               <p className="home-lead home-hero-lead">ابدأ بالهدف بدل البحث عن اسم الأداة. اختر مسارًا جاهزًا أو اشرح ما تحتاجه، وسيوجّهك FLIXO إلى أقصر طريق.</p>
               <div className="home-search" role="search">
                 <Search size={20} aria-hidden="true" />
-                <input placeholder="مثال: جهّز صورة المنتج للمتجر" aria-label="اكتب ما تريد إنجازه" />
+                <input value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') runIntent(); }} placeholder="مثال: جهّز صورة المنتج للمتجر" aria-label="اكتب ما تريد إنجازه" />
+                <button type="button" className="sr-only" onClick={runIntent}>تنفيذ البحث</button>
                 <kbd>/</kbd>
               </div>
               <div className="home-local-note"><Lock size={15} /><span>معالجة محلية أولًا: الأدوات التي تدعم المعالجة داخل المتصفح لا تحتاج إلى رفع الصورة إلى خادم FLIXO.</span></div>
