@@ -1,1 +1,1 @@
-export { arIndexRoute as Route } from '../ar-index';
+export { Route } from '../ar-index';
