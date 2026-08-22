@@ -1,0 +1,59 @@
+import type { ToolConfig } from '@/config/tools';
+import { getWorkflow } from '@/lib/workflows/registry';
+
+export type ExecutionPlan = {
+  workflowName: string;
+  confidence: number;
+  steps: Array<{
+    toolId: ToolConfig['id'];
+    params?: Record<string, string | number | boolean>;
+  }>;
+};
+
+const MAX_STEPS = 4;
+const KNOWN_TOOLS = new Set<string>([
+  'background-remover', 'image-upscaler', 'image-cropper', 'image-compressor',
+  'image-converter', 'image-effects', 'background-blur', 'image-ocr',
+  'object-remover', 'watermark-remover', 'ai-image-generator', 'pix',
+]);
+
+function isExecutionPlan(value: unknown): value is ExecutionPlan {
+  if (!value || typeof value !== 'object') return false;
+  const plan = value as Record<string, unknown>;
+  if (typeof plan.workflowName !== 'string') return false;
+  if (typeof plan.confidence !== 'number' || plan.confidence < 0 || plan.confidence > 1) return false;
+  if (!Array.isArray(plan.steps) || plan.steps.length === 0 || plan.steps.length > MAX_STEPS) return false;
+  return plan.steps.every((step) => {
+    if (!step || typeof step !== 'object') return false;
+    const item = step as Record<string, unknown>;
+    if (typeof item.toolId !== 'string' || !KNOWN_TOOLS.has(item.toolId)) return false;
+    if (item.params !== undefined && (typeof item.params !== 'object' || item.params === null)) return false;
+    return true;
+  });
+}
+
+export function planFromWorkflow(workflowId: string): ExecutionPlan | null {
+  const workflow = getWorkflow(workflowId);
+  if (!workflow) return null;
+  return {
+    workflowName: workflow.title,
+    confidence: 0.99,
+    steps: workflow.steps.map((step) => ({ toolId: step.toolId })),
+  };
+}
+
+export function validateExecutionPlan(plan: unknown): ExecutionPlan {
+  if (!isExecutionPlan(plan)) throw new Error('AI returned an invalid FLIXO execution plan.');
+  return plan;
+}
+
+export async function generateExecutionPlan(userPrompt: string): Promise<ExecutionPlan> {
+  const local = await fetch('/api/ai/plan', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt: userPrompt }),
+  });
+
+  if (!local.ok) throw new Error('AI planner is unavailable.');
+  return validateExecutionPlan(await local.json());
+}
