@@ -1,8 +1,10 @@
 import type { TranslationSchema } from '../schema';
+import TOOL_UI from '../tool-ui';
 
 export const locale = {
   code: 'en', dir: 'ltr',
   common: { processing: 'Local browser processing', download: 'Download', clear: 'Clear', upload: 'Upload file', privacy: 'Files are processed locally in your browser when this tool supports local processing.', notFoundTitle: 'Page not found', notFoundDescription: 'The requested language or tool page does not exist.' },
+  commonToolUi: TOOL_UI.en,
   glossary: { clientSideProcessing: 'Local browser processing' },
   tools: {
     'image-compressor': { title: 'Image Compressor', description: 'Compress images with local browser processing.' },
