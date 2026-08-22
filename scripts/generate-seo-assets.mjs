@@ -30,3 +30,6 @@ await writeFile('public/sitemap-en.xml', sitemap(enRoutes), 'utf8');
 await writeFile('public/sitemap-ar.xml', sitemap(arRoutes), 'utf8');
 await writeFile('public/sitemap-index.xml', `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <sitemap><loc>${esc(absolute('/sitemap-en.xml'))}</loc></sitemap>\n  <sitemap><loc>${esc(absolute('/sitemap-ar.xml'))}</loc></sitemap>\n</sitemapindex>\n`, 'utf8');
 await writeFile('public/robots.txt', `User-agent: *\nAllow: /\nSitemap: ${absolute('/sitemap-index.xml')}\n`, 'utf8');
+
+const indexNowKey = process.env.INDEXNOW_KEY?.trim();
+if (indexNowKey) await writeFile(`public/${indexNowKey}.txt`, indexNowKey, 'utf8');
