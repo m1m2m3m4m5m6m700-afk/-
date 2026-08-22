@@ -1,4 +1,4 @@
-import { createRoute, Link } from '@tanstack/react-router';
+import { createFileRoute, Link } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 import { ArrowUpRight, Check, Image, Lock, Search, ShieldCheck, Sparkles, Wand2, Zap } from 'lucide-react';
 import { TOOLS_REGISTRY } from '../config/tools';
@@ -7,7 +7,6 @@ import { trackProductEvent } from '../lib/analytics/productEvents';
 import { resolveIntent } from '../lib/intent/resolver';
 import { getWorkflow } from '../lib/workflows/registry';
 import { RotateRepeatIcon } from '../components/home/RotateRepeatIcon';
-import { rootRoute } from './__root';
 
 const featuredIds = ['image-compressor', 'background-remover', 'ai-image-generator', 'image-upscaler', 'image-converter', 'pix'];
 const categories = ['All', 'Edit', 'Convert', 'Create', 'AI'] as const;
@@ -26,9 +25,7 @@ function getCategory(id: string): Exclude<Category, 'All'> {
   return 'Edit';
 }
 
-export const indexRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/',
+export const Route = createFileRoute('/')({
   head: () => ({ meta: [
     { title: 'FLIXO | Fast, Local-First Image Workflows' },
     { name: 'description', content: 'Tell FLIXO the result you want. Use local-first image tools and QuickFlows without learning a giant editor.' },
