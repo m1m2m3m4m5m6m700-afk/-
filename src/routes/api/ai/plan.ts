@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createAPIFileRoute } from '@tanstack/react-start/api';
 import { TOOLS_REGISTRY } from '@/config/tools';
 
 const MAX_STEPS = 4;
@@ -72,33 +72,29 @@ function validatePlan(value: unknown) {
   return plan;
 }
 
-export const Route = createFileRoute('/api/ai/plan')({
-  server: {
-    handlers: {
-      POST: async ({ request }) => {
-        const body = await request.json().catch(() => null) as { prompt?: unknown } | null;
-        const prompt = typeof body?.prompt === 'string' ? body.prompt.trim() : '';
-        const maxChars = Number(process.env.FLIXO_AI_MAX_INPUT_CHARS || 1200);
-        const inputLimit = Number.isFinite(maxChars) && maxChars > 0 ? Math.min(maxChars, 4000) : 1200;
-        if (!prompt) return Response.json({ error: 'prompt is required' }, { status: 400 });
-        if (prompt.length > inputLimit) return Response.json({ error: `prompt exceeds the ${inputLimit}-character limit` }, { status: 413 });
-        if (!consumeRateLimit(getClientKey(request))) return Response.json({ error: 'AI planner rate limit exceeded' }, { status: 429, headers: { 'Retry-After': '60' } });
-        const apiKey = process.env.GEMINI_API_KEY;
-        if (!apiKey) return Response.json({ error: 'AI planner is not configured' }, { status: 503 });
+export const APIRoute = createAPIFileRoute('/api/ai/plan')({
+  POST: async ({ request }) => {
+    const body = await request.json().catch(() => null) as { prompt?: unknown } | null;
+    const prompt = typeof body?.prompt === 'string' ? body.prompt.trim() : '';
+    const maxChars = Number(process.env.FLIXO_AI_MAX_INPUT_CHARS || 1200);
+    const inputLimit = Number.isFinite(maxChars) && maxChars > 0 ? Math.min(maxChars, 4000) : 1200;
+    if (!prompt) return Response.json({ error: 'prompt is required' }, { status: 400 });
+    if (prompt.length > inputLimit) return Response.json({ error: `prompt exceeds the ${inputLimit}-character limit` }, { status: 413 });
+    if (!consumeRateLimit(getClientKey(request))) return Response.json({ error: 'AI planner rate limit exceeded' }, { status: 429, headers: { 'Retry-After': '60' } });
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) return Response.json({ error: 'AI planner is not configured' }, { status: 503 });
 
-        const response = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-          body: JSON.stringify({ model: process.env.GEMINI_MODEL || 'gemini-3.7-flash', input: `${SYSTEM_PROMPT}\n\nUSER GOAL:\n${prompt}`, response_format: { type: 'text', mime_type: 'application/json', schema: PLAN_SCHEMA } }),
-        });
-        if (!response.ok) return Response.json({ error: `AI provider error (${response.status})` }, { status: 502 });
-        const payload = await response.json();
-        const raw = readModelText(payload);
-        if (!raw) return Response.json({ error: 'AI provider returned no structured output' }, { status: 502 });
-        let parsed: unknown;
-        try { parsed = JSON.parse(raw); } catch { return Response.json({ error: 'AI provider returned invalid JSON' }, { status: 502 }); }
-        return Response.json(validatePlan(parsed), { headers: { 'Cache-Control': 'no-store' } });
-      },
-    },
+    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+      body: JSON.stringify({ model: process.env.GEMINI_MODEL || 'gemini-3.7-flash', input: `${SYSTEM_PROMPT}\n\nUSER GOAL:\n${prompt}`, response_format: { type: 'text', mime_type: 'application/json', schema: PLAN_SCHEMA } }),
+    });
+    if (!response.ok) return Response.json({ error: `AI provider error (${response.status})` }, { status: 502 });
+    const payload = await response.json();
+    const raw = readModelText(payload);
+    if (!raw) return Response.json({ error: 'AI provider returned no structured output' }, { status: 502 });
+    let parsed: unknown;
+    try { parsed = JSON.parse(raw); } catch { return Response.json({ error: 'AI provider returned invalid JSON' }, { status: 502 }); }
+    return Response.json(validatePlan(parsed), { headers: { 'Cache-Control': 'no-store' } });
   },
 });
