@@ -1,4 +1,4 @@
-import { createAPIFileRoute } from '@tanstack/react-start/api';
+import { createFileRoute } from '@tanstack/react-router';
 import { TOOLS_REGISTRY } from '@/config/tools';
 
 const MAX_STEPS = 4;
@@ -15,10 +15,7 @@ const PLAN_SCHEMA = {
   required: ['workflowName', 'confidence', 'steps'],
 } as const;
 
-const SYSTEM_PROMPT = `You are FLIXO's optional Intent Planner. The core product is deterministic local image processing.
-Convert the user's image goal into a short execution chain using ONLY these currently executable local pipeline tools:
-${PIPELINE_TOOL_IDS.map((id) => `- ${id}`).join('\n')}
-Rules:\n1. Return JSON only and follow the schema exactly.\n2. Maximum 4 steps.\n3. Never invent tool IDs or cloud/AI processing steps.\n4. Order transformations logically; compression/conversion should normally be last.\n5. Keep params small and explicit.\n6. The browser executes the returned plan locally; do not assume the image is uploaded.`;
+const SYSTEM_PROMPT = `You are FLIXO's optional Intent Planner. The core product is deterministic local image processing.\nConvert the user's image goal into a short execution chain using ONLY these currently executable local pipeline tools:\n${PIPELINE_TOOL_IDS.map((id) => `- ${id}`).join('\\n')}\nRules:\\n1. Return JSON only and follow the schema exactly.\\n2. Maximum 4 steps.\\n3. Never invent tool IDs or cloud/AI processing steps.\\n4. Order transformations logically; compression/conversion should normally be last.\\n5. Keep params small and explicit.\\n6. The browser executes the returned plan locally; do not assume the image is uploaded.`;
 
 const WINDOW_MS = 60_000;
 const MAX_REQUESTS_PER_WINDOW = 10;
@@ -72,29 +69,33 @@ function validatePlan(value: unknown) {
   return plan;
 }
 
-export const APIRoute = createAPIFileRoute('/api/ai/plan')({
-  POST: async ({ request }) => {
-    const body = await request.json().catch(() => null) as { prompt?: unknown } | null;
-    const prompt = typeof body?.prompt === 'string' ? body.prompt.trim() : '';
-    const maxChars = Number(process.env.FLIXO_AI_MAX_INPUT_CHARS || 1200);
-    const inputLimit = Number.isFinite(maxChars) && maxChars > 0 ? Math.min(maxChars, 4000) : 1200;
-    if (!prompt) return Response.json({ error: 'prompt is required' }, { status: 400 });
-    if (prompt.length > inputLimit) return Response.json({ error: `prompt exceeds the ${inputLimit}-character limit` }, { status: 413 });
-    if (!consumeRateLimit(getClientKey(request))) return Response.json({ error: 'AI planner rate limit exceeded' }, { status: 429, headers: { 'Retry-After': '60' } });
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) return Response.json({ error: 'AI planner is not configured' }, { status: 503 });
+export const Route = createFileRoute('/api/ai/plan' as never)({
+  server: {
+    handlers: {
+      POST: async ({ request }: { request: Request }) => {
+        const body = await request.json().catch(() => null) as { prompt?: unknown } | null;
+        const prompt = typeof body?.prompt === 'string' ? body.prompt.trim() : '';
+        const maxChars = Number(process.env.FLIXO_AI_MAX_INPUT_CHARS || 1200);
+        const inputLimit = Number.isFinite(maxChars) && maxChars > 0 ? Math.min(maxChars, 4000) : 1200;
+        if (!prompt) return Response.json({ error: 'prompt is required' }, { status: 400 });
+        if (prompt.length > inputLimit) return Response.json({ error: `prompt exceeds the ${inputLimit}-character limit` }, { status: 413 });
+        if (!consumeRateLimit(getClientKey(request))) return Response.json({ error: 'AI planner rate limit exceeded' }, { status: 429, headers: { 'Retry-After': '60' } });
+        const apiKey = process.env.GEMINI_API_KEY;
+        if (!apiKey) return Response.json({ error: 'AI planner is not configured' }, { status: 503 });
 
-    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-      body: JSON.stringify({ model: process.env.GEMINI_MODEL || 'gemini-3.7-flash', input: `${SYSTEM_PROMPT}\n\nUSER GOAL:\n${prompt}`, response_format: { type: 'text', mime_type: 'application/json', schema: PLAN_SCHEMA } }),
-    });
-    if (!response.ok) return Response.json({ error: `AI provider error (${response.status})` }, { status: 502 });
-    const payload = await response.json();
-    const raw = readModelText(payload);
-    if (!raw) return Response.json({ error: 'AI provider returned no structured output' }, { status: 502 });
-    let parsed: unknown;
-    try { parsed = JSON.parse(raw); } catch { return Response.json({ error: 'AI provider returned invalid JSON' }, { status: 502 }); }
-    return Response.json(validatePlan(parsed), { headers: { 'Cache-Control': 'no-store' } });
+        const response = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+          body: JSON.stringify({ model: process.env.GEMINI_MODEL || 'gemini-3.7-flash', input: `${SYSTEM_PROMPT}\n\nUSER GOAL:\n${prompt}`, response_format: { type: 'text', mime_type: 'application/json', schema: PLAN_SCHEMA } }),
+        });
+        if (!response.ok) return Response.json({ error: `AI provider error (${response.status})` }, { status: 502 });
+        const payload = await response.json();
+        const raw = readModelText(payload);
+        if (!raw) return Response.json({ error: 'AI provider returned no structured output' }, { status: 502 });
+        let parsed: unknown;
+        try { parsed = JSON.parse(raw); } catch { return Response.json({ error: 'AI provider returned invalid JSON' }, { status: 502 }); }
+        return Response.json(validatePlan(parsed), { headers: { 'Cache-Control': 'no-store' } });
+      },
+    },
   },
 });
