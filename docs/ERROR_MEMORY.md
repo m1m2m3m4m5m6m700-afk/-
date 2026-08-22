@@ -21,6 +21,8 @@ Purpose: preserve verified failures, their root causes, evidence, fixes, and pre
 | F-004 | E2E contract | Medium | Fixed | Assertion expected wording different from the real SEO contract |
 | F-005 | E2E timing | Medium | Superseded | Test waited for presentation text before verifying output |
 | F-006 | Image engine / SVG | High | Fixed in code; CI revalidation pending | `createImageBitmap()` failed to decode SVG in Chromium CI |
+| F-007 | CI / dependency contract | High | Fixed in code; CI revalidation pending | `package.json` dependency ranges drifted from the checked-in `package-lock.json` root manifest |
+| F-008 | CI / route diagnostics | Medium | Fixed in code; CI revalidation pending | Preflight searched only `src/routes` and treated valid `-virtual` re-export sources as missing |
 
 ---
 
@@ -78,6 +80,24 @@ Purpose: preserve verified failures, their root causes, evidence, fixes, and pre
 **Status:** Code fix committed as `753dbe71a235d158574f04107ea527cbe3b62280`; CI revalidation is required before declaring fully fixed.  
 **Prevention:** Every advertised input format must have a dedicated decode path covered by a real E2E input fixture.
 
+## F-007 — Manifest / Lockfile Drift
+
+**Area:** CI / dependency contract  
+**Symptom:** The early integrity preflight failed before `npm ci` with: `manifest/lock drift in dependencies: @radix-ui/react-tooltip (^1.1.11 != ^1.2.8)`.  
+**Root cause:** `package.json` was edited independently from the checked-in lockfile and several dependency ranges drifted.  
+**Evidence:** CI Run #1796, ESLint and Production Build both stopped at the `Early integrity preflight` step before dependency installation.  
+**Fix:** Restored `package.json` dependency ranges to the root manifest recorded in `package-lock.json`, including `@radix-ui/react-tooltip@^1.2.8`, `jspdf@^4.2.1`, and the other lock-aligned ranges.  
+**Prevention:** Keep the manifest/lock comparison as a blocking preflight check and update both files together.
+
+## F-008 — False Virtual Route Warnings
+
+**Area:** CI / route diagnostics  
+**Symptom:** The preflight emitted dozens of `Could not resolve virtual route source` warnings for valid `-virtual` route re-exports.  
+**Root cause:** The preflight enumerated `src/routes` while intentionally excluding `src/routes/-virtual`, then tried to resolve the excluded files as if they were normal source routes.  
+**Evidence:** CI Run #1796 showed warnings for `en-background-remover`, `ar-background-remover`, `/api/ai/plan`, `robots.ts`, `sitemap.ts`, and most other virtual entries.  
+**Fix:** Preflight now resolves `src/routes/-virtual/*` re-export files back to their actual source modules and validates their declared route path.  
+**Prevention:** Diagnostics must understand generated/virtual route topology instead of treating generated artifacts as missing source files.
+
 ---
 
 ## Reusable Diagnostic Checklist
@@ -96,38 +116,5 @@ When an E2E shard fails:
 
 ## Current Gate
 
-The SVG decode fix is the active item. Do not start another image-tool implementation until the CI run for commit `753dbe71a235d158574f04107ea527cbe3b62280` is green or its next failure is diagnosed and recorded here.
-
-## CI failure 2026-08-22T15:24:55.509Z
-- SHA: `8907273d87fee3b0100b86b2075b5b8d4e5198c1`
-- Run: [#1770](https://github.com/m1m2m3m4m5m6m700-afk/FLIXO-AI-TOOLS/actions/runs/32581419434)
-- Job: `diagnostic-summary`
-- Ref: `136/merge`
-
-### Extracted diagnostics
-- typecheck=failure
-- lint=failure
-- e2e=failure
-- trace correlation: client uses x-flixo-trace-id; inspect failed E2E artifact for browser trace
-
-### Correlation
-- Client trace IDs are stored by runtime diagnostics and propagated through `x-flixo-trace-id`.
-
----
-
-## CI failure 2026-08-22T15:28:57.297Z
-- SHA: `eac2b5711646653ad48c7fd8839d6baea58a308c`
-- Run: [#1784](https://github.com/m1m2m3m4m5m6m700-afk/FLIXO-AI-TOOLS/actions/runs/32581566703)
-- Job: `diagnostic-summary`
-- Ref: `136/merge`
-
-### Extracted diagnostics
-- typecheck=failure
-- lint=failure
-- e2e=failure
-- trace correlation: client uses x-flixo-trace-id; inspect failed E2E artifact for browser trace
-
-### Correlation
-- Client trace IDs are stored by runtime diagnostics and propagated through `x-flixo-trace-id`.
-
----
+- F-007 and F-008 are fixed in code and require the next CI run on the current branch HEAD for final verification.
+- The last observed CI failure was Run #1796 on merge SHA `c7c60870f6b088a87e321c2861584201dbbfab4b`; it failed at preflight, before `npm ci`, so those failures did not yet exercise the application build itself.
