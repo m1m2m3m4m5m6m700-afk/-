@@ -1,4 +1,5 @@
 import type { ToolConfig } from '@/config/tools';
+import { resolveIntent } from '@/lib/intent/resolver';
 import { getWorkflow } from '@/lib/workflows/registry';
 
 export type ExecutionPlan = {
@@ -38,8 +39,15 @@ export function planFromWorkflow(workflowId: string): ExecutionPlan | null {
   return {
     workflowName: workflow.title,
     confidence: 0.99,
-    steps: workflow.steps.map((step) => ({ toolId: step.toolId })),
+    steps: workflow.steps.slice(0, MAX_STEPS).map((step) => ({ toolId: step.toolId, params: step.params })),
   };
+}
+
+function planFromIntent(input: string): ExecutionPlan | null {
+  const intent = resolveIntent(input);
+  if (intent.kind === 'workflow' && intent.id) return planFromWorkflow(intent.id);
+  if (intent.kind === 'tool' && intent.id) return { workflowName: 'Direct Tool', confidence: intent.confidence, steps: [{ toolId: intent.id }] };
+  return null;
 }
 
 export function validateExecutionPlan(plan: unknown): ExecutionPlan {
@@ -48,12 +56,17 @@ export function validateExecutionPlan(plan: unknown): ExecutionPlan {
 }
 
 export async function generateExecutionPlan(userPrompt: string): Promise<ExecutionPlan> {
-  const local = await fetch('/api/ai/plan', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt: userPrompt }),
-  });
-
-  if (!local.ok) throw new Error('AI planner is unavailable.');
-  return validateExecutionPlan(await local.json());
+  const deterministic = planFromIntent(userPrompt);
+  try {
+    const response = await fetch('/api/ai/plan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: userPrompt }),
+    });
+    if (!response.ok) throw new Error('AI planner is unavailable.');
+    return validateExecutionPlan(await response.json());
+  } catch {
+    if (deterministic) return deterministic;
+    throw new Error('FLIXO could not determine a safe execution plan.');
+  }
 }
