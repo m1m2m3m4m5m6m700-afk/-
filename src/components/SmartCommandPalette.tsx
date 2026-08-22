@@ -4,32 +4,26 @@ import { getReadyToolConfigs } from '@/config/tools';
 import { findToolIntent } from '@/lib/intent-router';
 
 type SmartCommandPaletteProps = {
-  readonly open: boolean;
   readonly onClose: () => void;
 };
 
-export function SmartCommandPalette({ open, onClose }: SmartCommandPaletteProps) {
+export function SmartCommandPalette({ onClose }: SmartCommandPaletteProps) {
   const [query, setQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const results = useMemo(() => findToolIntent(query, getReadyToolConfigs()), [query]);
 
   useEffect(() => {
-    if (!open) return;
-    setQuery('');
     const frame = requestAnimationFrame(() => inputRef.current?.focus());
     return () => cancelAnimationFrame(frame);
-  }, [open]);
+  }, []);
 
   useEffect(() => {
-    if (!open) return;
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [open, onClose]);
-
-  if (!open) return null;
+  }, [onClose]);
 
   return (
     <div className="smart-palette-backdrop" role="presentation" onMouseDown={onClose}>
