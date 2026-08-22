@@ -10,7 +10,6 @@ export const localizedToolRoute = createRoute({
   head: ({ params }) => {
     const seo = getToolSeo(params.locale, params.tool);
     if (!seo) return { meta: [{ title: 'FLIXO | Tool not found' }, { name: 'robots', content: 'noindex,nofollow' }] };
-
     return {
       meta: [
         { title: seo.title },
@@ -23,11 +22,7 @@ export const localizedToolRoute = createRoute({
       ],
       links: [
         { rel: 'canonical', href: seo.url },
-        ...seo.alternates.map((alternate) => ({
-          rel: 'alternate',
-          hrefLang: alternate.languageTag,
-          href: alternate.url,
-        })),
+        ...seo.alternates.map((alternate) => ({ rel: 'alternate', hrefLang: alternate.languageTag, href: alternate.url })),
         { rel: 'alternate', hrefLang: 'x-default', href: `${SITE_ORIGIN}/en/${seo.tool.id}` },
       ],
     };
@@ -38,19 +33,10 @@ export const localizedToolRoute = createRoute({
 function LocalizedToolPage() {
   const params = localizedToolRoute.useParams();
   const seo = useMemo(() => getToolSeo(params.locale, params.tool), [params.locale, params.tool]);
-
-  if (!isLocale(params.locale) || !seo || !LOCALES.includes(params.locale)) {
-    return <main><h1>Tool not found</h1></main>;
-  }
-
+  if (!isLocale(params.locale) || !seo || !LOCALES.includes(params.locale)) return <main><h1>Tool not found</h1></main>;
   const ToolComponent = seo.tool.component;
-
-  return (
-    <main lang={seo.languageTag} dir={seo.direction}>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(seo.structuredData) }} />
-      <Suspense fallback={<p>Loading FLIXO tool…</p>}>
-        <ToolComponent />
-      </Suspense>
-    </main>
-  );
+  return <main lang={seo.languageTag} dir={seo.direction}>
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(seo.structuredData).replace(/</g, '\\u003c') }} />
+    <Suspense fallback={<p>Loading FLIXO tool…</p>}><ToolComponent /></Suspense>
+  </main>;
 }
