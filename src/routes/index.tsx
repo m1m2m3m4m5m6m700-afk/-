@@ -1,29 +1,16 @@
-import { createRoute, Link } from '@tanstack/react-router';
-import { TOOLS_REGISTRY } from '../config/tools';
+import { createRoute } from '@tanstack/react-router';
 import { rootRoute } from './__root';
+import { HomePage } from './home-page';
 
 export const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
   head: () => ({
     meta: [
-      { title: 'FLIXO | Image Tools Online' },
-      { name: 'description', content: 'Fast browser-based image tools from FLIXO: background removal, compression, conversion, OCR, resizing, upscaling, and more.' },
+      { title: 'FLIXO | Fast Private Browser Tools' },
+      { name: 'description', content: 'Find fast browser-first tools for images, AI, OCR, conversion, and more. Start instantly with privacy-focused processing.' },
       { name: 'robots', content: 'index,follow,max-image-preview:large' },
     ],
   }),
-  component: function HomePage() {
-    return (
-      <main className="home-shell">
-        <div className="home-container">
-          <p className="image-tool-eyebrow">FLIXO · IMAGE TOOLS</p>
-          <h1>Image tools built for real search intent</h1>
-          <p className="home-lead">Fast browser-first image tools with clear results and separate pages for each job.</p>
-          <div className="compressor-grid">
-            {TOOLS_REGISTRY.map((tool) => <Link key={tool.id} className="compressor-card" to={tool.path}>{tool.title}<span>{tool.description}</span></Link>)}
-          </div>
-        </div>
-      </main>
-    );
-  },
+  component: HomePage,
 });
