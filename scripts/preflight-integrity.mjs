@@ -29,11 +29,9 @@ else {
   for (const section of ['dependencies', 'devDependencies']) {
     const expected = packageJson[section] ?? {};
     const locked = manifest[section] ?? {};
-    const expectedKeys = new Set(Object.keys(expected));
-    const lockedKeys = new Set(Object.keys(locked));
-    for (const name of expectedKeys) if (!(name in locked)) pushFailure(`lockfile missing ${section} entry: ${name}`);
-    for (const name of lockedKeys) if (!(name in expected)) pushFailure(`package.json missing ${section} entry present in lockfile: ${name}`);
-    for (const name of expectedKeys) if (name in locked && expected[name] !== locked[name]) pushFailure(`manifest/lock drift in ${section}: ${name} (${expected[name]} != ${locked[name]})`);
+    for (const name of Object.keys(expected)) if (!(name in locked)) pushFailure(`lockfile missing ${section} entry: ${name}`);
+    for (const name of Object.keys(locked)) if (!(name in expected)) pushFailure(`package.json missing ${section} entry present in lockfile: ${name}`);
+    for (const name of Object.keys(expected)) if (name in locked && expected[name] !== locked[name]) pushFailure(`manifest/lock drift in ${section}: ${name} (${expected[name]} != ${locked[name]})`);
   }
 }
 
@@ -58,7 +56,7 @@ for (const path of allRouteSourceFiles) {
   for (const match of source.matchAll(/createRoute\(\{[\s\S]*?path:\s*['"]([^'"]+)['"]/g)) {
     const routePath = match[1];
     const previous = routeFactories.get(routePath);
-    if (previous) pushFailure(`duplicate route factory path ${routePath}: ${previous} and ${path}`);
+    if (previous && previous !== path) pushFailure(`duplicate route factory path ${routePath}: ${previous} and ${path}`);
     routeFactories.set(routePath, path);
   }
   for (const match of source.matchAll(/createFileRoute\(['"]([^'"]+)['"]\)/g)) {
@@ -71,18 +69,29 @@ for (const path of allRouteSourceFiles) {
 
 const routesSource = await read('routes.ts');
 const configuredRoutes = new Map();
-for (const match of routesSource.matchAll(/path:\s*['"]([^'"]+)['"][,\s]+file:\s*['"]([^'"]+)['"]/g)) {
-  configuredRoutes.set(match[1], match[2]);
+for (const match of routesSource.matchAll(/path:\s*['"]([^'"]+)['"][,\s]+file:\s*['"]-virtual\/([^'"]+)['"]/g)) configuredRoutes.set(match[1], match[2]);
+
+function resolveVirtualSource(virtualFile) {
+  const virtualPath = `src/routes/-virtual/${virtualFile}`;
+  return read(virtualPath).then((source) => {
+    if (!source) return null;
+    const reexport = source.match(/from\s+['"]\.\.\/([^'"]+)['"]/);
+    if (!reexport) return virtualPath;
+    const stem = reexport[1].replace(/\.tsx?$|\.js$/, '');
+    const candidates = [`src/routes/${stem}.tsx`, `src/routes/${stem}.ts`, `src/routes/${stem}/index.tsx`, `src/routes/${stem}/index.ts`];
+    return candidates.find((candidate) => allRouteSourceFiles.includes(candidate)) ?? virtualPath;
+  });
 }
 
-const virtualMappings = [...routesSource.matchAll(/path:\s*['"]([^'"]+)['"][,\s]+file:\s*['"]-virtual\/([^'"]+)['"]/g)];
-for (const [, configuredPath, virtualFile] of virtualMappings) {
-  const sourcePath = `src/routes/${virtualFile.replace(/\.tsx$|\.ts$/, '')}`;
-  const candidates = allRouteSourceFiles.filter((path) => path.endsWith(`/${virtualFile}`) || path.endsWith(`/${virtualFile.replace(/\.tsx$|\.ts$/, '')}.tsx`) || path.endsWith(`/${virtualFile.replace(/\.tsx$|\.ts$/, '')}.ts`));
-  const sourcePathHint = candidates[0];
-  if (!sourcePathHint && sourcePath !== `src/routes/${virtualFile}`) warnings.push(`Could not resolve virtual route source for ${configuredPath}: ${virtualFile}`);
-  const factoryPath = [...routeFactories.entries()].find(([, path]) => sourcePathHint ? path === sourcePathHint : false)?.[0];
-  if (factoryPath && factoryPath !== configuredPath) pushFailure(`route tree path mismatch: routes.ts says ${configuredPath}, source defines ${factoryPath} for ${virtualFile}`);
+for (const [configuredPath, virtualFile] of configuredRoutes) {
+  const sourcePath = await resolveVirtualSource(virtualFile);
+  if (!sourcePath) {
+    pushFailure(`virtual route source missing for ${configuredPath}: ${virtualFile}`);
+    continue;
+  }
+  if (sourcePath.startsWith('src/routes/-virtual/')) continue;
+  const declaredPaths = [...routeFactories.entries()].filter(([, path]) => path === sourcePath).map(([path]) => path);
+  if (declaredPaths.length && !declaredPaths.includes(configuredPath)) pushFailure(`route tree path mismatch: routes.ts says ${configuredPath}, source ${sourcePath} declares ${declaredPaths.join(', ')}`);
 }
 
 if (!configuredRoutes.size) warnings.push('No route entries found in routes.ts');
