@@ -13,8 +13,9 @@
     "audit:production": "npm audit --omit=dev --audit-level=high",
     "validate:i18n": "node scripts/validate-i18n.mjs",
     "validate:seo": "node scripts/validate-seo.mjs",
+    "validate:seo-manifest": "node scripts/validate-seo-manifest.mjs",
     "generate:sitemap": "node scripts/generate-sitemap.mjs",
-    "check": "npm run typecheck && npm run lint && npm run validate:i18n && npm run validate:seo && npm run build",
+    "check": "npm run typecheck && npm run lint && npm run validate:i18n && npm run validate:seo && npm run validate:seo-manifest && npm run build",
     "test:e2e": "playwright test",
     "test": "npm run check && npm run test:e2e"
   },
