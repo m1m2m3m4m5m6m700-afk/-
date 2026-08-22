@@ -80,7 +80,7 @@ jobs:
         run: npx --yes @socketsecurity/cli@1.1.158 ci
       - name: Skip Socket CI when no token is configured
         if: ${{ env.SOCKET_SECURITY_API_KEY == '' }}
-        run: echo "Socket scan skipped: configure SOCKET_SECURITY_API_KEY in repository secrets to enable the blocking supply-chain gate."
+        run: 'echo "Socket scan skipped: configure SOCKET_SECURITY_API_KEY in repository secrets to enable the blocking supply-chain gate."'
 
   security:
     name: CodeQL
