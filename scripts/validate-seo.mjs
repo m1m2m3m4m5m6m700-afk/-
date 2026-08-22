@@ -6,7 +6,6 @@ const routerSource = readFileSync('src/routes/localized-tool.tsx', 'utf8');
 
 const expectedLocales = ['en','ar','es','fr','de','ru','zh','hi','id','ur','ja','pt','it','ko','nl','pl','tr','vi','th','sv'];
 const readyToolIds = [...toolsSource.matchAll(/\{ id: '([^']+)',[^\n]*?isReady: true,/g)].map((match) => match[1]);
-const seoLocaleKeys = [...seoSource.matchAll(/([a-z]{2}): '/g)].map((match) => match[1]);
 
 if (readyToolIds.length === 0) {
   console.error('No ready tools discovered in src/config/tools.ts');
@@ -19,14 +18,25 @@ if (uniqueReadyTools.size !== readyToolIds.length) {
   process.exit(1);
 }
 
-if (seoLocaleKeys.length !== expectedLocales.length || seoLocaleKeys.some((locale, index) => locale !== expectedLocales[index])) {
-  console.error('SEO locale label registry must contain the canonical 20-locale order.');
+const labelsBlockMatch = seoSource.match(/const LOCALE_LABELS: Record<Locale, string> = \{([\s\S]*?)\n\};/);
+if (!labelsBlockMatch) {
+  console.error('LOCALE_LABELS registry is missing or malformed.');
   process.exit(1);
 }
 
-if (expectedLocales.some((locale) => !seoSource.includes(`${locale}: '`))) {
-  console.error('One or more SEO locale labels are missing.');
-  process.exit(1);
+let previousIndex = -1;
+for (const locale of expectedLocales) {
+  const marker = `${locale}: '`;
+  const index = labelsBlockMatch[1].indexOf(marker);
+  if (index === -1) {
+    console.error(`SEO locale label is missing: ${locale}`);
+    process.exit(1);
+  }
+  if (index <= previousIndex) {
+    console.error(`SEO locale labels are out of canonical order at: ${locale}`);
+    process.exit(1);
+  }
+  previousIndex = index;
 }
 
 if (!routerSource.includes("path: '/$locale/$tool'")) {
