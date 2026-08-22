@@ -8,6 +8,14 @@ import { trackProductEvent } from '../lib/analytics/productEvents';
 import { getWorkflow } from '../lib/workflows/registry';
 import { rootRoute } from './__root';
 
+function extensionForMime(mime: string) {
+  if (mime === 'image/png') return 'png';
+  if (mime === 'image/jpeg') return 'jpg';
+  if (mime === 'image/webp') return 'webp';
+  if (mime === 'image/svg+xml') return 'svg';
+  return 'bin';
+}
+
 export const arQuickFlowRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/ar/quickflow/$workflowId',
@@ -96,7 +104,7 @@ export const arQuickFlowRoute = createRoute({
             {error && <div className="error-box" role="alert">{error}</div>}
             <div className="quickflow-footer-actions"><button type="button" className="primary-button" disabled={busy || !file || !plan} onClick={() => void run()}>{busy ? <><Zap size={16} /> جارٍ التنفيذ…</> : <><Zap size={16} /> نفّذ المسار</>}</button><button type="button" className="secondary-button" disabled={!file && !result} onClick={repeat}><RotateCcw size={16} /> أعد العملية</button></div>
           </section>
-          {result && <section className="result-card quickflow-result"><h2>النتيجة جاهزة</h2><p>اكتملت الخطوات المحلية داخل المتصفح.</p><img src={resultUrl} alt="نتيجة FLIXO" className="preview-image" /><div className="quickflow-footer-actions"><a className="download-button" href={resultUrl} download={`flixo-${workflow.id}.webp`}><Download size={16} /> تنزيل النتيجة</a><Link className="secondary-button" to="/ar">العودة للأهداف <ArrowRight size={16} /></Link></div></section>}
+          {result && <section className="result-card quickflow-result"><h2>النتيجة جاهزة</h2><p>اكتملت الخطوات المحلية داخل المتصفح.</p><img src={resultUrl} alt="نتيجة FLIXO" className="preview-image" /><div className="quickflow-footer-actions"><a className="download-button" href={resultUrl} download={`flixo-${workflow.id}.${extensionForMime(result.type)}`}><Download size={16} /> تنزيل النتيجة</a><Link className="secondary-button" to="/ar">العودة للأهداف <ArrowRight size={16} /></Link></div></section>}
         </div>
       </main>
     );
