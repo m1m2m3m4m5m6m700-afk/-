@@ -1,6 +1,6 @@
 import { getReadyToolConfigs, getToolConfig, type ToolConfig } from '../../config/tools';
 import { LOCALES, SITE_ORIGIN, TRANSLATION_BUNDLES, type Locale, normalizeLocale } from '../i18n';
-import { IMAGE_COMPRESSOR_MANIFEST } from '../../tools/image-compressor/manifest';
+import { getToolSeoManifest } from './tool-manifests';
 
 const LOCALE_LABELS: Record<Locale, string> = {
   en: 'Online tool', ar: 'أداة عبر الإنترنت', es: 'Herramienta en línea', fr: 'Outil en ligne',
@@ -26,7 +26,7 @@ export function getToolSeo(localeInput: string, toolId: string) {
   const label = LOCALE_LABELS[locale];
   const url = getLocalizedToolUrl(locale, tool.id);
   const xDefaultUrl = getLocalizedToolUrl('en', tool.id);
-  const manifestSeo = tool.id === IMAGE_COMPRESSOR_MANIFEST.toolId ? IMAGE_COMPRESSOR_MANIFEST.seoLocales[locale] : undefined;
+  const manifestSeo = getToolSeoManifest(tool.id)?.seoLocales[locale];
   const title = manifestSeo?.title ?? `${tool.title} | FLIXO`;
   const description = manifestSeo?.description ?? `${label} FLIXO: ${tool.description}`;
 
