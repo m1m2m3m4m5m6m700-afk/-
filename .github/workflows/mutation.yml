@@ -1,0 +1,33 @@
+name: Mutation Guard
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '30 2 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  mutation:
+    name: Targeted mutation testing
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npx --yes @stryker-mutator/core@10.0.0 run --configFile=stryker.config.json
+      - name: Upload mutation report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: mutation-report
+          path: |
+            reports/stryker.html
+            reports/mutation.json
+            .stryker/
+          if-no-files-found: warn
+          retention-days: 14
