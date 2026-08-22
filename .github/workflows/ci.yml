@@ -100,6 +100,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - tool: home-quickflow
+            spec: tests/home-quickflow.spec.ts
           - tool: image-compressor
             spec: tests/image-compressor.spec.ts
           - tool: background-remover
