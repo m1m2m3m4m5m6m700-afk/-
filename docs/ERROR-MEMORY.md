@@ -23,6 +23,7 @@ Current-architecture record of verified failures and permanent prevention. Only 
 | `UNINTENDED_DEPENDENCY_EDIT` | A tooling edit accidentally changed an unrelated dependency version while adding a script | Compare dependency manifests against `main` and reject unrelated package drift | process/dependency | PR: `#126`; correction commit: `b35d84bf` |
 | `MANIFEST_LOCKFILE_RANGE_DRIFT` | Dependency ranges in `package.json` diverged from the lockfile after tooling edits, preventing a deterministic dependency audit | Require exact manifest/lockfile range agreement and fail diagnostics on range mismatch before build/test execution | process/dependency | CI Diagnostics `#14`; failure: dependency-drift; correction commit: `d76a1ea1` |
 | `STALE_DIAGNOSTIC_ROUTE_PATH` | The tool-contract diagnostic hard-coded a route-matrix filename that no longer exists in the current route architecture | Resolve and validate the authoritative current route module (`src/routes/localized-tool-routes.tsx`) instead of a legacy filename | diagnostics/tooling | CI Diagnostics `#14`; failure: tool-contract; correction commit: `f45d6168` |
+| `DIAGNOSTIC_ROUTE_STRUCTURE_FALSE_NEGATIVE` | The tool-contract diagnostic relied on brittle formatting-sensitive regexes and rejected a valid dynamic 20x22 route matrix | Validate stable architectural invariants and module semantics instead of whitespace/layout patterns | diagnostics/tooling | CI Diagnostics `#22`; failure: tool-contract; correction commit: `ec6aa28f` |
 
 ## Verified external constraints
 
