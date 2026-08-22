@@ -11,24 +11,32 @@ if (origin.protocol !== 'https:' || origin.hostname.endsWith('.vercel.app') || o
   throw new Error('SEO site URL must be the final HTTPS production domain, not localhost or a Vercel preview/temporary domain.');
 }
 
-const routes = [
-  '/', '/en/image-compressor', '/ar/image-compressor', '/en/background-remover', '/en/ai-image-generator',
-  '/en/image-upscaler', '/en/image-converter', '/en/image-to-text', '/en/object-remover', '/en/crop-resize',
-  '/en/watermark-remover', '/en/raster-to-svg', '/en/image-cropper', '/en/image-ocr', '/en/background-blur',
-  '/en/passport-photo-maker', '/en/watermark-adder', '/en/meme-generator', '/en/collage-maker', '/en/image-effects',
-  '/en/exif-cleaner', '/en/svg-optimizer', '/en/mockup-generator', '/en/image-to-svg', '/en/seed', '/en/pix',
+const languages = ['en','ar','zh','es','fr','de','pt','ja','ko','ru','it','nl','pl','tr','sv','id','hi','ur','vi','th'];
+const readyTools = [
+  'image-compressor','background-remover','image-upscaler','image-converter','ai-image-generator','object-remover',
+  'watermark-remover','image-cropper','image-to-svg','image-ocr','background-blur','passport-photo-maker','watermark-adder',
+  'meme-generator','collage-maker','image-effects','exif-cleaner','svg-optimizer','mockup-generator','seed','pix',
 ];
 
+const routesFor = (language) => readyTools.map((tool) => `/${language}/${tool}`);
 const absolute = (path) => new URL(path, origin).href;
 const esc = (value) => value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&apos;');
 const sitemap = (items) => `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${items.map((path) => `  <url><loc>${esc(absolute(path))}</loc></url>`).join('\n')}\n</urlset>\n`;
 
+if (languages.length !== 20 || readyTools.length !== 21) throw new Error('SEO catalog invariant failed.');
+const totalIndexable = readyTools.length * languages.length + 1;
+if (totalIndexable !== 421) throw new Error(`Expected 421 indexable URLs, got ${totalIndexable}.`);
+
 await mkdir('public', { recursive: true });
-const enRoutes = routes.filter((path) => path === '/' || path.startsWith('/en/'));
-const arRoutes = routes.filter((path) => path.startsWith('/ar/'));
-await writeFile('public/sitemap-en.xml', sitemap(enRoutes), 'utf8');
-await writeFile('public/sitemap-ar.xml', sitemap(arRoutes), 'utf8');
-await writeFile('public/sitemap-index.xml', `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <sitemap><loc>${esc(absolute('/sitemap-en.xml'))}</loc></sitemap>\n  <sitemap><loc>${esc(absolute('/sitemap-ar.xml'))}</loc></sitemap>\n</sitemapindex>\n`, 'utf8');
+const sitemapEntries = [];
+for (const language of languages) {
+  const paths = routesFor(language);
+  const fileName = `sitemap-${language}.xml`;
+  await writeFile(`public/${fileName}`, sitemap(paths), 'utf8');
+  sitemapEntries.push(`  <sitemap><loc>${esc(absolute(`/${fileName}`))}</loc></sitemap>`);
+}
+
+await writeFile('public/sitemap-index.xml', `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${sitemapEntries.join('\n')}\n</sitemapindex>\n`, 'utf8');
 await writeFile('public/robots.txt', `User-agent: *\nAllow: /\nSitemap: ${absolute('/sitemap-index.xml')}\n`, 'utf8');
 
 const indexNowKey = process.env.INDEXNOW_KEY?.trim();
