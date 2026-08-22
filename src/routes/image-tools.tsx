@@ -25,19 +25,13 @@ import ImageCropperTool from '../tools/image-cropper';
 import ImageOcrTool from '../tools/image-ocr';
 import SeedTool from '../tools/seed';
 import PixTool from '../tools/pix';
+import { toolHead } from '../seo/head';
 
 function imageToolRoute(path: string, title: string, description: string, component: () => ReactElement) {
   return createRoute({
     getParentRoute: () => rootRoute,
     path,
-    head: () => ({ meta: [
-      { title: `${title} | FLIXO` },
-      { name: 'description', content: description },
-      { name: 'robots', content: 'index,follow,max-image-preview:large' },
-      { property: 'og:title', content: `${title} | FLIXO` },
-      { property: 'og:description', content: description },
-      { property: 'og:type', content: 'website' },
-    ] }),
+    head: () => toolHead({ title: `${title} | FLIXO`, description, pathname: path }),
     component,
   });
 }
@@ -48,9 +42,9 @@ export const enImageUpscalerRoute = imageToolRoute('/en/image-upscaler', 'Image 
 export const enImageConverterRoute = imageToolRoute('/en/image-converter', 'Image Converter', 'Convert PNG, JPG, and WebP images in your browser.', ImageConverterTool);
 export const enImageToTextRoute = imageToolRoute('/en/image-to-text', 'Image to Text OCR', 'Extract text from images in your browser with OCR.', ImageToTextTool);
 export const enObjectRemoverRoute = imageToolRoute('/en/object-remover', 'Object Remover', 'Remove a rectangular object region with local reconstruction.', ObjectRemoverTool);
-export const enCropResizeRoute = imageToolRoute('/en/crop-resize', 'Crop & Resize', 'Legacy route for crop/resize.', CropResizeTool);
+export const enCropResizeRoute = imageToolRoute('/en/crop-resize', 'Crop & Resize', 'Crop and resize images in your browser.', CropResizeTool);
 export const enWatermarkRemoverRoute = imageToolRoute('/en/watermark-remover', 'Watermark Remover', 'Cover a selected watermark region locally.', WatermarkRemoverTool);
-export const enRasterToSvgRoute = imageToolRoute('/en/raster-to-svg', 'Raster to SVG', 'Legacy raster-to-SVG route.', RasterToSvgTool);
+export const enRasterToSvgRoute = imageToolRoute('/en/raster-to-svg', 'Raster to SVG', 'Convert a raster image into a downloadable SVG wrapper.', RasterToSvgTool);
 export const enImageCropperRoute = imageToolRoute('/en/image-cropper', 'Image Cropper', 'Crop and resize images for exact dimensions.', ImageCropperTool);
 export const enImageOcrRoute = imageToolRoute('/en/image-ocr', 'Image OCR', 'Extract text from images with OCR.', ImageOcrTool);
 export const enPhotoColorizerRoute = imageToolRoute('/en/photo-colorizer', 'Photo Colorizer', 'Colorize photos through a configured AI endpoint.', PhotoColorizerTool);

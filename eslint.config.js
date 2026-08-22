@@ -19,6 +19,14 @@ export default tseslint.config(
     },
   },
   {
+    files: ['**/*.mjs'],
+    languageOptions: { globals: globals.node },
+  },
+  {
+    files: ['public/**/*.js'],
+    languageOptions: { globals: globals.browser },
+  },
+  {
     files: ['src/tools/image-compressor/index.tsx'],
     rules: {
       'react-hooks/set-state-in-effect': 'warn',
